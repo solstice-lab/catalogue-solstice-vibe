@@ -70,7 +70,8 @@ les appelle pas.
   **à brancher** (section 3 du modèle), avec l'entité qu'elle attend et son ticket.
 - Les mises à jour d'une brique après coup sont hors v1. Ce que chaque brique a changé
   depuis un commit est dans son `CHANGELOG.md` : la blueprint note le commit de référence
-  pour permettre cette lecture, rien de plus.
+  pour permettre cette lecture, et `catalogue.empreintes.json` l'empreinte de chaque
+  fichier reçu, pour voir ce que l'appli a retouché depuis.
 
 ## Ce qui ne dépend pas du choix
 

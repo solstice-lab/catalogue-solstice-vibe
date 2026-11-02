@@ -293,7 +293,8 @@ le premier commit la reprend. La ligne
 « Suite : » annonce le dépôt git local (branche `main`, un commit), aucun remote et, avec
 la brique données, les commandes de la base locale. Ouvrir
 `blueprint.md` dans le dossier : `commit_reference` est un commit, les listes de l'en-tête
-redisent le choix.
+redisent le choix. `catalogue.empreintes.json` existe, et son `catalogue.commit` est ce
+même commit.
 
 ## 5. Dépôt distant, puis ce que l'humain tape
 

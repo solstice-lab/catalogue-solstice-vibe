@@ -438,35 +438,44 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
     expect(blueprint).not.toContain("modules_assembles");
   });
 
-  // Une appli livrée ne disait pas ce qu'elle avait retouché du catalogue : le
-  // commit de référence désigne le catalogue, pas les fichiers une fois retirés
-  // et remis en forme. Empreinte prise sur le fichier tel que l'appli le reçoit,
-  // sinon chaque fichier retouché par l'assembleur paraîtrait modifié par l'appli.
-  it("écrit dans son premier commit un manifeste d'empreintes : chaque fichier venu du catalogue, son unité et l'empreinte du fichier reçu", () => {
-    const { dossier } = assemble;
-    expect(gitDans(dossier, "ls-files", MANIFESTE)).toBe(MANIFESTE);
-    const manifeste = JSON.parse(lireAssemble(dossier, MANIFESTE));
-    expect(manifeste.format).toBe(1);
-    expect(manifeste.catalogue).toEqual({
-      version: JSON.parse(fs.readFileSync(path.join(SOURCE, "package.json"), "utf-8")).version,
-      commit: COMMIT_DE_TEST,
-    });
-    const ecritsParLAssembleur = ["blueprint.md", "NOTICE", MANIFESTE];
-    const venusDuCatalogue = fichiersAssembles(dossier)
-      .filter((chemin) => !ecritsParLAssembleur.includes(chemin))
-      .sort();
-    expect(Object.keys(manifeste.fichiers)).toEqual(venusDuCatalogue);
-    for (const chemin of venusDuCatalogue) {
-      const { unite, sha256 } = manifeste.fichiers[chemin];
-      const recu = createHash("sha256")
-        .update(fs.readFileSync(path.join(dossier, chemin)))
-        .digest("hex");
-      expect(sha256, chemin).toBe(recu);
-      const brique = /^src\/briques\/([^/]+)\//.exec(chemin)?.[1];
-      if (brique) expect(unite, chemin).toBe(brique);
+  // Empreinte prise sur le fichier tel que l'appli le reçoit, sinon chaque
+  // fichier retouché par l'assembleur paraîtrait modifié par l'appli ; et sur
+  // le fichier commité, pas sur le disque, dont les fins de ligne peuvent
+  // différer de ce que git enregistre.
+  // Un git show par fichier : plus que les 5 s par défaut sous Windows.
+  it(
+    "écrit dans son premier commit un manifeste d'empreintes : chaque fichier venu du catalogue, son unité et l'empreinte du fichier commité",
+    { timeout: ENTIER },
+    () => {
+      const { dossier } = assemble;
+      expect(gitDans(dossier, "ls-files", MANIFESTE)).toBe(MANIFESTE);
+      const manifeste = JSON.parse(lireAssemble(dossier, MANIFESTE));
+      expect(manifeste.format).toBe(1);
+      expect(manifeste.note).toMatch(/Ne pas le retoucher/);
+      expect(manifeste.catalogue).toEqual({
+        version: JSON.parse(fs.readFileSync(path.join(SOURCE, "package.json"), "utf-8")).version,
+        commit: COMMIT_DE_TEST,
+      });
+      const ecritsParLAssembleur = ["blueprint.md", "NOTICE", MANIFESTE];
+      const venusDuCatalogue = fichiersAssembles(dossier)
+        .filter((chemin) => !ecritsParLAssembleur.includes(chemin))
+        .sort();
+      expect(Object.keys(manifeste.fichiers)).toEqual(venusDuCatalogue);
+      for (const chemin of venusDuCatalogue) {
+        const { unite, sha256 } = manifeste.fichiers[chemin];
+        const commite = execFileSync("git", ["-C", dossier, "show", `HEAD:${chemin}`], { maxBuffer: 1 << 30 });
+        expect(sha256, chemin).toBe(createHash("sha256").update(commite).digest("hex"));
+        const brique = /^src\/briques\/([^/]+)\//.exec(chemin)?.[1];
+        if (brique) expect(unite, chemin).toBe(brique);
+      }
+      // Les témoins de chaque unité gardée, partagées et base comprises.
+      for (const [unite, temoins] of Object.entries(TEMOINS)) {
+        if (!gardee(unite)) continue;
+        for (const chemin of temoins) expect(manifeste.fichiers[chemin]?.unite, chemin).toBe(unite);
+      }
+      expect(manifeste.fichiers["package.json"].unite).toBe("socle");
     }
-    expect(manifeste.fichiers["package.json"].unite).toBe("socle");
-  });
+  );
 
   it("ne laisse aucun import vers un fichier retiré (aucune référence pendante)", () => {
     expect(importsInvalides(assemble.dossier)).toEqual([]);
@@ -1612,6 +1621,8 @@ describe("fiche projet donnée à l'assembleur", () => {
     expect(gitDans(dossier, "ls-files", "PROJET.md")).toBe("PROJET.md");
     expect(gitDans(dossier, "rev-list", "--count", "HEAD")).toBe("1");
     expect(gitDans(dossier, "status", "--porcelain")).toBe("");
+    // La fiche ne vient pas du catalogue : le manifeste d'empreintes ne la compte pas.
+    expect(Object.keys(JSON.parse(lireAssemble(dossier, MANIFESTE)).fichiers)).not.toContain("PROJET.md");
   });
 
   it("sans fiche, n'écrit aucun PROJET.md", () => {

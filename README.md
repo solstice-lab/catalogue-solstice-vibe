@@ -62,7 +62,8 @@ cadrage à la livraison, « Démarrer un projet client ».
   que npm refuse de publier le paquet : c'est le dépôt qui est sous licence
   MIT (`LICENSE`), pas un paquet distribué.
 - **Interfaces des briques non stabilisées.** La version d'une brique est le
-  commit du catalogue noté dans la blueprint de l'appli ; chaque changement
+  commit du catalogue noté dans la blueprint de l'appli et dans son manifeste
+  d'empreintes (`catalogue.empreintes.json`) ; chaque changement
   d'interface publique est inscrit au `CHANGELOG.md` de la brique, sans
   promesse de compatibilité d'un commit à l'autre.
 
@@ -286,11 +287,12 @@ commit est mis à jour ; `--nom` fixe le nom du paquet de l'appli, d'où celui
 de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` ;
 il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et remet en forme
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
-il écrit enfin `catalogue.empreintes.json`, le manifeste d'empreintes : la version et le
-commit du catalogue, puis, pour chaque fichier venu du catalogue, son unité (brique,
-partagée ou `socle`) et l'empreinte sha256 du fichier tel que l'appli le reçoit, après
-la mise en forme. Il dira plus tard ce que l'appli a retouché du catalogue ;
-
+il écrit aussi `catalogue.empreintes.json`, le manifeste d'empreintes : le commit du
+catalogue et le champ `version` de son `package.json` (fixe tant qu'aucune version n'est
+publiée), puis, pour chaque fichier venu du catalogue, son unité (brique, partagée ou
+`socle`) et l'empreinte sha256 du fichier tel que l'appli le reçoit, après la mise en
+forme et tel que git l'enregistre. Il permet de comparer l'appli à ce qu'elle a reçu ;
+aucun outil ne le lit encore ;
 `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
 personne n'entretient en recevait une PR de mise à jour par semaine, jamais fusionnée
 (le catalogue garde le sien). Il fait
