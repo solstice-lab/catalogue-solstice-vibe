@@ -245,7 +245,8 @@ de remplacement). `node outils/assembler.mjs --aide` rappelle les options.
 La commande **ne déploie rien, ne touche à aucune base, ne lit aucun secret, ne crée aucun
 remote et ne pousse rien** : elle copie les fichiers que git suit, retouche les fichiers
 partagés du socle selon `outils/modules.mjs` puis les remet en forme par Prettier, écrit `blueprint.md`, `NOTICE` (l'avis de
-licence) et `PROJET.md` (la fiche, telle quelle) à la **racine** du dossier, puis en fait un dépôt git **local** : branche
+licence), `catalogue.empreintes.json` (le manifeste d'empreintes des fichiers venus du
+catalogue, à ne pas retoucher à la main) et `PROJET.md` (la fiche, telle quelle) à la **racine** du dossier, puis en fait un dépôt git **local** : branche
 `main`, un seul commit « Socle : appli assemblée depuis le catalogue au commit `<commit>` »,
 avec les briques gardées, ajoutées d'office et retirées dans le corps. Elle exige une identité git
 (`user.name`, `user.email`) et vérifie que la racine du dépôt est bien le dossier de sortie,
@@ -292,7 +293,8 @@ le premier commit la reprend. La ligne
 « Suite : » annonce le dépôt git local (branche `main`, un commit), aucun remote et, avec
 la brique données, les commandes de la base locale. Ouvrir
 `blueprint.md` dans le dossier : `commit_reference` est un commit, les listes de l'en-tête
-redisent le choix.
+redisent le choix. `catalogue.empreintes.json` existe, et son `catalogue.commit` est ce
+même commit.
 
 ## 5. Dépôt distant, puis ce que l'humain tape
 

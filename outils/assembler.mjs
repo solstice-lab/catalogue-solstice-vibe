@@ -21,6 +21,7 @@
  * et l'adresse IP.
  */
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,12 +69,20 @@ const VARIABLES_QUI_DETOURNENT = [
   "GIT_NAMESPACE",
 ];
 
-function git(dossier, ...args) {
+function environnementDeGit() {
   const env = { ...process.env };
   for (const nom of Object.keys(env)) {
     if (VARIABLES_QUI_DETOURNENT.includes(nom.toUpperCase())) delete env[nom];
   }
-  return execFileSync("git", ["-C", dossier, ...args], { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"], env });
+  return env;
+}
+
+function git(dossier, ...args) {
+  return execFileSync("git", ["-C", dossier, ...args], {
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: environnementDeGit(),
+  });
 }
 
 function messageDeGit(erreur) {
@@ -516,7 +525,8 @@ function preparerLeDepot(destination, premierCree) {
 
 // Dependabot est tracé dans le commit : sans cela, l'absence du fichier dans
 // l'appli livrée ne dit pas si elle est voulue (--dependabot) ou accidentelle.
-function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dependabot }) {
+// `manifeste` : écrit une fois les fichiers dans l'index, dont il lit les empreintes.
+function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dependabot, manifeste }) {
   const corps = [
     "Assemblée par l'assembleur du catalogue Solstice-vibe. Dépôt local, sans remote : rien n'est poussé.",
     "",
@@ -531,6 +541,8 @@ function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dep
     // jamais commité, avec un arbre qui se dit propre. Seul le .gitignore
     // copié compte.
     git(destination, "-c", "core.excludesFile=", "add", "-A");
+    fs.writeFileSync(path.join(destination, MANIFESTE), manifeste());
+    git(destination, "-c", "core.excludesFile=", "add", "--", MANIFESTE);
     git(
       destination,
       "-c",
@@ -670,6 +682,70 @@ function avisDeLicence(racine) {
   ].join("\n");
 }
 
+/*
+ * Le manifeste d'empreintes de l'appli : pour chaque fichier venu du catalogue,
+ * l'unité dont il vient et l'empreinte du fichier tel que l'appli le reçoit.
+ * Une appli livrée ne disait pas ce qu'elle avait retouché du catalogue, et le
+ * commit de référence ne le permet pas : il désigne le catalogue, pas les
+ * fichiers une fois retirés et remis en forme, et le dépôt public n'a pas
+ * l'historique des applis assemblées avant lui.
+ *
+ * L'empreinte est celle du contenu que git enregistre, lu dans l'index, et non
+ * celle du disque : git normalise les fins de ligne (`* text=auto eol=lf`),
+ * alors qu'un fichier copié ou retouché garde les siennes. Un fichier en CRLF
+ * (arbre modifié toléré, Markdown que Prettier ne remet pas en forme) aurait
+ * eu une empreinte qu'aucun clone de l'appli ne retrouve.
+ */
+const MANIFESTE = "catalogue.empreintes.json";
+
+// L'appli ne reçoit ni le README ni la skill qui décrivent le manifeste : il
+// se présente lui-même à qui l'ouvre dans l'appli.
+const NOTE_DU_MANIFESTE =
+  "Écrit par l'assembleur du catalogue Solstice-vibe au premier commit de l'appli : pour chaque fichier " +
+  "venu du catalogue, son unité et l'empreinte sha256 du fichier tel que l'appli l'a reçu. Ne pas le " +
+  "retoucher ni le régénérer à la main : il sert à retrouver ce que l'appli a changé depuis.";
+
+function versionDuCatalogue(racine) {
+  return JSON.parse(fs.readFileSync(path.join(racine, "package.json"), "utf-8")).version;
+}
+
+// Le contenu de chaque fichier de l'index, en un seul appel à git.
+function contenusDeLIndex(destination) {
+  const entrees = git(destination, "ls-files", "-s", "-z")
+    .split("\0")
+    .filter(Boolean)
+    .map((ligne) => {
+      const [meta, chemin] = ligne.split("\t");
+      return { chemin, blob: meta.split(" ")[1] };
+    });
+  const sortie = execFileSync("git", ["-C", destination, "cat-file", "--batch"], {
+    input: entrees.map(({ blob }) => `${blob}\n`).join(""),
+    env: environnementDeGit(),
+    maxBuffer: 1024 * 1024 * 1024,
+  });
+  const contenus = new Map();
+  let curseur = 0;
+  for (const { chemin } of entrees) {
+    // « <blob> blob <taille> », puis le contenu, puis un saut de ligne.
+    const finEntete = sortie.indexOf(0x0a, curseur);
+    const taille = Number(sortie.toString("latin1", curseur, finEntete).split(" ")[2]);
+    contenus.set(chemin, sortie.subarray(finEntete + 1, finEntete + 1 + taille));
+    curseur = finEntete + 1 + taille + 1;
+  }
+  return contenus;
+}
+
+function manifesteDEmpreintes(destination, { version, commit, fichiers, uniteDe }) {
+  const contenus = contenusDeLIndex(destination);
+  const empreintes = {};
+  for (const chemin of [...fichiers].sort()) {
+    const sha256 = createHash("sha256").update(contenus.get(chemin)).digest("hex");
+    empreintes[chemin] = { unite: uniteDe(chemin), sha256 };
+  }
+  const manifeste = { format: 1, note: NOTE_DU_MANIFESTE, catalogue: { version, commit }, fichiers: empreintes };
+  return `${JSON.stringify(manifeste, null, 2)}\n`;
+}
+
 function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
@@ -759,6 +835,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
       });
   const contenuFiche = fiche === undefined ? undefined : lireLaFiche(fiche);
   const contenuAvis = avisDeLicence(racine);
+  const version = versionDuCatalogue(racine);
   const nomPaquet = nomDuPaquet(
     nom ?? (blueprint && appliDeLaBlueprint(contenuBlueprint)) ?? path.basename(destination)
   );
@@ -839,10 +916,17 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
     ecrits.filter((chemin) => textes.has(chemin))
   );
 
+  // Les fichiers venus du catalogue, après la mise en forme : ni ceux que
+  // l'assembleur écrit lui-même, ni le manifeste.
+  const venusDuCatalogue = [...ecrits];
+  const gardees = unites.filter((unite) => unite.gardee);
+  const uniteDe = (chemin) => gardees.find((unite) => correspond(chemin, unite.definition.fichiers))?.nom ?? "socle";
+
   fs.writeFileSync(path.join(destination, "blueprint.md"), contenuBlueprint);
   ecrits.push("blueprint.md");
   fs.writeFileSync(path.join(destination, "NOTICE"), contenuAvis);
   ecrits.push("NOTICE");
+  ecrits.push(MANIFESTE);
   if (contenuFiche !== undefined) {
     fs.writeFileSync(path.join(destination, "PROJET.md"), contenuFiche);
     ecrits.push("PROJET.md");
@@ -857,6 +941,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
     ajoutees,
     retirees,
     dependabot,
+    manifeste: () => manifesteDEmpreintes(destination, { version, commit, fichiers: venusDuCatalogue, uniteDe }),
   });
 
   return { fichiers: ecrits, retires: retirees, ajoutees, commitInitial };
