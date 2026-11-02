@@ -47,6 +47,7 @@ const ORIGINES: Record<OrigineDuCompte, string> = {
   demo: "Démo",
   domaine: "Domaine",
   "premier-admin": "Premier admin",
+  ouverte: "Entrée ouverte",
   aucune: "Aucune",
 };
 
@@ -56,6 +57,7 @@ const SUIT: Record<Exclude<OrigineDuCompte, "appli">, string> = {
   demo: "la démo",
   domaine: "son domaine",
   "premier-admin": "la variable du premier admin",
+  ouverte: "l'entrée ouverte à toute adresse",
   aucune: "plus rien qui l'admette",
 };
 

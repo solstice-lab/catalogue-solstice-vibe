@@ -201,3 +201,18 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Appelant** : rien à changer ; `--briques comptes,mails` suffit.
 - **Pourquoi** : une appli qui a des comptes doit pouvoir répondre à une
   demande d'accès ou d'effacement de données personnelles.
+
+## 2026-11-02 · Une entrée ouverte à toute adresse · Ajout
+
+- **Ce qui change** : `Entree` (`methodes.ts`) gagne `ouverte?: boolean`. Avec
+  `ouverte: true` dans `ENTREE` (`src/config/comptes.ts`), toute adresse bien
+  formée entre avec `ROLE_PAR_DEFAUT`, et le garde à chaque requête. Les
+  adresses listées, le premier admin, la démo et les comptes gérés par l'appli
+  gardent la priorité et leur rôle. `OrigineDuCompte` gagne la valeur
+  `"ouverte"`, que l'écran de la brique gestion-comptes affiche.
+- **Appelant** : rien à changer. Sans l'option, ou avec `ouverte: false`,
+  l'entrée est celle d'avant. Une appli qui lit `OrigineDuCompte` dans un
+  `Record` complet ajoute la nouvelle valeur.
+- **Pourquoi** : un outil public demande une inscription ouverte à tous. Une
+  appli avait réécrit l'admission dans son propre dépôt pour l'obtenir, et une
+  deuxième en avait besoin : le besoin est devenu une option de la brique.

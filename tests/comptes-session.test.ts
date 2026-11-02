@@ -5,7 +5,7 @@ import { ROLE_ADMIN, ROLE_PAR_DEFAUT, ROLES } from "../src/config/acces";
 import { query, queryOne } from "../src/lib/db/client";
 import { entrerEnDemoAction, seDeconnecterAction } from "../src/briques/comptes/actions";
 import { demoProposee, entrerEnDemo, UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
-import { admettre, roleEffectif, type ContexteEntree } from "../src/briques/comptes/entree";
+import { admettre, origineDuCompte, roleEffectif, type ContexteEntree } from "../src/briques/comptes/entree";
 import {
   empreinte,
   nomDuCookie,
@@ -266,6 +266,49 @@ describe("qui peut entrer", () => {
     expect(
       await admettre("relève@client.example", { ...SANS_ENTREE, premierAdmin: "relève@client.example" })
     ).toBeNull();
+  });
+
+  // Un outil public : l'outil Open Lab avait réécrit l'admission dans son
+  // dépôt pour laisser entrer tout le monde, et une deuxième appli en avait
+  // besoin. L'entrée ouverte ne donne jamais que le rôle par défaut.
+  describe("entrée ouverte à toute adresse", () => {
+    const OUVERTE: ContexteEntree = { ...SANS_ENTREE, entree: { adresses: {}, domaines: [], ouverte: true } };
+
+    it("admet toute adresse bien formée avec ROLE_PAR_DEFAUT, et une adresse sans domaine n'entre pas", async () => {
+      expect(await admettre("  Inconnue@Ailleurs.example ", OUVERTE)).toMatchObject({
+        email: "inconnue@ailleurs.example",
+        role: ROLE_PAR_DEFAUT,
+      });
+      expect(origineDuCompte("inconnue@ailleurs.example", OUVERTE)).toBe("ouverte");
+      expect(await admettre("sans-arobase", OUVERTE)).toBeNull();
+    });
+
+    it("ne rend jamais le rôle gardé en base : un ancien admin retiré de la configuration revient en ROLE_PAR_DEFAUT", async () => {
+      expect(roleEffectif("ancien@client.example", ROLE_ADMIN, OUVERTE)).toBe(ROLE_PAR_DEFAUT);
+      await query("INSERT INTO utilisateurs (email, role) VALUES ('ancien@client.example', $1)", [ROLE_ADMIN]);
+      expect(await admettre("ancien@client.example", OUVERTE)).toMatchObject({ role: ROLE_PAR_DEFAUT });
+    });
+
+    it("laisse la priorité à une adresse listée, avec son rôle", async () => {
+      const contexte: ContexteEntree = {
+        ...OUVERTE,
+        entree: { adresses: { "chef@client.example": ROLE_ADMIN }, domaines: [], ouverte: true },
+      };
+      expect(await admettre("chef@client.example", contexte)).toMatchObject({ role: ROLE_ADMIN });
+      expect(origineDuCompte("chef@client.example", contexte)).toBe("configuration");
+    });
+
+    it("laisse la priorité au premier admin, qui garde ensuite son rôle", async () => {
+      const contexte: ContexteEntree = { ...OUVERTE, premierAdmin: "premiere@client.example" };
+      expect(await admettre("premiere@client.example", contexte)).toMatchObject({ role: ROLE_ADMIN });
+      expect(roleEffectif("premiere@client.example", ROLE_ADMIN, contexte)).toBe(ROLE_ADMIN);
+    });
+
+    it("refuse toujours un compte désactivé", async () => {
+      await admettre("partie@ailleurs.example", OUVERTE);
+      await query("UPDATE utilisateurs SET actif = false WHERE email = 'partie@ailleurs.example'");
+      expect(await admettre("partie@ailleurs.example", OUVERTE)).toBeNull();
+    });
   });
 
   it("ne compte pas les comptes de démo parmi les administrateurs : le premier admin réel entre quand même", async () => {

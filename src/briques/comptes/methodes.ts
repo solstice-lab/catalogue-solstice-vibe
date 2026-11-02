@@ -18,6 +18,9 @@ export type Entree = {
   adresses: Readonly<Record<string, Role>>;
   // « client.fr » fait entrer x@client.fr, pas x@equipe.client.fr.
   domaines: readonly string[];
+  // Toute adresse bien formée entre, avec ROLE_PAR_DEFAUT : un outil public,
+  // ouvert à l'inscription. Jamais l'administration par cette voie.
+  ouverte?: boolean;
 };
 
 // Son message commence par « Brique comptes : » et ne cite jamais un secret.
