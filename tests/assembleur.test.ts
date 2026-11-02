@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -62,6 +63,8 @@ import {
 afterAll(nettoyerLesAssemblages, 120_000);
 
 const ENTIER = 120_000;
+
+const MANIFESTE = "catalogue.empreintes.json";
 
 // Des fichiers qui disent à eux seuls si une unité est présente.
 const TEMOINS: Record<string, string[]> = {
@@ -435,6 +438,36 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
     expect(blueprint).not.toContain("modules_assembles");
   });
 
+  // Une appli livrée ne disait pas ce qu'elle avait retouché du catalogue : le
+  // commit de référence désigne le catalogue, pas les fichiers une fois retirés
+  // et remis en forme. Empreinte prise sur le fichier tel que l'appli le reçoit,
+  // sinon chaque fichier retouché par l'assembleur paraîtrait modifié par l'appli.
+  it("écrit dans son premier commit un manifeste d'empreintes : chaque fichier venu du catalogue, son unité et l'empreinte du fichier reçu", () => {
+    const { dossier } = assemble;
+    expect(gitDans(dossier, "ls-files", MANIFESTE)).toBe(MANIFESTE);
+    const manifeste = JSON.parse(lireAssemble(dossier, MANIFESTE));
+    expect(manifeste.format).toBe(1);
+    expect(manifeste.catalogue).toEqual({
+      version: JSON.parse(fs.readFileSync(path.join(SOURCE, "package.json"), "utf-8")).version,
+      commit: COMMIT_DE_TEST,
+    });
+    const ecritsParLAssembleur = ["blueprint.md", "NOTICE", MANIFESTE];
+    const venusDuCatalogue = fichiersAssembles(dossier)
+      .filter((chemin) => !ecritsParLAssembleur.includes(chemin))
+      .sort();
+    expect(Object.keys(manifeste.fichiers)).toEqual(venusDuCatalogue);
+    for (const chemin of venusDuCatalogue) {
+      const { unite, sha256 } = manifeste.fichiers[chemin];
+      const recu = createHash("sha256")
+        .update(fs.readFileSync(path.join(dossier, chemin)))
+        .digest("hex");
+      expect(sha256, chemin).toBe(recu);
+      const brique = /^src\/briques\/([^/]+)\//.exec(chemin)?.[1];
+      if (brique) expect(unite, chemin).toBe(brique);
+    }
+    expect(manifeste.fichiers["package.json"].unite).toBe("socle");
+  });
+
   it("ne laisse aucun import vers un fichier retiré (aucune référence pendante)", () => {
     expect(importsInvalides(assemble.dossier)).toEqual([]);
   });
@@ -696,8 +729,9 @@ describe("assemblage de tout le catalogue", () => {
       }
       comptes++;
     }
-    // La blueprint et l'avis NOTICE sont les seuls fichiers que le catalogue n'a pas.
-    expect(copies.size).toBe(comptes + 2);
+    // La blueprint, l'avis NOTICE et le manifeste d'empreintes sont les seuls
+    // fichiers que le catalogue n'a pas.
+    expect(copies.size).toBe(comptes + 3);
   });
 
   // Le catalogue est publié sous MIT ; le code d'une appli client ne l'est

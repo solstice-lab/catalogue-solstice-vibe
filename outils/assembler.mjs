@@ -21,6 +21,7 @@
  * et l'adresse IP.
  */
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -670,6 +671,30 @@ function avisDeLicence(racine) {
   ].join("\n");
 }
 
+/*
+ * Le manifeste d'empreintes de l'appli : pour chaque fichier venu du catalogue,
+ * l'unité dont il vient et l'empreinte du fichier tel que l'appli le reçoit.
+ * Une appli livrée ne disait pas ce qu'elle avait retouché du catalogue, et le
+ * commit de référence ne le permet pas : il désigne le catalogue, pas les
+ * fichiers une fois retirés et remis en forme, et le dépôt public n'a pas
+ * l'historique des applis assemblées avant lui. Empreinte des octets bruts :
+ * le .gitattributes copié tient les fins de ligne en LF sur tout poste.
+ */
+const MANIFESTE = "catalogue.empreintes.json";
+
+function versionDuCatalogue(racine) {
+  return JSON.parse(fs.readFileSync(path.join(racine, "package.json"), "utf-8")).version;
+}
+
+function manifesteDEmpreintes(destination, { version, commit, fichiers, uniteDe }) {
+  const empreintes = {};
+  for (const chemin of [...fichiers].sort()) {
+    const contenu = fs.readFileSync(path.join(destination, chemin));
+    empreintes[chemin] = { unite: uniteDe(chemin), sha256: createHash("sha256").update(contenu).digest("hex") };
+  }
+  return `${JSON.stringify({ format: 1, catalogue: { version, commit }, fichiers: empreintes }, null, 2)}\n`;
+}
+
 function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
@@ -759,6 +784,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
       });
   const contenuFiche = fiche === undefined ? undefined : lireLaFiche(fiche);
   const contenuAvis = avisDeLicence(racine);
+  const version = versionDuCatalogue(racine);
   const nomPaquet = nomDuPaquet(
     nom ?? (blueprint && appliDeLaBlueprint(contenuBlueprint)) ?? path.basename(destination)
   );
@@ -839,10 +865,20 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
     ecrits.filter((chemin) => textes.has(chemin))
   );
 
+  // Après la mise en forme, et avant les fichiers que l'assembleur écrit
+  // lui-même : ils ne viennent pas du catalogue.
+  const gardees = unites.filter((unite) => unite.gardee);
+  const uniteDe = (chemin) => gardees.find((unite) => correspond(chemin, unite.definition.fichiers))?.nom ?? "socle";
+  fs.writeFileSync(
+    path.join(destination, MANIFESTE),
+    manifesteDEmpreintes(destination, { version, commit, fichiers: ecrits, uniteDe })
+  );
+
   fs.writeFileSync(path.join(destination, "blueprint.md"), contenuBlueprint);
   ecrits.push("blueprint.md");
   fs.writeFileSync(path.join(destination, "NOTICE"), contenuAvis);
   ecrits.push("NOTICE");
+  ecrits.push(MANIFESTE);
   if (contenuFiche !== undefined) {
     fs.writeFileSync(path.join(destination, "PROJET.md"), contenuFiche);
     ecrits.push("PROJET.md");

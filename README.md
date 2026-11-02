@@ -286,6 +286,11 @@ commit est mis à jour ; `--nom` fixe le nom du paquet de l'appli, d'où celui
 de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` ;
 il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et remet en forme
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
+il écrit enfin `catalogue.empreintes.json`, le manifeste d'empreintes : la version et le
+commit du catalogue, puis, pour chaque fichier venu du catalogue, son unité (brique,
+partagée ou `socle`) et l'empreinte sha256 du fichier tel que l'appli le reçoit, après
+la mise en forme. Il dira plus tard ce que l'appli a retouché du catalogue ;
+
 `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
 personne n'entretient en recevait une PR de mise à jour par semaine, jamais fusionnée
 (le catalogue garde le sien). Il fait
