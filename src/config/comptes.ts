@@ -32,7 +32,8 @@ export const METHODES: readonly MethodeDeConnexion[] = ["code-email", "demo"];
 //
 // ouverte : true pour un outil public, ouvert à l'inscription. Toute adresse
 // entre alors, avec ROLE_PAR_DEFAUT seulement ; les adresses listées et le
-// premier admin gardent leur rôle.
+// premier admin gardent leur rôle. Deux rôles au moins (src/config/acces.ts) :
+// avec un seul, ROLE_PAR_DEFAUT administre, et la brique refuse de démarrer.
 export const ENTREE: Entree = {
   adresses: {},
   domaines: [],

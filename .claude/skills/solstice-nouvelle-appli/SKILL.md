@@ -32,6 +32,9 @@ demander ce que le code ou le `CLAUDE.md` tranchent déjà.
 
 **Les accès**
 - Qui, et combien de rôles vraiment (partir d'un ou deux) ?
+- Une liste d'adresses ou de domaines, ou un outil public ouvert à toute adresse
+  (`ouverte` de `ENTREE`, brique `comptes`) ? L'inscription ouverte exige deux rôles
+  au moins.
 - Un partage avec une personne extérieure, sans compte ? Ça se prévoit dès maintenant.
 
 **Les écrans**

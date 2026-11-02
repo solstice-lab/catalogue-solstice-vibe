@@ -6,6 +6,8 @@ import { query, queryOne } from "../src/lib/db/client";
 import { entrerEnDemoAction, seDeconnecterAction } from "../src/briques/comptes/actions";
 import { demoProposee, entrerEnDemo, UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
 import { admettre, origineDuCompte, roleEffectif, type ContexteEntree } from "../src/briques/comptes/entree";
+import { listerComptes } from "../src/briques/comptes/administration";
+import { refuserUneEntreeOuverteQuiAdministre } from "../src/briques/comptes/methodes";
 import {
   empreinte,
   nomDuCookie,
@@ -268,11 +270,21 @@ describe("qui peut entrer", () => {
     ).toBeNull();
   });
 
-  // Un outil public : l'outil Open Lab avait réécrit l'admission dans son
-  // dépôt pour laisser entrer tout le monde, et une deuxième appli en avait
-  // besoin. L'entrée ouverte ne donne jamais que le rôle par défaut.
+  // Un outil public : une appli avait réécrit l'admission dans son dépôt pour
+  // laisser entrer tout le monde, et une deuxième en avait besoin. L'entrée
+  // ouverte ne donne jamais que le rôle par défaut.
   describe("entrée ouverte à toute adresse", () => {
     const OUVERTE: ContexteEntree = { ...SANS_ENTREE, entree: { adresses: {}, domaines: [], ouverte: true } };
+
+    it("refuse de démarrer avec un seul rôle, où ROLE_PAR_DEFAUT administre : n'importe quelle adresse aurait toutes les actions", () => {
+      expect(() => refuserUneEntreeOuverteQuiAdministre(OUVERTE.entree, "admin", "admin")).toThrow(
+        /exige deux rôles au moins/
+      );
+      expect(() => refuserUneEntreeOuverteQuiAdministre(OUVERTE.entree, "membre", "admin")).not.toThrow();
+      expect(() => refuserUneEntreeOuverteQuiAdministre(SANS_ENTREE.entree, "admin", "admin")).not.toThrow();
+      // La configuration du catalogue passe : deux rôles, entrée fermée.
+      expect(() => refuserUneEntreeOuverteQuiAdministre()).not.toThrow();
+    });
 
     it("admet toute adresse bien formée avec ROLE_PAR_DEFAUT, et une adresse sans domaine n'entre pas", async () => {
       expect(await admettre("  Inconnue@Ailleurs.example ", OUVERTE)).toMatchObject({
@@ -280,7 +292,29 @@ describe("qui peut entrer", () => {
         role: ROLE_PAR_DEFAUT,
       });
       expect(origineDuCompte("inconnue@ailleurs.example", OUVERTE)).toBe("ouverte");
-      expect(await admettre("sans-arobase", OUVERTE)).toBeNull();
+      for (const mal of ["sans-arobase", "vide@", "a@b@c.example", "x@sans-point"]) {
+        expect(await admettre(mal, OUVERTE), mal).toBeNull();
+      }
+    });
+
+    it("ne fait jamais revenir un compte de démo sans la démo (en production)", async () => {
+      const demo = UTILISATEURS_DEMO[ROLE_ADMIN].email;
+      expect(origineDuCompte(demo, OUVERTE)).toBe("aucune");
+      expect(await admettre(demo, OUVERTE)).toBeNull();
+      // Avec la démo, le compte de démo garde son rôle joué.
+      expect(await admettre(demo, { ...OUVERTE, demo: true })).toMatchObject({ role: ROLE_ADMIN });
+    });
+
+    it("laisse la priorité à un compte géré par l'appli, avec son rôle en base", () => {
+      const gere = { gereParLAppli: true, domaineOuvert: false };
+      expect(origineDuCompte("geree@ailleurs.example", OUVERTE, gere)).toBe("appli");
+      expect(roleEffectif("geree@ailleurs.example", ROLE_ADMIN, OUVERTE, gere)).toBe(ROLE_ADMIN);
+    });
+
+    it("se montre « ouverte » dans la liste des comptes de l'écran /comptes", async () => {
+      await admettre("inscrite@ailleurs.example", OUVERTE);
+      const [compte] = await listerComptes(OUVERTE);
+      expect(compte).toMatchObject({ email: "inscrite@ailleurs.example", origine: "ouverte", role: ROLE_PAR_DEFAUT });
     });
 
     it("ne rend jamais le rôle gardé en base : un ancien admin retiré de la configuration revient en ROLE_PAR_DEFAUT", async () => {

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { nomDuCookie, verifierSignature } from "./jeton";
-import { refuserLaDemoEnProduction } from "./methodes";
+import { refuserLaDemoEnProduction, refuserUneEntreeOuverteQuiAdministre } from "./methodes";
 
 /*
  * Tout protégé par défaut, depuis src/proxy.ts, le seul proxy
@@ -44,6 +44,7 @@ export function estOuverte(chemin: string): boolean {
 // redirection n'exécute aucun script : elle n'a pas besoin de la CSP.
 export function protegerLaRoute(requete: NextRequest): NextResponse | null {
   refuserLaDemoEnProduction();
+  refuserUneEntreeOuverteQuiAdministre();
   if (estOuverte(requete.nextUrl.pathname)) return null;
   if (verifierSignature(requete.cookies.get(nomDuCookie())?.value)) return null;
   const connexion = new URL("/connexion", requete.url);
