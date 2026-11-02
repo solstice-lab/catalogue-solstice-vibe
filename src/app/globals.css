@@ -1,0 +1,42 @@
+@import "../ui/theme/tokens.css";
+@import "../ui/ui.css";
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html {
+  font-size: 15px;
+}
+body {
+  font-family: var(--police-texte);
+  background: var(--fond-page);
+  color: var(--texte);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Bandeau de session (src/briques/comptes/BandeauSession.tsx), qui part avec la
+   brique. Tokens seulement, comme le kit. */
+.bandeau-session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 6px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--bordure);
+  color: var(--texte-secondaire);
+  font-size: 0.78rem;
+}
+.bandeau-session strong {
+  color: var(--texte);
+  font-weight: 600;
+}
+.bandeau-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -1,0 +1,54 @@
+# Dépendances et sorties de build
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets — jamais versionnés, sous aucune forme. Seul le modèle des
+# variables, sans valeur réelle, est suivi.
+.env
+.env.*
+!.env.example
+
+# Réglages Claude Code personnels (couper le hook du dépôt, par exemple) :
+# Claude Code ne l'exclut de git que s'il crée le fichier lui-même.
+.claude/settings.local.json
+# Copies de travail que l'app Claude crée dans le projet, une par session.
+# Chacune a son propre git ; non ignorées, le premier `npm run format` les a
+# toutes reformatées en même temps que le dépôt.
+.claude/worktrees/
+
+# Données réelles — cicatrice d'un projet précédent : des données personnelles
+# sont entrées dans l'historique git, coûteuses à purger après coup. Ces règles
+# en sont la première barrière ; tests/gitignore.test.ts les vérifie.
+#
+# Fichiers clients : leur seule place dans le dossier, jamais suivie.
+donnees-reelles/
+# Exports, dumps et sauvegardes de base.
+exports/
+*.dump
+*.backup
+*.sql
+# Clés et certificats : une clé commitée puis retirée reste lisible par son SHA.
+*.pem
+*.key
+*.crx
+# Documents bureautiques : un export client déposé à la racine part sinon au
+# prochain `git add .`.
+*.csv
+*.xlsx
+*.xls
+*.ods
+*.doc
+*.docx
+*.odt
+*.pdf
+*.ppt
+*.pptx
+
+# Exceptions : ce que le dépôt doit suivre malgré les règles ci-dessus. Un
+# nouvel exemple fictif va dans scripts/exemples/, pas ailleurs ; un
+# fichier .sql ou document à suivre s'ajoute ici, sinon git l'ignore sans bruit.
+!src/lib/db/schema.sql
+!scripts/exemples/**

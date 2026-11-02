@@ -1,0 +1,44 @@
+# Postgres local du poste : `docker compose up -d --wait`, puis
+# `npx tsx scripts/bases-locales.ts` crée les bases de l'appli et affiche la
+# ligne DATABASE_URL à coller dans .env.local.
+#
+# Un seul Postgres par poste, partagé par le catalogue et toutes les applis
+# qu'il assemble : chacune y a ses bases <appli>_dev et <appli>_test. D'où un
+# nom de projet, de conteneur et de volume fixes : lancé depuis le dossier
+# d'une autre appli, ce fichier retrouve le même serveur au lieu d'en démarrer
+# un second qui voudrait lui aussi le port 5433.
+
+name: catalogue-postgres
+
+services:
+  postgres:
+    # Aligné sur la CI (.github/workflows/ci.yml) et sur la prod du projet.
+    image: postgres:18
+    container_name: catalogue-postgres
+    restart: unless-stopped
+    environment:
+      # Aucun mot de passe : base de développement, jamais de données réelles.
+      # Ce n'est acceptable que parce que le port n'est publié que sur la
+      # boucle locale ci-dessous (tests/bases-locales.test.ts le verrouille).
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      # L'image 18 range ses données sous /var/lib/postgresql/18/ : le volume
+      # se monte sur le dossier parent, pas sur l'ancien .../data.
+      - donnees:/var/lib/postgresql
+    healthcheck:
+      # Par TCP, pas par le socket : au premier démarrage, le serveur
+      # provisoire de l'initialisation répond déjà sur le socket, et
+      # `--wait` rendrait la main avant le vrai démarrage.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+# Le volume garde son nom d'avant le renommage du conteneur : un poste qui a
+# lancé ce fichier sous l'ancien nom retrouve ses bases au lieu d'un volume
+# vide, une fois l'ancien conteneur retiré (il tient le port 5433).
+volumes:
+  donnees:
+    name: solstice-postgres-donnees

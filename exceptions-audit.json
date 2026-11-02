@@ -1,0 +1,4 @@
+{
+  "a_lire": "Vulnérabilités hautes ou critiques acceptées en connaissance de cause. scripts/verifier-audit.mjs, lancé par la CI, échoue sur toute autre haute ou critique, sur une exception devenue sans objet, sur un avis dont la gravité a changé, et sur une exception de portée « dev » qui apparaît dans les dépendances de production. Une exception se décide par la personne responsable du projet, jamais pour faire passer la CI. Champs : avis (identifiant GHSA), paquet (celui qui porte l'avis, pas ceux qui le relaient), gravite (haute ou critique), portee (dev ou production), raison, date (AAAA-MM-JJ), decision, reexamen (la condition qui rouvre la question).",
+  "exceptions": []
+}

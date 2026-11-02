@@ -1,0 +1,42 @@
+/*
+ * Contrat de thème — LA source unique des couleurs, polices et formes de l'app.
+ *
+ * Aucun composant du kit ne porte de valeur en dur : thématiser un projet
+ * client, c'est remplir ce fichier (procédure : skill solstice-ui), rien
+ * d'autre. Les valeurs par défaut sont la charte Solstice Lab — thème de
+ * repli pour les protos et les clients sans identité graphique définie.
+ *
+ * Seule exception au contrat : la signature Solstice Lab en pied de page
+ * garde les couleurs de l'agence quel que soit le thème (voir ui.css).
+ */
+:root {
+  /* ---- Identité (varie selon le client) ---- */
+  --couleur-structure: #162447; /* header, texte fort, traits structurants */
+  --couleur-structure-2: #243a63; /* survols et dégradés sur fond structure */
+  --couleur-accent: #ffc72c; /* accent unique, à doser : liserés, puces */
+  --couleur-accent-fond: #dfebfd; /* fonds doux, badges, encadrés d'aide */
+
+  --texte: #162447;
+  --texte-secondaire: #5a6478; /* légendes, labels, titres de section */
+  --texte-sur-structure: #ffffff; /* texte posé sur --couleur-structure */
+
+  --fond-page: #f6f8fc;
+  --surface: #ffffff; /* cartes, champs, modales */
+  --bordure: #e2e8f4;
+
+  /* ---- Sémantique — ne JAMAIS détourner vers l'identité client :
+          une erreur reste rouge même si la marque du client est rouge ---- */
+  --positif: #1e8a5a;
+  --negatif: #c8553d;
+  --texte-sur-semantique: #ffffff; /* texte posé sur --positif ou --negatif */
+
+  /* ---- Forme ---- */
+  --rayon: 8px;
+  --rayon-petit: 5px;
+
+  /* ---- Typographie — les polices se chargent dans src/app/layout.tsx
+          (next/font/local, fichiers dans src/ui/theme/polices/), qui alimente
+          --police-sans et --police-mono ---- */
+  --police-texte: var(--police-sans, "IBM Plex Sans"), system-ui, sans-serif;
+  --police-chiffres: var(--police-mono, "IBM Plex Mono"), ui-monospace, monospace;
+}

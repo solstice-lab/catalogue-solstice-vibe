@@ -1,0 +1,223 @@
+name: Assemblage
+
+# Catalogue seulement : l'assembleur ne copie pas ce fichier dans les applis
+# (EXCLUS_DU_CATALOGUE de outils/modules.mjs). Trois jobs :
+#
+# - socle-seul prouve qu'une appli assemblée sans brique, donc sans
+#   la brique données, passe mise en forme, lint, typecheck, tests et build sans
+#   DATABASE_URL (le socle ne suppose ni base ni connexion). tests/assembleur.test.ts
+#   vérifie déjà la mise en forme des combinaisons, et lance lint, typecheck
+#   et tests sans base ; le build ne peut s'y faire, Turbopack
+#   refusant le node_modules que la copie emprunte au catalogue. Il se fait
+#   ici, après un vrai npm ci. Sur chaque pull request et chaque arrivée sur main.
+# - assembleur lance tests/assembleur.test.ts (npm run test:assembleur), sorti
+#   de npm test : plus de 10 minutes à chaque petit changement. Il assemble
+#   les combinaisons et en rejoue les migrations, d'où sa base jetable. Sur
+#   une pull request, un échantillon seulement ; le test complet passe la nuit
+#   si main a changé (main-a-change), ou à la main. Il coûtait environ 219 s
+#   à chaque pull request et à chaque arrivée sur main : la moitié des minutes
+#   facturées du 27 au 29 octobre, dépôt privé. Contrepartie : une combinaison
+#   hors échantillon cassée par une pull request ne se voit que la nuit
+#   suivante, sur main. tests/assemblage-ci.test.ts verrouille ce job.
+# - main-a-change, la nuit, dit si main a changé depuis le dernier test
+#   complet réussi.
+#
+# Mêmes règles que ci.yml : jeton en lecture, actions épinglées par SHA,
+# jeton retiré de .git/config, vulnérabilités vérifiées avant npm ci.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # ready_for_review : un brouillon sauté (voir le if des jobs) se vérifie dès
+    # qu'il passe « prêt à relire ».
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    # Le test complet de l'assembleur, chaque nuit. Pas sur une heure pile,
+    # où GitHub retarde ou saute des passages programmés. L'e-mail d'un échec
+    # part à la personne qui a modifié cette ligne en dernier.
+    - cron: "17 3 * * *"
+  # Le même test complet, à la main (onglet Actions, « Run workflow »).
+  workflow_dispatch:
+
+# Un passage de pull request rendu inutile par un commit plus récent s'annule :
+# ses minutes partaient pour rien. Hors pull request, chaque passage a son
+# propre groupe (run_id) : sur main, aucun n'est annulé ni mis en attente.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', github.workflow, github.event.pull_request.number) || format('{0}-{1}', github.workflow, github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  socle-seul:
+    # Un brouillon n'est pas vérifié : personne ne le fusionnera tel quel. Ni
+    # la nuit ni à la main : main l'a passé à son arrivée, et une nuit sans
+    # changement doit coûter le moins possible.
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # L'assembleur signe le premier commit de l'appli et refuse sans
+      # identité : le runner n'en a aucune.
+      GIT_AUTHOR_NAME: Assembleur (CI)
+      GIT_AUTHOR_EMAIL: assembleur@ci.invalid
+      GIT_COMMITTER_NAME: Assembleur (CI)
+      GIT_COMMITTER_EMAIL: assembleur@ci.invalid
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Celle de ci.yml, qui dit quoi changer avec elle.
+          node-version: "24"
+          cache: "npm"
+
+      - name: Vulnérabilités du catalogue
+        # Avant son npm ci, pour la même raison que plus bas.
+        run: node scripts/verifier-audit.mjs
+
+      - name: Installer le catalogue
+        # L'assembleur met en forme les fichiers qu'il retouche avec le
+        # Prettier du catalogue, et refuse sans lui.
+        run: npm ci
+
+      - name: Assembler le socle seul
+        run: node outils/assembler.mjs "$RUNNER_TEMP/socle-seul"
+
+      - name: Vulnérabilités
+        # Avant npm ci, comme dans ci.yml : un paquet refusé ne fait pas
+        # tourner ses scripts d'installation.
+        working-directory: ${{ runner.temp }}/socle-seul
+        run: node scripts/verifier-audit.mjs
+
+      - name: Installer
+        working-directory: ${{ runner.temp }}/socle-seul
+        run: npm ci
+
+      - name: Mise en forme
+        working-directory: ${{ runner.temp }}/socle-seul
+        run: npm run format:check
+
+      - name: Lint
+        working-directory: ${{ runner.temp }}/socle-seul
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: ${{ runner.temp }}/socle-seul
+        run: npm run typecheck
+
+      - name: Tests
+        working-directory: ${{ runner.temp }}/socle-seul
+        run: npm test
+
+      - name: Build
+        working-directory: ${{ runner.temp }}/socle-seul
+        run: npm run build
+
+  main-a-change:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Lire les passages précédents de ce workflow, rien d'autre : ni checkout
+    # ni contenu du dépôt.
+    permissions:
+      actions: read
+    outputs:
+      reponse: ${{ steps.comparer.outputs.reponse }}
+
+    steps:
+      - name: Comparer au dernier test complet réussi
+        id: comparer
+        # Le dernier passage réussi de nuit ou à la main : un passage sur push
+        # n'a pas lancé le test complet. Une nuit sautée faute de changement
+        # réussit aussi, avec le commit du test complet d'avant : la
+        # comparaison reste juste. Un échec ne compte pas, la nuit suivante
+        # relance le complet ; une liste vide aussi. Une panne de l'API fait
+        # échouer ce job : le passage est rouge, sans test complet, et la nuit
+        # suivante réessaie.
+        run: |
+          dernier=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/assemblage.yml/runs?branch=main&status=success&per_page=100" \
+            --jq '[.workflow_runs[] | select(.event == "schedule" or .event == "workflow_dispatch")][0].head_sha // ""')
+          echo "Dernier test complet réussi : ${dernier:-aucun} ; main : $GITHUB_SHA"
+          if [ "$dernier" = "$GITHUB_SHA" ]; then
+            echo "reponse=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "reponse=oui" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  assembleur:
+    # Un brouillon n'est pas vérifié : personne ne le fusionnera tel quel. Plus
+    # sur un push sur main : le test complet y passe la nuit. !cancelled() :
+    # sans lui, main-a-change, sauté hors de la nuit, ferait sauter ce job.
+    needs: main-a-change
+    if: ${{ !cancelled() && ((github.event_name == 'pull_request' && !github.event.pull_request.draft) || github.event_name == 'workflow_dispatch' || needs.main-a-change.outputs.reponse == 'oui') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      DATABASE_URL: postgresql://appli:appli@localhost:5432/appli_test
+      PGSSLMODE: disable
+      # Non vide sur une pull request : tests/assembleur.test.ts n'y lance que
+      # son échantillon (ECHANTILLON), et dit pourquoi ces combinaisons.
+      ASSEMBLEUR_ECHANTILLON: ${{ github.event_name == 'pull_request' && 'oui' || '' }}
+
+    # Mêmes étapes que le job verifier de ci.yml, qui dit pourquoi chacune
+    # (Postgres en tâche de fond, node_modules retrouvé), réduites à ce test.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Démarrer Postgres
+        # Base JETABLE : les migrations de chaque appli assemblée se rejouent
+        # sur une base neuve créée à côté d'elle.
+        run: |
+          docker run -d --name postgres -p 5432:5432 \
+            -e POSTGRES_USER=appli -e POSTGRES_PASSWORD=appli -e POSTGRES_DB=appli_test \
+            "$IMAGE" > "$RUNNER_TEMP/postgres.log" 2>&1 &
+        env:
+          IMAGE: postgres:18 # celle de ci.yml
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Celle de ci.yml, qui dit quoi changer avec elle.
+          node-version: "24"
+          cache: "npm"
+
+      - name: Vulnérabilités
+        run: node scripts/verifier-audit.mjs
+
+      - name: ABI de Node
+        id: abi
+        run: echo "abi=$(node -p process.versions.modules)" >> "$GITHUB_OUTPUT"
+
+      - name: Retrouver node_modules
+        # La clé de ci.yml : même lockfile, même ABI de Node.
+        id: node-modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-abi${{ steps.abi.outputs.abi }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Installer
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Attendre Postgres
+        run: |
+          for _ in $(seq 60); do
+            docker exec postgres pg_isready -h 127.0.0.1 -U appli -d appli_test -q && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/postgres.log"; docker logs postgres; exit 1
+
+      - name: Test de l'assembleur
+        run: npm run test:assembleur

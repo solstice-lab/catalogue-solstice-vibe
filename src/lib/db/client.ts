@@ -1,0 +1,200 @@
+import { Pool, type QueryResultRow } from "pg";
+import fs from "node:fs";
+import path from "node:path";
+import { appliquerMigrations } from "./migrations";
+
+// Client Postgres — repris d'un projet précédent, où ce mécanisme tourne en
+// prod depuis l'origine. L'accès se fait exclusivement via query()/queryOne()/
+// transaction() ci-dessous : aucun autre fichier n'importe "pg".
+//
+// Le pool se crée à la PREMIÈRE REQUÊTE, pas au chargement du module :
+// importer un fichier de src/lib/db/ n'exige rien, et `npm run build` passe
+// sans DATABASE_URL (créé au chargement, il faisait échouer le build de
+// toute page qui importe la base, alors que le build ne l'interroge pas).
+// C'est la première requête qui lève si la variable manque.
+
+const SCHEMA_PATH = path.join(process.cwd(), "src", "lib", "db", "schema.sql");
+
+declare global {
+  var __slPool: Pool | undefined;
+  var __slInitPromise: Promise<void> | undefined;
+}
+
+function creerPool(): Pool {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error(
+      "DATABASE_URL manquant. En local : monter un Postgres jetable et pointer dessus " +
+        "(voir la section Données du CLAUDE.md) ; en prod : l'URL de la base managée de l'hébergeur."
+    );
+  }
+  return new Pool({ connectionString, ssl: optionsSsl() });
+}
+
+// Le chiffrement de la connexion, tiré de l'environnement. La vérification
+// du certificat est la règle : coupée d'office, comme le faisait ce client,
+// la connexion était chiffrée vers n'importe quel serveur qui se présentait.
+// - PGSSLMODE=disable : pas de SSL (le Postgres local n'en a pas) ;
+// - PGSSLMODE=no-verify : chiffré sans vérification, à demander en toutes
+//   lettres, pour un hébergeur dont le certificat ne se vérifie pas ;
+// - PGSSLROOTCERT : le chemin du CA de l'hébergeur (PEM), quand Node ne le
+//   reconnaît pas ;
+// - sinon : vérification par les CA que Node reconnaît (sa liste embarquée,
+//   que NODE_EXTRA_CA_CERTS complète). Une autre valeur de
+//   PGSSLMODE (« require » de libpq, une faute de frappe) ne coupe rien.
+// Un `sslmode` écrit dans DATABASE_URL passe avant ces options (pg lit
+// l'URL en dernier) : ne pas en mettre.
+export function optionsSsl(
+  env: Record<string, string | undefined> = process.env
+): false | { rejectUnauthorized: boolean; ca?: string } {
+  const mode = env.PGSSLMODE?.trim();
+  if (mode === "disable") return false;
+  if (mode === "no-verify") return { rejectUnauthorized: false };
+  const cheminCa = env.PGSSLROOTCERT?.trim();
+  if (!cheminCa) return { rejectUnauthorized: true };
+  try {
+    return { rejectUnauthorized: true, ca: fs.readFileSync(cheminCa, "utf-8") };
+  } catch (erreur) {
+    throw new Error(
+      `PGSSLROOTCERT désigne un fichier illisible (${cheminCa}) : donner le chemin du CA de l'hébergeur.`,
+      {
+        cause: erreur,
+      }
+    );
+  }
+}
+
+// Les codes de Node pour un certificat refusé (module tls) : seuls ceux-là
+// relèvent de PGSSLROOTCERT ou de no-verify. Une base injoignable ou un mot de
+// passe faux gardent leur message.
+const CODES_CERTIFICAT = new Set([
+  "CERT_REVOKED",
+  "CERT_SIGNATURE_FAILURE",
+  "CERT_CHAIN_TOO_LONG",
+  "INVALID_CA",
+  "HOSTNAME_MISMATCH",
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "UNABLE_TO_GET_ISSUER_CERT",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "CERT_UNTRUSTED",
+  "CERT_HAS_EXPIRED",
+  "CERT_NOT_YET_VALID",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+]);
+
+// Un certificat refusé au démarrage ne disait que le code de Node
+// (« self-signed certificate in certificate chain ») : rien sur la variable
+// qui le règle. Exportée pour son test ; toute autre erreur passe telle quelle.
+export function erreurDeCertificatTraduite(erreur: unknown): unknown {
+  const code = (erreur as { code?: unknown } | null)?.code;
+  if (typeof code !== "string" || !CODES_CERTIFICAT.has(code)) return erreur;
+  return new Error(
+    `Certificat de la base refusé (${code}). Poser (ou corriger) PGSSLROOTCERT avec le chemin du CA de l'hébergeur ; ` +
+      "s'il n'en fournit pas, PGSSLMODE=no-verify chiffre sans vérifier, en connaissance de cause.",
+    { cause: erreur }
+  );
+}
+
+// Si creerPool() lève (variable absente, CA illisible), rien n'est mémorisé : la requête
+// suivante retente, comme pour un échec d'initialisation (voir plus bas).
+let pool: Pool | undefined;
+
+function obtenirPool(): Pool {
+  if (!pool) {
+    pool = globalThis.__slPool ?? creerPool();
+    if (process.env.NODE_ENV !== "production") {
+      globalThis.__slPool = pool;
+    }
+  }
+  return pool;
+}
+
+// Schéma initial (bases neuves) puis migrations (toutes les bases), dans cet
+// ordre. Exportée pour le test qui verrouille l'idempotence : rejouée deux
+// fois, elle ne doit rien casser.
+export async function appliquerSchemaEtMigrations(): Promise<void> {
+  const schema = fs.readFileSync(SCHEMA_PATH, "utf-8");
+  await obtenirPool().query(schema);
+  await appliquerMigrations(obtenirPool());
+}
+
+// L'initialisation ne doit être lancée qu'une seule fois par process, et
+// toute requête doit attendre qu'elle soit terminée : on mémorise la
+// promesse plutôt qu'un simple booléen.
+//
+// IMPORTANT : on ne met JAMAIS en cache un échec. Si l'init échoue (migration
+// bancale, base momentanément injoignable au démarrage…), on remet la
+// promesse à undefined pour que la requête suivante RETENTE. Sans ça, une
+// promesse rejetée resterait mémorisée et toutes les requêtes suivantes
+// retomberaient sur la même erreur jusqu'au redémarrage du process — un
+// incident transitoire ne se rétablirait pas tout seul (leçon d'un projet précédent).
+function getInitPromise(): Promise<void> {
+  if (!globalThis.__slInitPromise) {
+    globalThis.__slInitPromise = appliquerSchemaEtMigrations().catch((erreur) => {
+      globalThis.__slInitPromise = undefined;
+      throw erreurDeCertificatTraduite(erreur);
+    });
+  }
+  return globalThis.__slInitPromise;
+}
+
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  texte: string,
+  params: unknown[] = []
+): Promise<T[]> {
+  await getInitPromise();
+  const resultat = await obtenirPool().query<T>(texte, params);
+  return resultat.rows;
+}
+
+export async function queryOne<T extends QueryResultRow = QueryResultRow>(
+  texte: string,
+  params: unknown[] = []
+): Promise<T | undefined> {
+  const lignes = await query<T>(texte, params);
+  return lignes[0];
+}
+
+// Une erreur pg est-elle le refus d'une contrainte donnée ? Les modules
+// traduisent ces refus (doublon, clé étrangère) en messages d'écran ; le
+// décodage vit ici une fois, pour qu'aucun module n'oublie un code — un
+// ON DELETE RESTRICT lève 23001 ou 23503 selon la version de Postgres.
+export function estRefusDeLaBase(erreur: unknown, codes: readonly string[], contrainte: string): boolean {
+  const { code, constraint } = (erreur ?? {}) as { code?: string; constraint?: string };
+  return code !== undefined && codes.includes(code) && constraint === contrainte;
+}
+
+// Ce que les fonctions d'accès aux données exécutent : `query` du pool, ou celui
+// du client d'une transaction qu'un appelant ouvre (la brique import-lot, la
+// brique validation). Une fonction qui prend un exécuteur écrit dans la
+// transaction de l'appelant ; par `query()` elle en sortirait, et un échec plus
+// loin laisserait son écriture.
+export type ExecuteurSql = { query: typeof query };
+
+// Plusieurs requêtes dans une même transaction : elles réussissent ou
+// échouent ENSEMBLE (suppressions liées, upserts multi-tables…).
+export async function transaction<T>(
+  fn: (client: { query: typeof query; queryOne: typeof queryOne }) => Promise<T>
+): Promise<T> {
+  await getInitPromise();
+  const client = await obtenirPool().connect();
+  try {
+    await client.query("BEGIN");
+    const wrapper = {
+      query: (async (texte: string, params: unknown[] = []) =>
+        (await client.query(texte, params)).rows) as typeof query,
+      queryOne: (async (texte: string, params: unknown[] = []) =>
+        (await client.query(texte, params)).rows[0]) as typeof queryOne,
+    };
+    const resultat = await fn(wrapper);
+    await client.query("COMMIT");
+    return resultat;
+  } catch (erreur) {
+    await client.query("ROLLBACK");
+    throw erreur;
+  } finally {
+    client.release();
+  }
+}

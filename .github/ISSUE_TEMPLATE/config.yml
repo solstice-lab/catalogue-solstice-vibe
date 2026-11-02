@@ -1,0 +1,3 @@
+# Un ticket vide ne dit ni le contexte ni le résultat attendu : les modèles
+# guident. Une faille de sécurité ne passe pas par un ticket public (SECURITY.md).
+blank_issues_enabled: false

@@ -1,0 +1,45 @@
+# Propose chaque semaine les mises à jour des actions de la CI et des
+# dépendances npm. Indispensable depuis l'épinglage par SHA de ci.yml : un SHA
+# ne suit aucune version, sans ce fichier il resterait figé, failles comprises.
+# Une appli assemblée ne le reçoit que si quelqu'un l'entretient ; sans
+# personne pour fusionner, ses PR s'accumulent.
+#
+# Les mises à jour mineures et correctives d'un écosystème arrivent en une
+# seule PR ; chaque version majeure garde la sienne, parce qu'elle peut casser
+# et se relit à part. Ce regroupement est une exception assumée à « une
+# demande = un changement » (CLAUDE.md §5) : une PR par paquet noierait la
+# relecture. Comme toute PR, elles passent par la CI et un humain les fusionne.
+#
+# Dependabot écrit ses titres en anglais (« Dépendances: Bump next from… ») :
+# les renommer au format « Domaine : ce que ça change » avant le squash, le
+# titre de la PR devenant le sujet du commit sur main.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dépendances"
+    groups:
+      actions-mineures:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dépendances"
+    groups:
+      npm-mineures:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Les types de Node décrivent la version qui exécute le code, celle de
+      # node-version dans ci.yml (24), pas la dernière publiée : @types/node 26
+      # aurait laissé typer des API absentes de Node 24. Ils changent
+      # de majeure avec node-version, .nvmrc et engines.node, à la main,
+      # dans la même PR.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]

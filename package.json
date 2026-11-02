@@ -1,0 +1,55 @@
+{
+  "name": "catalogue-solstice-vibe",
+  "version": "0.1.0",
+  "description": "Catalogue d'applis web légères pour les outils internes des entreprises, assemblées avec Claude à partir d'un socle commun et de briques réutilisables",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/solstice-lab/catalogue-solstice-vibe.git"
+  },
+  "homepage": "https://github.com/solstice-lab/catalogue-solstice-vibe#readme",
+  "bugs": {
+    "url": "https://github.com/solstice-lab/catalogue-solstice-vibe/issues"
+  },
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --exclude tests/assembleur.test.ts",
+    "test:assembleur": "vitest run tests/assembleur.test.ts"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "html-to-image": "^1.11.13",
+    "next": "^16.4.3",
+    "oauth4webapi": "^3.8.8",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^10.13.0",
+    "eslint-config-next": "^16.4.3",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "unrs-resolver": false
+  },
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11.16"
+  }
+}

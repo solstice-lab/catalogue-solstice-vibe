@@ -1,0 +1,242 @@
+name: Vérification du code
+
+# Lance les gardes de Claude, la vérification des vulnérabilités, la mise en
+# forme, lint, typecheck, tests et build sur chaque pull request prête à relire (pas les
+# brouillons) et chaque arrivée sur main. Leçon d'un projet précédent : 86 pull requests y ont été
+# fusionnées avant qu'une CI n'existe — aucune ligne n'était compilée ailleurs que chez
+# l'hébergeur.
+#
+# ⚠️ Ce workflow est un SIGNAL, pas une barrière : un hébergeur en
+#    auto-déploiement (Render…) déploie main sans attendre ce résultat. Pour
+#    en faire une barrière, activer la protection de branche « Require status
+#    checks » dans les réglages GitHub du dépôt client — ça ne se code pas ici.
+#    La brique déploiement (job deployer, en fin de fichier) coupe cet
+#    auto-déploiement et ne met en ligne qu'après la vérification.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # ready_for_review : un brouillon sauté (voir le if du job) se vérifie dès
+    # qu'il passe « prêt à relire ».
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Un passage de pull request rendu inutile par un commit plus récent s'annule :
+# ses minutes partaient pour rien. Hors pull request, chaque passage a son
+# propre groupe (run_id) : sur main, aucun n'est annulé ni mis en attente.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', github.workflow, github.event.pull_request.number) || format('{0}-{1}', github.workflow, github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Le jeton du workflow ne sert qu'à lire le dépôt : aucun job ne pousse, ne
+# commente ni ne publie avec lui. Sans cette clé, il hérite des droits par
+# défaut du dépôt, qui peuvent inclure l'écriture.
+permissions:
+  contents: read
+
+jobs:
+  verifier:
+    # Un brouillon n'est pas vérifié : personne ne le fusionnera tel quel.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # Requis par les tests seulement (le build s'en passe, voir l'étape
+      # Build). localhost : le garde anti-prod de vitest.config.ts refuse tout
+      # autre hôte.
+      DATABASE_URL: postgresql://appli:appli@localhost:5432/appli_test
+      # Le Postgres du runner ne fait pas de SSL, contrairement aux bases managées.
+      PGSSLMODE: disable
+
+    # Actions épinglées par SHA complet : une étiquette (@v7) peut être
+    # déplacée vers un autre commit, un SHA non. Leçon d'un projet précédent :
+    # une montée flottante d'action y a changé ce que faisait la CI (des
+    # sous-agents lancés pour rien) sans aucun commit du dépôt.
+    # .github/dependabot.yml propose les mises à jour chaque semaine (une appli
+    # assemblée ne l'a que si quelqu'un l'entretient) ; sans lui, ces SHA ne
+    # bougent qu'à la main.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Le jeton n'a pas à rester dans .git/config pendant npm ci, qui
+          # exécute les scripts d'installation de dépendances tierces.
+          persist-credentials: false
+
+      - name: Démarrer Postgres
+        # Base JETABLE pour la suite de tests — jamais une base réelle. Une base
+        # vide suffit : client.ts applique schema.sql puis les migrations à la
+        # première requête. En tâche de fond, au début du job : sous
+        # services:, le job attendait qu'elle réponde avant toute étape (15 s
+        # à chaque passage). Elle démarre pendant l'installation, la mise en
+        # forme, le lint et le typecheck ; « Attendre Postgres » la guette avant les tests.
+        run: |
+          docker run -d --name postgres -p 5432:5432 \
+            -e POSTGRES_USER=appli -e POSTGRES_PASSWORD=appli -e POSTGRES_DB=appli_test \
+            "$IMAGE" > "$RUNNER_TEMP/postgres.log" 2>&1 &
+        env:
+          IMAGE: postgres:18 # aligner sur la version de la base de prod du projet
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Aligné sur .nvmrc, engines.node (package.json) et la majeure de
+          # @types/node : les changer dans la même PR ;
+          # .github/dependabot.yml, quand il existe, ne propose pas les
+          # majeures des types.
+          node-version: "24"
+          cache: "npm"
+
+      - name: Gardes de Claude
+        # Sans dépendance, d'où sa place avant npm ci. Un garde qui laisse
+        # passer ou qui bloque à tort coûte aussi cher l'un que l'autre.
+        run: node .claude/hooks/gardes.test.mjs
+
+      - name: Vulnérabilités
+        # Échoue sur toute haute ou critique absente de exceptions-audit.json
+        # (l'avis braces accepté tenait npm audit au rouge et
+        # aurait caché la suivante). Avant npm ci : l'audit ne lit que le
+        # lockfile, et un paquet refusé ne fait pas tourner ses scripts
+        # d'installation. Interroge le registre npm : un échec « registre
+        # injoignable » se relance, ce n'est pas une faille.
+        run: node scripts/verifier-audit.mjs
+
+      - name: ABI de Node
+        # La version d'ABI pour laquelle les modules natifs sont compilés ;
+        # elle ne change qu'avec la majeure (ceux d'aujourd'hui sont N-API,
+        # stables d'une version à l'autre). Le numéro complet, lui, change
+        # d'un runner à l'autre (24.21.0 et 24.22.1 le même jour) : dans la
+        # clé, il faisait rater aux pull requests le node_modules de main.
+        id: abi
+        run: echo "abi=$(node -p process.versions.modules)" >> "$GITHUB_OUTPUT"
+
+      - name: Retrouver node_modules
+        # S'il est retrouvé, il remplace npm ci (15 s). Seulement pour le même
+        # lockfile et la même ABI de Node : un cache plus large ferait tester
+        # d'autres dépendances. tests/ci.test.ts le verrouille.
+        id: node-modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-abi${{ steps.abi.outputs.abi }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Installer
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Retrouver les caches de lint, typecheck et build
+        # Chacun ne refait que ce qui a changé : ESLint par contenu de fichier,
+        # tsc par son tsbuildinfo (incremental, tsconfig.json), Next par
+        # .next/cache. Une clé par commit, le plus récent en repli : un cache
+        # périmé ne fausse rien, il fait seulement refaire davantage. Sans
+        # version de Node : ESLint invalide le sien quand elle change, tsc et
+        # Next n'en dépendent pas.
+        id: outils
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .eslintcache
+            tsconfig.tsbuildinfo
+            .next/cache
+          key: outils-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: outils-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Mise en forme
+        # Le code non mis en forme est refusé ici plutôt que discuté en
+        # relecture : npm run format le corrige.
+        run: npm run format:check
+
+      - name: Lint
+        # Par contenu : le checkout donne une date neuve à chaque fichier, une
+        # comparaison par date ne retrouverait rien.
+        run: npm run lint -- --cache --cache-strategy content --cache-location .eslintcache
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Attendre Postgres
+        # Par TCP, pas par le socket : pendant son initialisation, l'image fait
+        # tourner un serveur provisoire sur le seul socket, puis l'arrête.
+        # Guetté par le socket, il laisserait partir les tests trop tôt.
+        run: |
+          for _ in $(seq 60); do
+            docker exec postgres pg_isready -h 127.0.0.1 -U appli -d appli_test -q && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/postgres.log"; docker logs postgres; exit 1
+
+      - name: Tests
+        # vitest.config.ts force fileParallelism: false — deux fichiers en
+        # parallèle rejoueraient deux migrations sur la même base et l'une
+        # échouerait sur « already exists ».
+        run: npm test
+
+      - name: Build
+        # Vidée exprès : le build doit passer sans base (client.ts
+        # créait le pool au chargement et l'exigeait). Une page qui
+        # interrogerait la base au build échouerait ici.
+        env:
+          DATABASE_URL: ""
+        run: npm run build
+
+      - name: Garder les caches de lint, typecheck et build
+        # Sur main seulement : la clé change à chaque commit, et chaque
+        # passage de pull request téléverserait sa propre archive, .next/cache
+        # compris, sur le temps du job. Une PR repart du dernier état de main.
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .eslintcache
+            tsconfig.tsbuildinfo
+            .next/cache
+          key: ${{ steps.outils.outputs.cache-primary-key }}
+
+  # Brique déploiement (src/briques/deploiement/).
+  # Met en ligne le commit que verifier vient de valider, puis attend de le
+  # lire sur /sante. Cœur neutre : seule l'étape « Déclencher », marquée
+  # adaptateur, est propre à l'hébergeur (README de la brique, « Déployer
+  # ailleurs »). Pas de checkout : le job n'a besoin d'aucun fichier du dépôt.
+  deployer:
+    needs: verifier
+    # Sauté tant que la variable de dépôt DEPLOIEMENT_URL n'existe pas : le
+    # catalogue, ou une appli pas encore hébergée, n'a rien à mettre en ligne.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOIEMENT_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Fusions rapprochées : la suivante attend la fin du déploiement en cours
+    # au lieu de l'interrompre. GitHub ne garde qu'une exécution en attente,
+    # la plus récente : elle porte le dernier commit de main.
+    concurrency:
+      group: deploiement
+      cancel-in-progress: false
+
+    steps:
+      - name: Déclencher (adaptateur Render)
+        # Le deploy hook de Render, avec le commit vérifié : sans ref=,
+        # Render construit la tête de main au moment de l'appel.
+        run: |
+          if [ -z "$DECLENCHEUR" ]; then
+            echo "::error::Secret DEPLOIEMENT_DECLENCHEUR absent : rien n'a été déclenché."
+            exit 1
+          fi
+          curl -fsS -X POST --url-query "ref=$COMMIT" "$DECLENCHEUR"
+        env:
+          DECLENCHEUR: ${{ secrets.DEPLOIEMENT_DECLENCHEUR }}
+          COMMIT: ${{ github.sha }}
+
+      - name: Attendre ce commit sur /sante
+        # /sante renvoie COMMIT_DEPLOYE : tant qu'elle dit l'ancien commit,
+        # l'ancienne version est encore en ligne.
+        run: |
+          fin=$((SECONDS + 1200))
+          while [ "$SECONDS" -lt "$fin" ]; do
+            en_ligne=$(curl -fsS --max-time 10 "${URL%/}/sante" 2>/dev/null | jq -r '.commit // empty' || true)
+            [ "$en_ligne" = "$COMMIT" ] && exit 0
+            sleep 15
+          done
+          echo "::error::$COMMIT absent de ${URL%/}/sante après 20 minutes : l'ancienne version reste en ligne."
+          exit 1
+        env:
+          URL: ${{ vars.DEPLOIEMENT_URL }}
+          COMMIT: ${{ github.sha }}
+  # Fin de la brique déploiement.

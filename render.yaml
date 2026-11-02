@@ -1,0 +1,117 @@
+# Adaptateur Render de la brique déploiement (src/briques/deploiement/README.md).
+# Pour un autre hébergeur, ce fichier se remplace entier, avec l'étape
+# « Déclencher (adaptateur Render) » du job deployer de ci.yml.
+#
+# Pièges payés sur un projet précédent :
+# - Render lit ce fichier à la CRÉATION du Blueprint. Ensuite, les variables
+#   d'un service existant ne se resynchronisent PAS depuis lui : une
+#   variable ajoutée ici se déclare aussi dans le tableau de bord.
+# - Un service renommé dans le tableau de bord quitte le Blueprint et
+#   « Manual sync » ne fait plus rien, sans message. Renommer « mon-appli »
+#   ici AVANT de créer le Blueprint, jamais après.
+# - Francfort dès le départ : une base passée d'une région américaine à
+#   Francfort après coup, c'est une migration de données en production.
+# - Jamais le palier gratuit : la base est supprimée au bout de 30 jours, le
+#   service s'endort après 15 minutes sans trafic.
+# Spécification relue le 2026-10-22 : https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: mon-appli
+    runtime: node
+    region: frankfurt
+    plan: 0.5c-512mb
+    # C'est la CI qui déploie, après la vérification (job deployer de ci.yml).
+    # En auto-déploiement, chaque fusion partait en production sans attendre
+    # le vert. « off » entre guillemets : en YAML 1.1, off nu est un booléen.
+    autoDeployTrigger: "off"
+    # next build exige typescript, dépendance de dev : tout s'installe, puis
+    # le service ne garde que les dépendances de production. NODE_ENV n'est
+    # pas posé ici : au build, npm ci sauterait les dépendances de dev
+    # (Render le pose lui-même au démarrage seulement).
+    buildCommand: npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev --no-audit --no-fund
+    # /sante lit COMMIT_DEPLOYE, nom neutre : Render ne sait pas recopier
+    # RENDER_GIT_COMMIT dans une autre variable, le démarrage le fait. sh -c
+    # explicite : la doc ne dit pas si la commande passe par un shell.
+    startCommand: sh -c 'COMMIT_DEPLOYE="$RENDER_GIT_COMMIT" exec npm start'
+    # Ouverte sans session (tests/sante.test.ts) : derrière l'authentification,
+    # la sonde recevait une redirection et chaque déploiement échouait.
+    healthCheckPath: /sante
+    envVars:
+      # Aligné sur node-version de ci.yml.
+      - key: NODE_VERSION
+        value: "24"
+      # Adresse publique du site (src/lib/referencement.ts), saisie à la main
+      # dans le tableau de bord : https://domaine-du-client, sans chemin.
+      # Seul le service de production la déclare : une recette sans elle reste
+      # fermée aux moteurs de recherche.
+      - key: URL_PUBLIQUE
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mon-appli-db
+          property: connectionString
+      # Chiffré SANS vérifier le certificat (src/lib/db/client.ts vérifie par
+      # défaut) : on ne sait pas encore si celui de la base Render se vérifie
+      # par les CA que Node reconnaît, depuis le réseau interne. L'essai réel de la
+      # brique sur Render le dira ; vérifiable, cette entrée part et la
+      # vérification redevient la règle.
+      - key: PGSSLMODE
+        value: no-verify
+      # L'adresse IP du visiteur (src/lib/adresse-ip.ts) : Render passe par
+      # Cloudflare, qui pose CF-Connecting-IP (constat d'un projet précédent).
+      # X-Forwarded-For garde ce que le visiteur envoie : jamais lui. À
+      # vérifier sur une requête réelle au premier déploiement (README de la
+      # brique déploiement).
+      - key: IP_EN_TETE_CLIENT
+        value: cf-connecting-ip
+      # Brique comptes (src/briques/comptes/).
+      # Signe le cookie de session et sert de clé aux empreintes des codes de
+      # connexion : généré par Render, jamais écrit dans le dépôt.
+      - key: AUTH_SECRET
+        generateValue: true
+      # sync: false : saisie à la main dans le tableau de bord, à la création.
+      - key: COMPTES_PREMIER_ADMIN
+        sync: false
+      # Connexion avec Google, saisis à la main : l'ID client OAuth et son
+      # secret, de la console Google Cloud du client. Laissés vides si
+      # « google » n'est pas dans METHODES (src/config/comptes.ts).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # Fin de la brique comptes.
+      # Brique mails (src/briques/mails/).
+      - key: MAILS_FOURNISSEUR
+        value: resend
+      # sync: false : saisies à la main dans le tableau de bord, à la création.
+      - key: MAILS_EXPEDITEUR
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      # Fin de la brique mails.
+      # Brique notifications (src/briques/notifications/).
+      # Le secret de la route, le même que celui de la tâche planifiée.
+      - key: NOTIFICATIONS_SECRET
+        sync: false
+      - key: NOTIFICATIONS_ADRESSES_ESSAI
+        sync: false
+      # Fin de la brique notifications.
+      # Brique contact (src/briques/contact/).
+      # L'adresse du client qui reçoit les messages : saisie à la création.
+      - key: CONTACT_DESTINATAIRE
+        sync: false
+      # Fin de la brique contact.
+
+databases:
+  - name: mon-appli-db
+    region: frankfurt
+    # Plus petit palier payant.
+    plan: 0.1c-256mb
+    # Aligné sur `IMAGE: postgres:` (étape « Démarrer Postgres » de ci.yml).
+    # Ne se change plus après la création.
+    postgresMajorVersion: "18"
+    # Aucune connexion depuis Internet : le service la joint par le réseau
+    # interne de Render. Pour un script de données ou une restauration,
+    # ajouter son adresse IP dans le tableau de bord, le temps de l'opération.
+    ipAllowList: []

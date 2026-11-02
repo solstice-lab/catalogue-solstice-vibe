@@ -1,0 +1,1225 @@
+/*
+ * Kit UI Solstice — styles des composants de src/ui/.
+ *
+ * Tout passe par les tokens de theme/tokens.css. Une seule exception,
+ * volontaire : la signature Solstice Lab (.sl-signature-logo) garde les
+ * couleurs de l'agence en dur — elle identifie l'auteur du livrable et ne
+ * doit pas se fondre dans le thème du client.
+ */
+
+/* ---------- En-tête d'application ---------- */
+.sl-entete {
+  background: var(--couleur-structure);
+  color: var(--texte-sur-structure);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 3px solid var(--couleur-accent);
+}
+.sl-entete-marque {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sl-pastille {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--couleur-accent);
+  position: relative;
+  flex-shrink: 0;
+}
+.sl-pastille::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--couleur-structure);
+}
+.sl-entete-nom {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  line-height: 1;
+}
+.sl-entete-sous-titre {
+  font-size: 0.68rem;
+  color: var(--couleur-accent-fond);
+  font-weight: 300;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.sl-nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+/* Le bouton ne sert qu'au téléphone : voir le point de rupture en fin de fichier. */
+.sl-nav-bouton {
+  display: none;
+}
+.sl-nav a {
+  color: var(--texte-sur-structure);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: var(--rayon-petit);
+  opacity: 0.82;
+}
+.sl-nav a:hover {
+  opacity: 1;
+  background: var(--couleur-structure-2);
+}
+.sl-entete-badge {
+  margin-left: auto;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--couleur-accent);
+  background: color-mix(in srgb, var(--couleur-accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--couleur-accent) 40%, transparent);
+  padding: 6px 12px;
+  border-radius: var(--rayon-petit);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ---------- Page ---------- */
+.sl-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.sl-grille {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* ---------- Carte et titres de section ---------- */
+.sl-carte {
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  padding: 22px;
+}
+.sl-carte-titre {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--texte-secondaire);
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sl-tick {
+  width: 4px;
+  height: 14px;
+  background: var(--couleur-accent);
+  border-radius: var(--rayon-petit);
+  flex-shrink: 0;
+}
+.sl-carte-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* ---------- Boutons ---------- */
+.sl-bouton {
+  border: none;
+  border-radius: var(--rayon-petit);
+  padding: 9px 18px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+}
+.sl-bouton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.sl-bouton--primaire {
+  background: var(--couleur-structure);
+  color: var(--texte-sur-structure);
+}
+.sl-bouton--primaire:hover:not(:disabled) {
+  background: var(--couleur-structure-2);
+}
+.sl-bouton--secondaire {
+  background: var(--surface);
+  color: var(--texte-secondaire);
+  border: 1px solid var(--bordure);
+  font-weight: 500;
+}
+.sl-bouton--secondaire:hover:not(:disabled) {
+  border-color: var(--couleur-structure);
+  color: var(--couleur-structure);
+}
+.sl-bouton--danger {
+  background: var(--negatif);
+  color: var(--texte-sur-semantique);
+}
+.sl-bouton--danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+/* ---------- Badges ---------- */
+.sl-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.sl-badge--neutre {
+  background: var(--fond-page);
+  border: 1px solid var(--bordure);
+  color: var(--texte-secondaire);
+}
+.sl-badge--accent {
+  background: var(--couleur-accent-fond);
+  color: var(--couleur-structure);
+}
+.sl-badge--positif {
+  background: color-mix(in srgb, var(--positif) 12%, transparent);
+  color: var(--positif);
+}
+.sl-badge--negatif {
+  background: color-mix(in srgb, var(--negatif) 12%, transparent);
+  color: var(--negatif);
+}
+
+/* ---------- Champs de formulaire ---------- */
+.sl-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sl-champ-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.sl-champ input,
+.sl-champ select,
+.sl-champ textarea {
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--texte);
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  padding: 9px 12px;
+}
+.sl-champ input:focus,
+.sl-champ select:focus,
+.sl-champ textarea:focus {
+  outline: none;
+  border-color: var(--couleur-structure);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--couleur-accent) 30%, transparent);
+}
+.sl-champ-aide {
+  font-size: 0.72rem;
+  color: var(--texte-secondaire);
+}
+.sl-erreur-formulaire {
+  color: var(--negatif);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+/* Pile des champs d'un formulaire et rangée de ses boutons : dans le kit
+   plutôt qu'en style en ligne, pour que chaque module copié du patron garde
+   le même espacement. */
+.sl-formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sl-rangee-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+/* Champ piège (ChampPiege) : hors de l'écran, sans display: none ni
+   visibility: hidden, que des robots savent lire comme « à ne pas remplir ». */
+.sl-champ-piege {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+/* Case à cocher (ChampCase) : la case, puis son libellé sur la même ligne ;
+   l'aide passe dessous, alignée sur le libellé. */
+.sl-champ-case {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+  font-size: 0.88rem;
+  color: var(--texte);
+}
+.sl-champ-case input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--couleur-structure);
+}
+.sl-champ-case .sl-champ-aide {
+  grid-column: 2;
+}
+
+/* ---------- Fiche (lecture seule) ---------- */
+.sl-fiche {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  row-gap: 12px;
+  column-gap: 18px;
+  font-size: 0.88rem;
+}
+.sl-fiche dt {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  align-self: center;
+}
+.sl-fiche dd {
+  margin: 0;
+}
+.sl-fiche dd.sl-chiffres {
+  text-align: left;
+}
+/* Texte libre saisi en plusieurs lignes (notes) : ses sauts de ligne restent. */
+.sl-fiche dd.sl-texte-long {
+  white-space: pre-wrap;
+}
+/* Une courte liste de phrases dans une fiche ou une carte (les données d'un
+   traitement, page /confidentialite) : sans le retrait de 40 px du
+   navigateur, qui mangeait la colonne sur téléphone. */
+.sl-liste-simple {
+  margin: 0;
+  padding-left: 18px;
+}
+.sl-liste-simple li + li {
+  margin-top: 4px;
+}
+
+/* ---------- Tableau (tri + filtres intégrés) ---------- */
+.sl-tableau-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sl-tableau-outils {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.sl-tableau-export {
+  background: var(--surface);
+  color: var(--texte-secondaire);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  padding: 5px 12px;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.sl-tableau-export:hover:not(:disabled) {
+  border-color: var(--couleur-structure);
+  color: var(--couleur-structure);
+}
+.sl-tableau-export:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.sl-tableau-export[data-erreur] {
+  color: var(--negatif);
+  border-color: var(--negatif);
+}
+.sl-tableau-defilement {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+}
+.sl-tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.sl-tableau th {
+  text-align: left;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--bordure);
+  vertical-align: top;
+  background: var(--fond-page);
+}
+.sl-tableau-tri {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sl-tableau-tri:hover {
+  color: var(--couleur-structure);
+}
+.sl-tableau-fleche {
+  font-size: 0.6rem;
+  color: var(--couleur-structure);
+  min-width: 0.7em;
+}
+.sl-tableau-filtre {
+  display: block;
+  margin-top: 7px;
+  width: 100%;
+  min-width: 90px;
+  font-family: inherit;
+  font-size: 0.76rem;
+  color: var(--texte);
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  padding: 4px 8px;
+  font-weight: 400;
+}
+.sl-tableau-filtre:focus {
+  outline: none;
+  border-color: var(--couleur-structure);
+}
+.sl-tableau td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--bordure);
+}
+.sl-tableau tbody tr:last-child td {
+  border-bottom: none;
+}
+.sl-tableau tbody tr:hover {
+  background: var(--fond-page);
+}
+.sl-chiffres {
+  font-family: var(--police-chiffres);
+  text-align: right;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.sl-tableau-vide {
+  padding: 28px;
+  text-align: center;
+  color: var(--texte-secondaire);
+}
+/* En-tête sans tri (mode hiérarchique : l'ordre des lignes est structurel). */
+.sl-tableau-entete-fixe {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+}
+.sl-tableau-ligne-cliquable {
+  cursor: pointer;
+}
+
+/* ---------- Mode hiérarchique (déplis) ---------- */
+.sl-tableau-retrait {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sl-tableau-depli {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--texte-secondaire);
+  flex-shrink: 0;
+}
+.sl-tableau-depli:hover {
+  color: var(--couleur-structure);
+}
+.sl-tableau-depli--vide {
+  display: inline-block;
+  cursor: default;
+}
+
+/* ---------- Volets figés (en-tête + première colonne) ----------
+   Le conteneur borne la hauteur et devient le cadre de défilement des deux
+   axes : sticky n'opère que dans un ancêtre qui défile. Les cellules figées
+   reçoivent un fond opaque, sans quoi les lignes défileraient en
+   transparence sous elles. */
+.sl-tableau-defilement--volets {
+  max-height: 70vh;
+  overflow: auto;
+}
+.sl-tableau-defilement--volets thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.sl-tableau-defilement--volets th:first-child,
+.sl-tableau-defilement--volets td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.sl-tableau-defilement--volets td:first-child {
+  background: var(--surface);
+}
+.sl-tableau-defilement--volets tbody tr:hover td:first-child {
+  background: var(--fond-page);
+}
+.sl-tableau-defilement--volets thead th:first-child {
+  z-index: 3;
+}
+
+/* ---------- Colonne figée à droite (actions d'une file) ----------
+   Fond opaque, sans quoi les autres colonnes défileraient en transparence
+   dessous. Le survol de ligne est répété : le fond propre de la cellule
+   masquerait celui de la ligne. `top: 0` garde l'en-tête figé en haut quand
+   le tableau est aussi en volets figés. L'ombre qui marque le bord ne
+   s'affiche que sous 1024 px : au-delà le tableau tient, rien ne défile
+   dessous et le rendu reste celui d'avant. */
+.sl-tableau th.sl-tableau-figee-droite,
+.sl-tableau td.sl-tableau-figee-droite {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+}
+.sl-tableau th.sl-tableau-figee-droite {
+  top: 0;
+  z-index: 3;
+}
+.sl-tableau td.sl-tableau-figee-droite {
+  background: var(--surface);
+}
+.sl-tableau tbody tr:hover td.sl-tableau-figee-droite {
+  background: var(--fond-page);
+}
+@media (max-width: 1023px) {
+  .sl-tableau th.sl-tableau-figee-droite,
+  .sl-tableau td.sl-tableau-figee-droite {
+    box-shadow: -6px 0 6px -6px color-mix(in srgb, var(--couleur-structure) 25%, transparent);
+  }
+}
+
+/* ---------- Sélection et actions en lot du tableau ---------- */
+.sl-tableau-lot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--couleur-accent-fond);
+  border-bottom: 1px solid var(--bordure);
+  font-size: 0.8rem;
+}
+.sl-tableau-lot-compte {
+  font-weight: 600;
+}
+.sl-tableau-lot-actions {
+  display: flex;
+  gap: 8px;
+}
+.sl-tableau-lot-vider {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.76rem;
+  color: var(--texte-secondaire);
+  text-decoration: underline;
+}
+.sl-tableau-lot-vider:hover {
+  color: var(--texte);
+}
+.sl-tableau-case {
+  width: 36px;
+  text-align: center;
+}
+.sl-tableau-case input {
+  cursor: pointer;
+}
+
+/* ---------- Tuile KPI ---------- */
+.sl-tuile-kpi {
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sl-tuile-kpi-libelle {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+}
+.sl-tuile-kpi-valeur {
+  font-family: var(--police-chiffres);
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.sl-tuile-kpi-pied {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sl-tuile-kpi-aide {
+  font-size: 0.72rem;
+  color: var(--texte-secondaire);
+}
+.sl-grille--serree {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+/* Tuile qui mène à l'écran de détail : même allure, le survol dit qu'elle
+   se clique. */
+.sl-tuile-kpi--lien {
+  color: inherit;
+  text-decoration: none;
+}
+.sl-tuile-kpi--lien:hover {
+  border-color: var(--couleur-structure);
+}
+
+/* ---------- Calendrier mensuel (GrilleMois, NavigationMois) ---------- */
+.sl-navigation-mois {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sl-navigation-mois-titre {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+/* La seule première lettre, pas chaque mot : « octubre de 2026 » ne devient pas
+   « Octubre De 2026 » quand LOCALE (format.ts) change de langue. */
+.sl-navigation-mois-titre::first-letter {
+  text-transform: uppercase;
+}
+.sl-grille-mois {
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  overflow: hidden;
+  background: var(--surface);
+}
+.sl-grille-mois-ligne {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.sl-grille-mois-ligne + .sl-grille-mois-ligne {
+  border-top: 1px solid var(--bordure);
+}
+.sl-grille-mois-entete {
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.sl-grille-mois-jour {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+  padding: 6px 8px;
+}
+.sl-grille-mois-jour + .sl-grille-mois-jour {
+  border-left: 1px solid var(--bordure);
+}
+/* Un jour d'un mois voisin complète la semaine sans rien porter : il se lit
+   comme un fond, pas comme une case vide du mois. */
+.sl-grille-mois-jour--hors-mois {
+  background: var(--fond-page);
+  color: var(--texte-secondaire);
+}
+.sl-grille-mois-numero {
+  align-self: flex-start;
+  min-width: 24px;
+  padding: 1px 6px;
+  border-radius: var(--rayon-petit);
+  font-family: var(--police-chiffres);
+  font-size: 0.78rem;
+  text-align: center;
+}
+/* Le jour courant en structure plutôt qu'en accent : l'accent se dose, et
+   la seule touche de l'écran est le fond doux des éléments du mois. */
+.sl-grille-mois-numero--aujourdhui {
+  background: var(--couleur-structure);
+  color: var(--texte-sur-structure);
+}
+.sl-grille-mois-elements {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sl-grille-mois-element {
+  display: block;
+  padding: 3px 6px;
+  border-radius: var(--rayon-petit);
+  background: var(--couleur-accent-fond);
+  color: var(--texte);
+  font-size: 0.74rem;
+  line-height: 1.3;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sl-grille-mois-element:hover {
+  outline: 1px solid var(--couleur-structure);
+}
+
+/* ---------- Liste en cartes (téléphone) ---------- */
+.sl-liste-cartes {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sl-liste-carte {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  padding: 14px 16px;
+}
+.sl-liste-carte--lien {
+  color: inherit;
+  text-decoration: none;
+}
+.sl-liste-carte--lien:hover {
+  border-color: var(--couleur-structure);
+}
+.sl-liste-carte-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sl-liste-carte-titre {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.sl-liste-carte-champs {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  row-gap: 6px;
+  column-gap: 14px;
+  font-size: 0.84rem;
+}
+.sl-liste-carte-champs dt {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  align-self: center;
+}
+.sl-liste-carte-champs dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* Une même vue en tableau sur ordinateur et en cartes sur téléphone : les
+   deux sont rendues, le point de rupture choisit. En CSS plutôt qu'en
+   JavaScript, pour que le rendu serveur soit déjà le bon (pas d'éclair du
+   tableau au chargement sur téléphone). */
+.sl-seulement-telephone {
+  display: none;
+}
+
+/* ---------- Squelette de chargement ---------- */
+.sl-squelette {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sl-squelette span {
+  display: block;
+  height: 14px;
+  border-radius: var(--rayon-petit);
+  background: linear-gradient(90deg, var(--bordure), var(--fond-page), var(--bordure));
+  background-size: 200% 100%;
+  animation: sl-scintillement 1.2s ease-in-out infinite;
+}
+.sl-squelette span:nth-child(2n) {
+  width: 85%;
+}
+.sl-squelette span:nth-child(3n) {
+  width: 60%;
+}
+@keyframes sl-scintillement {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-squelette span {
+    animation: none;
+  }
+}
+
+/* ---------- Pages d'erreur (error.tsx, not-found.tsx) ---------- */
+.sl-page-erreur {
+  max-width: 640px;
+  padding-top: 60px;
+}
+.sl-page-erreur p {
+  font-size: 0.9rem;
+}
+.sl-erreur-reference {
+  margin-top: 10px;
+  color: var(--texte-secondaire);
+}
+.sl-erreur-digest {
+  font-family: var(--police-chiffres);
+  background: var(--fond-page);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  padding: 2px 6px;
+}
+
+/* ---------- État vide ---------- */
+.sl-etat-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--texte-secondaire);
+  font-size: 0.88rem;
+}
+.sl-etat-vide-titre {
+  font-weight: 600;
+  color: var(--texte);
+  font-size: 0.95rem;
+}
+
+/* ---------- Modale ---------- */
+.sl-modale-voile {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--couleur-structure) 55%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+.sl-modale {
+  background: var(--surface);
+  border-radius: var(--rayon);
+  border-top: 3px solid var(--couleur-accent);
+  max-width: 560px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.sl-modale-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 0;
+}
+.sl-modale-entete h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.sl-modale-fermer {
+  background: none;
+  border: none;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--texte-secondaire);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.sl-modale-fermer:hover {
+  color: var(--texte);
+}
+.sl-modale-corps {
+  padding: 16px 22px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sl-modale-pied {
+  padding: 14px 22px;
+  border-top: 1px solid var(--bordure);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ---------- Site vitrine (PageVitrine, SectionVitrine, AppelAction) ---------- */
+/* Le même en-tête à la charte que les outils (structure, liseré d'accent) :
+   ses contrastes sont ceux que le thème garantit déjà. Son contenu s'aligne
+   sur la largeur des sections. */
+.sl-vitrine-entete {
+  background: var(--couleur-structure);
+  color: var(--texte-sur-structure);
+  border-bottom: 3px solid var(--couleur-accent);
+}
+.sl-vitrine-entete-contenu {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.sl-vitrine-marque {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--texte-sur-structure);
+  text-decoration: none;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  /* Un nom long sans espace débordait de l'écran d'un téléphone. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sl-vitrine-entete .sl-nav {
+  justify-content: flex-end;
+}
+/* Le contour par défaut du navigateur se perd sur le fond de structure : une
+   page publique se parcourt aussi au clavier. */
+.sl-vitrine-entete :focus-visible {
+  outline: 2px solid var(--texte-sur-structure);
+  outline-offset: 2px;
+}
+/* Sans liens, l'action se range quand même à droite. */
+.sl-vitrine-entete-action {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+/* Un LienBouton est un lien : sans cela, souligné et en ligne. */
+.sl-vitrine-entete-action .sl-bouton,
+.sl-appel-action .sl-bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.sl-vitrine-section {
+  padding: 56px 32px;
+}
+.sl-vitrine-section--page {
+  background: var(--fond-page);
+}
+.sl-vitrine-section--surface {
+  background: var(--surface);
+  border-top: 1px solid var(--bordure);
+  border-bottom: 1px solid var(--bordure);
+}
+.sl-vitrine-section-contenu {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.sl-vitrine-section-titre {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--texte);
+}
+/* Au-delà de 70 signes, l'œil perd la ligne suivante : le texte courant ne
+   prend pas toute la largeur des sections. */
+.sl-vitrine-section-intro,
+.sl-vitrine-section-contenu > p {
+  max-width: 68ch;
+  line-height: 1.6;
+}
+.sl-vitrine-section-intro {
+  font-size: 1.05rem;
+  color: var(--texte-secondaire);
+}
+.sl-vitrine-section--principale {
+  padding: 72px 32px 64px;
+}
+.sl-vitrine-section--principale .sl-vitrine-section-titre {
+  font-size: 2.3rem;
+  max-width: 24ch;
+}
+.sl-vitrine-section--principale .sl-vitrine-section-intro {
+  font-size: 1.15rem;
+  color: var(--texte);
+}
+.sl-appel-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  padding: 28px 32px;
+  background: var(--couleur-accent-fond);
+  border-left: 4px solid var(--couleur-accent);
+  border-radius: var(--rayon);
+  color: var(--texte);
+}
+.sl-appel-action-texte {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  line-height: 1.5;
+}
+.sl-appel-action-titre {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.sl-appel-action-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sl-appel-action .sl-bouton {
+  padding: 12px 22px;
+  font-size: 0.9rem;
+}
+
+/* ---------- Note de bas de contenu ---------- */
+.sl-note {
+  font-size: 0.72rem;
+  color: var(--texte-secondaire);
+  line-height: 1.5;
+  padding: 14px 16px;
+  background: var(--fond-page);
+  border-radius: var(--rayon-petit);
+  border: 1px solid var(--bordure);
+}
+.sl-note b {
+  color: var(--texte);
+}
+
+/* ---------- Signature Solstice Lab (gardée dans les livraisons Solstice Lab)---------- */
+.sl-signature {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 32px 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--texte-secondaire);
+  font-size: 0.74rem;
+  border-top: 1px solid var(--bordure);
+}
+/* Couleurs Solstice en dur, hors contrat de thème : la signature identifie
+   l'agence, elle ne se fond pas dans la charte du client. */
+.sl-signature-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffc72c;
+  position: relative;
+  flex-shrink: 0;
+}
+.sl-signature-logo::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #162447;
+}
+.sl-signature a {
+  color: var(--texte);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sl-signature a:hover {
+  text-decoration: underline;
+}
+/* Les liens des mentions légales et de la confidentialité sont le contenu du
+   client, pas celui de l'agence : ils suivent le thème et restent en retrait
+   de la signature, à droite. */
+.sl-signature .sl-signature-liens {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.sl-signature .sl-signature-liens a {
+  color: var(--texte-secondaire);
+  font-weight: 400;
+}
+
+/* ---------- Point de rupture minimal ---------- */
+@media (max-width: 720px) {
+  .sl-entete {
+    padding: 14px 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .sl-page {
+    padding: 20px 18px 40px;
+  }
+  .sl-signature {
+    padding: 16px 18px 32px;
+    /* Signature et liens du pied ne tiennent pas sur une ligne d'un petit
+       téléphone : les liens passent dessous, toujours à droite. */
+    flex-wrap: wrap;
+  }
+  /* Sur téléphone, le titre d'une fiche et ses boutons (Modifier,
+     Supprimer) débordaient de la carte : les boutons passent à la ligne. */
+  .sl-carte-titre {
+    flex-wrap: wrap;
+  }
+  .sl-carte-actions {
+    flex-wrap: wrap;
+  }
+  /* La colonne de libellés de 160 px laissait une centaine de pixels à la
+     valeur (objet d'un contrat sur cinq lignes) : libellé au-dessus. */
+  .sl-fiche {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+  }
+  .sl-fiche dd {
+    margin-bottom: 10px;
+  }
+  /* Menu replié derrière un bouton : quinze liens empilés occupaient presque
+     tout le premier écran (relevé en recette). Le bouton reste sur la
+     ligne de la marque ; les liens, une fois ouverts, prennent la largeur
+     entière sous l'en-tête. 44 px de haut : la cible tactile minimale. */
+  .sl-nav-bouton {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    min-height: 44px;
+    padding: 0 16px;
+    background: transparent;
+    color: var(--texte-sur-structure);
+    border: 1px solid color-mix(in srgb, var(--texte-sur-structure) 40%, transparent);
+    border-radius: var(--rayon-petit);
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .sl-nav-bouton[aria-expanded="true"] {
+    background: var(--couleur-structure-2);
+  }
+  .sl-nav {
+    display: none;
+    order: 1;
+    flex: 1 1 100%;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sl-nav[data-ouvert] {
+    display: flex;
+  }
+  /* Le bouton prend déjà l'espace libre de la ligne : sans cela, le badge
+     s'en partage la moitié et, passé à la ligne, se retrouve seul à droite. */
+  .sl-entete-badge {
+    margin-left: 0;
+  }
+  .sl-nav a {
+    padding: 12px;
+    font-size: 0.92rem;
+  }
+  .sl-seulement-ordinateur {
+    display: none;
+  }
+  .sl-seulement-telephone {
+    display: block;
+  }
+  /* Site vitrine : marges réduites, titres ramenés à la largeur d'un
+     téléphone, actions de l'appel empilées sur toute la largeur et hautes de
+     44 px (cible tactile minimale). */
+  .sl-vitrine-entete-contenu {
+    padding: 14px 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  /* Nom et « Menu » sur la première ligne, l'action sur toute la largeur en
+     dernier : à côté du bouton, elle passait à la ligne dès 360 px et le menu
+     ouvert s'affichait sous elle, loin du bouton qui l'ouvre. */
+  .sl-vitrine-entete-action {
+    order: 2;
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+  .sl-vitrine-entete-action .sl-bouton {
+    width: 100%;
+  }
+  .sl-vitrine-section {
+    padding: 40px 18px;
+  }
+  .sl-vitrine-section--principale {
+    padding: 48px 18px 40px;
+  }
+  .sl-vitrine-section-titre {
+    font-size: 1.35rem;
+  }
+  .sl-vitrine-section--principale .sl-vitrine-section-titre {
+    font-size: 1.75rem;
+  }
+  .sl-appel-action {
+    padding: 22px 18px;
+  }
+  .sl-appel-action-actions {
+    flex-direction: column;
+    flex: 1 1 100%;
+  }
+  .sl-appel-action .sl-bouton,
+  .sl-vitrine-entete-action .sl-bouton {
+    min-height: 44px;
+  }
+}

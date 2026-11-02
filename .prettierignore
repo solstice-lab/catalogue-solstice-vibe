@@ -1,0 +1,12 @@
+# Prettier lit aussi .gitignore : ce qui y est n'a pas à être répété ici.
+
+# Le Markdown garde sa forme : Prettier réaligne les tableaux et change les
+# puces, et des tests relisent ces documents tels qu'ils sont écrits.
+*.md
+
+# Les étapes de migration déjà fusionnées ne se retouchent plus, même en
+# forme : le fichier ne fait que s'allonger, en fin.
+src/lib/db/migrations.ts
+
+# Écrit par npm.
+package-lock.json
