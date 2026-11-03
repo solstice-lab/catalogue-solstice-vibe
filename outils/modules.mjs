@@ -260,9 +260,14 @@ export const BRIQUES = {
   },
   // Sans base : une vitrine se met en ligne aussi.
   // render.yaml est l'adaptateur Render, le job deployer de ci.yml le cœur.
+  // `hebergeur` : le nom qu'écrit l'assembleur dans les mentions légales (voir
+  // remplissagesDeLEnTete). Seul un adaptateur qui sait quel hébergeur il
+  // configure le déclare : sans la brique, ou pour un adaptateur remplacé à la
+  // main, le champ reste « À compléter ».
   deploiement: {
     exige: [],
     fichiers: ["src/briques/deploiement/", "render.yaml", "tests/deploiement.test.ts"],
+    hebergeur: "Render Services, Inc.",
     retraits: [
       bloc(
         ".github/workflows/ci.yml",
@@ -944,5 +949,52 @@ export function retraitsDuNom(nomPaquet) {
       `"": {\n      "name": "${NOM_DU_CATALOGUE}",`,
       `"": {\n      "name": "${nomPaquet}",`
     ),
+  ];
+}
+
+// Ce que la blueprint a déjà fait valider au cadrage et que l'appli recopiait à
+// la main au premier ticket (essai de tours-de-coloc). Des `remplace` comme les
+// autres : un extrait absent ou répété fait échouer l'assemblage au lieu de le
+// fausser. Rien de ce qui engage la personne n'y figure : éditeur, courriel des
+// droits, bases légales, durées et coordonnées de l'hébergeur se remplissent à
+// la mise en ligne, par quelqu'un qui en répond.
+//   nomPaquet  : toujours connu ; nomme le service et la base de render.yaml. Un
+//                service renommé après la création du Blueprint Render quitte le
+//                Blueprint sans message, d'où le renommage dès l'assemblage ;
+//   nomAffiche, description, sitePublic : de l'en-tête, s'ils y sont ;
+//   hebergeur  : celui de la brique déploiement gardée, s'il y en a une.
+// Le nom du site (REFERENCEMENT.nom) lit NOM_APP : une seule source.
+export function remplissagesDeLEnTete({ nomPaquet, nomAffiche, description, sitePublic, hebergeur }) {
+  const texte = (valeur) => JSON.stringify(valeur);
+  return [
+    // render.yaml part avec la brique déploiement ; sans elle, ces trois
+    // retouches n'ont plus de fichier et l'assembleur les saute.
+    remplace("render.yaml", "    name: mon-appli\n", `    name: ${nomPaquet}\n`),
+    remplace("render.yaml", "          name: mon-appli-db\n", `          name: ${nomPaquet}-db\n`),
+    remplace("render.yaml", "  - name: mon-appli-db\n", `  - name: ${nomPaquet}-db\n`),
+    ...(nomAffiche === undefined
+      ? []
+      : [
+          remplace(
+            "src/lib/navigation.ts",
+            'export const NOM_APP = "NOM_APP"; // à remplacer à la mise en route du projet',
+            `export const NOM_APP = ${texte(nomAffiche)};`
+          ),
+        ]),
+    ...(description === undefined
+      ? []
+      : [remplace("src/lib/referencement.ts", '  description: "",\n', `  description: ${texte(description)},\n`)]),
+    ...(sitePublic === true
+      ? [remplace("src/lib/referencement.ts", "  sitePublic: false,\n", "  sitePublic: true,\n")]
+      : []),
+    ...(hebergeur === undefined
+      ? []
+      : [
+          remplace(
+            "src/lib/mentions-legales.ts",
+            '  hebergeur: {\n    nom: "",\n',
+            `  hebergeur: {\n    nom: ${texte(hebergeur)},\n`
+          ),
+        ]),
   ];
 }

@@ -134,8 +134,8 @@ Chaque étape est réversible tant que la suivante n'a pas eu lieu. Les étapes 
 listées clic par clic dans le ticket, Claude ne les fait pas.
 
 1. L'appli sur sa branche, CI verte. Rien n'est en ligne.
-2. **Humain** : les gestes du README de la brique déploiement : renommer le service avant
-   le Blueprint, créer le Blueprint, saisir les variables `sync: false`, puis le secret
+2. **Humain** : les gestes du README de la brique déploiement : vérifier le nom du service
+   avant le Blueprint (l'assembleur l'a écrit d'après `appli`), créer le Blueprint, saisir les variables `sync: false`, puis le secret
    `DEPLOIEMENT_DECLENCHEUR` et la variable `DEPLOIEMENT_URL` chez GitHub.
 3. Fusion : la CI déploie et attend `/sante`.
 4. **Humain** : le domaine. Baisser d'abord le TTL du CNAME à 300 s (retour arrière rapide),

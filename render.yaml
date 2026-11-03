@@ -7,8 +7,10 @@
 #   d'un service existant ne se resynchronisent PAS depuis lui : une
 #   variable ajoutée ici se déclare aussi dans le tableau de bord.
 # - Un service renommé dans le tableau de bord quitte le Blueprint et
-#   « Manual sync » ne fait plus rien, sans message. Renommer « mon-appli »
-#   ici AVANT de créer le Blueprint, jamais après.
+#   « Manual sync » ne fait plus rien, sans message. L'assembleur écrit le
+#   nom du service et de la base (le nom du paquet : champ appli de la
+#   blueprint, sinon le dossier de sortie, --nom l'emporte) : le vérifier
+#   ici AVANT de créer le Blueprint, jamais le changer après.
 # - Francfort dès le départ : une base passée d'une région américaine à
 #   Francfort après coup, c'est une migration de données en production.
 # - Jamais le palier gratuit : la base est supprimée au bout de 30 jours, le

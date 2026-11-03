@@ -1,8 +1,8 @@
 # Modèle de blueprint d'une appli client
 
 Chargé par `SKILL.md` à l'étape 3. Le format est décrit ici en entier : un en-tête YAML
-court, entre deux lignes `---` en tête de fichier, lisible par un script un jour (en v1,
-l'assembleur n'en lit que `appli` et `commit_reference`), puis un corps Markdown : un
+court, entre deux lignes `---` en tête de fichier, lu par l'assembleur pour `appli`, `commit_reference`,
+`nom_affiche`, `description` et `site`, puis un corps Markdown : un
 titre, un paragraphe, et neuf sections numérotées dans l'ordre donné plus bas. Le ton :
 des phrases courtes, au présent, qui décrivent sans recopier ; la précision attendue :
 chaque règle a une valeur (un délai en jours, un volume, une clé), et chaque section
@@ -25,10 +25,14 @@ dans une autre section.
 ```yaml
 ---
 # Blueprint de l'appli <nom>. L'en-tête ne porte que l'essentiel, en clair :
-# l'assembleur en lit appli et commit_reference ; tout le reste est dans le corps.
-# Il ne recopie pas le branchement : il reste dans son fichier.
+# l'assembleur en lit appli, nom_affiche, description, site et commit_reference ;
+# tout le reste est dans le corps. Il ne recopie pas le branchement : il reste
+# dans son fichier.
 format: 1
 appli: <nom>
+nom_affiche: <nom affiché dans l'appli, validé au cadrage>
+description: <une ou deux phrases pour les moteurs et l'aperçu, sur une ligne>
+site: <public | ferme>
 statut: <écrite avant tout code, brouillon validé par <qui> le <date>>
 commit_reference: <à renseigner : l'assembleur le remplace>
 briques_assemblees: [<briques choisies, plus rgpd avec comptes>]
@@ -50,7 +54,25 @@ briques:
 - `appli` : l'assembleur en tire le nom du paquet de l'appli (`package.json`, d'où ses bases
   locales), en minuscules sans accent, en tirets. Il refuse un nom qui ne commence pas par
   une lettre, trop long (plus de 58 caractères une fois ramené) ou qui est celui du
-  catalogue. `--nom` l'emporte ; sans `appli`, le nom du dossier de sortie sert.
+  catalogue. `--nom` l'emporte ; sans `appli`, le nom du dossier de sortie sert. Avec la
+  brique `deploiement`, il nomme aussi le service (`<nom>`) et la base (`<nom>-db`) de
+  `render.yaml` : un service renommé après la création du Blueprint Render quitte le
+  Blueprint, sans message.
+- `nom_affiche`, `description`, `site` : les valeurs validées au cadrage, que l'assembleur
+  écrit dans l'appli au lieu d'un premier ticket de remplissage. Une ligne chacune, sans bloc
+  (`>`, `|`) ni liste, que l'assembleur refuse ; une valeur qui porte « # » se met entre
+  guillemets, sinon ce qui suit est lu comme un commentaire.
+  - `nom_affiche` : `NOM_APP` (`src/lib/navigation.ts`), que le nom du site de
+    `REFERENCEMENT` reprend.
+  - `description` : la `description` de `REFERENCEMENT` (`src/lib/referencement.ts`).
+  - `site` : `public` (un site vitrine, que les moteurs doivent trouver) ou `ferme` (un
+    outil interne, même en ligne). L'assembleur en tire `sitePublic` ; sans le champ, le
+    site reste fermé, et toute autre valeur est refusée.
+  - Un champ absent laisse sa valeur de remplacement, à remplir par ticket. Rien de ce qui
+    engage la personne ne passe par l'en-tête : éditeur, courriel des droits, bases
+    légales, durées, coordonnées de l'hébergeur restent « À compléter ». Avec la brique
+    `deploiement`, le nom de l'hébergeur (Render Services, Inc.) est écrit dans les
+    mentions légales ; son adresse et son téléphone, non.
 - `briques_assemblees` est la liste que l'assembleur écrit dans sa blueprint minimale :
   c'est ce qui dit, sans lire le code, ce qui a été installé. **Elle doit redire exactement
   la liste passée à `--briques`, plus les briques ajoutées d'office (`rgpd` avec
@@ -83,7 +105,7 @@ briques:
   - section 4 : les pages prévues, à écrire ;
   - section 5 : aucune connexion, toutes les pages sont publiques ; puis le thème et le nom ;
   - section 6 : « aucune » ;
-  - section 9 : après le renommage, les réglages, les mentions légales, la politique de
+  - section 9 : après la vérification de l'en-tête, les réglages, les mentions légales, la politique de
     confidentialité et le référencement, écrire l'accueil et les pages, et les ajouter aux pages publiques du référencement.
 
 ## Le corps
@@ -132,10 +154,13 @@ la description, puis :
 8. **Questions ouvertes** : avec qui tranche et avant quelle étape, reprises de la fiche.
 9. **Pour poursuivre** : ce que l'assembleur ne fait pas et qui reste à faire, dans
    l'ordre, chaque étape un ticket (socle prêt pour la prod et découpage :
-   `solstice-nouvelle-appli` §4 et §5) : renommer l'appli (`NOM_APP` ; `package.json` porte déjà le nom de l'en-tête),
-   régler `src/lib/format.ts`, remplir les mentions légales (`src/lib/mentions-legales.ts`,
-   avant toute mise en ligne), remplir la politique de confidentialité
-   (`src/lib/confidentialite.ts`, avant toute mise en ligne, choix validés par le client), remplir le référencement (`src/lib/referencement.ts`), thématiser, écrire
+   `solstice-nouvelle-appli` §4 et §5) : vérifier ce que l'assembleur a écrit de l'en-tête (`NOM_APP`, la description et
+   `sitePublic` du référencement, les noms du service et de la base de `render.yaml`,
+   l'hébergeur des mentions légales ; ce qu'un champ absent a laissé à sa valeur de
+   remplacement se remplit ici), régler `src/lib/format.ts`, remplir le reste des
+   mentions légales (`src/lib/mentions-legales.ts`, avant toute mise en ligne : éditeur,
+   directeur de la publication, coordonnées de l'hébergeur), remplir la politique de confidentialité
+   (`src/lib/confidentialite.ts`, avant toute mise en ligne, choix validés par le client), compléter le référencement (`src/lib/referencement.ts` : les pages publiques), thématiser, écrire
    l'accueil, construire chaque entité de la section 2 en copiant le patron `dossiers`
    (puis remplacer ou retirer `dossiers`), brancher les briques « à brancher », écrire les
    scripts de données de la section 6. S'il y a lieu : retirer

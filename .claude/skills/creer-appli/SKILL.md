@@ -18,7 +18,8 @@ base distante, taper un `--confirmer`, écrire un `.env*`, fusionner, déployer.
 taper (`CLAUDE.md` §3 et §8).
 
 **Hors v1** : mettre à jour une brique déjà installée dans une appli assemblée, déployer,
-faire lire la blueprint par le script (son en-tête reste informatif), plugin sur
+faire lire la blueprint par le script (il n'en lit que `appli`, `nom_affiche`, `description`
+et `site` ; le reste de son en-tête reste informatif), plugin sur
 marketplace. Le module métier d'une appli (ses entités, sur le patron `dossiers`) ne
 s'assemble pas : il s'écrit dans l'appli, par tickets, une fois le dossier livré (étape 5 ;
 `solstice-nouvelle-appli`, §2, ligne « Module dans cette appli »).
@@ -55,8 +56,11 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   - Ses pages sont rendues à chaque requête (compromis de la CSP, étape 2).
   - Les blocs « Les données » et « Les accès » de `solstice-nouvelle-appli` §1 sautent.
     « Le besoin », « Les écrans » et « La mise en ligne » restent.
-- **Le nom de l'appli** : celui du dossier, de `NOM_APP`, de `package.json`. Il se note dans
-  le champ `appli:` de la blueprint, que l'assembleur reporte dans `package.json`.
+- **Le nom de l'appli** : celui du dossier, de `package.json` et, avec la brique `deploiement`,
+  du service et de la base de `render.yaml` (un service renommé après la création du
+  Blueprint Render quitte le Blueprint, sans message). Il se note dans le champ `appli:` de
+  la blueprint, que l'assembleur reporte. **Le nom affiché** (`NOM_APP`, titre des pages)
+  est une autre question, à faire valider avec lui : il se note dans `nom_affiche:`.
 - **Qui livre l'appli ?** Elle décide de la signature « Conçu par Solstice Lab » que
   le kit affiche en pied de page (`AppLayout`, `PageVitrine`).
   - Pour une livraison Solstice Lab : la signature reste, même pour un prototype
@@ -95,7 +99,9 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   - Les comptes chez l'hébergeur, et chez Resend si la brique `mails` est gardée,
     s'ouvrent au nom de la personne qui livre ou au nom du client : le demander.
   - Les réponses vont dans le bloc « La mise en ligne » de la fiche. L'hébergeur retenu
-    renseigne aussi les mentions légales (question suivante).
+    renseigne aussi les mentions légales (question suivante) : avec la brique `deploiement`,
+    l'assembleur y écrit le nom de Render (« Render Services, Inc. »), pas son adresse ni
+    son téléphone.
 - **Les mentions légales** (`src/lib/mentions-legales.ts`, page `/mentions-legales`) : le
   bloc « La mise en ligne » de `solstice-nouvelle-appli` §1, posé pendant ce cadrage et
   non à la veille de la mise en ligne (éditeur, directeur de la publication, champs
@@ -118,7 +124,10 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   moteurs de recherche (vitrine : oui ; outil interne : non, même en ligne) ? Sa
   description en une ou deux phrases, et les pages publiques pour le sitemap (avec
   `comptes`, l'accueil n'en est pas une, et chacune s'ouvre dans la brique). Les
-  réponses vont dans la rubrique « Référencement » de la fiche.
+  réponses vont dans la rubrique « Référencement » de la fiche, et les deux premières dans
+  l'en-tête de la blueprint : `site: public` ou `site: ferme`, et `description:` (une
+  ligne), que l'assembleur écrit dans `src/lib/referencement.ts`. Les pages publiques
+  restent à ajouter par ticket.
 - **Ce que le client suit, entité par entité**, pour choisir les briques dont le module
   métier de l'appli aura besoin (étape 2) : une date à surveiller appelle `echeances`, un
   fichier à reprendre `import-lot`, une décision à tracer `validation`. Un vrai exemple de
@@ -239,8 +248,13 @@ Un site vitrine s'assemble sans `--briques`, ou avec `mails`, `deploiement` ou `
 Liste séparée par des virgules, sans espace. Le nom du paquet de l'appli (`package.json`,
 d'où ses bases locales) vient du champ `appli:` de la blueprint (à défaut, du nom du dossier
 de sortie), ramené en minuscules sans accent ni espace ; `--nom` l'emporte, et nomme sinon la blueprint minimale que le script
-écrit sans `--blueprint`. Rien d'autre n'est renommé dans le code (`NOM_APP` garde sa valeur
-de remplacement). `node outils/assembler.mjs --aide` rappelle les options.
+écrit sans `--blueprint`. Il écrit aussi dans le code ce que l'en-tête de la blueprint a
+fait valider au cadrage : `NOM_APP` (`nom_affiche:`), la description et `sitePublic` du
+référencement (`description:`, `site:`), le nom du service et de la base de `render.yaml`
+(d'après le nom du paquet, avec la brique `deploiement`) et le nom de l'hébergeur des
+mentions légales (avec cette brique). Un champ absent de l'en-tête laisse sa valeur de
+remplacement. Rien de ce qui engage la personne n'est rempli. `node outils/assembler.mjs --aide`
+rappelle les options.
 
 La commande **ne déploie rien, ne touche à aucune base, ne lit aucun secret, ne crée aucun
 remote et ne pousse rien** : elle copie les fichiers que git suit, retouche les fichiers
@@ -268,6 +282,7 @@ attendu », se corrigent en relisant la commande.
 | « « donnees » ne se choisit pas » | La retirer de `--briques` : la base vient d'office avec les briques qui la lisent. |
 | « La brique … exige la ou les briques … » | Ajouter ces briques à `--briques`, après avoir vérifié à l'étape 2 que le besoin les veut. La mention « (ajoutée d'office avec comptes) » désigne `rgpd`, que `comptes` entraîne. |
 | « Nom d'appli … » | Le champ `appli:` de la blueprint (ou le nom du dossier) donne un nom de paquet refusé (pas de lettre en tête, trop long, celui du catalogue) : corriger `appli:`, ou passer `--nom`. |
+| « En-tête de la blueprint, … » | Le champ cité (`site:` : `public` ou `ferme` ; une valeur sur plusieurs lignes ou à guillemet mal fermé) est à corriger dans l'en-tête de la blueprint. Rien n'est écrit. |
 | « Le dossier de sortie … n'est pas vide » | En choisir un autre. **Ne jamais vider un dossier à la place de l'humain.** |
 | « … est dans le catalogue » ou « … est un fichier » | Un dossier à côté du catalogue, pas dedans. |
 | « Le catalogue a des modifications non commitées » | `git status --short`, dire lesquelles à l'humain. `--tolerer-arbre-modifie` seulement s'il le demande : le commit noté devient `<commit>+arbre-modifie` et ne décrit plus ce qui est copié. |
@@ -532,17 +547,21 @@ créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SEC
 ajouter `"google"` à `METHODES` et, pour un client Workspace, ses domaines à
 `DOMAINES_GOOGLE_WORKSPACE` (section « La connexion avec Google » du README de la
 brique). Et ce que l'assembleur n'a **pas** fait :
-`NOM_APP` garde sa valeur de remplacement, `src/lib/format.ts` garde le fuseau du
+`src/lib/format.ts` garde le fuseau du
 catalogue, le thème est le thème de repli du catalogue (la charte Solstice Lab), la
 signature Solstice Lab est en place (à retirer par ticket si la fiche le dit, étape 1),
 `/kit` (et `dossiers`, avec la brique `comptes`) sont toujours là, et
-`src/lib/mentions-legales.ts` est vide (la page `/mentions-legales` le signale), comme les
-choix de `src/lib/confidentialite.ts` (la page `/confidentialite` le signale), et
-`src/lib/referencement.ts` aussi (titres « À compléter », site fermé aux moteurs).
+`src/lib/mentions-legales.ts` est vide hors le nom de l'hébergeur (la page
+`/mentions-legales` le signale), comme les
+choix de `src/lib/confidentialite.ts` (la page `/confidentialite` le signale). Le nom
+affiché, la description et le choix public ou fermé de `src/lib/referencement.ts` ne sont
+écrits que s'ils sont dans l'en-tête de la blueprint : sinon `NOM_APP` garde sa valeur de
+remplacement et les titres disent « À compléter », site fermé aux moteurs ; les pages
+publiques du sitemap restent à ajouter dans tous les cas.
 L'accueil est une carte « Page d'accueil à écrire », et l'appli n'a aucun écran métier ni
 script de données : son module métier se construit par tickets, en copiant le patron
 `dossiers`, et les briques « à brancher » s'y branchent ensuite. Pour un site vitrine, écrire
-l'accueil et les pages vient juste après le renommage, les réglages, les mentions légales,
+l'accueil et les pages vient juste après la vérification des valeurs écrites, les réglages, les mentions légales,
 la politique de confidentialité et le référencement : le contenu vient du client, l'assembleur n'en invente pas. Ce sont
 les premiers tickets, listés à la section 9 de la blueprint.
 

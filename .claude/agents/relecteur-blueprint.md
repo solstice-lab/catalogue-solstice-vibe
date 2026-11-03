@@ -10,7 +10,8 @@ aucun fichier. Tu ne lances **jamais** `node outils/assembler.mjs` avec un dossi
 `cat-file`, `show`).
 
 L'assembleur ne lit pas le corps de la blueprint : il en remplace la ligne `commit_reference`
-et la recopie à la racine de l'appli. Il ne vérifie ni le contenu, ni la cohérence avec la
+et la recopie à la racine de l'appli. De l'en-tête, il lit `appli`, `nom_affiche`,
+`description` et `site` (`public` ou `ferme`, sinon il refuse) et les écrit dans l'appli. Il ne vérifie ni le contenu, ni la cohérence avec la
 liste de la commande. Une blueprint fausse ne se voit donc qu'une fois l'appli assemblée, ou
 des mois plus tard quand quelqu'un s'y fie. Tu es ce contrôle.
 
@@ -68,7 +69,11 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
 **Le script ne vérifie rien de ce qui suit**, la blueprint doit donc être juste d'elle-même :
 
 - `format`, `appli`, `statut`, `commit_reference`, `briques_assemblees`, `entites`,
-  `briques` sont présents dans l'en-tête.
+  `briques` sont présents dans l'en-tête, ainsi que `nom_affiche`, `description` et `site`
+  (`public` ou `ferme`) : un champ absent laisse sa valeur de remplacement (`NOM_APP`,
+  titres « À compléter », site fermé), ce qui est un constat si le corps ou la fiche les
+  dit décidés. `nom_affiche`, `description` et le choix `site` redisent la fiche et la
+  section 5 ; `appli` n'est pas le nom affiché.
 - **La liste de l'en-tête redit exactement** la valeur de `--briques`, plus les briques
   ajoutées d'office (`rgpd` avec `comptes`) : c'est ce qui dit, sans lire le code, ce qui
   est installé.
@@ -100,11 +105,14 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   section 9. Une brique présentée comme branchée sur une entité que l'appli n'a pas encore
   (par exemple `echeances` « sur les contrats » avant tout ticket) est un constat.
 - **Ce que le script ne fait pas**, et que la blueprint ne peut pas présenter comme fait :
-  renommer l'appli au-delà du paquet (`package.json` prend le champ `appli:` de l'en-tête,
-  `NOM_APP` garde sa valeur de remplacement), régler
+  renommer l'appli au-delà de ce que l'en-tête déclare (`appli:` donne le paquet et, avec
+  `deploiement`, le service et la base de `render.yaml` ; `nom_affiche:`, `description:` et
+  `site:` donnent `NOM_APP`, la description et `sitePublic` ; sans ces champs, ces valeurs
+  gardent leur valeur de remplacement), régler
   `src/lib/format.ts` (langue, devise, fuseau), remplir les mentions légales
-  (`src/lib/mentions-legales.ts`), la politique de confidentialité
-  (`src/lib/confidentialite.ts`) et le référencement (`src/lib/referencement.ts`),
+  (`src/lib/mentions-legales.ts` : seul le nom de l'hébergeur de Render est écrit), la
+  politique de confidentialité (`src/lib/confidentialite.ts`) et les pages publiques du
+  référencement (`src/lib/referencement.ts`),
   thématiser, écrire l'accueil (une carte « Page d'accueil à écrire » dans toute appli
   assemblée), écrire une entité ou un écran métier, retirer la signature Solstice Lab,
   retirer `dossiers` et `/kit`, écrire un script de données, écrire

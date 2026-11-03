@@ -1361,6 +1361,189 @@ describe("nom de l'appli assemblée", () => {
   });
 });
 
+// Constaté à l'essai de tours-de-coloc : le premier ticket de l'appli n'a été que
+// du remplissage de valeurs déjà tranchées au cadrage (nom affiché, description,
+// noms du service et de la base dans render.yaml, hébergeur). Un `mon-appli` oublié
+// dans render.yaml ne se voit pas, et le renommer après la création du Blueprint
+// Render fait quitter le service du Blueprint, sans message.
+describe("valeurs de l'en-tête de la blueprint écrites par l'assembleur", () => {
+  const AVEC_BASE = { briques: ["comptes", "mails", "deploiement"] };
+  const SANS_BASE = { briques: ["deploiement"] };
+  const SANS_DEPLOIEMENT = { briques: [] };
+  const NOM_AFFICHE = "Tours de coloc";
+  // Un guillemet, un « # » et un accent : ce qui casserait une chaîne écrite à la main.
+  const DESCRIPTION = 'Qui sort les poubelles, à « chaque » tour : "sans # dispute".';
+
+  function blueprintDe(entete: string): string {
+    const fichier = path.join(dossierTemporaireVide(), "blueprint-source.md");
+    fs.writeFileSync(fichier, `---\nformat: 1\n${entete}\n---\n\n# Corps\n`);
+    return fichier;
+  }
+
+  const entetePublic = [
+    "appli: tours-de-coloc",
+    `nom_affiche: ${NOM_AFFICHE}`,
+    `description: ${JSON.stringify(DESCRIPTION)}`,
+    "site: public",
+  ].join("\n");
+
+  // Le texte de `description`, lu comme TypeScript le lit : Prettier, qui passe
+  // à la ligne une chaîne trop longue et préfère les apostrophes à des guillemets
+  // échappés, change l'écriture du littéral, pas sa valeur.
+  function descriptionEcrite(referencement: string): string | undefined {
+    const litteral = /^ {2}description:\s+("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'),$/m.exec(referencement)?.[1];
+    if (litteral === undefined) return undefined;
+    if (litteral.startsWith('"')) return JSON.parse(litteral);
+    return JSON.parse(`"${litteral.slice(1, -1).replace(/\\'/g, "'").replace(/"/g, '\\"')}"`);
+  }
+
+  // Les deux fichiers qui citent `mon-appli` comme exemple de nom, sans rapport avec la valeur de remplacement.
+  const EXEMPLES_DE_NOM = ["tests/bases-locales.test.ts", "scripts/lib/bases-locales.ts"];
+
+  function valeursDeRemplacementRestantes(dossier: string): string[] {
+    return fichiersAssembles(dossier).filter(
+      (chemin) =>
+        !EXEMPLES_DE_NOM.includes(chemin) &&
+        !chemin.startsWith("public/") &&
+        !/\.(woff2?|png|ico|jpe?g|svg)$/.test(chemin) &&
+        (lireAssemble(dossier, chemin).includes("mon-appli") ||
+          (chemin === "src/lib/navigation.ts" && lireAssemble(dossier, chemin).includes('NOM_APP = "NOM_APP"')))
+    );
+  }
+
+  it(
+    "écrit le nom affiché, la description et le choix public ou fermé, sans qu'aucune valeur de remplacement ne reste",
+    { timeout: ENTIER },
+    () => {
+      const { dossier } = assemblerEnTemporaire(AVEC_BASE, { blueprint: blueprintDe(entetePublic) });
+      expect(lireAssemble(dossier, "src/lib/navigation.ts")).toContain(
+        `export const NOM_APP = ${JSON.stringify(NOM_AFFICHE)};`
+      );
+      const referencement = lireAssemble(dossier, "src/lib/referencement.ts");
+      expect(descriptionEcrite(referencement)).toBe(DESCRIPTION);
+      expect(referencement).toContain("sitePublic: true,");
+      // Le nom du site suit NOM_APP : une seule source, pas deux copies à garder alignées.
+      expect(referencement).toContain("nom: NOM_APP,");
+      expect(valeursDeRemplacementRestantes(dossier)).toEqual([]);
+    }
+  );
+
+  it(
+    "nomme le service et la base de render.yaml d'après appli (celui du paquet, que --nom l'emporte), la base seulement avec la brique qui la garde",
+    { timeout: ENTIER },
+    () => {
+      const avecBase = assemblerEnTemporaire(AVEC_BASE, { blueprint: blueprintDe(entetePublic) }).dossier;
+      const render = lireAssemble(avecBase, "render.yaml");
+      expect(render).toMatch(/^ {4}name: tours-de-coloc$/m);
+      expect(render).toMatch(/^ {10}name: tours-de-coloc-db$/m);
+      expect(render).toMatch(/^ {2}- name: tours-de-coloc-db$/m);
+      // Le service de production et la base qu'il vise se désignent par le même nom.
+      expect(render.match(/tours-de-coloc-db/g)).toHaveLength(2);
+
+      const sansBase = assemblerEnTemporaire(SANS_BASE, { blueprint: blueprintDe(entetePublic) }).dossier;
+      const renderSansBase = lireAssemble(sansBase, "render.yaml");
+      expect(renderSansBase).toMatch(/^ {4}name: tours-de-coloc$/m);
+      expect(renderSansBase).not.toContain("mon-appli");
+      expect(renderSansBase).not.toContain("-db");
+      expect(valeursDeRemplacementRestantes(sansBase)).toEqual([]);
+
+      const sortie = dossierTemporaireVide();
+      assembler({
+        source: SOURCE,
+        sortie,
+        commit: COMMIT_DE_TEST,
+        ...SANS_BASE,
+        blueprint: blueprintDe(entetePublic),
+        nom: "Suivi des Tours",
+      });
+      expect(lireAssemble(sortie, "render.yaml")).toMatch(/^ {4}name: suivi-des-tours$/m);
+    }
+  );
+
+  it(
+    "nomme le service même sans champs d'affichage dans l'en-tête (le renommage oublié ne se voit pas), et garde alors NOM_APP à remplir",
+    { timeout: ENTIER },
+    () => {
+      const { dossier } = assemblerEnTemporaire(SANS_BASE, { blueprint: blueprintDe("appli: tours-de-coloc") });
+      expect(lireAssemble(dossier, "render.yaml")).toMatch(/^ {4}name: tours-de-coloc$/m);
+      expect(lireAssemble(dossier, "src/lib/navigation.ts")).toContain('NOM_APP = "NOM_APP"');
+      expect(lireAssemble(dossier, "src/lib/referencement.ts")).toContain('description: "",');
+    }
+  );
+
+  it(
+    "écrit l'hébergeur dans les mentions légales avec la brique qui le connaît, et rien de ce qui engage la personne",
+    { timeout: ENTIER },
+    () => {
+      const { dossier } = assemblerEnTemporaire(AVEC_BASE, { blueprint: blueprintDe(entetePublic) });
+      const mentions = lireAssemble(dossier, "src/lib/mentions-legales.ts");
+      expect(mentions).toMatch(
+        /hebergeur: \{\n {4}nom: "Render Services, Inc.",\n {4}adresse: "",\n {4}telephone: "",\n {2}\},/
+      );
+      // Éditeur, courriel, directeur de la publication : tout reste annoncé « À compléter ».
+      expect(mentions).toMatch(/editeur: \{\n {4}nom: "",/);
+      expect(mentions).toContain('courriel: "",');
+      expect(mentions).toContain('directeurPublication: "",');
+
+      const sansHebergeur = assemblerEnTemporaire(SANS_DEPLOIEMENT, { blueprint: blueprintDe(entetePublic) }).dossier;
+      expect(lireAssemble(sansHebergeur, "src/lib/mentions-legales.ts")).toMatch(/hebergeur: \{\n {4}nom: "",/);
+      expect(existeAssemble(sansHebergeur, "render.yaml")).toBe(false);
+    }
+  );
+
+  it("laisse le site fermé aux moteurs quand la blueprint le dit fermé, ou ne le dit pas", { timeout: ENTIER }, () => {
+    const ferme = assemblerEnTemporaire(SANS_DEPLOIEMENT, {
+      blueprint: blueprintDe(`appli: tours-de-coloc\nnom_affiche: ${NOM_AFFICHE}\nsite: ferme`),
+    }).dossier;
+    expect(lireAssemble(ferme, "src/lib/referencement.ts")).toContain("sitePublic: false,");
+    const muet = assemblerEnTemporaire(SANS_DEPLOIEMENT, {
+      blueprint: blueprintDe(`appli: tours-de-coloc\nnom_affiche: ${NOM_AFFICHE}`),
+    }).dossier;
+    expect(lireAssemble(muet, "src/lib/referencement.ts")).toContain("sitePublic: false,");
+  });
+
+  it("lit une valeur entre apostrophes, ou sans guillemets avec un commentaire après elle", { timeout: ENTIER }, () => {
+    const { dossier } = assemblerEnTemporaire(SANS_DEPLOIEMENT, {
+      blueprint: blueprintDe(
+        "nom_affiche: 'L''ordre du jour'\ndescription: Une phrase sans guillemets # à relire\nsite: public # décidé au cadrage"
+      ),
+    });
+    expect(lireAssemble(dossier, "src/lib/navigation.ts")).toContain(`NOM_APP = "L'ordre du jour";`);
+    const referencement = lireAssemble(dossier, "src/lib/referencement.ts");
+    expect(referencement).toContain('description: "Une phrase sans guillemets",');
+    expect(referencement).toContain("sitePublic: true,");
+  });
+
+  it("refuse, sans rien écrire, une valeur qui ne tient pas sur une ligne ou dont le guillemet est mal fermé (elle s'écrirait telle quelle dans le code)", () => {
+    for (const ligne of [
+      'nom_affiche: "Mon appli" suite',
+      "description: >",
+      "description: [a, b]",
+      "nom_affiche: 'x",
+    ]) {
+      const sortie = dossierTemporaireVide();
+      const blueprint = blueprintDe(`appli: tours-de-coloc\n${ligne}`);
+      expect(
+        () => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...SANS_DEPLOIEMENT, blueprint }),
+        ligne
+      ).toThrow(/une valeur sur une seule ligne/);
+      expect(fs.readdirSync(sortie), ligne).toEqual([]);
+    }
+  });
+
+  it("refuse, sans rien écrire, un choix de site que l'assembleur ne comprend pas (« publique » ne se lit pas « public »)", () => {
+    for (const site of ["publique", "oui", "true"]) {
+      const sortie = dossierTemporaireVide();
+      const blueprint = blueprintDe(`appli: tours-de-coloc\nsite: ${site}`);
+      expect(
+        () => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...SANS_DEPLOIEMENT, blueprint }),
+        site
+      ).toThrow(/site : public ou ferme/);
+      expect(fs.readdirSync(sortie), site).toEqual([]);
+    }
+  });
+});
+
 // Le versionnement que l'humain tapait à la main est fait par
 // l'assembleur, en local seulement.
 describe("versionnement de l'appli assemblée", () => {

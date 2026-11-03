@@ -376,7 +376,7 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    décision à prendre maintenant, avec ce que coûterait de les ajouter plus tard), et les
    textes que l'ajout rend faux : « n'en recevra pas après coup » (`creer-appli`, étapes 1
    et 2), « pas outillé » (README de la brique notifications), et ceux qui disent l'en-tête
-   de la blueprint lu pour `appli` et `commit_reference` seulement (`blueprint-modele.md`,
+   de la blueprint lu pour `appli`, `nom_affiche`, `description`, `site` et `commit_reference` seulement (`blueprint-modele.md`,
    le commentaire de la blueprint minimale dans `assembler.mjs`). Fait quand deux cas
    d'essai passent :
    - une appli `comptes,mails` retouchée (droits, menu, registre, politique, une étape de

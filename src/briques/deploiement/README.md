@@ -72,9 +72,11 @@ request qui le fait : date, ce qui change pour l'appelant, raison.
 Claude ne les fait pas. Chaque étape se défait tant que la suivante n'a pas
 eu lieu.
 
-1. **Avant le Blueprint**, dans une PR : renommer `mon-appli` et `mon-appli-db`
-   dans `render.yaml`. Un service renommé après sa création quitte le
-   Blueprint, sans message.
+1. **Avant le Blueprint**, dans une PR : vérifier le nom du service et de la
+   base dans `render.yaml`. L'assembleur les a écrits d'après `appli` dans
+   l'en-tête de la blueprint (le nom du paquet, et `<nom>-db` pour la base) ;
+   un nom à changer se change ici, avant la création. Un service renommé après
+   sa création quitte le Blueprint, sans message.
 2. **Le coût** : un service web `0.5c-512mb` et une base `0.1c-256mb`, plus le
    stockage de la base, facturés chaque mois. Lire les prix sur
    render.com/pricing avant de créer.
@@ -98,7 +100,7 @@ eu lieu.
 5. **L'adresse** : celle que Render affiche sur la page du service.
 
    ```powershell
-   gh variable set DEPLOIEMENT_URL --body "https://mon-appli.onrender.com"
+   gh variable set DEPLOIEMENT_URL --body "https://<nom-du-service>.onrender.com"
    ```
 
 6. **GitHub** : protection de `main` avec le check `verifier` requis.
@@ -128,8 +130,9 @@ eu lieu.
    CNAME baissé à 300 s, *Custom Domains* sur Render, CNAME chez le registraire,
    puis `DEPLOIEMENT_URL` mise à jour avec le domaine, puis `URL_PUBLIQUE`
    (`https://<domaine>`) dans les variables du service.
-9. **Les mentions légales** : l'hébergeur (Render) dans
-   `src/lib/mentions-legales.ts`. La politique de confidentialité
+9. **Les mentions légales** : le nom de l'hébergeur (Render Services, Inc.)
+   est écrit par l'assembleur dans `src/lib/mentions-legales.ts` ; son adresse
+   et son téléphone se recopient de sa page de mentions légales. La politique de confidentialité
    (`/confidentialite`) le reprend, avec son lieu, la région de Francfort.
    Render est une société américaine : les garanties d'accès aux données
    depuis les États-Unis sont à faire valider par le client. L'en-tête
@@ -159,7 +162,8 @@ Cinq choses sont propres à Render, et seulement cinq.
 
 Puis réécrire, dans `tests/deploiement.test.ts`, le bloc « render.yaml :
 l'adaptateur Render » pour le nouveau fichier et le cas du lieu de
-l'hébergeur, et l'hébergeur dans les mentions légales.
+l'hébergeur, et l'hébergeur dans les mentions légales (l'assembleur y a écrit
+Render : le remplacer).
 
 **Ne changent pas** : le reste du job `deployer` (`needs`, condition,
 concurrence, attente de `/sante`), les noms `DEPLOIEMENT_URL`,
@@ -188,4 +192,3 @@ Tests dans `tests/deploiement.test.ts`.
 | Question | Qui tranche | Avant quelle étape |
 | --- | --- | --- |
 | La base est fermée à Internet (`ipAllowList: []`) : un script de données ou une restauration demande d'ouvrir son adresse IP le temps de l'opération. Garder ce défaut ? | Responsable du projet | Avant le premier Blueprint |
-| Le nom du service (`mon-appli`) n'est pas remplacé par l'assembleur : à renommer à la main avant le Blueprint. L'assembleur doit-il le faire ? | Responsable du projet | Avant la deuxième appli mise en ligne |
