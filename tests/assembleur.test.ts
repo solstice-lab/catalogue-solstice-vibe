@@ -11,6 +11,7 @@ import {
   estUnSecret,
   planifier,
   retirerLesDependances,
+  rolesDeLApp,
 } from "../outils/assembler.mjs";
 import {
   ADRESSE_IP,
@@ -1669,6 +1670,27 @@ describe("entrée de l'appli écrite par l'assembleur depuis la blueprint", () =
     )?.[1];
     const declarees = [...(type ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
     expect(declarees).toEqual([...METHODES_DE_CONNEXION, "demo"].sort());
+  });
+
+  it("lit les rôles dans la déclaration de acces.ts, pas dans l'exemple du commentaire de tête (un rôle ajouté à ROLES aurait été refusé)", () => {
+    const reel = fs.readFileSync(path.join(SOURCE, "src/config/acces.ts"), "utf-8");
+    expect(rolesDeLApp(reel)).toEqual({ connus: ["membre", "admin"], roleAdmin: "admin" });
+    const avecUnRoleDePlus = reel.replace(
+      'export const ROLES = ["membre", "admin"]',
+      'export const ROLES = ["membre", "lecteur", "admin"]'
+    );
+    expect(avecUnRoleDePlus).not.toBe(reel);
+    expect(rolesDeLApp(avecUnRoleDePlus).connus).toEqual(["membre", "lecteur", "admin"]);
+    expect(() => rolesDeLApp("// rien\n")).toThrow(ErreurAssemblage);
+  });
+
+  it("refuse une valeur qui se poursuit sur la ligne suivante (une liste en bloc lue comme vide laisserait l'entrée au défaut, sans un mot)", () => {
+    const sortie = dossierTemporaireVide();
+    const blueprint = blueprintDe("methodes:\n  - code-email\n  - google");
+    expect(() => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...AVEC_COMPTES, blueprint })).toThrow(
+      /une valeur sur une seule ligne/
+    );
+    expect(fs.readdirSync(sortie)).toEqual([]);
   });
 
   it("refuse une entrée déclarée sans la brique comptes : promettre une connexion qu'elle ne donnerait pas", () => {

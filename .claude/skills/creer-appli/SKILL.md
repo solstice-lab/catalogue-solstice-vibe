@@ -557,7 +557,7 @@ la production** : retirer `"demo"` de `METHODES` (`src/config/comptes.ts`) avant
 première mise en ligne, sinon le déploiement échoue ; `COMPTES_PREMIER_ADMIN` se déclare
 chez l'hébergeur. Si le client veut se connecter avec Google (Workspace ou Gmail) :
 créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`,
-(`"google"` est déjà dans `METHODES` si la blueprint le déclare ; sinon l'y ajouter) et, pour un client Workspace, ses domaines à
+ajouter `"google"` à `METHODES` (déjà fait si la blueprint le déclare) et, pour un client Workspace, ses domaines à
 `DOMAINES_GOOGLE_WORKSPACE` (section « La connexion avec Google » du README de la
 brique). Et ce que l'assembleur n'a **pas** fait :
 `src/lib/format.ts` garde le fuseau du

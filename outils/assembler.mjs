@@ -591,6 +591,14 @@ function noterLeCommit(markdown, commit) {
  */
 function ligneDeLEntete(markdown, cle) {
   const entete = /^---\n([\s\S]*?)\n---/.exec(markdown)?.[1] ?? "";
+  // Une valeur qui se poursuit sur la ligne suivante (liste en bloc, texte replié) :
+  // lue comme vide, elle ferait retomber l'appli sur sa valeur de remplacement,
+  // sans un mot.
+  if (new RegExp(`^${cle}:.*\\n[ \\t]+\\S`, "m").test(entete)) {
+    throw new ErreurAssemblage(
+      `En-tête de la blueprint, ${cle} : une valeur sur une seule ligne est attendue (pas de suite sur la ligne d'après).`
+    );
+  }
   return new RegExp(`^${cle}:[ \\t]*(.*?)[ \\t]*$`, "m").exec(entete)?.[1];
 }
 
@@ -653,6 +661,27 @@ function valeursDeLEntete(markdown) {
   };
 }
 
+/**
+ * Les rôles de l'appli et celui qui administre, lus dans src/config/acces.ts.
+ * Les déclarations sont ancrées en début de ligne : le commentaire de tête du
+ * fichier cite un exemple `export const ROLES = ["membre"] as const;`, que la
+ * première correspondance aurait pris pour les rôles de l'appli (tout rôle
+ * ajouté aurait été refusé).
+ * @param {string} acces le texte de src/config/acces.ts
+ * @returns {{ connus: string[], roleAdmin: string }}
+ */
+export function rolesDeLApp(acces) {
+  const texte = acces.replace(/\r\n/g, "\n");
+  const roles = /^export const ROLES = \[([^\]]*)\] as const;/m.exec(texte)?.[1].match(/"([^"]+)"/g);
+  const roleAdmin = /^export const ROLE_ADMIN: Role = "([^"]+)";/m.exec(texte)?.[1];
+  if (!roles || !roleAdmin) {
+    throw new ErreurAssemblage(
+      "src/config/acces.ts : ROLES et ROLE_ADMIN introuvables (outils/assembler.mjs est à jour du code ?)."
+    );
+  }
+  return { connus: roles.map((role) => role.slice(1, -1)), roleAdmin };
+}
+
 /*
  * L'entrée de l'appli que déclare l'en-tête : `entree` (ouverte ou ferme),
  * `role_par_defaut` et `methodes`. Refusée avant toute écriture :
@@ -680,15 +709,8 @@ function entreeDeLEntete(markdown, { unites, racine }) {
     );
   }
   if (roleParDefaut !== undefined) {
-    const acces = fs.readFileSync(path.join(racine, "src/config/acces.ts"), "utf-8").replace(/\r\n/g, "\n");
-    const roles = /export const ROLES = \[([^\]]*)\] as const;/.exec(acces)?.[1].match(/"([^"]+)"/g);
-    const roleAdmin = /export const ROLE_ADMIN: Role = "([^"]+)";/.exec(acces)?.[1];
-    if (!roles || !roleAdmin) {
-      throw new ErreurAssemblage(
-        "src/config/acces.ts : ROLES et ROLE_ADMIN introuvables (outils/assembler.mjs est à jour du code ?)."
-      );
-    }
-    const connus = roles.map((role) => role.slice(1, -1));
+    const acces = fs.readFileSync(path.join(racine, "src/config/acces.ts"), "utf-8");
+    const { connus, roleAdmin } = rolesDeLApp(acces);
     if (roleParDefaut === roleAdmin) {
       throw new ErreurAssemblage(
         `En-tête de la blueprint, role_par_defaut : « ${roleParDefaut} » est un rôle qui administre, jamais le rôle par défaut (n'importe quelle adresse entrée par l'entrée ouverte ou par un domaine l'obtiendrait).`
@@ -884,8 +906,9 @@ function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
     "# Blueprint de l'appli, créée par outils/assembler.mjs. L'en-tête ne porte que",
-    "# l'essentiel, en clair : l'assembleur en lit appli, nom_affiche, description, site",
-    "# et commit_reference ; tout le reste est dans le corps, à écrire.",
+    "# l'essentiel, en clair : l'assembleur en lit appli, nom_affiche, description, site,",
+    "# entree, role_par_defaut, methodes et commit_reference ; tout le reste est dans le",
+    "# corps, à écrire.",
     "format: 1",
     `appli: ${nom}`,
     "statut: assemblée depuis le catalogue, à décrire",
@@ -1108,7 +1131,8 @@ const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste
   --blueprint <fichier>  une blueprint existante, copiée dans le dossier avec le
                       commit de référence mis à jour (défaut : une blueprint minimale).
                       Son en-tête donne aussi le nom affiché (nom_affiche), la description
-                      et le choix site: public ou ferme, écrits dans l'appli
+                      et le choix site: public ou ferme, écrits dans l'appli ; avec la
+                      brique comptes, l'entrée (entree, role_par_defaut, methodes)
   --fiche <fichier>   la fiche projet, copiée telle quelle en PROJET.md à la racine
                       (défaut : pas de PROJET.md)
   --dependabot        garder .github/dependabot.yml, à demander quand quelqu'un entretient
