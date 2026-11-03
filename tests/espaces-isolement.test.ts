@@ -21,7 +21,7 @@ const IMPORTS_PERMIS = [
   /^@\/ui$/,
   /^@\/lib\/format$/,
   /^@\/lib\/db\/client$/,
-  /^@\/config\/espaces$/,
+  /^@\/config\/(espaces|effets-espaces)$/,
   /^@\/briques\/comptes\/(roles|effets)$/,
   /^@\/briques\/mails\/envoi$/,
 ];

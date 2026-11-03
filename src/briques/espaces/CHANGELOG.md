@@ -23,3 +23,29 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : dans l'essai tours-de-coloc, cinq tickets sur seize
   réécrivaient les groupes, leurs invitations et le filtrage par groupe, la
   partie la plus risquée de l'appli.
+
+## 2026-11-03 · Effets d'un départ d'espace · Ajout
+
+- **Ce qui change** : un registre des effets d'un départ,
+  `src/config/effets-espaces.ts` (`EFFETS_DEPARTS`), et ses types dans
+  `departs.ts` (`EffetsDeDepart`, `EffetDeDepart`, `DepartDEspace`,
+  `MotifDuDepart`). Quitter, retirer un membre, désactiver et effacer un
+  compte jouent les effets déclarés dans la transaction du geste, sous le
+  verrou de l'espace, une fois l'adhésion terminée ; chaque effet reçoit
+  l'exécuteur, l'espace, le compte, l'adhésion et le motif (`parti`,
+  `retire`, `compte-desactive`, `compte-efface`). Un effet qui lève annule le
+  geste : `quitter` et `retirerMembre` lèvent alors au lieu de rendre un
+  refus. `tests/espaces-departs.test.ts` verrouille qu'un effet écrit par
+  l'exécuteur reçu.
+- **Appelant** : rien à changer, le registre est livré vide. Un module qui
+  sautait les adhésions terminées à la lecture peut déclarer son effet
+  (README, « La brancher », point 4) ; la copie d'une appli assemblée avant
+  cette entrée reçoit en plus `src/config/effets-espaces.ts`,
+  `src/briques/espaces/departs.ts` et `tests/espaces-departs.test.ts`, et la
+  liste blanche de `tests/espaces-isolement.test.ts` admet
+  `@/config/effets-espaces`.
+- **Pourquoi** : au réassemblage de tours-de-coloc, quitter et être retiré ne
+  prévenaient aucun module, alors que la désactivation et l'effacement
+  passaient par le registre des effets de comptes ; l'ordre des tours, les
+  tours futurs et les échanges en attente gardaient l'ancien membre, sauf à
+  y penser dans chaque lecture.

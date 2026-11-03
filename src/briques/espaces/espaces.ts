@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { query, transaction, type ExecuteurSql } from "@/lib/db/client";
 import { ESPACES } from "@/config/espaces";
 import { ALPHABET_CODE, LONGUEUR_CODE, normaliserCode } from "./code";
+import { jouerLesEffetsDuDepart } from "./departs";
 import type { Adhesion, Espace, MotifDepart, Refus, RoleEspace } from "./domaine";
 import { verifierNom, verifierPrenom } from "./saisie";
 
@@ -33,7 +34,9 @@ import { verifierNom, verifierPrenom } from "./saisie";
  * (effets-comptes.ts), qui tiennent la ligne du compte, écrite par la brique
  * comptes, avant de prendre celles des espaces.
  *
- * Une adhésion ne se supprime jamais : elle se termine (départ et motif).
+ * Une adhésion ne se supprime jamais : elle se termine (départ et motif), et
+ * les modules en sont prévenus dans la même transaction, sous le verrou de
+ * l'espace (departs.ts).
  */
 
 type Personne = { email: string };
@@ -273,14 +276,16 @@ export async function quitter(personne: Personne, espaceId: number): Promise<Ref
       return dernierGestionnaire(true);
     }
     await terminer(tx, adhesion.id, "parti");
+    await jouerLesEffetsDuDepart(tx, { espaceId, utilisateurId, adhesionId: adhesion.id, motif: "parti" });
   });
 }
 
 // Un membre en cours de cet espace, désigné par son adhésion.
 async function cibleDans(executeur: ExecuteurSql, espaceId: number, adhesionId: number) {
   if (!Number.isInteger(adhesionId)) return null;
-  const [cible] = await executeur.query<AdhesionEnCours>(
-    "SELECT id, role, prenom FROM espaces_adhesions WHERE id = $1 AND espace_id = $2 AND depart_le IS NULL",
+  const [cible] = await executeur.query<AdhesionEnCours & { utilisateur_id: number }>(
+    `SELECT id, role, prenom, utilisateur_id FROM espaces_adhesions
+      WHERE id = $1 AND espace_id = $2 AND depart_le IS NULL`,
     [adhesionId, espaceId]
   );
   return cible ?? null;
@@ -299,6 +304,12 @@ export async function retirerMembre(
     if (!cible) return MEMBRE_INTROUVABLE;
     if (cible.id === acteur.id) return { erreur: `Pour partir, quittez ${vocabulaire().le}.` };
     await terminer(tx, cible.id, "retire");
+    await jouerLesEffetsDuDepart(tx, {
+      espaceId,
+      utilisateurId: cible.utilisateur_id,
+      adhesionId: cible.id,
+      motif: "retire",
+    });
   });
 }
 
