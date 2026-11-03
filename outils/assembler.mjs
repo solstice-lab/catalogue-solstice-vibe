@@ -530,8 +530,10 @@ function preparerLeDepot(destination, premierCree) {
 
 // Dependabot est tracé dans le commit : sans cela, l'absence du fichier dans
 // l'appli livrée ne dit pas si elle est voulue (--dependabot) ou accidentelle.
-// `manifeste` : écrit une fois les fichiers dans l'index, dont il lit les empreintes.
-function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dependabot, manifeste }) {
+// `manifeste` : écrit une fois les fichiers dans l'index, dont il lit les empreintes,
+// puis remis en forme par `formater` : au format 2, ses listes s'écrivent sur une
+// ligne pour Prettier, et la CI de l'appli refusait sinon son premier commit.
+function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dependabot, manifeste, formater }) {
   const corps = [
     "Assemblée par l'assembleur du catalogue Solstice-vibe. Dépôt local, sans remote : rien n'est poussé.",
     "",
@@ -547,6 +549,7 @@ function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dep
     // copié compte.
     git(destination, "-c", "core.excludesFile=", "add", "-A");
     fs.writeFileSync(path.join(destination, MANIFESTE), manifeste());
+    formater([MANIFESTE]);
     git(destination, "-c", "core.excludesFile=", "add", "--", MANIFESTE);
     git(
       destination,
@@ -1162,6 +1165,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
         fichiers: venusDuCatalogue,
         uniteDe,
       }),
+    formater: (fichiers) => mettreEnForme(prettier, destination, fichiers),
   });
 
   return { fichiers: ecrits, retires: retirees, ajoutees, commitInitial };
