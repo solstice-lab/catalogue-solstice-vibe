@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { supprimerTousLesComptes } from "./aide-comptes";
 import { query, queryOne, transaction } from "../src/lib/db/client";
@@ -110,6 +112,28 @@ function sousGarde(effets: EffetsDeCompte, joues: string[]): EffetsDeCompte {
   return garde;
 }
 
+const POOL = ["query", "queryOne", "transaction"];
+
+// Les noms du pool qu'un source importe du client de base, hors import de type.
+function importsDuPool(source: string): string[] {
+  const motif = /import\s+(type\s+)?\{([^}]*)\}\s*from\s*["']([^"']*lib\/db\/client)["']/g;
+  return [...source.matchAll(motif)]
+    .filter((correspondance) => !correspondance[1])
+    .flatMap((correspondance) => correspondance[2].split(","))
+    .map((nom) => nom.trim())
+    .filter((nom) => !nom.startsWith("type "))
+    .map((nom) => nom.split(/\s+as\s+/)[0])
+    .filter((nom) => POOL.includes(nom));
+}
+
+// Les fichiers dont le registre de l'appli importe ses entrées, hors types.
+function fichiersDEffets(): string[] {
+  const registre = fs.readFileSync(path.join(process.cwd(), "src", "config", "effets-comptes.ts"), "utf-8");
+  return [...registre.matchAll(/^import\s+(?!type\s)[^;]*?from\s*"@\/([^"]+)";/gm)].map((correspondance) =>
+    path.join(process.cwd(), "src", `${correspondance[1]}.ts`)
+  );
+}
+
 // Le verrou : les trois gestes, chacun sur un compte qu'il change vraiment,
 // avec ces entrées au registre sous la garde du pool. Rend les effets partis
 // et les gestes en échec, avec leur raison.
@@ -161,14 +185,17 @@ describe("verrou : un effet du registre se joue dans la transaction du geste (to
     );
   });
 
-  it("attrape un effet qui passe par le pool : une écriture par query(), une transaction à lui (cas fautif)", async () => {
+  it("attrape un effet qui passe par le pool : une écriture par query(), une lecture par queryOne(), une transaction à lui (cas fautif)", async () => {
     const fautif: EffetsDeCompte = {
       unite: "fautif",
       desactivation: async (_tx, { id }) => {
         await query("UPDATE utilisateurs SET role = role WHERE id = $1", [id]);
       },
+      // Ce que la transaction reçue lit passe ; la lecture suivante, par le
+      // pool, non.
       reactivation: async (tx, { id }) => {
         await tx.query("SELECT 1 FROM utilisateurs WHERE id = $1", [id]);
+        await queryOne("SELECT 1 FROM utilisateurs WHERE id = $1", [id]);
       },
       effacement: async () => {
         await transaction(async () => undefined);
@@ -178,8 +205,38 @@ describe("verrou : un effet du registre se joue dans la transaction du geste (to
     expect(joues).toEqual(["fautif : desactivation", "fautif : reactivation", "fautif : effacement"]);
     expect(fautes).toEqual([
       expect.stringMatching(/^desactivation : query\(\) appelé pendant un effet/),
+      expect.stringMatching(/^reactivation : queryOne\(\) appelé pendant un effet/),
       expect.stringMatching(/^effacement : transaction\(\) appelé pendant un effet/),
     ]);
+  });
+
+  // Le jeu ci-dessus ne voit que les branches qu'un compte « membre » sans rien
+  // autour fait parcourir : un effet qui ne passerait par le pool que dans un
+  // cas rare (nommer un autre gestionnaire) lui échapperait. Le fichier qui
+  // déclare les effets d'une unité n'importe donc pas le pool.
+  it("aucun fichier d'effets du registre n'importe query, queryOne ni transaction du client de base", () => {
+    const fichiers = fichiersDEffets();
+    const fautifs = fichiers.flatMap((fichier) =>
+      importsDuPool(fs.readFileSync(fichier, "utf-8")).map(
+        (nom) => `${path.relative(process.cwd(), fichier)} importe « ${nom} »`
+      )
+    );
+    expect(fautifs).toEqual([]);
+    // Chaque entrée du registre vient d'un fichier lu ici.
+    expect(fichiers).toHaveLength(etat.vrai.length);
+  });
+
+  it("attrape un fichier d'effets qui importe le pool, et laisse passer le type de l'exécuteur (cas fautif)", () => {
+    const source = [
+      `import { query, type ExecuteurSql } from "@/lib/db/client";`,
+      `import {`,
+      `  queryOne,`,
+      `  transaction as ouvrir,`,
+      `} from "../../lib/db/client";`,
+      `import type { transaction } from "@/lib/db/client";`,
+      `import { journaliser } from "./journal";`,
+    ].join("\n");
+    expect(importsDuPool(source)).toEqual(["query", "queryOne", "transaction"]);
   });
 });
 

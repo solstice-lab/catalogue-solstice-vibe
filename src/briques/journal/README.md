@@ -139,7 +139,8 @@ jamais dans `schema.sql`, avec ses trois index et son trigger dans la même
 
 La brique exige `donnees` et `comptes` : elle lit la personne de la session
 (`utilisateurCourant`) et les droits (`peut`) de `roles.ts`, et la table
-`utilisateurs`. Elle n'importe que le socle, le client de base et `roles.ts` :
+`utilisateurs`. Elle n'importe que le socle, le client de base, `roles.ts` et le type des
+effets de comptes (`effets.ts`) :
 `tests/journal-isolement.test.ts` le verrouille.
 
 ## Interface publique

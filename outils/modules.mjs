@@ -332,8 +332,8 @@ export const BRIQUES = {
     ],
   },
   // La session en base, la protection des routes, /connexion et
-  // les droits (exiger, peut, visiblePour). src/config/acces.ts et comptes.ts
-  // sont les fichiers que l'appli remplit, mais ils importent les types de la
+  // les droits (exiger, peut, visiblePour). src/config/acces.ts, comptes.ts et
+  // effets-comptes.ts sont les fichiers que l'appli remplit, mais ils importent les types de la
   // brique : ils partent avec elle. Les écrans du patron dossiers l'exigent,
   // chacune de leurs pages appelant exiger (PATRON_DOSSIERS).
   comptes: {

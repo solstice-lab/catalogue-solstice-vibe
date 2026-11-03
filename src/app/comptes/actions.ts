@@ -35,7 +35,9 @@ const entier = (valeur: unknown) =>
   Number.isInteger(valeur) && Math.abs(valeur as number) <= ENTIER_MAX ? (valeur as number) : 0;
 
 // Brique journal : la personne que le garde a rendue est l'auteur de la trace.
-// Comptes ne peut pas importer le journal, qui l'exige : la trace lui est passée.
+// Comptes ne peut pas importer le journal, qui l'exige : la trace lui est passée
+// pour inviter, changer un rôle, ouvrir et fermer un domaine. Désactiver et
+// réactiver passent l'auteur au registre des effets de comptes.
 const tracer = (personne: Auteur) => (tx: Transaction, geste: Evenement) => journaliser(tx, personne, geste);
 // Fin de la brique journal.
 

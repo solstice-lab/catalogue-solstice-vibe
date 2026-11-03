@@ -539,7 +539,7 @@ describe("tables de l'administration", () => {
   });
 });
 
-// Désactiver et réactiver ne prennent plus de trace : le journal les trace par
+// Désactiver et réactiver ne prennent pas de trace : le journal les trace par
 // le registre des effets de comptes (tests/comptes-effets.test.ts).
 describe("la trace d'un geste (le point d'accroche du journal d'audit)", () => {
   it("s'écrit dans la transaction du geste : une trace qui échoue annule le geste, un geste refusé ne l'appelle pas", async () => {

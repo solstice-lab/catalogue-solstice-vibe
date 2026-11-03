@@ -12,9 +12,9 @@ import { normaliserAdresse } from "./export";
  * confirmer est ce que la confirmation fera, refus compris.
  *
  * Ce que l'effacement d'un compte entraîne ailleurs (le journal d'audit, un
- * prénom affiché par un module) ne passe plus par une trace donnée par
- * l'appelant : la source du compte joue les effets du registre des effets de
- * comptes (src/config/effets-comptes.ts), au nom du demandeur.
+ * prénom affiché par un module) se déclare au registre des effets de comptes
+ * (src/config/effets-comptes.ts) : la source du compte le joue, au nom du
+ * demandeur, et l'appelant n'a rien à brancher.
  *
  * La brique n'importe pas la base : l'appelant lui passe sa fonction de
  * transaction.
@@ -25,7 +25,7 @@ export type ExecuteurEffacement = {
   query: (texte: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
 };
 
-/** L'admin qui efface, son adresse normalisée : l'auteur de ce qu'une source trace. */
+/** L'admin qui efface, son adresse normalisée : l'auteur que reçoivent les effets d'effacement. */
 export type AuteurEffacement = { email: string };
 
 /** Ce qu'une source a fait de ses lignes, ou son refus, qui annule tout l'effacement. */
@@ -44,7 +44,7 @@ export type BilanEffacement = {
 
 export type OptionsEffacement = {
   transaction: <T>(travail: (executeur: ExecuteurEffacement) => Promise<T>) => Promise<T>;
-  /** L'adresse de l'admin qui efface : il n'efface pas la sienne, et il est l'auteur de ce qui se trace. */
+  /** L'adresse de l'admin qui efface : il n'efface pas la sienne, et il est l'auteur des effets d'effacement. */
   demandeur: string;
 };
 

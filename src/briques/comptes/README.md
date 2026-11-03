@@ -190,8 +190,9 @@ tickets y ajoutaient chacun leur effet.
   `query()`, `queryOne()` ni `transaction()` : une écriture faite par le pool
   resterait quand le geste est annulé, et attendrait souvent la ligne que la
   transaction tient. `tests/comptes-effets.test.ts` joue chaque effet du
-  registre sous un pool qui refuse toute requête, et prouve sa sensibilité sur
-  un effet fautif.
+  registre sous un pool qui refuse toute requête, refuse un fichier d'effets
+  qui importe `query`, `queryOne` ou `transaction` (pour les branches que le
+  jeu ne parcourt pas), et prouve sa sensibilité sur des cas fautifs.
 - **Rien d'autre qu'une écriture en base** : l'aperçu d'un effacement (brique
   rgpd) joue les effets puis les annule, et un mail envoyé par un effet
   partirait quand même.

@@ -31,7 +31,8 @@ export type SourceDonnees = {
   // que ExecuteurEffacement, et TypeScript ne l'accepte ainsi qu'en méthode.
   /**
    * Efface ou anonymise les lignes de l'adresse (minuscules, sans espaces), dans la transaction reçue.
-   * `auteur` : l'admin qui efface, pour ce que la source trace (le compte, au journal d'audit).
+   * `auteur` : l'admin qui efface, que la source du compte passe aux effets d'effacement du registre
+   * des effets de comptes (src/config/effets-comptes.ts).
    */
   effacer(executeur: ExecuteurEffacement, adresse: string, auteur: AuteurEffacement): Promise<EffacementSource>;
 };
