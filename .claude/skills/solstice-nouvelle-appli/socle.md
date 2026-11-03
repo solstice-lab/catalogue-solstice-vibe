@@ -115,6 +115,13 @@ qui ne tourne qu'après la fusion), branche à jour
 avant fusion, fusion en squash seulement, et seules les personnes responsables des fusions
 peuvent fusionner.
 
+**GitHub refuse ce ruleset sur un dépôt privé du forfait gratuit** (« Upgrade to GitHub Pro or
+make this repository public », vu sur un dépôt privé le 2026-11-03) : il faut un dépôt public,
+ou un forfait Pro, Team ou Enterprise. À vérifier avant de créer le dépôt, pas après : sans
+protection, rien n'empêche une fusion sans CI verte. Choix possibles : dépôt public, forfait
+payant, ou dépôt privé sans protection en connaissance de cause (la CI tourne mais ne bloque
+pas : la personne qui fusionne lit le check `verifier` avant chaque fusion).
+
 ## Render (`render.yaml`)
 
 La brique déploiement le porte, commenté de ses pièges et verrouillé par

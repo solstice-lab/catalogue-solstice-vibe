@@ -205,7 +205,12 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   `dossiers`, brancher les briques « à brancher », écrire les scripts de données de la
   section 6, retirer la signature si la section 5 le dit, écrire l'adaptateur de
   déploiement si `deploiement` est gardée pour un hébergeur autre que Render : chaque point
-  qui s'applique, dans l'ordre, un ticket chacun.
+  qui s'applique, dans l'ordre, un ticket chacun. Le format est celui de
+  `.claude/skills/creer-appli/blueprint-modele.md` (outil des issues) : une étape par
+  `### 9.n Titre`, numérotée sans trou depuis 9.1, avec `Vérifiable à l'écran :` et
+  `Bloqué par :` (« aucune » ou des étapes précédentes). Une section 9 en liste numérotée,
+  une étape sans l'un des champs ou qui dépend d'une étape suivante est un « à corriger » :
+  l'outil la refuserait.
 - Import (`import-lot`) gardé : un vrai fichier anonymisé du client est une question ouverte
   tant qu'on n'en a pas lu un (cas vécu sur un prototype de demande d'achat : la clé de
   rapprochement supposée n'était pas dans le fichier de la comptabilité).

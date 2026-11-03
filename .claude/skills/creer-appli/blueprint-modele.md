@@ -173,7 +173,7 @@ la description, puis :
    v1 »).
 8. **Questions ouvertes** : avec qui tranche et avant quelle étape, reprises de la fiche.
 9. **Pour poursuivre** : ce que l'assembleur ne fait pas et qui reste à faire, dans
-   l'ordre, chaque étape un ticket (socle prêt pour la prod et découpage :
+   l'ordre, chaque étape un ticket, au format décrit après cette liste (socle prêt pour la prod et découpage :
    `solstice-nouvelle-appli` §4 et §5) : vérifier ce que l'assembleur a écrit de l'en-tête (`NOM_APP`, la description et
    `sitePublic` du référencement, les noms du service et de la base de `render.yaml`,
    l'hébergeur des mentions légales ; ce qu'un champ absent a laissé à sa valeur de
@@ -192,6 +192,42 @@ la description, puis :
    Render (avec la brique `deploiement`). Avec la brique `comptes` : retirer `"demo"` de
    `METHODES` (`src/config/comptes.ts`) avant la première mise en ligne, car elle refuse la
    production ; elle reste en local, que la blueprint la déclare ou non.
+
+   **Format lu par l'outil des issues** (`outils/creer-issues.mjs`, étape 6 de `SKILL.md`) :
+   un paragraphe d'introduction libre, puis une étape par sous-titre `### 9.n Titre`, numérotée
+   9.1, 9.2… sans trou, dans l'ordre où elles se font. Sous chaque titre :
+   - le **contenu**, libre (paragraphes, listes, sous-titres d'un autre niveau) : ce qui est
+     à faire, avec les fichiers et les règles de la blueprint. Il devient le corps de l'issue ;
+   - `Vérifiable à l'écran :` ce que la personne ouvre pour constater que l'étape est faite
+     (une URL, un écran, un cas à essayer) ; une étape sans rien à voir à l'écran dit ce qui la
+     prouve à la place (la sortie d'une commande) ;
+   - `Bloqué par :` `aucune`, ou les étapes précédentes séparées par des virgules (`9.1, 9.3`).
+     Une étape ne dépend jamais d'elle-même ni d'une suivante.
+
+   Les deux champs s'écrivent chacun en début de ligne, à la suite du contenu. Le titre est
+   celui de l'issue et ne se répète pas d'une étape à l'autre. Une étape est une tranche de
+   bout en bout, vérifiable en une fois (`solstice-livrer`, §1) : trop grosse, elle se découpe
+   ici, pas dans l'issue.
+
+   ```markdown
+   ## 9. Pour poursuivre
+
+   Chaque étape est un ticket, dans cet ordre, avec la skill `solstice-livrer`.
+
+   ### 9.1 Socle prêt pour la prod
+
+   Vérifier ce que l'assembleur a écrit de l'en-tête, régler `src/lib/format.ts`.
+
+   Vérifiable à l'écran : le titre de l'onglet porte le nom affiché de l'appli.
+   Bloqué par : aucune
+
+   ### 9.2 Entrée ouverte
+
+   Poser `ouverte: true` dans `ENTREE` et l'action du module dans `src/config/acces.ts`.
+
+   Vérifiable à l'écran : `/connexion` accepte une adresse qui n'est dans aucune liste.
+   Bloqué par : 9.1
+   ```
 
 ## Ce que la blueprint ne cite pas
 

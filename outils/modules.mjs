@@ -65,6 +65,9 @@ export const EXCLUS_DU_CATALOGUE = [
   // Verrouillent l'assembleur : sans objet dans une copie qui ne l'a pas.
   "tests/assembleur.test.ts",
   "tests/aide-assemblage.ts",
+  // Verrouille l'outil des issues de la section 9 (outils/creer-issues.mjs),
+  // absent de l'appli : sans lui, ce test ne trouverait rien à importer.
+  "tests/creer-issues.test.ts",
   // Verrouille le job qui lance le test de l'assembleur (assemblage.yml).
   "tests/assemblage-ci.test.ts",
   // Prouve le build du socle sans base et lance le test de l'assembleur :
