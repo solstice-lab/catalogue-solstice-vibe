@@ -45,10 +45,14 @@ demander ce que le code ou le `CLAUDE.md` tranchent déjà.
 
 **La mise en ligne** (nouvelle appli seulement)
 - Les mentions légales, obligatoires pour tout site publié en France (LCEN, art. 6) :
-  l'éditeur (nom ou raison sociale, adresse, téléphone, courriel), le directeur de la
-  publication et, s'il y a lieu, forme juridique, capital, immatriculation (RCS ou
-  répertoire des métiers), numéro de TVA. Les demander dès le cadrage : faute de réponse,
-  la mise en ligne attend. L'hébergeur ne se demande pas au client : la personne qui
+  le statut de l'éditeur, puis, pour un éditeur professionnel, l'éditeur (nom ou raison
+  sociale, adresse, téléphone, courriel), le directeur de la publication et, s'il y a
+  lieu, forme juridique, capital, immatriculation (RCS ou répertoire des métiers),
+  numéro de TVA. Un particulier non professionnel (sans activité lucrative sur le site :
+  ni publicité, ni vente) peut ne publier que le nom et l'adresse de son hébergeur, s'il lui
+  a communiqué son identité (art. 6, III, 2) : ne demander alors que la confirmation de
+  cette communication ; le courriel des droits se demande au bloc suivant. Les demander
+  dès le cadrage : faute de réponse, la mise en ligne attend. L'hébergeur ne se demande pas au client : la personne qui
   mène le cadrage le renseigne d'après l'hébergement retenu.
 - La politique de confidentialité (RGPD, art. 13), obligatoire dès que le site traite des
   données personnelles, c'est-à-dire toujours (l'hébergeur reçoit l'adresse IP des
@@ -94,10 +98,13 @@ commit de la branche du premier ticket. Contenu :
 - la forme retenue, et chaque option écartée avec sa raison ;
 - les questions ouvertes, avec qui tranche et avant quelle étape ;
 - pour une nouvelle appli (pas pour un module ajouté à une appli existante), une rubrique
-  **Mentions légales** : les réponses du bloc « La mise en ligne », et l'hébergeur (nom,
+  **Mentions légales** : le statut de l'éditeur (professionnel, ou particulier non professionnel
+  qui ne publie que son hébergeur, avec la confirmation que son identité a été communiquée à
+  l'hébergeur), les réponses du bloc « La mise en ligne », et l'hébergeur (nom,
   adresse, téléphone) d'après l'hébergement retenu. Une réponse manquante s'écrit « à
   demander » et passe aussi aux questions ouvertes (le client, avant la mise en ligne).
-  Les valeurs se recopient dans `src/lib/mentions-legales.ts` (avec la brique
+  Les valeurs se recopient dans `src/lib/mentions-legales.ts` (`statutEditeur`, valeur
+  `"professionnel"` ou `"particulier"`, et `identiteCommuniqueeALHebergeur` pour un particulier ; avec la brique
   `deploiement`, l'assembleur y a déjà écrit le nom de l'hébergeur : adresse et
   téléphone restent à recopier), que la page
   `/mentions-legales` affiche ;

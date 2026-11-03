@@ -32,6 +32,7 @@ export default function PageConfidentialite() {
   const courriel = config.contact.courriel.trim();
   const lienCourriel = courriel === "" ? NON_RENSEIGNE : <a href={`mailto:${courriel}`}>{courriel}</a>;
   const delegue = config.contact.delegue.trim();
+  const particulier = mentions.statutEditeur === "particulier";
 
   const carteTraitement = (traitement: Traitement) => {
     const choix = config.choix[traitement.cle];
@@ -104,12 +105,24 @@ export default function PageConfidentialite() {
 
       <Carte titre="Responsable du traitement" actions={aCompleter("responsable")}>
         <dl className="sl-fiche">
-          <dt>Nom ou raison sociale</dt>
-          <dd>{valeur(mentions.editeur.nom)}</dd>
-          <dt>Coordonnées</dt>
-          <dd>
-            Voir les <Link href="/mentions-legales">mentions légales</Link>.
-          </dd>
+          {particulier ? (
+            <>
+              <dt>Responsable</dt>
+              <dd>
+                L&apos;éditeur du site, à titre non professionnel (voir les{" "}
+                <Link href="/mentions-legales">mentions légales</Link>). Il se joint par le courriel ci-dessous.
+              </dd>
+            </>
+          ) : (
+            <>
+              <dt>Nom ou raison sociale</dt>
+              <dd>{valeur(mentions.editeur.nom)}</dd>
+              <dt>Coordonnées</dt>
+              <dd>
+                Voir les <Link href="/mentions-legales">mentions légales</Link>.
+              </dd>
+            </>
+          )}
           <dt>Exercer vos droits</dt>
           <dd>{lienCourriel}</dd>
           {delegue !== "" && (

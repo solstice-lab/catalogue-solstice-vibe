@@ -41,6 +41,8 @@ vi.mock("@/lib/mentions-legales", async (importOriginal) => {
 
 // Valeurs factices : aucune vraie entreprise ni personne dans le dépôt.
 const MENTIONS: MentionsLegales = {
+  statutEditeur: "professionnel",
+  identiteCommuniqueeALHebergeur: false,
   editeur: {
     nom: "Exemple SAS",
     formeJuridique: "",
@@ -195,6 +197,46 @@ describe("politique de confidentialité (RGPD art. 13)", () => {
     expect(libelles).toContain("Responsable du traitement : nom (mentions légales)");
     expect(libelles).toContain("Hébergeur : nom (mentions légales)");
     expect(rendre(rempli())).toContain("Hébergeur Exemple");
+  });
+
+  // LCEN art. 6, III, 2 : un éditeur particulier non professionnel ne publie
+  // pas son identité. Il reste responsable du traitement (RGPD art. 13) : les
+  // personnes concernées le joignent par le courriel des droits, qui reste
+  // requis. Cas d'origine : tours-de-coloc.
+  describe("responsable du traitement d'un éditeur particulier non professionnel", () => {
+    const PARTICULIER: MentionsLegales = {
+      ...MENTIONS,
+      statutEditeur: "particulier",
+      identiteCommuniqueeALHebergeur: true,
+      editeur: { ...MENTIONS.editeur, nom: "", adresse: "", telephone: "", courriel: "" },
+      directeurPublication: "",
+    };
+
+    it("ne réclame plus son nom, mais réclame toujours le courriel des droits", () => {
+      expect(champsManquants(rempli(), PARTICULIER)).toEqual([]);
+
+      const sansCourriel = { ...rempli(), contact: { courriel: "", delegue: "" } };
+      expect(champsManquants(sansCourriel, PARTICULIER).map((champ) => champ.libelle)).toEqual([
+        "Courriel pour exercer ses droits",
+      ]);
+    });
+
+    it("la page renvoie au courriel des droits, sans nom ni renvoi vers des coordonnées publiées nulle part", () => {
+      const html = rendre(rempli(), PARTICULIER);
+
+      expect(html).toContain("à titre non professionnel");
+      expect(html).toContain("mailto:donnees@exemple.test");
+      expect(html).not.toContain("Non renseigné");
+      expect(html).not.toContain("À compléter");
+      expect(html).not.toContain("Voir les <a");
+    });
+
+    it("l'éditeur professionnel garde son nom requis", () => {
+      const sansNom: MentionsLegales = { ...MENTIONS, editeur: { ...MENTIONS.editeur, nom: "" } };
+      expect(champsManquants(rempli(), sansNom).map((champ) => champ.libelle)).toContain(
+        "Responsable du traitement : nom (mentions légales)"
+      );
+    });
   });
 
   it("réclame la revue des traitements propres au projet, même sans aucun traitement déclaré", () => {

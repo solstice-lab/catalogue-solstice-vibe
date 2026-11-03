@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppLayout, Badge, Carte } from "@/ui";
 import { NAVIGATION, NOM_APP } from "@/lib/navigation";
-import { CHAMPS_REQUIS, MENTIONS_LEGALES, champsManquants } from "@/lib/mentions-legales";
+import { MENTIONS_LEGALES, champsManquants, champsRequis } from "@/lib/mentions-legales";
 import { metadonneesDePage } from "@/lib/referencement";
 
 export function generateMetadata() {
@@ -26,11 +26,14 @@ export default function PageMentionsLegales() {
   // ligne sans mentions n'est pas conforme, c'est là que le signal compte.
   const avertir = manquants.length > 0;
   const sectionsIncompletes = new Set(
-    CHAMPS_REQUIS.filter((champ) => manquants.includes(champ.libelle)).map((champ) => champ.section)
+    champsRequis(m)
+      .filter((champ) => manquants.includes(champ.libelle))
+      .map((champ) => champ.section)
   );
-  const aCompleter = (section: (typeof CHAMPS_REQUIS)[number]["section"]) =>
+  const aCompleter = (section: ReturnType<typeof champsRequis>[number]["section"]) =>
     avertir && sectionsIncompletes.has(section) ? <Badge ton="negatif">À compléter</Badge> : undefined;
   const courriel = m.editeur.courriel.trim();
+  const particulier = m.statutEditeur === "particulier";
 
   return (
     <AppLayout nom={NOM_APP} sousTitre="Mentions légales" navigation={NAVIGATION_PUBLIQUE}>
@@ -43,49 +46,70 @@ export default function PageMentionsLegales() {
         </div>
       )}
 
-      <Carte titre="Éditeur" actions={aCompleter("editeur")}>
-        <dl className="sl-fiche">
-          <dt>Nom ou raison sociale</dt>
-          <dd>{valeur(m.editeur.nom)}</dd>
-          {m.editeur.formeJuridique.trim() !== "" && (
-            <>
-              <dt>Forme juridique</dt>
-              <dd>{m.editeur.formeJuridique}</dd>
-            </>
-          )}
-          {m.editeur.capital.trim() !== "" && (
-            <>
-              <dt>Capital</dt>
-              <dd>{m.editeur.capital}</dd>
-            </>
-          )}
-          <dt>Adresse</dt>
-          <dd className="sl-texte-long">{valeur(m.editeur.adresse)}</dd>
-          <dt>Téléphone</dt>
-          <dd>{valeur(m.editeur.telephone)}</dd>
-          <dt>Courriel</dt>
-          <dd>{courriel === "" ? NON_RENSEIGNE : <a href={`mailto:${courriel}`}>{courriel}</a>}</dd>
-          {m.editeur.immatriculation.trim() !== "" && (
-            <>
-              <dt>Immatriculation</dt>
-              <dd>{m.editeur.immatriculation}</dd>
-            </>
-          )}
-          {m.editeur.tva.trim() !== "" && (
-            <>
-              <dt>TVA intracommunautaire</dt>
-              <dd>{m.editeur.tva}</dd>
-            </>
-          )}
-        </dl>
-      </Carte>
+      {particulier ? (
+        // LCEN art. 6, III, 2 : ni nom, ni adresse, ni directeur de la
+        // publication. Les valeurs saisies par erreur dans la configuration
+        // ne s'affichent pas : l'anonymat est ce que la loi permet ici.
+        <Carte titre="Éditeur" actions={aCompleter("editeur")}>
+          <p>
+            Ce site est édité à titre non professionnel par une personne qui n&apos;est pas nommée ici. Conformément à
+            l&apos;article 6, III, 2 de la loi pour la confiance dans l&apos;économie numérique, seules les coordonnées
+            de l&apos;hébergeur sont publiées.
+            {/* Une affirmation publique : elle ne s'écrit qu'une fois la déclaration posée, pas avant. */}
+            {m.identiteCommuniqueeALHebergeur && " L'identité de l'éditeur a été communiquée à l'hébergeur."}
+          </p>
+          <p>
+            Pour toute question sur les données personnelles, voir la{" "}
+            <Link href="/confidentialite">politique de confidentialité</Link>.
+          </p>
+        </Carte>
+      ) : (
+        <>
+          <Carte titre="Éditeur" actions={aCompleter("editeur")}>
+            <dl className="sl-fiche">
+              <dt>Nom ou raison sociale</dt>
+              <dd>{valeur(m.editeur.nom)}</dd>
+              {m.editeur.formeJuridique.trim() !== "" && (
+                <>
+                  <dt>Forme juridique</dt>
+                  <dd>{m.editeur.formeJuridique}</dd>
+                </>
+              )}
+              {m.editeur.capital.trim() !== "" && (
+                <>
+                  <dt>Capital</dt>
+                  <dd>{m.editeur.capital}</dd>
+                </>
+              )}
+              <dt>Adresse</dt>
+              <dd className="sl-texte-long">{valeur(m.editeur.adresse)}</dd>
+              <dt>Téléphone</dt>
+              <dd>{valeur(m.editeur.telephone)}</dd>
+              <dt>Courriel</dt>
+              <dd>{courriel === "" ? NON_RENSEIGNE : <a href={`mailto:${courriel}`}>{courriel}</a>}</dd>
+              {m.editeur.immatriculation.trim() !== "" && (
+                <>
+                  <dt>Immatriculation</dt>
+                  <dd>{m.editeur.immatriculation}</dd>
+                </>
+              )}
+              {m.editeur.tva.trim() !== "" && (
+                <>
+                  <dt>TVA intracommunautaire</dt>
+                  <dd>{m.editeur.tva}</dd>
+                </>
+              )}
+            </dl>
+          </Carte>
 
-      <Carte titre="Directeur de la publication" actions={aCompleter("directeur")}>
-        <dl className="sl-fiche">
-          <dt>Nom</dt>
-          <dd>{valeur(m.directeurPublication)}</dd>
-        </dl>
-      </Carte>
+          <Carte titre="Directeur de la publication" actions={aCompleter("directeur")}>
+            <dl className="sl-fiche">
+              <dt>Nom</dt>
+              <dd>{valeur(m.directeurPublication)}</dd>
+            </dl>
+          </Carte>
+        </>
+      )}
 
       <Carte titre="Hébergeur" actions={aCompleter("hebergeur")}>
         <dl className="sl-fiche">
@@ -93,8 +117,13 @@ export default function PageMentionsLegales() {
           <dd>{valeur(m.hebergeur.nom)}</dd>
           <dt>Adresse</dt>
           <dd className="sl-texte-long">{valeur(m.hebergeur.adresse)}</dd>
-          <dt>Téléphone</dt>
-          <dd>{valeur(m.hebergeur.telephone)}</dd>
+          {/* Le téléphone n'est requis que d'un éditeur professionnel (LCEN art. 6, III, 1) : un particulier n'a pas à le publier. */}
+          {(!particulier || m.hebergeur.telephone.trim() !== "") && (
+            <>
+              <dt>Téléphone</dt>
+              <dd>{valeur(m.hebergeur.telephone)}</dd>
+            </>
+          )}
         </dl>
       </Carte>
 

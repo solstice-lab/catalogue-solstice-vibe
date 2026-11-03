@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import PageMentionsLegales from "@/app/mentions-legales/page";
-import { CHAMPS_REQUIS, champsManquants, type MentionsLegales } from "@/lib/mentions-legales";
+import { CHAMPS_REQUIS, champsManquants, champsRequis, type MentionsLegales } from "@/lib/mentions-legales";
 
 // Le socle doit servir un site vitrine sans base ni connexion : la page
 // lève l'erreur dès qu'elle lit la session ou, avec la brique données, que son
@@ -30,6 +30,8 @@ vi.mock("@/lib/mentions-legales", async (importOriginal) => {
 });
 
 const VIDES: MentionsLegales = {
+  statutEditeur: "professionnel",
+  identiteCommuniqueeALHebergeur: false,
   editeur: {
     nom: "",
     formeJuridique: "",
@@ -46,6 +48,8 @@ const VIDES: MentionsLegales = {
 
 // Valeurs factices : aucune vraie entreprise ni personne dans le dépôt.
 const REMPLIES: MentionsLegales = {
+  statutEditeur: "professionnel",
+  identiteCommuniqueeALHebergeur: false,
   editeur: {
     nom: "Exemple SAS",
     formeJuridique: "SAS",
@@ -80,7 +84,7 @@ describe("mentions légales (LCEN art. 6)", () => {
     for (const section of ["Éditeur", "Directeur de la publication", "Hébergeur"]) {
       expect(html).toContain(section);
     }
-    for (const champ of CHAMPS_REQUIS) expect(html).toContain(champ.libelle);
+    for (const champ of champsRequis(VIDES)) expect(html).toContain(champ.libelle);
     expect(html).toContain("À compléter");
   });
 
@@ -100,7 +104,8 @@ describe("mentions légales (LCEN art. 6)", () => {
   });
 
   it("une configuration vide manque de tous les champs requis, une remplie d'aucun", () => {
-    expect(champsManquants(VIDES)).toEqual(CHAMPS_REQUIS.map((champ) => champ.libelle));
+    expect(champsManquants(VIDES)).toEqual(champsRequis(VIDES).map((champ) => champ.libelle));
+    expect(champsRequis(VIDES)).toEqual(CHAMPS_REQUIS.filter((champ) => champ.statuts.includes("professionnel")));
     expect(champsManquants(REMPLIES)).toEqual([]);
   });
 
@@ -128,5 +133,76 @@ describe("mentions légales (LCEN art. 6)", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+// LCEN art. 6, III, 2 : une personne qui édite un site à titre non
+// professionnel peut ne publier que les coordonnées de l'hébergeur, si elle
+// lui a communiqué son identité. Cas d'origine : tours-de-coloc, dont la
+// demandeuse édite à titre de particulier ; la page restait « À compléter »
+// sans qu'aucune valeur puisse la satisfaire.
+describe("mentions légales d'un éditeur particulier non professionnel (LCEN art. 6, III, 2)", () => {
+  const PARTICULIER: MentionsLegales = {
+    ...VIDES,
+    statutEditeur: "particulier",
+    identiteCommuniqueeALHebergeur: true,
+    hebergeur: REMPLIES.hebergeur,
+  };
+
+  it("ne réclame ni les coordonnées de l'éditeur ni le directeur de la publication, seulement l'hébergeur", () => {
+    expect(champsManquants(PARTICULIER)).toEqual([]);
+    const sections = champsRequis(PARTICULIER).map((champ) => champ.section);
+    expect(sections).not.toContain("directeur");
+    expect(sections).toContain("hebergeur");
+  });
+
+  // Le III, 2 ne nomme que le nom (ou la raison sociale) et l'adresse de l'hébergeur ; le téléphone relève du III, 1.
+  it("réclame toujours le nom et l'adresse de l'hébergeur, pas son téléphone", () => {
+    expect(champsManquants({ ...PARTICULIER, hebergeur: VIDES.hebergeur })).toEqual([
+      "Hébergeur : nom ou raison sociale",
+      "Hébergeur : adresse",
+    ]);
+    const sansTelephone = { ...PARTICULIER, hebergeur: { ...REMPLIES.hebergeur, telephone: "" } };
+    expect(champsManquants(sansTelephone)).toEqual([]);
+    expect(rendre(sansTelephone)).not.toContain("Non renseigné");
+  });
+
+  it("réclame la déclaration que l'identité a été communiquée à l'hébergeur, condition de la dispense", () => {
+    expect(champsManquants({ ...PARTICULIER, identiteCommuniqueeALHebergeur: false })).toEqual([
+      "Éditeur particulier : identité communiquée à l'hébergeur",
+    ]);
+  });
+
+  it("la page dit ce que la loi prévoit, affiche l'hébergeur et n'affiche aucune coordonnée d'éditeur", () => {
+    const html = rendre(PARTICULIER);
+
+    expect(html).toContain("à titre non professionnel");
+    expect(html).toContain("article 6, III, 2");
+    expect(html).toContain("communiquée à l&#x27;hébergeur");
+    expect(html).toContain("Hébergeur Exemple");
+    expect(html).not.toContain("Directeur de la publication");
+    expect(html).not.toContain("Non renseigné");
+    expect(html).not.toContain("À compléter");
+  });
+
+  it("la page n'affiche pas les coordonnées d'éditeur saisies par erreur : l'anonymat est le but", () => {
+    const html = rendre({ ...PARTICULIER, editeur: REMPLIES.editeur, directeurPublication: "Prénom Nom" });
+
+    for (const texte of ["Exemple SAS", "1 rue de l&#x27;Exemple", "contact@exemple.test", "Prénom Nom"]) {
+      expect(html).not.toContain(texte);
+    }
+  });
+
+  it("la page reste « À compléter » et n'affirme pas la communication tant que l'identité n'est pas déclarée communiquée", () => {
+    const html = rendre({ ...PARTICULIER, identiteCommuniqueeALHebergeur: false });
+    expect(html).toContain("À compléter");
+    expect(html).not.toContain("a été communiquée");
+  });
+
+  it("un éditeur professionnel garde toutes ses exigences, même avec la déclaration posée", () => {
+    const professionnel = { ...VIDES, identiteCommuniqueeALHebergeur: true };
+    expect(champsManquants(professionnel)).toEqual(champsRequis(VIDES).map((champ) => champ.libelle));
+    expect(champsManquants(professionnel)).toContain("Éditeur : courriel");
+    expect(rendre(professionnel)).not.toContain("à titre non professionnel");
   });
 });

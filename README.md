@@ -220,8 +220,8 @@ ouverte à la racine du catalogue.
    et le choix site public ou fermé de `src/lib/referencement.ts`, le nom du
    service et de la base de `render.yaml` et le nom de l'hébergeur des mentions
    légales ; un champ absent laisse sa valeur de remplacement. Avant toute mise
-   en ligne, remplir `src/lib/mentions-legales.ts` (éditeur, directeur de la
-   publication, coordonnées de l'hébergeur) et `src/lib/confidentialite.ts`
+   en ligne, remplir `src/lib/mentions-legales.ts` (statut de l'éditeur ; pour un
+   professionnel, éditeur et directeur de la publication ; coordonnées de l'hébergeur) et `src/lib/confidentialite.ts`
    (contact, base légale, durée et destinataires de chaque traitement, validés
    par le client), et ajouter les pages publiques à
    `src/lib/referencement.ts`.
