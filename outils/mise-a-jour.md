@@ -146,7 +146,7 @@ Deux limites, que le rapport redit :
 
 - un `remplace` de la liste, rejoué à l'envers par l'ajout de sa brique, réécrit un texte
   que l'appli a pu changer : ajouter `journal` remet `tracer(personne)` dans les gestes de
-  `src/app/comptes/actions.ts` ; ajouter `comptes`, hors v1 (question 2), réécrirait la
+  `src/app/comptes/actions.ts` ; ajouter `comptes`, un ajout lourd (plus bas), réécrirait la
   liste des pages publiques de `referencement.ts`, que toute appli remplit. Conflit attendu
   dès que l'appli a touché ces lignes. Une mise à jour, elle, ne rejoue aucun retrait à
   l'envers : les briques ne changent pas ;
@@ -236,6 +236,35 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
   une brique ajoutée « à brancher » s'y note en section 3 avec le ticket qui la branche,
   repris en section 9 (`blueprint-modele.md` de `creer-appli`), dans la session de l'appli.
 
+## Les ajouts lourds : la base et `comptes`
+
+Le mécanisme ne distingue pas `echeances` de la base ou de `comptes` : l'assembleur sait
+produire une appli avec l'une ou l'autre, et l'outil fusionne de même. Aucun ajout n'est
+refusé. Deux ajouts changent pourtant l'appli entière, et leur coût est dans ce qui suit
+l'opération, pas dans les fichiers. L'outil les nomme « ajout lourd », et son rapport dit
+en tête ce qui change pour toute l'appli, puis les décisions et les gestes qui restent.
+
+- **La base, dans une appli qui n'en a pas** (toute brique qui l'exige : `contact`,
+  `echeances`, `comptes`…). Ses fichiers arrivent presque tous neufs (`src/lib/db/`, les
+  scripts, `docker-compose.yml`, la skill `solstice-donnees`) ; les fichiers partagés
+  qu'elle touche (la CI et son Postgres, `vitest.config.ts`, `.env.example`, `render.yaml`,
+  la route `/sante`, `package.json`), une appli y touche rarement : peu de conflits
+  attendus. Restent les gestes d'une appli neuve avec base (`creer-appli`, étape 5.3) :
+  créer la base chez l'hébergeur, payante, donc décidée par le client ; déclarer
+  `DATABASE_URL` ; les bases locales et `.env.local`.
+- **`comptes`**, avec `mails`, `rgpd` d'office et la base s'il le faut. Dès la fusion,
+  toutes les pages de l'appli passent derrière la connexion, sauf `ROUTES_OUVERTES`.
+  L'appli a été écrite sans droits : `tests/gardes-acces.test.ts` refuse chacune de ses
+  pages qui n'appelle pas `exiger`, et donne ainsi la liste exacte des pages à trancher une
+  à une (publique, ou derrière quel droit). La liste des pages publiques du référencement se
+  reprend (l'accueil passe derrière la connexion), les écrans du patron `dossiers` arrivent
+  (l'appli peut les supprimer), et il faut un premier admin, `AUTH_SECRET` et l'envoi des
+  codes par Resend. C'est un ticket de l'appli à part entière, pas une retouche.
+
+Parce que l'ajout reste coûteux, **le cadrage insiste** : `creer-appli` pose la question de
+la base et des comptes comme une décision à prendre maintenant, en disant ce que coûterait
+de les ajouter plus tard, plutôt que comme une porte fermée (tranche 9).
+
 ## Le circuit, et ce qui reste un geste humain
 
 Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis un
@@ -282,8 +311,6 @@ Restent à un humain :
 
 - **Retirer une brique** d'une appli assemblée. Ses tables resteraient dans la base
   déployée : les supprimer est un geste humain (README de la brique notifications).
-- **Ajouter une brique qui apporte la base** à une appli sans base, et **ajouter `comptes`**
-  après coup : refusés en v1 (questions 1 et 2).
 - **Les applis sans manifeste**, assemblées avant le 2026-11-02 : leur premier commit
   pourrait servir d'origine, s'il n'a pas été réécrit.
 - **Prévenir** une appli qu'une correction l'attend : l'outil se lance à la demande, et rien
@@ -346,37 +373,45 @@ validation de cette note.
    sujets des commits du socle, les variables nouvelles, la confidentialité, le registre,
    les briques « à brancher », ce que la fusion déclenche. Fait quand le rapport d'un cas
    d'essai porte chaque rubrique.
-7. **Ajouter une brique à une appli assemblée** (`--ajouter`). `planifier` sur B plus x, les
-   refus (brique absente au commit A, base absente, `comptes`, selon les questions 1 et 2).
-   Fait quand, sur une appli assemblée avec `comptes,mails` puis retouchée (droits, menu,
+7. **Ajouter une brique à une appli assemblée** (`--ajouter`), hors ajouts lourds.
+   `planifier` sur B plus x, le refus d'une brique absente au commit A. Fait quand, sur une appli assemblée avec `comptes,mails` puis retouchée (droits, menu,
    registre, politique, une étape de migration à elle), ajouter `journal` puis
    `notifications` donne les fichiers d'un assemblage direct avec elles, aux retouches de
    l'appli et à l'ordre des migrations près, et que typecheck, tests et rejeu des
    migrations passent. Ces deux briques retouchent le plus de fichiers partagés : étapes de
    migration, registre, politique, droits, menu, variables.
-8. **La skill et les documents.** Le circuit dans une skill du catalogue (ou une étape de
-   `creer-appli`), et les textes que l'outil rend faux : les mentions « hors v1 » ou « pas
-   outillé » (`creer-appli`, `choix.md`, README du catalogue, README de la brique
-   notifications), et ceux qui disent qu'aucun outil ne lit le manifeste ou que l'en-tête
+8. **Les ajouts lourds : la base et `comptes`.** Leur mention en tête du rapport, avec les
+   décisions et les gestes de la section « Les ajouts lourds ». Fait quand une vitrine
+   assemblée sans base, avec une page à elle, reçoit `mails,contact` puis `comptes` : après
+   l'opération, typecheck et rejeu des migrations passent, et `tests/gardes-acces.test.ts`
+   échoue sur la seule page de l'appli, nommée au rapport.
+9. **La skill et les documents.** Le circuit dans une skill du catalogue (ou une étape de
+   `creer-appli`). Au cadrage, `creer-appli` insiste sur la base et les comptes : une
+   décision à prendre maintenant, avec ce que coûterait de les ajouter plus tard. Et les
+   textes que l'outil rend faux : « n'en recevra pas après coup » (`creer-appli`, étapes 1
+   et 2), les mentions « hors v1 » ou « pas outillé » (`creer-appli`, `choix.md`, README du
+   catalogue, README de la brique notifications), et ceux qui disent qu'aucun outil ne lit le manifeste ou que l'en-tête
    de la blueprint n'est lu que pour `appli` et `commit_reference` (`blueprint-modele.md`,
    `creer-appli`, le README du catalogue, le commentaire d'en-tête de la blueprint minimale
    dans `assembler.mjs`). Fait quand l'agent `relecteur-docs` ne relève rien.
-9. **Essai réel** sur une appli assemblée : un ajout, puis une mise à jour. Fait quand les
-   deux PR de l'appli sont fusionnées par un humain et que `/sante` répond après le
-   déploiement.
+10. **Essai réel** sur une appli assemblée : un ajout, puis une mise à jour. Fait quand les
+    deux PR de l'appli sont fusionnées par un humain et que `/sante` répond après le
+    déploiement.
 
-Bloquées par : 3 par 2 ; 4, 5 et 6 par 3 ; 7 par 4 et 6 ; 8 par 7 ; 9 par 5 et 8. La 1 se
-fait à part.
+Bloquées par : 3 par 2 ; 4, 5 et 6 par 3 ; 7 par 4 et 6 ; 8 par 7 ; 9 par 8 ; 10 par 5 et 9.
+La 1 se fait à part.
 
 ## Questions pour la personne responsable technique
 
 1. **Une appli sans base peut-elle recevoir une brique qui l'exige ?** La skill
-   `creer-appli` dit le contraire (« n'en recevra pas après coup »). L'opération apporterait
-   la base, Postgres dans la CI et une base payante chez l'hébergeur. Recommandation :
-   refusé en v1.
+   `creer-appli` dit aujourd'hui le contraire (« n'en recevra pas après coup »). Avis de la
+   personne qui utilise le catalogue, le 2026-11-03 : un cadrage se trompe parfois, mieux
+   vaut ne rien interdire. Recommandation : permis, comme ajout lourd (section « Les ajouts
+   lourds »), et le cadrage insiste pour en décider dès l'assemblage.
 2. **Ajouter `comptes` après coup ?** Toutes les pages passent derrière la connexion
-   (proxy, bandeau, droits, `rgpd` d'office) : un changement structurel de l'appli.
-   Recommandation : refusé en v1, réassembler s'il le faut.
+   (proxy, bandeau, droits, `rgpd` d'office) : un changement structurel de l'appli, que
+   `tests/gardes-acces.test.ts` rend sûr en nommant chaque page à trancher. Même avis, même
+   recommandation : permis comme ajout lourd, et le cadrage insiste.
 3. **Le squash des PR d'appli est-il confirmé ?** Il écarte la branche fournisseur et décide
    du rejeu de l'assembleur. Recommandation : garder le squash.
 4. **Le manifeste au format 2 (tranche 1), et des versions numérotées du catalogue ?** Le
