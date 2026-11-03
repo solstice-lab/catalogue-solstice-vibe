@@ -285,7 +285,7 @@ l'arrêter d'abord.
 choisies vers un dossier vide hors du catalogue, et rien de ce qui
 fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md`,
 `outils/`, ni la skill `creer-appli` et l'agent
-`relecteur-blueprint`, ni les tests de l'assembleur et de l'outil des issues, ni
+`relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues et de l'outil de mise à jour, ni
 le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`
 et les modèles de ticket et de PR, ni les captures du README, `docs/captures/`
 (liste `EXCLUS_DU_CATALOGUE` de
@@ -297,11 +297,15 @@ de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` ;
 il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et remet en forme
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
 il écrit aussi `catalogue.empreintes.json`, le manifeste d'empreintes : le commit du
-catalogue et le champ `version` de son `package.json` (fixe tant qu'aucune version n'est
-publiée), puis, pour chaque fichier venu du catalogue, son unité (brique, partagée ou
+catalogue, court et complet, et le champ `version` de son `package.json` (fixe tant qu'aucune version n'est
+publiée), les réglages de l'assemblage (briques choisies et ajoutées d'office, nom du
+paquet et nom donné, Dependabot, champs lus de l'en-tête de la blueprint), puis, pour
+chaque fichier venu du catalogue, son unité (brique, partagée ou
 `socle`) et l'empreinte sha256 du fichier tel que l'appli le reçoit, après la mise en
-forme et tel que git l'enregistre. Il permet de comparer l'appli à ce qu'elle a reçu ;
-aucun outil ne le lit encore ;
+forme et tel que git l'enregistre. `node outils/mettre-a-jour.mjs <appli> --a-blanc` le
+lit : il rejoue l'assemblage d'origine au commit du manifeste, vérifie qu'il en redonne les
+empreintes et liste les fichiers que l'appli a retouchés ou supprimés, sans rien écrire
+(note `outils/mise-a-jour.md`) ;
 `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
 personne n'entretient en recevait une PR de mise à jour par semaine, jamais fusionnée
 (le catalogue garde le sien). Il fait
@@ -344,10 +348,13 @@ catalogue qui a des modifications non commitées, sauf avec
   du verrou, élagué de ce que plus rien n'atteint, sans réseau : le verrou
   reste celui qu'écrirait npm, et `npm ci` l'accepte.
 - `tests/assembleur.test.ts` se lance par `npm run test:assembleur`, pas par
-  `npm test`, qui l'écarte : il dure plus de 10 minutes. Le job `assembleur` de
-  `.github/workflows/assemblage.yml` le lance sur chaque pull request prête à
+  `npm test`, qui l'écarte : il dure plus de 10 minutes. `tests/mettre-a-jour.test.ts`,
+  celui de l'outil de mise à jour, l'accompagne : il rejoue des assemblages et lance un
+  vrai `npm ci`. Le job `assembleur` de
+  `.github/workflows/assemblage.yml` lance le test de l'assembleur sur chaque pull request prête à
   relire, réduit à un échantillon de combinaisons (`ECHANTILLON`), et en entier
-  chaque nuit si main a changé, ou à la main. En entier, il assemble des combinaisons de briques, la vide
+  chaque nuit si main a changé, ou à la main ; celui de l'outil de mise à jour y passe en
+  entier à chaque fois. En entier, il assemble des combinaisons de briques, la vide
   comprise, dans un dossier temporaire et vérifie les fichiers présents et
   absents, les imports, les références aux unités retirées, la présence de
   chaque extrait de la liste dans le catalogue, la mise en forme que vérifie sa CI, le typecheck de l'appli assemblée et,
@@ -425,8 +432,9 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   entre) et `src/config/acces.ts` (qui a droit à quoi).
 - `outils/` — l'assembleur (`assembler.mjs`), la liste de retrait des
   briques et de la base qu'il applique (`modules.mjs`), l'outil des issues de la
-  section 9 d'une blueprint (`creer-issues.mjs`) et la note de conception de la
-  mise à jour d'une appli assemblée (`mise-a-jour.md`), propres au catalogue : une appli assemblée ne
+  section 9 d'une blueprint (`creer-issues.mjs`), l'outil de mise à jour d'une appli
+  assemblée (`mettre-a-jour.mjs`, en lecture seule à ce jour) et sa note de conception
+  (`mise-a-jour.md`), propres au catalogue : une appli assemblée ne
   les reçoit pas.
 - `scripts/` — squelette des imports et correctifs de données : dry-run par
   défaut, `--confirmer` à la main ; `bases-locales.ts`, qui crée les bases locales (voir
@@ -466,7 +474,7 @@ npm run format:check   # npm run format met en forme
 npm run lint
 npm run typecheck
 DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm test
-DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm run test:assembleur   # long (plus de 10 min) ; la CI n'en lance qu'un échantillon sur chaque pull request, le complet la nuit
+DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm run test:assembleur   # long (plus de 10 min) ; la CI ne lance qu'un échantillon des combinaisons de l'assembleur sur chaque pull request, le complet la nuit
 npm run build
 ```
 

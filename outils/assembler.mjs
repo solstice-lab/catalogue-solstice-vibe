@@ -72,7 +72,7 @@ const VARIABLES_QUI_DETOURNENT = [
   "GIT_NAMESPACE",
 ];
 
-function environnementDeGit() {
+export function environnementDeGit() {
   const env = { ...process.env };
   for (const nom of Object.keys(env)) {
     if (VARIABLES_QUI_DETOURNENT.includes(nom.toUpperCase())) delete env[nom];
@@ -530,8 +530,10 @@ function preparerLeDepot(destination, premierCree) {
 
 // Dependabot est tracé dans le commit : sans cela, l'absence du fichier dans
 // l'appli livrée ne dit pas si elle est voulue (--dependabot) ou accidentelle.
-// `manifeste` : écrit une fois les fichiers dans l'index, dont il lit les empreintes.
-function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dependabot, manifeste }) {
+// `manifeste` : écrit une fois les fichiers dans l'index, dont il lit les empreintes,
+// puis remis en forme par `formater` : au format 2, ses listes s'écrivent sur une
+// ligne pour Prettier, et la CI de l'appli refusait sinon son premier commit.
+function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dependabot, manifeste, formater }) {
   const corps = [
     "Assemblée par l'assembleur du catalogue Solstice-vibe. Dépôt local, sans remote : rien n'est poussé.",
     "",
@@ -547,6 +549,7 @@ function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dep
     // copié compte.
     git(destination, "-c", "core.excludesFile=", "add", "-A");
     fs.writeFileSync(path.join(destination, MANIFESTE), manifeste());
+    formater([MANIFESTE]);
     git(destination, "-c", "core.excludesFile=", "add", "--", MANIFESTE);
     git(
       destination,
@@ -858,9 +861,35 @@ const MANIFESTE = "catalogue.empreintes.json";
 // L'appli ne reçoit ni le README ni la skill qui décrivent le manifeste : il
 // se présente lui-même à qui l'ouvre dans l'appli.
 const NOTE_DU_MANIFESTE =
-  "Écrit par l'assembleur du catalogue Solstice-vibe au premier commit de l'appli : pour chaque fichier " +
-  "venu du catalogue, son unité et l'empreinte sha256 du fichier tel que l'appli l'a reçu. Ne pas le " +
-  "retoucher ni le régénérer à la main : il sert à retrouver ce que l'appli a changé depuis.";
+  "Écrit par l'assembleur du catalogue Solstice-vibe au premier commit de l'appli : les réglages de " +
+  "l'assemblage et, pour chaque fichier venu du catalogue, son unité et l'empreinte sha256 du fichier tel " +
+  "que l'appli l'a reçu. Ne pas le retoucher ni le régénérer à la main : il sert à retrouver ce que " +
+  "l'appli a changé depuis.";
+
+/*
+ * Format 2 : le manifeste dit aussi avec quoi l'assemblage a été fait, pour que
+ * outils/mettre-a-jour.mjs le rejoue à l'identique (outils/mise-a-jour.md). Au
+ * format 1, l'outil le déduit : les briques des unités, le nom du paquet de
+ * package.json, Dependabot de son fichier, l'en-tête de la blueprint telle
+ * qu'elle est devenue. Une blueprint dont l'en-tête a changé depuis ne se
+ * rejoue plus. Le commit complet s'y ajoute : un commit court peut devenir
+ * ambigu quand le catalogue grandit.
+ */
+const FORMAT_DU_MANIFESTE = 2;
+
+// Les champs de l'en-tête de la blueprint qui changent les fichiers de l'appli,
+// recopiés tels quels (guillemets et commentaire compris) : rejoués dans une
+// blueprint qui n'a qu'eux, ils redonnent les mêmes valeurs.
+const CHAMPS_DE_L_ENTETE_LUS = ["appli", "nom_affiche", "description", "site", "entree", "role_par_defaut", "methodes"];
+
+function enteteLue(markdown) {
+  const entete = {};
+  for (const cle of CHAMPS_DE_L_ENTETE_LUS) {
+    const brut = ligneDeLEntete(markdown, cle);
+    if (brut !== undefined) entete[cle] = brut;
+  }
+  return entete;
+}
 
 function versionDuCatalogue(racine) {
   return JSON.parse(fs.readFileSync(path.join(racine, "package.json"), "utf-8")).version;
@@ -892,14 +921,20 @@ function contenusDeLIndex(destination) {
   return contenus;
 }
 
-function manifesteDEmpreintes(destination, { version, commit, fichiers, uniteDe }) {
+function manifesteDEmpreintes(destination, { version, commit, commitComplet, assemblage, fichiers, uniteDe }) {
   const contenus = contenusDeLIndex(destination);
   const empreintes = {};
   for (const chemin of [...fichiers].sort()) {
     const sha256 = createHash("sha256").update(contenus.get(chemin)).digest("hex");
     empreintes[chemin] = { unite: uniteDe(chemin), sha256 };
   }
-  const manifeste = { format: 1, note: NOTE_DU_MANIFESTE, catalogue: { version, commit }, fichiers: empreintes };
+  const manifeste = {
+    format: FORMAT_DU_MANIFESTE,
+    note: NOTE_DU_MANIFESTE,
+    catalogue: { version, commit, commitComplet },
+    assemblage,
+    fichiers: empreintes,
+  };
   return `${JSON.stringify(manifeste, null, 2)}\n`;
 }
 
@@ -994,6 +1029,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   const contenuFiche = fiche === undefined ? undefined : lireLaFiche(fiche);
   const contenuAvis = avisDeLicence(racine);
   const version = versionDuCatalogue(racine);
+  const commitComplet = git(racine, "rev-parse", "HEAD").trim();
   // Le nom que la personne a donné (--nom ou appli de la blueprint) : le nom du
   // dossier de sortie n'en est pas un, il ne nomme pas un service chez l'hébergeur.
   const nomDonne = nom ?? (blueprint && appliDeLaBlueprint(contenuBlueprint)) ?? undefined;
@@ -1111,7 +1147,25 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
     ajoutees,
     retirees,
     dependabot,
-    manifeste: () => manifesteDEmpreintes(destination, { version, commit, fichiers: venusDuCatalogue, uniteDe }),
+    // Les briques telles que choisies, celles ajoutées d'office à part, et le
+    // nom tel que donné : ce sont eux que l'assembleur rejoué doit recevoir.
+    manifeste: () =>
+      manifesteDEmpreintes(destination, {
+        version,
+        commit,
+        commitComplet,
+        assemblage: {
+          briques,
+          ajouteesDOffice: entrainees,
+          paquet: nomPaquet,
+          nom: nom ?? null,
+          dependabot,
+          entete: blueprint ? enteteLue(contenuBlueprint) : null,
+        },
+        fichiers: venusDuCatalogue,
+        uniteDe,
+      }),
+    formater: (fichiers) => mettreEnForme(prettier, destination, fichiers),
   });
 
   return { fichiers: ecrits, retires: retirees, ajoutees, commitInitial };

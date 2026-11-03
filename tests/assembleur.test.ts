@@ -61,7 +61,7 @@ import {
  * (lourds ; lancés à la main).
  *
  * Il dure plus de 10 minutes : npm test l'écarte, npm run test:assembleur le
- * lance seul, et la CI du catalogue (assemblage.yml) : un échantillon sur
+ * lance avec tests/mettre-a-jour.test.ts, et la CI du catalogue (assemblage.yml) : un échantillon sur
  * chaque pull request (ECHANTILLON), le tout la nuit si main a changé ;
  * tests/assemblage-ci.test.ts le verrouille.
  */
@@ -479,11 +479,22 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
       const { dossier } = assemble;
       expect(gitDans(dossier, "ls-files", MANIFESTE)).toBe(MANIFESTE);
       const manifeste = JSON.parse(lireAssemble(dossier, MANIFESTE));
-      expect(manifeste.format).toBe(1);
+      expect(manifeste.format).toBe(2);
       expect(manifeste.note).toMatch(/Ne pas le retoucher/);
       expect(manifeste.catalogue).toEqual({
         version: JSON.parse(fs.readFileSync(path.join(SOURCE, "package.json"), "utf-8")).version,
         commit: COMMIT_DE_TEST,
+        commitComplet: gitDans(SOURCE, "rev-parse", "HEAD"),
+      });
+      // Les réglages que outils/mettre-a-jour.mjs rejoue : les briques telles que
+      // choisies, sans celles ajoutées d'office, qui sont à part.
+      expect(manifeste.assemblage).toEqual({
+        briques: choisies,
+        ajouteesDOffice: briques === choisies ? [] : [{ nom: "rgpd", par: "comptes" }],
+        paquet: JSON.parse(lireAssemble(dossier, "package.json")).name,
+        nom: null,
+        dependabot: false,
+        entete: null,
       });
       const ecritsParLAssembleur = ["blueprint.md", "NOTICE", MANIFESTE];
       const venusDuCatalogue = fichiersAssembles(dossier)
@@ -1394,6 +1405,32 @@ describe("nom de l'appli assemblée", () => {
     const sortie = dossierTemporaireVide();
     assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...socleSeul, blueprint, nom: "suivi-chantiers" });
     expect(nomsDuPaquet(sortie)).toEqual(["suivi-chantiers", "suivi-chantiers", "suivi-chantiers"]);
+  });
+
+  // Au format 1, outils/mettre-a-jour.mjs devait déduire ces réglages, et une
+  // blueprint dont l'en-tête avait changé depuis ne se rejouait plus.
+  it("note au manifeste le nom donné, Dependabot et les champs lus de l'en-tête, tels quels, pour rejouer l'assemblage", () => {
+    const blueprint = blueprintDe(
+      "---\nformat: 1\nappli: Œuvres d'été # nom provisoire\nnom_affiche: \"Œuvres # d'été\"\nstatut: brouillon\n---\n"
+    );
+    const sortie = dossierTemporaireVide();
+    assembler({
+      source: SOURCE,
+      sortie,
+      commit: COMMIT_DE_TEST,
+      ...socleSeul,
+      blueprint,
+      nom: "Suivi",
+      dependabot: true,
+    });
+    expect(JSON.parse(lireAssemble(sortie, "catalogue.empreintes.json")).assemblage).toEqual({
+      briques: socleSeul.briques,
+      ajouteesDOffice: [],
+      paquet: "suivi",
+      nom: "Suivi",
+      dependabot: true,
+      entete: { appli: "Œuvres d'été # nom provisoire", nom_affiche: '"Œuvres # d\'été"' },
+    });
   });
 
   it("refuse, sans rien écrire, un nom qui ne commence pas par une lettre, trop long pour ses bases ou qui est celui du catalogue", () => {

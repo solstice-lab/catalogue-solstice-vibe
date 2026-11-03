@@ -72,7 +72,8 @@ les appelle pas.
 - Les mises à jour d'une brique après coup sont hors v1. Ce que chaque brique a changé
   depuis un commit est dans son `CHANGELOG.md` : la blueprint note le commit de référence
   pour permettre cette lecture, et `catalogue.empreintes.json` l'empreinte de chaque
-  fichier reçu, pour voir ce que l'appli a retouché depuis.
+  fichier reçu, pour voir ce que l'appli a retouché depuis (`node
+  outils/mettre-a-jour.mjs <appli> --a-blanc`, depuis le catalogue, le liste).
 
 ## Ce qui ne dépend pas du choix
 

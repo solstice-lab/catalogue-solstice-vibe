@@ -11,7 +11,9 @@ name: Assemblage
 #   refusant le node_modules que la copie emprunte au catalogue. Il se fait
 #   ici, après un vrai npm ci. Sur chaque pull request et chaque arrivée sur main.
 # - assembleur lance tests/assembleur.test.ts (npm run test:assembleur), sorti
-#   de npm test : plus de 10 minutes à chaque petit changement. Il assemble
+#   de npm test : plus de 10 minutes à chaque petit changement ; le même script
+#   lance tests/mettre-a-jour.test.ts, qui rejoue des assemblages, en entier à
+#   chaque passage (il n'a pas de combinaisons à échantillonner). Il assemble
 #   les combinaisons et en rejoue les migrations, d'où sa base jetable. Sur
 #   une pull request, un échantillon seulement ; le test complet passe la nuit
 #   si main a changé (main-a-change), ou à la main. Il coûtait environ 219 s

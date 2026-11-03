@@ -65,6 +65,8 @@ export const EXCLUS_DU_CATALOGUE = [
   // Verrouillent l'assembleur : sans objet dans une copie qui ne l'a pas.
   "tests/assembleur.test.ts",
   "tests/aide-assemblage.ts",
+  // Verrouille l'outil de mise à jour (outils/mettre-a-jour.mjs), absent de l'appli.
+  "tests/mettre-a-jour.test.ts",
   // Verrouille l'outil des issues de la section 9 (outils/creer-issues.mjs),
   // absent de l'appli : sans lui, ce test ne trouverait rien à importer.
   "tests/creer-issues.test.ts",
@@ -969,12 +971,13 @@ export const DONNEES = {
 export const NOM_DU_CATALOGUE = "catalogue-solstice-vibe";
 
 export const RETRAITS_DU_SOCLE = [
-  // Le test de l'assembleur reste au catalogue (EXCLUS_DU_CATALOGUE) : la
-  // copie perd ce qui l'écarte de npm test, son script et la ligne de
-  // CLAUDE.md qui le lance, qui renverraient à un fichier qu'elle n'a pas.
+  // Les tests de l'assembleur et de l'outil de mise à jour restent au catalogue
+  // (EXCLUS_DU_CATALOGUE) : la copie perd ce qui les écarte de npm test, leur
+  // script et la ligne de CLAUDE.md qui les lance, qui renverraient à des
+  // fichiers qu'elle n'a pas.
   remplace(
     "package.json",
-    '"test": "vitest run --exclude tests/assembleur.test.ts",\n    "test:assembleur": "vitest run tests/assembleur.test.ts"',
+    '"test": "vitest run --exclude tests/assembleur.test.ts --exclude tests/mettre-a-jour.test.ts",\n    "test:assembleur": "vitest run tests/assembleur.test.ts tests/mettre-a-jour.test.ts"',
     '"test": "vitest run"'
   ),
   ligne(

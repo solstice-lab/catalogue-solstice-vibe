@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 /*
  * Test-verrou du test de l'assembleur, lancé à part. tests/assembleur.test.ts
  * dure plus de 10 minutes : npm test l'écarte, et seul le job assembleur de
- * .github/workflows/assemblage.yml le lance encore. Ce verrou tourne dans
+ * .github/workflows/assemblage.yml le lance encore, avec tests/mettre-a-jour.test.ts
+ * (celui de l'outil de mise à jour, qui rejoue des assemblages). Ce verrou tourne dans
  * npm test : placé dans le fichier qu'il garde, il ne tournait que dans le
  * job qu'il devait garder, et la disparition du job serait passée inaperçue.
  *
@@ -75,8 +76,8 @@ function neRelanceLaNuitQueSiMainAChange(workflow: string): boolean {
 describe("test de l'assembleur, lancé à part (plus de 10 minutes à chaque npm test)", () => {
   it("sort de npm test et se lance par npm run test:assembleur", () => {
     const { scripts } = JSON.parse(lire("package.json"));
-    expect(scripts.test).toBe("vitest run --exclude tests/assembleur.test.ts");
-    expect(scripts["test:assembleur"]).toBe("vitest run tests/assembleur.test.ts");
+    expect(scripts.test).toBe("vitest run --exclude tests/assembleur.test.ts --exclude tests/mettre-a-jour.test.ts");
+    expect(scripts["test:assembleur"]).toBe("vitest run tests/assembleur.test.ts tests/mettre-a-jour.test.ts");
   });
 
   it("est lancé par le job assembleur : échantillon sur une pull request prête à relire, complet la nuit et à la main, plus sur main (219 s par passage)", () => {
