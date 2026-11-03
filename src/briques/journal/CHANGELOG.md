@@ -31,3 +31,18 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : l'effacement de la brique rgpd parcourt chaque source. Le
   journal se détache de l'adresse par l'anonymisation du compte : la base
   refuse tout `UPDATE`.
+
+## 2026-11-03 · Les gestes d'un compte passent par le registre des effets · Ajout
+
+- **Ce qui change** : `effets-comptes.ts` exporte `EFFETS_JOURNAL`, l'entrée
+  de la brique au registre des effets de comptes
+  (`src/config/effets-comptes.ts`) : la désactivation, la réactivation et
+  l'effacement d'un compte se tracent par elle, et non plus par une trace
+  passée depuis les actions de `/comptes` et de `/donnees-personnelles`.
+  `journaliser(tx, auteur, evenement)` accepte un exécuteur qui n'a que
+  `query` (`ExecuteurSql`), celui que reçoit un effet.
+- **Appelant** : rien à changer ; une transaction de `transaction()` convient
+  toujours.
+- **Pourquoi** : un module qui réagit à un compte désactivé ou effacé
+  (tours-de-coloc) se déclare au même registre ; le journal y passe pour
+  qu'aucun de ces gestes ne demande de brancher une trace dans les actions.

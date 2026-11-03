@@ -60,6 +60,12 @@ async function attendreDesVerrous(n: number): Promise<void> {
   throw new Error(`jamais ${n} requêtes en attente d'un verrou`);
 }
 
+// Les règles de la brique se vérifient sans les effets que les autres unités
+// déclarent au registre (le journal exigerait un compte à l'auteur) : ces
+// effets, et leur transaction, ont leur fichier, tests/comptes-effets.test.ts.
+vi.mock("../src/config/effets-comptes", () => ({ EFFETS_COMPTES: [] }));
+const AUTEUR = { email: "auteur@client.example" };
+
 const SANS_ENTREE: ContexteEntree = { entree: { adresses: {}, domaines: [] }, premierAdmin: undefined, demo: false };
 const PREVENIR = { nomDeLAppli: "Appli de test", adresseDeConnexion: "https://appli.example/connexion" };
 const AUTRE_ROLE = ROLES.find((role) => role !== ROLE_ADMIN) ?? ROLE_PAR_DEFAUT;
@@ -122,7 +128,7 @@ afterAll(viderLesComptes);
 describe("le dernier admin actif, protégé à deux portes (projet précédent)", () => {
   it("ne se désactive pas : la fonction serveur refuse, quel que soit l'écran", async () => {
     const id = await inviterOuEchouer("chef@client.example", ROLE_ADMIN);
-    expect(await desactiver(id, SANS_ENTREE)).toEqual({
+    expect(await desactiver(id, AUTEUR, SANS_ENTREE)).toEqual({
       erreur: expect.stringMatching(/dernier compte administrateur actif/),
     });
     expect((await compte("chef@client.example")).statut).toBe("actif");
@@ -151,7 +157,7 @@ describe("le dernier admin actif, protégé à deux portes (projet précédent)"
     await compteDuNiveau2("ancien@client.example", ROLE_ADMIN, false);
     const id = await inviterOuEchouer("chef@client.example", ROLE_ADMIN);
     expect((await compte("chef@client.example", demo)).protege).toBe(true);
-    expect(await desactiver(id, demo)).toHaveProperty("erreur");
+    expect(await desactiver(id, AUTEUR, demo)).toHaveProperty("erreur");
   });
 
   it("compte un admin listé dans la configuration, et le protège lui aussi quand il est le dernier", async () => {
@@ -161,9 +167,9 @@ describe("le dernier admin actif, protégé à deux portes (projet précédent)"
     };
     const chef = await compteDuNiveau2("chef@client.example", ROLE_ADMIN);
     const seconde = await inviterOuEchouer("seconde@client.example", ROLE_ADMIN);
-    expect(await desactiver(seconde, config)).toBeUndefined();
+    expect(await desactiver(seconde, AUTEUR, config)).toBeUndefined();
     expect((await compte("chef@client.example", config)).protege).toBe(true);
-    expect(await desactiver(chef, config)).toHaveProperty("erreur");
+    expect(await desactiver(chef, AUTEUR, config)).toHaveProperty("erreur");
   });
 
   it("laisse passer une seule de deux rétrogradations croisées simultanées : il reste toujours un admin (requêtes concurrentes)", async () => {
@@ -188,7 +194,7 @@ describe("le dernier admin actif, protégé à deux portes (projet précédent)"
       await viderLesComptes();
       const a = await inviterOuEchouer("a@client.example", ROLE_ADMIN);
       const b = await inviterOuEchouer("b@client.example", ROLE_ADMIN);
-      const issues = await Promise.all([desactiver(a, SANS_ENTREE), desactiver(b, SANS_ENTREE)]);
+      const issues = await Promise.all([desactiver(a, AUTEUR, SANS_ENTREE), desactiver(b, AUTEUR, SANS_ENTREE)]);
       expect(
         issues.filter((issue) => issue !== undefined),
         `essai ${essai}`
@@ -204,7 +210,7 @@ describe("désactiver, réactiver : on désactive un compte, on ne le supprime p
     const id = await inviterOuEchouer("membre@client.example", AUTRE_ROLE);
     const cookie = await sessionDe(id);
     expect(await lireSessionDe(cookie, SANS_ENTREE)).not.toBeNull();
-    expect(await desactiver(id, SANS_ENTREE)).toBeUndefined();
+    expect(await desactiver(id, AUTEUR, SANS_ENTREE)).toBeUndefined();
     expect(await lireSessionDe(cookie, SANS_ENTREE)).toBeNull();
     expect((await compte("membre@client.example")).statut).toBe("desactive");
     expect(await admettre("membre@client.example", SANS_ENTREE)).toBeNull();
@@ -214,16 +220,16 @@ describe("désactiver, réactiver : on désactive un compte, on ne le supprime p
     await inviterOuEchouer("chef@client.example", ROLE_ADMIN);
     const id = await inviterOuEchouer("membre@client.example", AUTRE_ROLE);
     const cookie = await sessionDe(id);
-    await desactiver(id, SANS_ENTREE);
+    await desactiver(id, AUTEUR, SANS_ENTREE);
     expect(await query("SELECT 1 FROM sessions WHERE utilisateur_id = $1", [id])).toEqual([]);
-    expect(await reactiver(id)).toBeUndefined();
+    expect(await reactiver(id, AUTEUR)).toBeUndefined();
     expect(await lireSessionDe(cookie, SANS_ENTREE)).toBeNull();
     expect((await admettre("membre@client.example", SANS_ENTREE))?.role).toBe(AUTRE_ROLE);
   });
 
   it("montre « sans accès » un compte réactivé que plus rien n'admet (adresse retirée de la configuration)", async () => {
     const id = await compteDuNiveau2("partie@client.example", AUTRE_ROLE, false);
-    expect(await reactiver(id)).toBeUndefined();
+    expect(await reactiver(id, AUTEUR)).toBeUndefined();
     expect((await compte("partie@client.example")).statut).toBe("sans-acces");
   });
 
@@ -247,14 +253,14 @@ describe("désactiver, réactiver : on désactive un compte, on ne le supprime p
   it("n'administre pas un compte de démo : il n'existe nulle part, et la démo le recrée à la demande", async () => {
     const demo: ContexteEntree = { ...SANS_ENTREE, demo: true };
     const compteDemo = await admettre(`${AUTRE_ROLE}@${DOMAINE_DEMO}`, demo);
-    expect(await desactiver(compteDemo!.id, demo)).toEqual({ erreur: expect.stringMatching(/démo/) });
-    expect(await reactiver(compteDemo!.id)).toEqual({ erreur: expect.stringMatching(/démo/) });
+    expect(await desactiver(compteDemo!.id, AUTEUR, demo)).toEqual({ erreur: expect.stringMatching(/démo/) });
+    expect(await reactiver(compteDemo!.id, AUTEUR)).toEqual({ erreur: expect.stringMatching(/démo/) });
     expect(await changerRole(compteDemo!.id, ROLE_ADMIN, demo)).toEqual({ erreur: expect.stringMatching(/démo/) });
   });
 
   it("refuse un compte introuvable", async () => {
-    expect(await desactiver(999_999, SANS_ENTREE)).toEqual({ erreur: expect.stringMatching(/introuvable/) });
-    expect(await reactiver(999_999)).toEqual({ erreur: expect.stringMatching(/introuvable/) });
+    expect(await desactiver(999_999, AUTEUR, SANS_ENTREE)).toEqual({ erreur: expect.stringMatching(/introuvable/) });
+    expect(await reactiver(999_999, AUTEUR)).toEqual({ erreur: expect.stringMatching(/introuvable/) });
     expect(await changerRole(999_999, ROLE_ADMIN, SANS_ENTREE)).toEqual({
       erreur: expect.stringMatching(/introuvable/),
     });
@@ -533,6 +539,8 @@ describe("tables de l'administration", () => {
   });
 });
 
+// Désactiver et réactiver ne prennent plus de trace : le journal les trace par
+// le registre des effets de comptes (tests/comptes-effets.test.ts).
 describe("la trace d'un geste (le point d'accroche du journal d'audit)", () => {
   it("s'écrit dans la transaction du geste : une trace qui échoue annule le geste, un geste refusé ne l'appelle pas", async () => {
     const chef = await inviterOuEchouer("chef@client.example", ROLE_ADMIN);
@@ -541,27 +549,26 @@ describe("la trace d'un geste (le point d'accroche du journal d'audit)", () => {
       // La trace voit l'effet : elle lit par la connexion de la transaction.
       gestes.push({
         ...geste,
-        actif: (await tx.queryOne("SELECT actif FROM utilisateurs WHERE id = $1", [chef]))?.actif,
+        role: (await tx.queryOne("SELECT role FROM utilisateurs WHERE id = $1", [geste.entiteId]))?.role,
       });
     };
     const echouer: Trace = async () => {
       throw new Error("trace en échec");
     };
 
-    expect(await desactiver(chef, SANS_ENTREE, noter)).toHaveProperty("erreur");
+    expect(await changerRole(chef, AUTRE_ROLE, SANS_ENTREE, noter)).toHaveProperty("erreur");
     expect(gestes).toEqual([]);
 
     const cible = await inviterOuEchouer("cible@client.example", AUTRE_ROLE);
-    await expect(desactiver(cible, SANS_ENTREE, echouer)).rejects.toThrow("trace en échec");
+    await expect(changerRole(cible, ROLE_ADMIN, SANS_ENTREE, echouer)).rejects.toThrow("trace en échec");
     await expect(inviter("autre@client.example", AUTRE_ROLE, PREVENIR, echouer)).rejects.toThrow("trace en échec");
-    expect(await query("SELECT email, actif FROM utilisateurs ORDER BY id")).toEqual([
-      { email: "chef@client.example", actif: true },
-      { email: "cible@client.example", actif: true },
+    expect(await query("SELECT email, role FROM utilisateurs ORDER BY id")).toEqual([
+      { email: "chef@client.example", role: ROLE_ADMIN },
+      { email: "cible@client.example", role: AUTRE_ROLE },
     ]);
     expect(mailsCaptures()).toEqual([]);
 
-    await changerRole(cible, ROLE_ADMIN, SANS_ENTREE, noter);
-    expect(await desactiver(chef, SANS_ENTREE, noter)).toBeUndefined();
+    expect(await changerRole(cible, ROLE_ADMIN, SANS_ENTREE, noter)).toBeUndefined();
     expect(gestes).toEqual([
       {
         action: "modification",
@@ -569,15 +576,7 @@ describe("la trace d'un geste (le point d'accroche du journal d'audit)", () => {
         entiteId: cible,
         libelle: `compte n°${cible}`,
         champs: ["role"],
-        actif: true,
-      },
-      {
-        action: "modification",
-        entite: "compte",
-        entiteId: chef,
-        libelle: `compte n°${chef}`,
-        champs: ["actif"],
-        actif: false,
+        role: ROLE_ADMIN,
       },
     ]);
   });

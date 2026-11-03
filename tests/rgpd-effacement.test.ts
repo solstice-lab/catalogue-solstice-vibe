@@ -5,12 +5,8 @@ import { empreinteDeLAdresse } from "../src/briques/comptes/code-email";
 import { secretDeSession } from "../src/briques/comptes/jeton";
 import { NON_EXPORTEES, SOURCES } from "../src/config/donnees-personnelles";
 import { exporterDonnees } from "../src/briques/rgpd/export";
-import {
-  apercevoirEffacement,
-  effacerDonnees,
-  type BilanEffacement,
-  type GesteEffacement,
-} from "../src/briques/rgpd/effacement";
+import { apercevoirEffacement, effacerDonnees, type BilanEffacement } from "../src/briques/rgpd/effacement";
+import type { CompteTouche, EffetsDeCompte } from "../src/briques/comptes/effets";
 
 /*
  * L'effacement des données d'une personne (RGPD art. 17), par l'admin, sur
@@ -22,6 +18,22 @@ import {
  * Ce que chaque module ou brique fait de ses lignes se vérifie dans son propre
  * fichier de tests : ici, l'enchaînement, avec les sources de la brique comptes.
  */
+
+// Les effets d'effacement que les unités déclarent au registre des effets
+// de comptes, tels que l'effacement les lit : ceux de l'appli, et ceux qu'un
+// test y ajoute (auRegistre).
+const registre = vi.hoisted(() => ({ liste: [] as EffetsDeCompte[], vrais: [] as EffetsDeCompte[] }));
+vi.mock("../src/config/effets-comptes", async (original) => {
+  const vrai = await original<typeof import("../src/config/effets-comptes")>();
+  registre.vrais = vrai.EFFETS_COMPTES;
+  registre.liste.push(...vrai.EFFETS_COMPTES);
+  return { EFFETS_COMPTES: registre.liste };
+});
+
+// Ajoute une entrée au registre, après celles de l'appli.
+function auRegistre(effets: EffetsDeCompte): void {
+  registre.liste.splice(0, registre.liste.length, ...registre.vrais, effets);
+}
 
 const ELLE = "personne.effacee@exemple.test";
 const AUTRE = "autre.admin@exemple.test";
@@ -74,6 +86,7 @@ const lignesDe = (resultat: BilanEffacement, cle: string) => {
 
 beforeEach(nettoyer);
 afterEach(async () => {
+  registre.liste.splice(0, registre.liste.length, ...registre.vrais);
   vi.unstubAllEnvs();
   await nettoyer();
 });
@@ -194,68 +207,79 @@ describe("effacement des données d'une personne", () => {
     expect(SOURCES[0].cle).toBe("compte");
   });
 
-  it("efface une adresse sans compte, sans rien tracer", async () => {
+  // Ce que l'effacement d'un compte entraîne ailleurs (le journal, un prénom
+  // affiché par un module) passe par le registre des effets de comptes : la
+  // source du compte le joue dans la transaction de l'effacement.
+  it("efface une adresse sans compte, sans jouer d'effet d'effacement", async () => {
     await demandeDeCode(ELLE);
-    const gestes: GesteEffacement[] = [];
+    const touches: CompteTouche[] = [];
+    auRegistre({ unite: "module", effacement: async (_tx, touche) => void touches.push(touche) });
 
-    const resultat = bilan(
-      await effacerDonnees(ELLE, {
-        transaction,
-        demandeur: DEMANDEUR,
-        trace: async (_executeur, geste) => {
-          gestes.push(geste);
-        },
-      })
-    );
+    const resultat = bilan(await effacerDonnees(ELLE, { transaction, demandeur: DEMANDEUR }));
 
     expect(lignesDe(resultat, "compte")).toBe(0);
     expect(lignesDe(resultat, "codes-connexion")).toBe(1);
-    expect(gestes).toEqual([]);
+    expect(touches).toEqual([]);
   });
 
   // Le journal ne garde aucune adresse dans une référence : le compte se dit
   // par son numéro, comme les autres gestes de l'administration des comptes.
-  it("trace l'anonymisation du compte comme une modification de « compte n°<id> », sans l'adresse", async () => {
+  it("joue les effets d'effacement au nom du demandeur, sur « compte n°<id> », sans l'adresse", async () => {
     await compte(AUTRE, "admin");
     const id = await compte(ELLE);
-    const gestes: GesteEffacement[] = [];
+    const touches: CompteTouche[] = [];
+    auRegistre({ unite: "module", effacement: async (_tx, touche) => void touches.push(touche) });
 
-    bilan(
-      await effacerDonnees(ELLE, {
-        transaction,
-        demandeur: DEMANDEUR,
-        trace: async (_executeur, geste) => {
-          gestes.push(geste);
-        },
-      })
-    );
+    bilan(await effacerDonnees(ELLE, { transaction, demandeur: DEMANDEUR.toUpperCase() }));
 
-    expect(gestes).toEqual([
+    expect(touches).toEqual([
       {
-        action: "modification",
-        entite: "compte",
-        entiteId: id,
-        libelle: `compte n°${id}`,
-        champs: ["email", "actif", "gere_par_l_appli", "derniere_connexion"],
+        id,
+        auteur: { email: DEMANDEUR },
+        geste: {
+          action: "modification",
+          entite: "compte",
+          entiteId: id,
+          libelle: `compte n°${id}`,
+          champs: ["email", "actif", "gere_par_l_appli", "derniere_connexion"],
+        },
       },
     ]);
-    expect(JSON.stringify(gestes)).not.toContain(ELLE);
+    expect(JSON.stringify(touches)).not.toContain(ELLE);
   });
 
-  it("une trace qui échoue annule tout l'effacement", async () => {
+  // L'aperçu joue l'effacement entier, effets compris, et l'annule : un effet
+  // qui refuserait se verrait dès l'aperçu.
+  it("joue les effets dès l'aperçu, et les annule avec lui", async () => {
+    await compte(AUTRE, "admin");
+    const id = await compte(ELLE);
+    auRegistre({
+      unite: "module",
+      effacement: async (tx, touche) => {
+        await tx.query("UPDATE utilisateurs SET role = 'efface' WHERE id = $1", [touche.id]);
+      },
+    });
+
+    bilan(await apercevoirEffacement(ELLE, { transaction, demandeur: DEMANDEUR }));
+
+    expect(await queryOne(`SELECT email, role FROM utilisateurs WHERE id = $1`, [id])).toEqual({
+      email: ELLE,
+      role: "membre",
+    });
+  });
+
+  it("un effet qui échoue annule tout l'effacement", async () => {
     await compte(AUTRE, "admin");
     const id = await compte(ELLE);
     await session(id);
+    auRegistre({
+      unite: "module",
+      effacement: async () => {
+        throw new Error("effet en panne");
+      },
+    });
 
-    await expect(
-      effacerDonnees(ELLE, {
-        transaction,
-        demandeur: DEMANDEUR,
-        trace: async () => {
-          throw new Error("trace en panne");
-        },
-      })
-    ).rejects.toThrow("trace en panne");
+    await expect(effacerDonnees(ELLE, { transaction, demandeur: DEMANDEUR })).rejects.toThrow("effet en panne");
 
     expect(await queryOne(`SELECT email FROM utilisateurs WHERE id = $1`, [id])).toEqual({ email: ELLE });
     expect(await query(`SELECT 1 FROM sessions WHERE utilisateur_id = $1`, [id])).toHaveLength(1);

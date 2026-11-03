@@ -1,4 +1,4 @@
-import { query, type transaction } from "@/lib/db/client";
+import { query, type ExecuteurSql, type transaction } from "@/lib/db/client";
 import { peut, utilisateurCourant } from "@/briques/comptes/roles";
 import { estActionJournalisee, type ActionJournalisee } from "./evenements";
 
@@ -79,7 +79,10 @@ export async function auteurCourant(): Promise<Auteur> {
   return { email: auteur.email };
 }
 
-export async function journaliser(tx: Transaction, auteur: Auteur, evenement: Evenement): Promise<void> {
+// tx : l'exécuteur de la transaction de l'écriture, celui que donne
+// transaction() ou celui que reçoit un effet du registre des effets de comptes
+// (src/config/effets-comptes.ts), qui n'a que query.
+export async function journaliser(tx: ExecuteurSql, auteur: Auteur, evenement: Evenement): Promise<void> {
   if (!estActionJournalisee(evenement.action)) {
     throw new ErreurJournal(`action inconnue « ${String(evenement.action)} ».`);
   }
@@ -93,7 +96,7 @@ export async function journaliser(tx: Transaction, auteur: Auteur, evenement: Ev
   // L'auteur se désigne par son compte, pas par son adresse : anonymiser un
   // compte (brique RGPD) anonymise le journal sans le réécrire. La
   // recherche passe par `tx`, la connexion de la transaction.
-  const ligne = await tx.queryOne<{ id: string }>(
+  const [ligne] = await tx.query<{ id: string }>(
     `INSERT INTO journal_audit (utilisateur_id, action, entite, entite_id, libelle, champs)
      SELECT id, $2, $3, $4, $5, $6::text[] FROM utilisateurs WHERE email = $1
      RETURNING id`,

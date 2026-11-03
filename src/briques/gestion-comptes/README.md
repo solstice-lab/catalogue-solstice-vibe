@@ -51,14 +51,20 @@ niveau 2 au niveau 3, et le dernier admin protégé à deux portes.
 section. Il ajoute aussi une entrée **en fin** de [`CHANGELOG.md`](CHANGELOG.md),
 dans la pull request qui le fait.
 
+Les server actions de `src/app/comptes/actions.ts` ne sont pas une prise pour
+l'appli : ce qu'une désactivation ou une réactivation entraîne ailleurs se
+déclare dans le registre des effets de comptes (`src/config/effets-comptes.ts`),
+que `desactiverAction` et `reactiverAction` jouent par la brique comptes, au
+nom de la personne que rend `exiger`.
+
 ## Ce qu'elle n'importe pas
 
 Le socle (`@/ui`, React, `@/lib/format`) et la brique comptes
 (`administration.ts`, `entree.ts`), qu'elle exige. Ni la base, ni la brique
 mails : c'est comptes qui écrit et envoie. `tests/gestion-comptes-isolement.test.ts`
 le vérifie. Hors du dossier, les actions (`src/app/comptes/actions.ts`)
-importent aussi `journaliser` si l'appli a la brique journal : l'assembleur
-retire cet import sans elle.
+importent aussi `journaliser` si l'appli a la brique journal, pour la trace
+des gestes qui en prennent une : l'assembleur retire cet import sans elle.
 
 Sans elle, l'assembleur retire la page, les actions, ses lignes de
 `src/config/acces.ts` (import, `ACTIONS`, `DROITS`), l'entrée de menu et les deux lignes que l'écran ajoute
@@ -79,6 +85,14 @@ niveau 2.
   `npm run dev` (`MAILS_FOURNISSEUR=console`).
 - **Le journal d'audit**, si l'appli a sa brique : chaque action de
   `/comptes` trace son geste dans la transaction de son effet, au nom de la
-  personne que lui rend `exiger` (brique comptes, « La trace d'un geste »).
-  Sur `/journal`, un compte se lit « compte n°12 », jamais par son adresse.
-  Sans la brique journal, l'assembleur retire ce branchement.
+  personne que lui rend `exiger`. Inviter, changer un rôle, ouvrir et fermer
+  un domaine passent une trace (brique comptes, « La trace d'un geste ») ;
+  désactiver et réactiver passent par le registre des effets de comptes, où le
+  journal a son entrée. Sur `/journal`, un compte se lit « compte n°12 »,
+  jamais par son adresse. Sans la brique journal, l'assembleur retire ces
+  branchements.
+- **Ce qu'un module fait d'un compte désactivé ou réactivé** (terminer une
+  appartenance, nommer un autre gestionnaire) se déclare dans
+  `src/config/effets-comptes.ts` (brique comptes, « Les effets d'un compte
+  désactivé, réactivé ou effacé »), pas dans `src/app/comptes/actions.ts` : ce
+  fichier est celui de la brique, et ses actions jouent déjà le registre.

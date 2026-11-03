@@ -71,14 +71,18 @@ export async function changerRoleAction(id: unknown, role: unknown): Promise<Ret
   return retour(await changerRole(entier(id), texte(role), contexteDeLAppli(), tracer(personne)));
 }
 
+// Ce qu'une désactivation ou une réactivation entraîne ailleurs (l'appartenance
+// à un groupe, le journal d'audit si l'appli l'a) se déclare dans
+// src/config/effets-comptes.ts, pas ici : la personne rendue par le garde en
+// est l'auteur.
 export async function desactiverAction(id: unknown): Promise<RetourAdministration> {
   const personne = await exiger("comptes.administrer");
-  return retour(await desactiver(entier(id), contexteDeLAppli(), tracer(personne)));
+  return retour(await desactiver(entier(id), personne));
 }
 
 export async function reactiverAction(id: unknown): Promise<RetourAdministration> {
   const personne = await exiger("comptes.administrer");
-  return retour(await reactiver(entier(id), tracer(personne)));
+  return retour(await reactiver(entier(id), personne));
 }
 
 export async function ouvrirDomaineAction(domaine: unknown): Promise<RetourAdministration> {

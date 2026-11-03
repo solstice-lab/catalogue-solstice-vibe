@@ -1,6 +1,6 @@
 import { NON_EXPORTEES, SOURCES, TABLES_SANS_DONNEE_PERSONNELLE } from "@/config/donnees-personnelles";
 import { aujourdhui } from "@/lib/format";
-import type { EffacementSource, ExecuteurEffacement } from "./effacement";
+import type { AuteurEffacement, EffacementSource, ExecuteurEffacement } from "./effacement";
 
 /*
  * L'export des données d'une personne : tout ce que l'appli garde sur
@@ -26,10 +26,14 @@ export type SourceDonnees = {
   /** Ce que l'effacement fait de ces lignes, dit à l'admin avant qu'il confirme. */
   effacement: string;
   // Obligatoire : une source qui ne dirait pas comment s'effacer resterait
-  // après l'effacement sans que rien ne le signale. Écrite en méthode, comme la
-  // trace de OptionsEffacement : chaque unité la type sur l'exécuteur de sa base.
-  /** Efface ou anonymise les lignes de l'adresse (minuscules, sans espaces), dans la transaction reçue. */
-  effacer(executeur: ExecuteurEffacement, adresse: string): Promise<EffacementSource>;
+  // après l'effacement sans que rien ne le signale. Écrite en méthode, non en
+  // propriété : chaque unité la type sur l'exécuteur de sa base, plus riche
+  // que ExecuteurEffacement, et TypeScript ne l'accepte ainsi qu'en méthode.
+  /**
+   * Efface ou anonymise les lignes de l'adresse (minuscules, sans espaces), dans la transaction reçue.
+   * `auteur` : l'admin qui efface, pour ce que la source trace (le compte, au journal d'audit).
+   */
+  effacer(executeur: ExecuteurEffacement, adresse: string, auteur: AuteurEffacement): Promise<EffacementSource>;
 };
 
 /** Ce que l'appli garde sans pouvoir le rattacher à une adresse, ou ne garde pas elle-même. */

@@ -1,6 +1,7 @@
 import { query, type ExecuteurSql } from "@/lib/db/client";
 import { anonymiserLeCompte, avertissementDeConfiguration } from "./administration";
 import { empreinteDeLAdresse } from "./code-email";
+import type { AuteurDuGeste } from "./effets";
 import { secretDeSession } from "./jeton";
 
 /*
@@ -33,18 +34,16 @@ export const SOURCES_COMPTES = [
       ),
     effacement:
       "Anonymisé, pas supprimé : son adresse devient « efface-<numéro>@efface.invalid », il est désactivé et sa dernière connexion est oubliée. Ce qui le désigne par son numéro (le journal d'audit) ne mène plus à l'adresse.",
-    effacer: async (executeur: ExecuteurSql, adresse: string) => {
-      const issue = await anonymiserLeCompte(executeur, adresse);
+    // Les effets d'effacement du registre (le journal, un module qui affiche un
+    // prénom) se jouent dans anonymiserLeCompte, au nom de l'admin qui efface.
+    effacer: async (executeur: ExecuteurSql, adresse: string, auteur: AuteurDuGeste) => {
+      const issue = await anonymiserLeCompte(executeur, adresse, auteur);
       if (issue === null) {
         const avertissement = avertissementDeConfiguration(adresse);
         return { lignes: 0, ...(avertissement ? { avertissement } : {}) };
       }
       if ("erreur" in issue) return issue;
-      return {
-        lignes: 1,
-        gestes: [{ ...issue.geste, action: "modification" as const, champs: issue.geste.champs ?? [] }],
-        ...(issue.avertissement ? { avertissement: issue.avertissement } : {}),
-      };
+      return { lignes: 1, ...(issue.avertissement ? { avertissement: issue.avertissement } : {}) };
     },
   },
   {

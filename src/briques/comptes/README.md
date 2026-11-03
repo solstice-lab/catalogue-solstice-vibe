@@ -155,14 +155,46 @@ passeraient tous les deux. On peut agir sur son propre compte, tant qu'on n'est
 pas le dernier admin.
 
 **La trace d'un geste.** Chaque écriture de `administration.ts` est une seule
-transaction. Elle prend une `trace` facultative, appelée dans cette
-transaction après l'effet, pour chaque geste qui a changé quelque chose :
-une trace qui échoue annule le geste, un geste refusé ne l'appelle pas. La
-brique ne peut pas importer le journal d'audit, qui l'exige : ce sont les
-actions de `/comptes` (brique gestion-comptes) qui lui passent
-`journaliser`, au nom de la personne que leur rend `exiger`. Un compte s'y
-désigne par son numéro (« compte n°12 »), jamais par son adresse. Sans la
-brique journal, l'assembleur retire ce branchement et rien n'est tracé.
+transaction. Inviter, changer un rôle, ouvrir et fermer un domaine prennent une
+`trace` facultative, appelée dans cette transaction après l'effet, pour chaque
+geste qui a changé quelque chose : une trace qui échoue annule le geste, un
+geste refusé ne l'appelle pas. La brique ne peut pas importer le journal
+d'audit, qui l'exige : ce sont les actions de `/comptes` (brique
+gestion-comptes) qui lui passent `journaliser`, au nom de la personne que leur
+rend `exiger`. Un compte s'y désigne par son numéro (« compte n°12 »), jamais
+par son adresse. Sans la brique journal, l'assembleur retire ce branchement et
+rien n'est tracé. Désactiver, réactiver et effacer ne prennent pas de trace :
+le journal les trace par le registre des effets (ci-dessous).
+
+**Les effets d'un compte désactivé, réactivé ou effacé.** Une autre unité de
+l'appli peut avoir à réagir : terminer une appartenance, nommer un autre
+gestionnaire, anonymiser un prénom affiché, tracer le geste au journal. Elle le
+déclare dans le registre `src/config/effets-comptes.ts`, une entrée par unité
+(`EffetsDeCompte`, de `effets.ts`), sans retoucher la brique ni
+`src/app/comptes/actions.ts`. Le registre est né de l'essai tours-de-coloc,
+qui a dû retoucher ce fichier de la brique gestion-comptes, et dont trois
+tickets y ajoutaient chacun leur effet.
+- `desactiver`, `reactiver` et `anonymiserLeCompte` jouent les effets de
+  l'événement (`desactivation`, `reactivation`, `effacement`), dans l'ordre du
+  registre, dans leur transaction, sous leur verrou, après leur écriture. Un
+  effet qui lève annule le geste et les effets déjà joués.
+- Un effet reçoit l'exécuteur de la transaction et le compte touché :
+  `{ id, auteur, geste }`, où `auteur` est la personne qui fait le geste (celle
+  que rend `exiger`, ou l'admin qui efface) et `geste` a la forme d'un
+  événement du journal (« compte n°12 », les colonnes changées). À
+  l'effacement, l'adresse est déjà anonymisée : l'effet retrouve ses lignes
+  par le numéro du compte.
+- Un geste refusé ou qui ne change rien (réactiver un compte actif) ne joue
+  aucun effet.
+- **Un effet n'écrit et ne lit que par l'exécuteur reçu**, jamais par
+  `query()`, `queryOne()` ni `transaction()` : une écriture faite par le pool
+  resterait quand le geste est annulé, et attendrait souvent la ligne que la
+  transaction tient. `tests/comptes-effets.test.ts` joue chaque effet du
+  registre sous un pool qui refuse toute requête, et prouve sa sensibilité sur
+  un effet fautif.
+- **Rien d'autre qu'une écriture en base** : l'aperçu d'un effacement (brique
+  rgpd) joue les effets puis les annule, et un mail envoyé par un effet
+  partirait quand même.
 
 **L'effacement des données d'une personne** (brique rgpd, que l'assembleur garde d'office avec comptes).
 `anonymiserLeCompte` anonymise le compte d'une adresse dans la transaction de
@@ -171,7 +203,8 @@ l'effacement, sans le supprimer : son adresse devient
 est désactivé, n'est plus géré par l'appli, et sa dernière connexion est
 oubliée. Ce qui le désigne par son numéro (le journal d'audit) reste en place
 et ne mène plus à l'adresse. Mêmes portes que la désactivation : le verrou, le
-dernier admin actif, les comptes de démo. Une adresse écrite dans la
+dernier admin actif, les comptes de démo. Les effets d'effacement du registre
+suivent, au nom de l'admin qui efface. Une adresse écrite dans la
 configuration ou dans `COMPTES_PREMIER_ADMIN` est anonymisée en base, avec un
 avertissement : elle reste dans le code, et entrerait avec un compte neuf.
 
@@ -187,6 +220,14 @@ Pièges verrouillés dans `tests/comptes-administration.test.ts` :
 | Un accès perdu ou rendu au passage du niveau 2 au niveau 3 | « passage du niveau 2 au niveau 3 » |
 | Une messagerie publique ouverte comme domaine | « ouvrir et fermer un domaine » |
 
+Et dans `tests/comptes-effets.test.ts`, le registre des effets :
+
+| Piège | Test |
+| --- | --- |
+| Un effet qui écrit ou lit par le pool, hors de la transaction du geste | « verrou : un effet du registre se joue dans la transaction du geste », avec son cas fautif |
+| Un effet en échec qui laisse le geste fait | « annulent le geste quand l'un d'eux lève, avec ce que les effets d'avant ont écrit » |
+| Un effet joué pour un geste refusé, ou qui ne change rien | « ne partent pas pour un geste refusé ni pour un geste qui ne change rien » |
+
 ## Les fichiers
 
 | Fichier | Rôle |
@@ -195,6 +236,7 @@ Pièges verrouillés dans `tests/comptes-administration.test.ts` :
 | `session.ts` | Ouvrir, lire, fermer une session ; retrouver une personne par son adresse ; fermer toutes les sessions d'un compte qu'on désactive. Seul fichier qui touche aux sessions en base. |
 | `entree.ts` | Qui entre, avec quel rôle : `admettre`, `seraitAdmis`, `roleEffectif`, `origineDuCompte`. |
 | `administration.ts` | Le niveau 3 : lister les comptes et les domaines, inviter, changer un rôle, désactiver, réactiver, ouvrir et fermer un domaine, sous la protection du dernier admin. |
+| `effets.ts` | Les types du registre des effets de comptes et `jouerLesEffets`, qu'appellent la désactivation, la réactivation et l'anonymisation d'un compte. |
 | `jeton.ts` | Le jeton, sa signature, le secret, le nom du cookie. Sans accès à la base : le proxy l'importe. |
 | `protection.ts` | `protegerLaRoute` et la liste des routes ouvertes, pour `src/proxy.ts`. |
 | `retour.ts` | `cheminDeRetour` : le chemin où revenir après la connexion, filtré. |
@@ -211,8 +253,8 @@ Pièges verrouillés dans `tests/comptes-administration.test.ts` :
 | `BandeauSession.tsx` | Au-dessus de chaque page (depuis `src/app/layout.tsx`) : qui est connecté, « Se déconnecter » et, en démo, le choix du rôle. |
 
 Hors de la brique, mais partis avec elle quand une copie ne la garde pas :
-- `src/config/acces.ts` et `src/config/comptes.ts`, les fichiers que l'appli
-  remplit, qui importent les types de la brique ;
+- `src/config/acces.ts`, `src/config/comptes.ts` et `src/config/effets-comptes.ts`,
+  les fichiers que l'appli remplit, qui importent les types de la brique ;
 - `src/app/connexion/`, avec les deux routes de Google (`google/route.ts` et
   `google/retour/route.ts`) ;
 - `tests/roles.test.ts` ;
@@ -222,6 +264,7 @@ Hors de la brique, mais partis avec elle quand une copie ne la garde pas :
   parcourant toutes les routes ;
 - `tests/comptes-code-email.test.ts`, la connexion par code ;
 - `tests/comptes-administration.test.ts`, le niveau 3 ;
+- `tests/comptes-effets.test.ts`, le registre des effets et son verrou ;
 - `tests/comptes-google.test.ts`, la connexion avec Google ;
 - `tests/comptes-isolement.test.ts`, `tests/aide-session.ts` et `tests/aide-comptes.ts`
   (la suppression de tous les comptes, avec ce qui les désigne).
@@ -242,7 +285,9 @@ La brique n'importe que :
 - le socle (`@/ui`, Next, React, `node:crypto`, l'adresse IP du visiteur
   `@/lib/adresse-ip`) ;
 - le client de base (`@/lib/db/client`) ;
-- la configuration de l'appli (`@/config/acces`, `@/config/comptes`) ;
+- la configuration de l'appli (`@/config/acces`, `@/config/comptes`,
+  `@/config/effets-comptes`, par où les autres unités réagissent à un compte
+  désactivé ou effacé sans que la brique les importe elle-même) ;
 - l'envoi de la brique mails (`@/briques/mails/envoi`), qu'elle exige ;
 - `oauth4webapi`, pour le protocole OpenID Connect de la connexion avec Google.
 
@@ -502,14 +547,16 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `BandeauSession.tsx` | `BandeauSession` | Placé dans `src/app/layout.tsx`. |
 | `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"google"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif) ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
 | `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code` et `connexion-google`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code et celle avec Google n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et la vie du cookie de parcours de Google sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
-| `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse)` : le compte s'anonymise (`anonymiserLeCompte`), sessions et demandes de code sont supprimées. |
+| `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse, auteur)` : le compte s'anonymise (`anonymiserLeCompte`, au nom de `auteur`, l'admin qui efface), sessions et demandes de code sont supprimées. |
 | `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine`, `ouverte` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
-| `administration.ts` | `anonymiserLeCompte(executeur, email, contexte?)` → `Promise<CompteAnonymise \| Refus \| null>`, `adresseAnonymisee(id)` → `string` | L'anonymisation du compte d'une adresse, dans la transaction de l'appelant (l'effacement de la brique rgpd) : `null` sans compte, `Refus` pour le dernier admin actif ou un compte de démo. `CompteAnonymise` : `{ id, geste, avertissement? }`, où `geste` est la modification de « compte n°<id> » à tracer, et `avertissement` dit de retirer l'adresse de la configuration. `avertissementDeConfiguration(email, contexte?)` → `string | null` donne cet avertissement aussi pour une adresse sans compte en base. |
+| `administration.ts` | `anonymiserLeCompte(executeur, email, auteur, contexte?)` → `Promise<CompteAnonymise \| Refus \| null>`, `adresseAnonymisee(id)` → `string` | L'anonymisation du compte d'une adresse, dans la transaction de l'appelant (l'effacement de la brique rgpd), suivie des effets d'effacement du registre au nom de `auteur` (`{ email }`, l'admin qui efface) : `null` sans compte, `Refus` pour le dernier admin actif ou un compte de démo. `CompteAnonymise` : `{ id, avertissement? }`, où `avertissement` dit de retirer l'adresse de la configuration. `avertissementDeConfiguration(email, contexte?)` → `string | null` donne cet avertissement aussi pour une adresse sans compte en base. |
 | `administration.ts` | types `CompteAdministre`, `DomaineAdministre`, `StatutDuCompte`, `Invitation`, `Prevenir`, `Refus`, `Trace`, `Geste`, `CompteAnonymise` | Les formes que rendent les fonctions ci-dessous ; l'écran de gestion-comptes les importe en `import type`. |
 | `administration.ts` | `listerComptes(contexte?)` → `Promise<CompteAdministre[]>`, `listerDomaines(contexte?)` → `Promise<DomaineAdministre[]>` | Le niveau 3, pour l'écran de la brique gestion-comptes. Un compte porte son rôle effectif, son origine, son statut (`actif`, `desactive`, `sans-acces`) et `protege`, vrai sur le dernier admin actif. Un domaine dit ce que sa fermeture retirerait (`comptesQuiPerdraientLAcces`). |
 | `administration.ts` | `inviter(email, role, prevenir, trace?)` → `Promise<Invitation \| Refus>` | Crée le compte, géré par l'appli. `prevenir` : `{ nomDeLAppli, adresseDeConnexion }` pour un mail d'information (l'adresse de la page de connexion, ni code ni lien qui connecte), ou `null`. `Invitation.mail` vaut `"parti"`, `"en-echec"` (le compte reste créé) ou `"non-demande"`. |
-| `administration.ts` | `changerRole(id, role, contexte?, trace?)`, `desactiver(id, contexte?, trace?)`, `reactiver(id, trace?)`, `ouvrirDomaine(domaine, contexte?, trace?)`, `fermerDomaine(domaine, contexte?, trace?)` → `Promise<Refus \| undefined>` | `undefined` : c'est fait. `Refus` (`{ erreur }`) : un message à afficher tel quel (dernier admin, compte introuvable, rôle non déclaré, messagerie publique…). Le garde (`exiger`) reste à l'appelant. |
-| `administration.ts` | `Trace` : `(tx, geste) => Promise<void>` | Le paramètre `trace` des six écritures : appelée dans leur transaction, après l'effet, pour chaque geste qui a changé quelque chose ; si elle lève, le geste est annulé. `Geste` a la forme d'un événement de la brique journal : `action` (`creation`, `modification`), `entite` (`compte`, `domaine`), `entiteId`, `libelle` (« compte n°12 », ou le domaine) et, pour une modification, les `champs` changés (`role`, `gere_par_l_appli`, `actif`). Sans trace, rien n'est tracé. |
+| `administration.ts` | `changerRole(id, role, contexte?, trace?)`, `desactiver(id, auteur, contexte?)`, `reactiver(id, auteur)`, `ouvrirDomaine(domaine, contexte?, trace?)`, `fermerDomaine(domaine, contexte?, trace?)` → `Promise<Refus \| undefined>` | `undefined` : c'est fait. `desactiver` et `reactiver` jouent les effets du registre au nom de `auteur` (`{ email }`, la personne que rend `exiger`). `Refus` (`{ erreur }`) : un message à afficher tel quel (dernier admin, compte introuvable, rôle non déclaré, messagerie publique…). Le garde (`exiger`) reste à l'appelant. |
+| `administration.ts` | `Trace` : `(tx, geste) => Promise<void>` | Le paramètre `trace` de quatre écritures (inviter, changer un rôle, ouvrir et fermer un domaine) : appelée dans leur transaction, après l'effet, pour chaque geste qui a changé quelque chose ; si elle lève, le geste est annulé. `Geste` a la forme d'un événement de la brique journal : `action` (`creation`, `modification`), `entite` (`compte`, `domaine`), `entiteId`, `libelle` (« compte n°12 », ou le domaine) et, pour une modification, les `champs` changés (`role`, `gere_par_l_appli`, `actif`). Sans trace, rien n'est tracé. |
+| `effets.ts` | types `EffetsDeCompte`, `Effet`, `CompteTouche`, `EvenementDeCompte`, `AuteurDuGeste` | Le registre `src/config/effets-comptes.ts` : `EffetsDeCompte` vaut `{ unite, desactivation?, reactivation?, effacement? }`, chaque effet `(tx, { id, auteur, geste }) => Promise<void>`, joué dans la transaction du geste ; il lève pour l'annuler. Il n'écrit et ne lit que par `tx`, jamais par `query()` (verrou de `tests/comptes-effets.test.ts`), et n'envoie rien hors de la base. Voir « Les effets d'un compte désactivé, réactivé ou effacé ». |
+| `effets.ts` | `jouerLesEffets(tx, evenement, compte)` → `Promise<void>` | Ce qu'appellent les gestes de la brique. Une autre brique qui désactiverait ou effacerait un compte l'appelle dans sa transaction. |
 
 **Ce que l'appli remplit :**
 - `src/config/acces.ts` : `ACTIONS`, une ligne par module ou par brique ; `ROLES` ;
@@ -521,6 +568,9 @@ utilise. Les autres exports servent aux fichiers de la brique ou
     ouvert à toute adresse) ;
   - `DOMAINES_GOOGLE_WORKSPACE`, le ou les Workspace dont la connexion avec Google
     accepte les comptes. Vide, elle accepte tout compte dont Google fait autorité.
+- `src/config/effets-comptes.ts` : `EFFETS_COMPTES`, une entrée par unité qui
+  réagit à un compte désactivé, réactivé ou effacé (le journal d'audit, si
+  l'appli l'a, y est déjà).
 
 **Interne** : `UTILISATEURS_DEMO`, `entrerEnDemo`, `demoProposee`,
 `lireSession`, `lireSessionDe`, `trouverUtilisateur`, `fermerLesSessionsDe`,

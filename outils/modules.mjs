@@ -358,6 +358,10 @@ export const BRIQUES = {
       "tests/comptes-code-email.test.ts",
       "tests/comptes-administration.test.ts",
       "tests/comptes-google.test.ts",
+      // Le registre des effets de comptes : ce que les autres unités font d'un
+      // compte désactivé, réactivé ou effacé. Chacune y retire son entrée.
+      "src/config/effets-comptes.ts",
+      "tests/comptes-effets.test.ts",
       "tests/aide-session.ts",
       "tests/aide-comptes.ts",
       // Les cookies et en-têtes simulés de tous les tests, et le rôle qu'ils
@@ -592,16 +596,8 @@ export const BRIQUES = {
         '  const personne = await exiger("comptes.administrer");\n  return retour(await changerRole(entier(id), texte(role), contexteDeLAppli(), tracer(personne)));',
         '  await exiger("comptes.administrer");\n  return retour(await changerRole(entier(id), texte(role)));'
       ),
-      remplace(
-        "src/app/comptes/actions.ts",
-        '  const personne = await exiger("comptes.administrer");\n  return retour(await desactiver(entier(id), contexteDeLAppli(), tracer(personne)));',
-        '  await exiger("comptes.administrer");\n  return retour(await desactiver(entier(id)));'
-      ),
-      remplace(
-        "src/app/comptes/actions.ts",
-        '  const personne = await exiger("comptes.administrer");\n  return retour(await reactiver(entier(id), tracer(personne)));',
-        '  await exiger("comptes.administrer");\n  return retour(await reactiver(entier(id)));'
-      ),
+      // Désactiver et réactiver gardent la personne : elle est l'auteur que
+      // reçoivent les effets du registre des effets de comptes, journal ou non.
       remplace(
         "src/app/comptes/actions.ts",
         '  const personne = await exiger("comptes.administrer");\n  return retour(await ouvrirDomaine(texte(domaine), contexteDeLAppli(), tracer(personne)));',
@@ -612,19 +608,13 @@ export const BRIQUES = {
         '  const personne = await exiger("comptes.administrer");\n  return retour(await fermerDomaine(texte(domaine), contexteDeLAppli(), tracer(personne)));',
         '  await exiger("comptes.administrer");\n  return retour(await fermerDomaine(texte(domaine)));'
       ),
-      // --- l'effacement des données d'une personne redevient sans trace (ces
-      // fichiers partent avec la brique rgpd : sans elle, ces retraits se sautent)
-      bloc(
-        "src/app/donnees-personnelles/actions.ts",
-        "// Brique journal : l'anonymisation d'un compte se trace",
-        "// Fin de la brique journal."
-      ),
-      bloc(
-        "src/app/donnees-personnelles/actions.ts",
-        "// Brique journal : la personne que le garde a rendue",
-        "// Fin de la brique journal."
-      ),
-      bloc("src/app/donnees-personnelles/actions.ts", "    // Brique journal.", "    trace: tracer(personne),"),
+      // --- la désactivation, la réactivation et l'effacement d'un compte ne se
+      // tracent plus : son entrée du registre des effets de comptes (le
+      // fichier part avec la brique comptes, que celle-ci exige)
+      ligne("src/config/effets-comptes.ts", 'import { EFFETS_JOURNAL } from "@/briques/journal/effets-comptes";'),
+      bloc("src/config/effets-comptes.ts", "  // Le journal en dernier", "  EFFETS_JOURNAL,"),
+      // --- l'effacement des données d'une personne (ces fichiers partent avec
+      // la brique rgpd : sans elle, ces retraits se sautent)
       bloc(
         "tests/rgpd-routes.test.ts",
         "    // Brique journal : la trace d'un effacement retient le compte",

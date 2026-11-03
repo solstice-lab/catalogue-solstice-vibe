@@ -56,8 +56,8 @@ affaire : elle décrit les traitements, cette brique sort les données.
   retape l'adresse.
 - **Même découpage que l'export.** Chaque source du registre dit ce que
   l'effacement fait de ses lignes (`effacement`, montré dans l'aperçu) et le
-  fait (`effacer`), dans une seule transaction pour toutes : un refus ou une
-  trace en échec annule tout. Le registre se parcourt à l'envers : le compte,
+  fait (`effacer`), dans une seule transaction pour toutes : un refus ou un
+  effet en échec annule tout. Le registre se parcourt à l'envers : le compte,
   première source, s'anonymise après ce qui le retrouve par son adresse.
 - **Le compte s'anonymise, il ne se supprime pas** : son adresse devient
   `efface-<numéro>@efface.invalid`, il est désactivé, sa dernière connexion
@@ -75,10 +75,14 @@ affaire : elle décrit les traitements, cette brique sort les données.
   `COMPTES_PREMIER_ADMIN`) est effacée en base, et le bilan dit de la retirer :
   sinon elle reste dans le code, et entre avec un compte neuf à sa prochaine
   connexion. L'effacement n'interdit pas une nouvelle connexion à qui y a droit.
-- **La trace** : avec la brique journal, l'anonymisation d'un compte se trace
-  comme les autres gestes de l'administration des comptes, une modification de
-  « compte n°<id> », au nom de l'admin. Une adresse sans compte ne laisse pas de
-  trace : le journal ne garde aucune adresse.
+- **Ce que l'effacement d'un compte entraîne ailleurs** passe par le registre
+  des effets de comptes (`src/config/effets-comptes.ts`, brique comptes) : la
+  source du compte joue ses effets d'effacement dans la transaction, au nom de
+  l'admin qui efface, aperçu compris (ils s'annulent avec lui). Un module qui
+  affiche un prénom l'anonymise ainsi. Avec la brique journal, son entrée du
+  registre trace l'anonymisation comme les autres gestes de l'administration
+  des comptes, une modification de « compte n°<id> », au nom de l'admin. Une
+  adresse sans compte ne joue aucun effet : le journal ne garde aucune adresse.
 
 Hors v1 :
 - les durées de conservation par donnée et la purge (à venir) ;
@@ -159,11 +163,11 @@ journal.
 | `export.ts` | `exporterDonnees(adresse, maintenant?)` → `Promise<ExportDonnees>` | Le contenu du fichier pour une adresse, normalisée (minuscules, sans espaces), les adresses d'autrui masquées. Une adresse inconnue donne toutes les sources, vides, et les notes. `maintenant` : l'heure de `genere_le`, pour les tests. |
 | `export.ts` | `reponseFichier(donnees, maintenant?)` → `Response` | Le fichier en pièce jointe (`donnees-personnelles-aaaa-mm-jj.json`, jour de `maintenant`), `Cache-Control: no-store`. |
 | `export.ts` | `normaliserAdresse(adresse)` → `string`, `adresseLisible(adresse)` → `boolean` | L'adresse telle qu'elle est rangée ; le refus d'une saisie qui n'est pas une adresse (la route de l'admin). |
-| `export.ts` | types `SourceDonnees`, `DonneeNonExportee`, `ExportDonnees` | `SourceDonnees` : `{ cle, titre, tables, lire(adresse), note?, effacement, effacer(executeur, adresse) }`, où `lire` reçoit l'adresse normalisée et ne rend jamais une empreinte ; `effacement` dit à l'admin ce que l'effacement fait des lignes, et `effacer` le fait dans la transaction reçue, en rendant `EffacementSource`. `DonneeNonExportee` : `{ quoi, pourquoi, tables }`. |
+| `export.ts` | types `SourceDonnees`, `DonneeNonExportee`, `ExportDonnees` | `SourceDonnees` : `{ cle, titre, tables, lire(adresse), note?, effacement, effacer(executeur, adresse, auteur) }`, où `lire` reçoit l'adresse normalisée et ne rend jamais une empreinte ; `effacement` dit à l'admin ce que l'effacement fait des lignes, et `effacer` le fait dans la transaction reçue, en rendant `EffacementSource`. `auteur` (`AuteurEffacement`, `{ email }`) est l'admin qui efface : la source du compte le passe aux effets d'effacement du registre des effets de comptes. `DonneeNonExportee` : `{ quoi, pourquoi, tables }`. |
 | `export.ts` | `tablesNonDeclarees(tables)` → `{ oubliees, fantomes }` | Le verrou du registre, pour le test d'une appli. |
 | `origine.ts` | `vientDUnAutreSite(request)` → `boolean` | Vrai si l'en-tête Origin désigne un autre site (la route de l'admin répond alors 403). Sans en-tête Origin : faux, un appel hors navigateur n'a pas de session à voler. |
-| `effacement.ts` | `apercevoirEffacement(adresse, options)`, `effacerDonnees(adresse, options)` → `Promise<BilanEffacement \| { erreur }>` | L'aperçu joue l'effacement et l'annule ; `effacerDonnees` le fait. Tout se passe dans une transaction : un refus d'une source (`{ erreur }`, à afficher tel quel) ou une trace qui lève annule tout. `options` : `{ transaction, demandeur, trace? }`, où `transaction` est celle de la base (`transaction` de `src/lib/db/client.ts`), `demandeur` l'adresse de l'admin (la sienne est refusée), et `trace(executeur, geste)`, appelée dans la transaction pour chaque geste à tracer (`journaliser` de la brique journal). |
-| `effacement.ts` | types `BilanEffacement`, `EffacementSource`, `GesteEffacement`, `ExecuteurEffacement`, `OptionsEffacement` | `BilanEffacement` : `{ adresse, effectue, sources: [{ cle, titre, lignes, effacement }], avertissements, nonEffacees: [{ quoi, pourquoi }] }`. `EffacementSource` : `{ lignes, avertissement?, gestes? }` ou `{ erreur }`. `GesteEffacement` : `{ action: "modification", entite, entiteId, libelle, champs }`, la forme d'un événement du journal, sans adresse dans le libellé. |
+| `effacement.ts` | `apercevoirEffacement(adresse, options)`, `effacerDonnees(adresse, options)` → `Promise<BilanEffacement \| { erreur }>` | L'aperçu joue l'effacement et l'annule ; `effacerDonnees` le fait. Tout se passe dans une transaction : un refus d'une source (`{ erreur }`, à afficher tel quel) ou un effet du registre des effets de comptes qui lève annule tout. `options` : `{ transaction, demandeur }`, où `transaction` est celle de la base (`transaction` de `src/lib/db/client.ts`) et `demandeur` l'adresse de l'admin : la sienne est refusée, et il est l'auteur que reçoit chaque source. |
+| `effacement.ts` | types `BilanEffacement`, `EffacementSource`, `AuteurEffacement`, `ExecuteurEffacement`, `OptionsEffacement` | `BilanEffacement` : `{ adresse, effectue, sources: [{ cle, titre, lignes, effacement }], avertissements, nonEffacees: [{ quoi, pourquoi }] }`. `EffacementSource` : `{ lignes, avertissement? }` ou `{ erreur }`. `AuteurEffacement` : `{ email }`, l'adresse normalisée du demandeur. |
 | `actions.ts` | `ACTIONS_RGPD` | `mes-donnees.exporter` (catalogue : membre et admin), `donnees.exporter` et `donnees.effacer` (catalogue : admin). |
 
 **Interne** : `masquerAutresAdresses`, exportée pour son test.
@@ -186,8 +190,9 @@ le fait : date, ce qui change pour l'appelant, raison.
 
 Rien à faire dans le catalogue : les deux pages, l'écran de l'effacement, les
 droits et les entrées de menu (« Mes données », « Données personnelles ») sont
-en place. Avec la brique journal, les actions de l'effacement passent
-`journaliser` comme trace ; l'assembleur retire ce branchement sinon.
+en place. Le journal d'audit, quand l'appli l'a, trace l'effacement par le
+registre des effets de comptes, sans rien brancher sur les actions de
+l'effacement.
 
 **Avant de répondre à une demande** (admin) : s'assurer que la demande vient
 bien de la personne, et relire le fichier (les noms d'autres personnes n'y
@@ -223,7 +228,7 @@ son unité.
 | Un membre qui lit les données d'un autre | « exporte l'adresse de la session, sans lire la requête » ; « répond 404 à un membre » |
 | L'adresse dans l'URL, donc dans les journaux | « n'a pas de GET » |
 | Un formulaire posté depuis un autre site | « refuse un envoi venu d'un autre site » |
-| Un effacement à moitié fait | « refuse d'effacer le dernier admin actif, et n'efface alors rien d'aucune source » ; « une trace qui échoue annule tout l'effacement » |
+| Un effacement à moitié fait | « refuse d'effacer le dernier admin actif, et n'efface alors rien d'aucune source » ; « un effet qui échoue annule tout l'effacement » ; « joue les effets dès l'aperçu, et les annule avec lui » |
 | Un aperçu qui ne dit pas ce que fera la confirmation | « l'aperçu dit ce qui serait effacé, source par source, sans rien changer » ; « dit le refus dès l'aperçu » |
 | Le journal réécrit, ou supprimé avec le compte | « anonymise le compte sans le supprimer… » ; « compte les gestes de l'adresse sans réécrire aucune ligne du journal » (`tests/journal.test.ts`) |
 | Une adresse lue de travers | « refuse une confirmation qui ne redit pas l'adresse, et n'efface rien » |

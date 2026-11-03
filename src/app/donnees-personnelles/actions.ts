@@ -3,9 +3,6 @@
 import { exiger } from "@/briques/comptes/roles";
 import { apercevoirEffacement, effacerDonnees, type BilanEffacement } from "@/briques/rgpd/effacement";
 import { adresseLisible, normaliserAdresse } from "@/briques/rgpd/export";
-// Brique journal : l'anonymisation d'un compte se trace dans la transaction de l'effacement.
-import { journaliser, type Auteur, type Evenement, type Transaction } from "@/briques/journal/journal";
-// Fin de la brique journal.
 import { transaction } from "@/lib/db/client";
 
 /*
@@ -21,10 +18,6 @@ export type RetourEffacement = { bilan: BilanEffacement } | { erreur: string };
 const ILLISIBLE = { erreur: "Adresse e-mail illisible : attendu nom@domaine.ext." };
 
 const adresseDe = (valeur: unknown) => normaliserAdresse(typeof valeur === "string" ? valeur : "");
-
-// Brique journal : la personne que le garde a rendue est l'auteur de la trace.
-const tracer = (personne: Auteur) => (tx: Transaction, geste: Evenement) => journaliser(tx, personne, geste);
-// Fin de la brique journal.
 
 export async function apercevoirEffacementAction(adresse: unknown): Promise<RetourEffacement> {
   const personne = await exiger("donnees.effacer");
@@ -43,11 +36,9 @@ export async function effacerAction(adresse: unknown, confirmation: unknown): Pr
   if (adresseDe(confirmation) !== cible) {
     return { erreur: "L'adresse retapée n'est pas celle de l'aperçu : rien n'a été effacé." };
   }
-  const issue = await effacerDonnees(cible, {
-    transaction,
-    demandeur: personne.email,
-    // Brique journal.
-    trace: tracer(personne),
-  });
+  // Ce que l'effacement d'un compte entraîne ailleurs (un module, le journal
+  // d'audit si l'appli l'a) passe par le registre des effets de comptes
+  // (src/config/effets-comptes.ts), au nom du demandeur.
+  const issue = await effacerDonnees(cible, { transaction, demandeur: personne.email });
   return "erreur" in issue ? issue : { bilan: issue };
 }
