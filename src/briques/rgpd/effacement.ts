@@ -7,12 +7,17 @@ import { normaliserAdresse } from "./export";
  * table, chaque source du registre efface ou anonymise ses propres lignes.
  *
  * Tout se joue dans UNE transaction : un refus d'une source (le dernier admin
- * actif) ou une trace en échec annule ce que les autres ont déjà fait.
+ * actif) ou un effet en échec annule ce que les autres ont déjà fait.
  * L'aperçu joue le même effacement et l'annule : ce que l'admin lit avant de
  * confirmer est ce que la confirmation fera, refus compris.
  *
+ * Ce que l'effacement d'un compte entraîne ailleurs (le journal d'audit, un
+ * prénom affiché par un module) se déclare au registre des effets de comptes
+ * (src/config/effets-comptes.ts) : la source du compte le joue, au nom du
+ * demandeur, et l'appelant n'a rien à brancher.
+ *
  * La brique n'importe pas la base : l'appelant lui passe sa fonction de
- * transaction, comme la trace du journal d'audit.
+ * transaction.
  */
 
 /** Ce que l'effacement exécute : la requête de la transaction ouverte par l'appelant. */
@@ -20,18 +25,11 @@ export type ExecuteurEffacement = {
   query: (texte: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
 };
 
-/** Un geste à tracer au journal d'audit : toujours la modification d'une fiche, jamais une adresse dans le libellé. */
-export type GesteEffacement = {
-  action: "modification";
-  entite: string;
-  entiteId: string | number;
-  libelle: string;
-  champs: string[];
-};
+/** L'admin qui efface, son adresse normalisée : l'auteur que reçoivent les effets d'effacement. */
+export type AuteurEffacement = { email: string };
 
 /** Ce qu'une source a fait de ses lignes, ou son refus, qui annule tout l'effacement. */
-export type EffacementSource =
-  { lignes: number; avertissement?: string; gestes?: GesteEffacement[] } | { erreur: string };
+export type EffacementSource = { lignes: number; avertissement?: string } | { erreur: string };
 
 export type BilanEffacement = {
   adresse: string;
@@ -46,13 +44,8 @@ export type BilanEffacement = {
 
 export type OptionsEffacement = {
   transaction: <T>(travail: (executeur: ExecuteurEffacement) => Promise<T>) => Promise<T>;
-  /** L'adresse de l'admin qui efface : il n'efface pas la sienne. */
+  /** L'adresse de l'admin qui efface : il n'efface pas la sienne, et il est l'auteur des effets d'effacement. */
   demandeur: string;
-  // Écrite en méthode, non en propriété : l'appelant passe une fonction typée
-  // sur la transaction de sa base, plus riche que ExecuteurEffacement, et
-  // TypeScript ne l'accepte ainsi qu'en méthode.
-  /** Appelée dans la transaction, après l'effacement : une trace qui lève annule tout. */
-  trace?(executeur: ExecuteurEffacement, geste: GesteEffacement): Promise<void>;
 };
 
 type Refus = { erreur: string };
@@ -73,7 +66,8 @@ async function jouer(
   effectuer: boolean
 ): Promise<BilanEffacement | Refus> {
   const normalisee = normaliserAdresse(adresse);
-  if (normalisee === normaliserAdresse(options.demandeur)) return SOI_MEME;
+  const auteur: AuteurEffacement = { email: normaliserAdresse(options.demandeur) };
+  if (normalisee === auteur.email) return SOI_MEME;
   try {
     return await options.transaction(async (executeur) => {
       const issues = new Map<string, Exclude<EffacementSource, Refus>>();
@@ -81,7 +75,7 @@ async function jouer(
       // en dernier, après tout ce qui le retrouve par son adresse (ses sessions,
       // le journal).
       for (const source of [...SOURCES].reverse()) {
-        const issue = await source.effacer(executeur, normalisee);
+        const issue = await source.effacer(executeur, normalisee, auteur);
         if ("erreur" in issue) throw new Annulation(issue);
         issues.set(source.cle, issue);
       }
@@ -98,9 +92,6 @@ async function jouer(
         nonEffacees: NON_EXPORTEES.map(({ quoi, pourquoi }) => ({ quoi, pourquoi })),
       };
       if (!effectuer) throw new Annulation(bilan);
-      for (const { cle } of SOURCES) {
-        for (const geste of issues.get(cle)?.gestes ?? []) await options.trace?.(executeur, geste);
-      }
       return bilan;
     });
   } catch (erreur) {

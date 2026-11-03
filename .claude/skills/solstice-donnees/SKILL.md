@@ -98,6 +98,11 @@ brancher ») :
   action que la page : sinon un membre voit un lien qui mène à un 404.
 - **Slugs** : `lib/slug.ts`, recalculés jamais stockés. Déclarer les segments
   statiques du module dans `SEGMENTS_RESERVES_PAR_MODULE`.
+- **Un compte désactivé, réactivé ou effacé** qui doit changer quelque chose
+  au module (une appartenance terminée, un prénom anonymisé) : un effet déclaré
+  dans `src/config/effets-comptes.ts`, écrit par l'exécuteur reçu, jamais par
+  `query()`. Jamais une retouche de `src/app/comptes/actions.ts`, fichier de la
+  brique gestion-comptes (README de comptes, « Les effets d'un compte… »).
 - **Les gestes de masse appartiennent aux LISTES** (sélection + actions en
   lot), pas aux fiches. Toute suppression se confirme par une `Modale`.
 - **Toutes les pages du module en `force-dynamic`** : le build n'interroge

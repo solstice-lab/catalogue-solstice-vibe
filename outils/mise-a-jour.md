@@ -130,6 +130,7 @@ pas donnée pour sûre.
 À l'assemblage, `outils/modules.mjs` retouche des fichiers du socle et des briques gardées
 selon les briques absentes : `migrations.ts`, `.env.example`, `render.yaml`,
 `src/lib/confidentialite.ts`, `src/config/donnees-personnelles.ts`, `src/config/acces.ts`,
+`src/config/effets-comptes.ts`,
 `src/lib/navigation.ts`, `src/proxy.ts`, `src/app/layout.tsx`, `src/app/globals.css`,
 `src/lib/referencement.ts`, `vitest.config.ts`, `.github/workflows/ci.yml`,
 `package.json`, `CLAUDE.md` et plusieurs tests, entre autres. Le manifeste les marque de

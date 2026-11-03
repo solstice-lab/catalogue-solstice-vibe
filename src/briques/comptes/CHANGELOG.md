@@ -220,3 +220,32 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : un outil public demande une inscription ouverte à tous. Une
   appli avait réécrit l'admission dans son propre dépôt pour l'obtenir, et une
   deuxième en avait besoin : le besoin est devenu une option de la brique.
+
+## 2026-11-03 · Un registre des effets d'un compte désactivé, réactivé ou effacé · Rupture
+
+- **Ce qui change** :
+  - `effets.ts` (nouveau) : les types `EffetsDeCompte`, `Effet`,
+    `CompteTouche`, `EvenementDeCompte`, `AuteurDuGeste` et
+    `jouerLesEffets(tx, evenement, compte)`. Le registre
+    `src/config/effets-comptes.ts` (`EFFETS_COMPTES`), que l'appli remplit et
+    qui part avec la brique, rassemble une entrée par unité ;
+  - `desactiver(id, contexte?, trace?)` devient `desactiver(id, auteur,
+    contexte?)`, et `reactiver(id, trace?)` devient `reactiver(id, auteur)` :
+    ils jouent les effets du registre dans leur transaction, après leur
+    écriture, au nom de `auteur` (`{ email }`). Un effet qui lève annule le
+    geste ;
+  - `anonymiserLeCompte(executeur, email, contexte?)` devient
+    `anonymiserLeCompte(executeur, email, auteur, contexte?)` et joue les
+    effets d'effacement ; `CompteAnonymise` perd `geste` ;
+  - la source `compte` de `SOURCES_COMPTES` reçoit l'auteur
+    (`effacer(executeur, adresse, auteur)`) et ne rend plus de `gestes`.
+- **Appelant** : un appel de `desactiver` ou `reactiver` passe l'auteur à la
+  place de la trace (`desactiver(id, personne)`, avec la personne que rend
+  `exiger`) ; le typecheck signale les appels à reprendre. Le journal d'audit
+  trace ces gestes par son entrée du registre (`EFFETS_JOURNAL`) : une trace
+  passée en plus les tracerait deux fois. Un effet n'écrit et ne lit que par
+  l'exécuteur reçu (`tests/comptes-effets.test.ts` le verrouille).
+- **Pourquoi** : dans tours-de-coloc, désactiver un compte devait aussi
+  terminer son appartenance à une coloc, et l'effacer anonymiser son prénom.
+  La seule prise était la trace de `desactiver`, et l'appli a dû retoucher
+  `src/app/comptes/actions.ts`, un fichier de la brique gestion-comptes.

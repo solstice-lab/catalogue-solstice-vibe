@@ -46,3 +46,25 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : une appli qui a des comptes doit pouvoir répondre à une
   demande d'accès ou d'effacement ; la recommandation de la skill creer-appli
   ne suffisait pas.
+
+## 2026-11-03 · Le journal passe par le registre des effets de comptes · Rupture
+
+- **Ce qui change** :
+  - `OptionsEffacement` perd `trace`, `EffacementSource` perd `gestes`, et le
+    type `GesteEffacement` disparaît : la source du compte joue les effets
+    d'effacement du registre des effets de comptes
+    (`src/config/effets-comptes.ts`, brique comptes), où le journal d'audit a
+    son entrée ;
+  - `SourceDonnees.effacer` reçoit un troisième argument, `auteur`
+    (`AuteurEffacement`, `{ email }`) : l'admin qui efface, l'adresse
+    normalisée du demandeur ;
+  - les effets se jouent aussi dans l'aperçu, et s'annulent avec lui : un effet
+    qui lève se voit dès l'aperçu.
+- **Appelant** : un appel d'`effacerDonnees` qui passait `trace` la retire
+  (le typecheck le signale) ; l'effacement reste tracé au journal. Une source
+  qui rendait des `gestes` déclare plutôt un effet d'effacement au registre.
+  Une source qui ne lit pas `auteur` n'a rien à changer.
+- **Pourquoi** : un module qui affiche un prénom doit l'anonymiser quand le
+  compte est effacé (tours-de-coloc), comme le journal trace le geste. Un seul
+  registre pour les deux, et pour la désactivation, évite une prise par geste
+  à brancher dans les actions de l'appli.

@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 /*
  * Tests-verrous de la brique journal.
  *
- * 1. Elle ne connaît que le socle, la base et les droits de la brique comptes,
- *    qu'elle exige : l'auteur d'une ligne est la personne de la session, et
- *    l'historique ne se montre qu'à qui a journal.consulter. Jamais un module :
+ * 1. Elle ne connaît que le socle, la base et, de la brique comptes, qu'elle
+ *    exige, les droits et le type des effets de comptes : l'auteur d'une ligne
+ *    est la personne de la session, l'historique ne se montre qu'à qui a
+ *    journal.consulter, et la désactivation, la réactivation et l'effacement
+ *    d'un compte se tracent par le registre des effets. Jamais un module :
  *    ce sont les modules qui l'appellent. Une liste blanche, pour qu'un import
  *    né demain ne passe pas entre les mailles.
  * 2. Le journal ne s'efface ni ne se réécrit depuis l'appli. La base refuse
@@ -25,7 +27,7 @@ const IMPORTS_PERMIS = [
   /^@\/lib\/db\/client$/,
   /^@\/lib\/format$/,
   /^@\/ui$/,
-  /^@\/briques\/comptes\/roles$/,
+  /^@\/briques\/comptes\/(roles|effets)$/,
 ];
 
 function importsHorsPermis(source: string): string[] {

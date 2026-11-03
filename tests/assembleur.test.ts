@@ -120,6 +120,10 @@ const TEMOINS: Record<string, string[]> = {
     "tests/comptes-session.test.ts",
     "tests/comptes-proxy.test.ts",
     "tests/comptes-administration.test.ts",
+    // Le registre des effets d'un compte désactivé, réactivé ou effacé.
+    "src/briques/comptes/effets.ts",
+    "src/config/effets-comptes.ts",
+    "tests/comptes-effets.test.ts",
     // Les cookies et en-têtes simulés de tous les tests, et le rôle qu'ils
     // jouent : seul le code de la brique lit un cookie.
     "tests/setup.ts",
@@ -558,6 +562,19 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
       expect(registre.includes("SOURCES_NOTIFICATIONS"), "notifications").toBe(gardee("notifications"));
       expect(registre.includes('quoi: "E-mails envoyés"'), "mails").toBe(gardee("mails"));
       expect(registre.includes('quoi: "Messages du formulaire de contact"'), "contact").toBe(gardee("contact"));
+    }
+  );
+
+  // Le registre des effets de comptes ne nomme que les unités gardées : sans
+  // la brique journal, son entrée part, et une désactivation ne se trace
+  // plus. Le verrou de la transaction (tests/comptes-effets.test.ts) joue
+  // ces effets dans le catalogue ; ici, chaque assemblage.
+  it.runIf(gardee("comptes"))(
+    "ne déclare, dans le registre des effets de comptes, que les effets des unités gardées",
+    () => {
+      const registre = lireAssemble(assemble.dossier, "src/config/effets-comptes.ts");
+      expect(registre).toContain("export const EFFETS_COMPTES: EffetsDeCompte[] = [");
+      expect(registre.includes("EFFETS_JOURNAL"), "journal").toBe(gardee("journal"));
     }
   );
 

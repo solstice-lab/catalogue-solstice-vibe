@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 /*
  * Test-verrou : la brique comptes n'importe que le socle (le
  * kit, Next, React, node:crypto), la brique données (le client de base) et la
- * configuration que l'appli remplit (src/config/acces.ts et comptes.ts),
+ * configuration que l'appli remplit (src/config/acces.ts, comptes.ts et
+ * effets-comptes.ts, par où les autres unités réagissent à un compte désactivé
+ * ou effacé sans que la brique les importe elle-même),
  * l'adresse IP du visiteur (src/lib/adresse-ip.ts, partagée avec contact) et l'envoi de la
  * brique mails pour la connexion par code. Un seul paquet, oauth4webapi,
  * pour le protocole de la connexion avec Google : la session, elle,
@@ -22,7 +24,7 @@ const DOSSIER_BRIQUE = path.join(process.cwd(), "src", "briques", "comptes");
 const IMPORTS_PERMIS = [
   /^\.\/[^/]+$/, // un fichier de la brique elle-même, jamais « ../ »
   /^@\/ui$/,
-  /^@\/config\/(acces|comptes)$/,
+  /^@\/config\/(acces|comptes|effets-comptes)$/,
   /^@\/lib\/db\/client$/,
   /^@\/lib\/adresse-ip$/,
   // Exigée dans modules.mjs (BRIQUES.comptes.exige) : l'envoi du code.

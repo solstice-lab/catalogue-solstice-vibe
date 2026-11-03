@@ -35,7 +35,9 @@ const entier = (valeur: unknown) =>
   Number.isInteger(valeur) && Math.abs(valeur as number) <= ENTIER_MAX ? (valeur as number) : 0;
 
 // Brique journal : la personne que le garde a rendue est l'auteur de la trace.
-// Comptes ne peut pas importer le journal, qui l'exige : la trace lui est passée.
+// Comptes ne peut pas importer le journal, qui l'exige : la trace lui est passée
+// pour inviter, changer un rôle, ouvrir et fermer un domaine. Désactiver et
+// réactiver passent l'auteur au registre des effets de comptes.
 const tracer = (personne: Auteur) => (tx: Transaction, geste: Evenement) => journaliser(tx, personne, geste);
 // Fin de la brique journal.
 
@@ -71,14 +73,18 @@ export async function changerRoleAction(id: unknown, role: unknown): Promise<Ret
   return retour(await changerRole(entier(id), texte(role), contexteDeLAppli(), tracer(personne)));
 }
 
+// Ce qu'une désactivation ou une réactivation entraîne ailleurs (l'appartenance
+// à un groupe, le journal d'audit si l'appli l'a) se déclare dans
+// src/config/effets-comptes.ts, pas ici : la personne rendue par le garde en
+// est l'auteur.
 export async function desactiverAction(id: unknown): Promise<RetourAdministration> {
   const personne = await exiger("comptes.administrer");
-  return retour(await desactiver(entier(id), contexteDeLAppli(), tracer(personne)));
+  return retour(await desactiver(entier(id), personne));
 }
 
 export async function reactiverAction(id: unknown): Promise<RetourAdministration> {
   const personne = await exiger("comptes.administrer");
-  return retour(await reactiver(entier(id), tracer(personne)));
+  return retour(await reactiver(entier(id), personne));
 }
 
 export async function ouvrirDomaineAction(domaine: unknown): Promise<RetourAdministration> {

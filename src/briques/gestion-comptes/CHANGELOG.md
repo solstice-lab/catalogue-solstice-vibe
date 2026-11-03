@@ -18,3 +18,19 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   `--briques gestion-comptes` exige `comptes` (donc `mails`).
 - **Pourquoi** : le niveau 3 des droits, pour un client qui gère
   lui-même ses utilisateurs.
+
+## 2026-11-03 · Les effets d'une désactivation passent par un registre · Comportement
+
+- **Ce qui change** : `desactiverAction` et `reactiverAction` ne passent plus
+  de trace à `desactiver` et `reactiver` (brique comptes) : elles leur passent
+  la personne que rend `exiger`, et la brique comptes joue les effets du
+  registre `src/config/effets-comptes.ts` dans la transaction du geste. Le
+  journal d'audit y a son entrée : les deux gestes se tracent comme avant.
+  Les autres actions gardent leur trace.
+- **Appelant** : rien à changer. Une appli qui avait retouché
+  `src/app/comptes/actions.ts` pour qu'une désactivation fasse autre chose
+  déplace cet effet dans le registre et reprend le fichier du catalogue.
+- **Pourquoi** : dans tours-de-coloc, terminer une appartenance à la
+  désactivation obligeait à retoucher ce fichier de la brique, compté dans
+  `catalogue.empreintes.json`, et trois tickets y ajoutaient chacun leur
+  effet.

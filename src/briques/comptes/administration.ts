@@ -15,6 +15,7 @@ import {
   type LigneEntree,
   type OrigineDuCompte,
 } from "./entree";
+import { jouerLesEffets, type AuteurDuGeste } from "./effets";
 import { fermerLesSessionsDe } from "./session";
 
 /*
@@ -31,7 +32,9 @@ import { fermerLesSessionsDe } from "./session";
  *   - un rôle changé agit à la requête suivante (relu en base, roles.ts).
  *
  * Chaque écriture est UNE transaction, sous un même verrou. La trace d'un
- * geste (Trace, plus bas) s'y écrit avec l'effet : ensemble ou pas du tout.
+ * geste (Trace, plus bas) et, pour une désactivation, une réactivation ou un
+ * effacement, les effets du registre (effets.ts) s'y écrivent avec lui :
+ * ensemble ou pas du tout.
  */
 
 export type StatutDuCompte = "actif" | "desactive" | "sans-acces";
@@ -91,6 +94,8 @@ export type Geste = {
 // Appelée sous le verrou, dans la transaction du geste, après son effet : une
 // trace qui lève annule le geste. Comptes ne peut pas importer le journal,
 // qui l'exige : c'est l'appelant (les actions de /comptes) qui la passe.
+// Désactiver et réactiver n'en prennent pas : le journal les trace par le
+// registre des effets de comptes, comme l'effacement.
 export type Trace = (tx: Transaction, geste: Geste) => Promise<void>;
 
 const surLeCompte = (id: number): Pick<Geste, "entite" | "entiteId" | "libelle"> => ({
@@ -312,8 +317,13 @@ export async function changerRole(
 }
 
 // La personne est dehors à la requête suivante (lireSessionDe lit actif), et
-// ses sessions se ferment avec le compte.
-export async function desactiver(id: number, contexte = contexteDeLAppli(), trace?: Trace): Promise<Refus | undefined> {
+// ses sessions se ferment avec le compte. Les effets du registre suivent, dans
+// la transaction : un compte déjà désactivé n'en joue aucun.
+export async function desactiver(
+  id: number,
+  auteur: AuteurDuGeste,
+  contexte = contexteDeLAppli()
+): Promise<Refus | undefined> {
   return sousVerrou(async (client) => {
     const [cible] = await client.query<LigneCompte>(`${SELECT_COMPTES} WHERE u.id = $1`, [id]);
     if (!cible) return INTROUVABLE;
@@ -322,13 +332,13 @@ export async function desactiver(id: number, contexte = contexteDeLAppli(), trac
     if (!(await laisseUnAdmin(client, contexte, apres))) return DERNIER_ADMIN;
     await client.query("UPDATE utilisateurs SET actif = false WHERE id = $1", [id]);
     await fermerLesSessionsDe(client, id);
-    await tracerLaModification(trace, client, surLeCompte(id), champsChanges(cible, { actif: false }));
+    await jouerSiChange(client, "desactivation", id, auteur, champsChanges(cible, { actif: false }));
   });
 }
 
 // Rien d'autre ne change : un compte que plus rien n'admet reste « sans
 // accès », et l'admin peut alors lui donner un rôle.
-export async function reactiver(id: number, trace?: Trace): Promise<Refus | undefined> {
+export async function reactiver(id: number, auteur: AuteurDuGeste): Promise<Refus | undefined> {
   return sousVerrou(async (client) => {
     const [cible] = await client.query<{ email: string; actif: boolean }>(
       "SELECT email, actif FROM utilisateurs WHERE id = $1",
@@ -337,7 +347,23 @@ export async function reactiver(id: number, trace?: Trace): Promise<Refus | unde
     if (!cible) return INTROUVABLE;
     if (estAdresseDeDemo(cible.email)) return DEMO;
     await client.query("UPDATE utilisateurs SET actif = true WHERE id = $1", [id]);
-    await tracerLaModification(trace, client, surLeCompte(id), champsChanges(cible, { actif: true }));
+    await jouerSiChange(client, "reactivation", id, auteur, champsChanges(cible, { actif: true }));
+  });
+}
+
+// Comme la trace : un geste qui ne change rien n'a pas d'effet à jouer.
+async function jouerSiChange(
+  client: ExecuteurSql,
+  evenement: "desactivation" | "reactivation",
+  id: number,
+  auteur: AuteurDuGeste,
+  champs: string[]
+): Promise<void> {
+  if (champs.length === 0) return;
+  await jouerLesEffets(client, evenement, {
+    id,
+    auteur,
+    geste: { action: "modification", ...surLeCompte(id), champs },
   });
 }
 
@@ -402,7 +428,7 @@ export async function fermerDomaine(
   });
 }
 
-export type CompteAnonymise = { id: number; geste: Geste; avertissement?: string };
+export type CompteAnonymise = { id: number; avertissement?: string };
 
 // L'adresse d'un compte anonymisé : unique comme le veut la colonne, en
 // minuscules comme le veut sa contrainte, et sur un domaine réservé
@@ -416,7 +442,8 @@ export function adresseAnonymisee(id: number): string {
 // désigne par son numéro (le journal d'audit, en ON DELETE RESTRICT) reste en
 // place et ne mène plus à l'adresse. Mêmes portes que la désactivation : le
 // verrou, le dernier admin actif, les comptes de démo. null : aucun compte
-// pour cette adresse.
+// pour cette adresse. Les effets d'effacement du registre suivent
+// l'anonymisation, dans la même transaction, au nom de l'admin qui efface.
 //
 // Une adresse écrite dans la configuration (adresses de ENTREE, premier admin)
 // rentrerait avec un compte neuf à sa prochaine connexion, et reste dans le
@@ -424,6 +451,7 @@ export function adresseAnonymisee(id: number): string {
 export async function anonymiserLeCompte(
   client: ExecuteurSql,
   email: string,
+  auteur: AuteurDuGeste,
   contexte = contexteDeLAppli()
 ): Promise<CompteAnonymise | Refus | null> {
   const adresse = normaliser(email);
@@ -443,12 +471,13 @@ export async function anonymiserLeCompte(
     `UPDATE utilisateurs SET email = $2, actif = false, gere_par_l_appli = false, derniere_connexion = NULL WHERE id = $1`,
     [cible.id, anonyme.email]
   );
-  const avertissement = avertissementDeConfiguration(adresse, contexte);
-  return {
+  await jouerLesEffets(client, "effacement", {
     id: cible.id,
+    auteur,
     geste: { action: "modification", ...surLeCompte(cible.id), champs: champsChanges(cible, anonyme) },
-    ...(avertissement ? { avertissement } : {}),
-  };
+  });
+  const avertissement = avertissementDeConfiguration(adresse, contexte);
+  return { id: cible.id, ...(avertissement ? { avertissement } : {}) };
 }
 
 // Ce qu'il reste à retirer à la main quand l'adresse est écrite dans la

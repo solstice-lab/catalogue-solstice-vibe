@@ -37,10 +37,15 @@ unitaire et en lot (une ligne par dossier). C'est le modèle qu'un module copie.
 Elle trace aussi les gestes de l'écran `/comptes` (brique gestion-comptes) :
 inviter une adresse, changer un rôle, désactiver ou réactiver un compte
 (entité `compte`), ouvrir ou fermer un domaine (entité `domaine`). La brique
-comptes ne peut pas l'importer, puisqu'elle l'exige : ses écritures prennent
-une `trace` que les actions de `src/app/comptes/actions.ts` construisent
-avec `journaliser`. Un compte s'y désigne par « compte n°12 », jamais par
-son adresse.
+comptes ne peut pas l'importer, puisqu'elle l'exige :
+- invitation, rôle et domaines prennent une `trace` que les actions de
+  `src/app/comptes/actions.ts` construisent avec `journaliser` ;
+- désactivation, réactivation et effacement (brique rgpd) passent par le
+  registre des effets de comptes (`src/config/effets-comptes.ts`), le même que
+  celui des modules : la brique y a son entrée, `EFFETS_JOURNAL`
+  (`effets-comptes.ts`), qui trace le geste au nom de son auteur.
+
+Un compte s'y désigne par « compte n°12 », jamais par son adresse.
 
 ## Ce qu'elle ne fait pas (v1)
 
@@ -99,8 +104,8 @@ son adresse.
 - **L'effacement des données d'une personne** (brique rgpd) ne réécrit aucune
   ligne : l'anonymisation de son compte (brique comptes) détache ses gestes de
   l'adresse. La source les compte, pour l'aperçu de l'admin. L'anonymisation se
-  trace elle-même, en modification de « compte n°<id> », par la trace que les
-  actions de l'effacement passent.
+  trace elle-même, en modification de « compte n°<id> », par l'entrée de la
+  brique au registre des effets de comptes.
 
 ## Les fichiers
 
@@ -111,6 +116,7 @@ son adresse.
 | `TableauJournal.tsx` | Client : le `Tableau` des lignes, pour l'écran et pour la fiche. |
 | `HistoriqueFiche.tsx` | Serveur : la section « Historique » d'une fiche, ou rien sans le droit. |
 | `confidentialite.ts` | La description du traitement, pour la politique de confidentialité. N'importe rien : la page publique ne doit pas atteindre la base. |
+| `effets-comptes.ts` | `EFFETS_JOURNAL` : la trace d'un compte désactivé, réactivé ou effacé, pour le registre des effets de comptes (`src/config/effets-comptes.ts`). Serveur seulement. |
 | `donnees-personnelles.ts` | Ce que le journal garde sur une adresse, pour l'export et l'effacement des données d'une personne de la brique rgpd, gardée d'office avec comptes. Serveur seulement. |
 
 Hors du dossier, partis avec elle quand une copie ne la garde pas : la page
@@ -122,9 +128,9 @@ aussi l'étape `journal_audit` de `src/lib/db/migrations.ts`, ses lignes de
 `tests/rgpd-export.test.ts`, sa ligne du nettoyage des comptes de
 `tests/aide-comptes.ts`, l'historique de la fiche dossier, et rend aux écritures de `src/lib/db/dossiers.ts` leurs simples
 requêtes, sans transaction ni trace. Il retire enfin la trace que les actions
-de `src/app/comptes/actions.ts` passent à l'administration des comptes, et
-celle des actions de l'effacement (`src/app/donnees-personnelles/actions.ts`)
-avec son cas de `tests/rgpd-routes.test.ts`.
+de `src/app/comptes/actions.ts` passent à l'administration des comptes, son
+entrée de `src/config/effets-comptes.ts`, et le cas de
+`tests/rgpd-routes.test.ts` qui trace l'effacement.
 
 La table naît par l'étape « journal_audit : … » de `src/lib/db/migrations.ts`,
 jamais dans `schema.sql`, avec ses trois index et son trigger dans la même
@@ -133,7 +139,8 @@ jamais dans `schema.sql`, avec ses trois index et son trigger dans la même
 
 La brique exige `donnees` et `comptes` : elle lit la personne de la session
 (`utilisateurCourant`) et les droits (`peut`) de `roles.ts`, et la table
-`utilisateurs`. Elle n'importe que le socle, le client de base et `roles.ts` :
+`utilisateurs`. Elle n'importe que le socle, le client de base, `roles.ts` et le type des
+effets de comptes (`effets.ts`) :
 `tests/journal-isolement.test.ts` le verrouille.
 
 ## Interface publique
@@ -145,7 +152,7 @@ journal des changements.
 | Import | Symboles | Rôle |
 | --- | --- | --- |
 | `journal.ts` (serveur) | `auteurCourant()` → `Promise<Auteur>` | La personne de la session, à lire **avant** d'ouvrir la transaction : la lecture de session prend sa propre connexion au pool, et la prendre pendant la transaction ferait s'attendre les écritures quand le pool est plein. Lève `ErreurJournal` sans personne connectée. |
-| `journal.ts` (serveur) | `journaliser(tx, auteur, evenement)` → `Promise<void>` | Trace une écriture dans sa transaction (`tx`, celle que donne `transaction()` de `src/lib/db/client.ts`). Une modification sans champ changé n'écrit rien. Lève `ErreurJournal` (action inconnue, entité qui n'est pas un identifiant simple, auteur sans compte en base), ce qui annule la transaction. |
+| `journal.ts` (serveur) | `journaliser(tx, auteur, evenement)` → `Promise<void>` | Trace une écriture dans sa transaction (`tx`, celle que donne `transaction()` de `src/lib/db/client.ts`, ou l'exécuteur qu'un effet du registre des effets de comptes reçoit : `query` lui suffit). Une modification sans champ changé n'écrit rien. Lève `ErreurJournal` (action inconnue, entité qui n'est pas un identifiant simple, auteur sans compte en base), ce qui annule la transaction. |
 | `journal.ts` | `lireJournal({ entite?, entiteId?, limite? })` → `Promise<LigneJournal[]>` | Les lignes, de la plus récente à la plus ancienne. Sans garde : la page qui l'appelle a exigé `journal.consulter`. |
 | `journal.ts` | `historiqueSiPermis(entite, entiteId)` → `Promise<LigneJournal[] \| null>` | L'historique d'une fiche, ou `null` sans le droit `journal.consulter`. |
 | `journal.ts` | types `Auteur`, `Evenement`, `LigneJournal`, `Transaction` ; classe `ErreurJournal` ; `LIMITE_ECRAN`, `LIMITE_FICHE` | Entrées, retours et limites de ces fonctions. Le message de l'erreur commence par « Brique journal : ». |
@@ -153,6 +160,7 @@ journal des changements.
 | `TableauJournal.tsx` | `TableauJournal({ id, lignes, avecEntite })` | Le tableau des lignes, sans export. |
 | `HistoriqueFiche.tsx` | `HistoriqueFiche({ entite, entiteId })` | À placer sous la `Carte` d'une fiche. |
 | `confidentialite.ts` | `TRAITEMENTS_JOURNAL` | Le traitement du journal (clé `journal`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe. L'assembleur retire cet import et la ligne `journal` des choix quand la brique part. |
+| `effets-comptes.ts` (serveur seulement) | `EFFETS_JOURNAL` | L'entrée de la brique au registre des effets de comptes (`src/config/effets-comptes.ts`) : un compte désactivé, réactivé ou effacé se trace en modification de « compte n°<id> », au nom de l'auteur du geste. L'assembleur retire cet import et la ligne du registre quand la brique part. |
 | `donnees-personnelles.ts` (serveur seulement) | `SOURCES_JOURNAL` | Pour la brique rgpd, gardée d'office avec comptes : la source `journal` de son export, que son registre rassemble. Les lignes dont la personne est l'auteur. Son `effacer` les compte sans en réécrire aucune. L'assembleur retire cet import et la ligne du registre quand la brique part. |
 
 **Interne** : `estActionJournalisee`. La table `journal_audit` n'est pas une
@@ -199,7 +207,9 @@ Sur le modèle de `src/lib/db/dossiers.ts` :
    prennent alors une trace, que l'appelant construit avec `journaliser` et la
    personne que lui rend `exiger`. C'est le cas de la brique comptes, dont les
    actions de `/comptes` passent la trace (README de comptes, « La trace d'un
-   geste ») ; les entités y sont `compte` et `domaine`, sans fiche.
+   geste ») ; les entités y sont `compte` et `domaine`, sans fiche. Ce
+   qu'un module fait d'un compte désactivé ou effacé se trace dans son effet du
+   registre des effets de comptes, avec l'auteur que l'effet reçoit.
 3. Sous la fiche : `<HistoriqueFiche entite="contrats" entiteId={contrat.id} />`.
 
 Le droit `journal.consulter` se déclare dans `src/config/acces.ts` (`DROITS`),
