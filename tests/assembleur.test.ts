@@ -222,8 +222,10 @@ const CATALOGUE = [
   "README.md",
   "outils/assembler.mjs",
   "outils/modules.mjs",
+  "outils/creer-issues.mjs",
   "tests/assembleur.test.ts",
   "tests/aide-assemblage.ts",
+  "tests/creer-issues.test.ts",
   "tests/assemblage-ci.test.ts",
   // Prouve le build du socle sans base et lance ce test-ci : une copie n'a
   // ni l'assembleur ni de quoi le lancer.

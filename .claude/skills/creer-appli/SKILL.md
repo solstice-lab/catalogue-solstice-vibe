@@ -13,7 +13,8 @@ dit comme tel.
 
 Ce qu'elle produit : une **blueprint** validée et un **dossier assemblé** (le socle et les
 briques choisies), dépôt git d'un seul commit, poussé vers un dépôt distant, **privé par défaut**, créé
-après un oui explicite (étape 5), non déployé. Ce qu'elle ne fait jamais : écrire dans une
+après un oui explicite (étape 5), non déployé, puis les issues de la section 9 de la
+blueprint (étape 6). Ce qu'elle ne fait jamais : écrire dans une
 base distante, taper un `--confirmer`, écrire un `.env*`, fusionner, déployer. Elle dit quoi
 taper (`CLAUDE.md` §3 et §8).
 
@@ -371,9 +372,26 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
 2. **Nom** : celui du dossier assemblé, sauf demande contraire. `gh repo view
    <proprietaire>/<nom>` doit échouer (« Could not resolve to a Repository ») ; s'il répond,
    le nom est pris : en demander un autre.
-3. **Visibilité** : **privé** par défaut. Public seulement si la personne le demande (`--public` à la
-   place de `--private`).
-4. **Annoncer** en un message le propriétaire, le nom, la visibilité et la commande exacte,
+3. **Visibilité**, et ce qu'elle permet : **privé** par défaut. Public seulement si la
+   personne le demande (`--public` à la place de `--private`). **Avant de créer**, vérifier que
+   la protection de `main` que le socle prévoit (`socle.md`, rubrique « GitHub » : PR obligatoire,
+   check `verifier` requis) sera possible, car GitHub la refuse sur un dépôt privé du forfait
+   gratuit (« Upgrade to GitHub Pro or make this repository public », vu à l'essai de
+   tours-de-coloc, le 2026-11-03) et rien n'empêche alors une fusion sans CI verte :
+   - **Public** : possible, sur tout forfait.
+   - **Privé** : possible avec le forfait Pro, Team ou Enterprise du propriétaire. Pour une
+     organisation, `gh api orgs/<organisation> --jq .plan.name` (`free`, `team`…) ; pour un
+     compte personnel, `gh api user --jq .plan.name`, que GitHub ne renvoie qu'avec la
+     permission `user` du jeton (sinon `null`). `free`, ou une réponse illisible : la
+     protection n'est pas assurée, la traiter comme impossible.
+   - **Impossible ou incertaine** : **le dire avant de créer**, avec les trois issues, et
+     laisser l'humain choisir : dépôt public (rien du code ne devient secret, à ne choisir
+     que si le client l'accepte), forfait payant du propriétaire, ou dépôt privé **sans
+     protection**, en connaissance de cause (la CI tourne, mais ne bloque pas la fusion :
+     la discipline repose sur la personne qui fusionne). Ne rien décider à sa place ; noter
+     son choix dans le message de l'étape 5.3.
+4. **Annoncer** en un message le propriétaire, le nom, la visibilité (avec ce qu'elle permet de
+   la protection de `main`) et la commande exacte,
    chemin **absolu** dans `--source` :
 
    ```powershell
@@ -396,7 +414,9 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
 ### 5.3 Ce que l'humain tape
 
 Claude remet un message court : où est le dossier, le commit de référence, les briques
-gardées et retirées, l'URL du dépôt distant et sa visibilité, puis la liste suivante. Les
+gardées et retirées, l'URL du dépôt distant et sa visibilité (avec, si le dépôt est privé sans
+protection de `main`, la phrase qui le dit : le choix de l'étape 5.2 n'est pas à retrouver
+dans la conversation), puis la liste suivante, qui s'achève par les tickets (étape 6). Les
 commandes sont **une par bloc**, chacune suivie de sa vérification et de ce qu'elle doit
 afficher, dans le shell du poste de la personne : **PowerShell** sous Windows (ci-dessous),
 **bash ou zsh** sous macOS et Linux (leurs équivalents en 5.4). Claude demande le système
@@ -665,3 +685,34 @@ Doit afficher, avec la base, `{"commit":"inconnu","base":"ok"}` (sans la base, `
 
 Ces commandes ont été essayées sous Git Bash (sed GNU) sur des fichiers d'essai, pas encore
 sur un poste macOS (sed BSD) ou Linux : un écart se rapporte tel quel, comme en 5.3.
+
+## 6. Les tickets de la section 9
+
+`outils/creer-issues.mjs` transforme la section 9 de la blueprint en issues du dépôt distant
+(étape 5.2) : une issue par étape, avec le renvoi vers sa section de `blueprint.md` et la
+ligne « Bloqué par #n ». Au cas d'origine (tours-de-coloc, le 2026-11-03), un script jetable
+l'avait fait à la main, sans vérifier que les numéros obtenus étaient ceux que les lignes
+annonçaient. Il lit la section 9 au format du modèle (`blueprint-modele.md`) : une blueprint
+écrite avant lui, où la section 9 est une liste numérotée, est refusée avec le format à
+reprendre.
+
+1. **À blanc**, depuis la racine du catalogue, sur la blueprint du dossier assemblé (celle que
+   l'assembleur a écrite, avec le commit de référence) ; `--depot` n'a pas de valeur par
+   défaut :
+
+   ```powershell
+   node outils/creer-issues.mjs --blueprint "<chemin absolu du dossier>/blueprint.md" --depot <proprietaire>/<nom>
+   ```
+
+   Il lit GitHub (le dernier numéro du dépôt, les issues ouvertes) et ne crée rien. Montrer sa
+   sortie à l'humain : pour chaque issue, son numéro annoncé, son titre, ses dépendances et son
+   corps. Un refus (« La section 9 de la blueprint n'est pas lisible ») se corrige dans la
+   blueprint du dossier assemblé, qu'on re-présente : ce n'est pas une brique du catalogue.
+2. **Le feu vert se donne à la personne, la création se tape à la main** : Claude ne lance jamais
+   `--confirmer` (`CLAUDE.md` §3 et §8). Il donne la même commande suivie de `--confirmer`, et
+   dit qu'elle crée les issues, une fois, dans ce dépôt, et pas ailleurs.
+3. **Vérifier**, une fois les issues créées : la sortie finit par « N issues créées … chacune
+   avec ses « Bloqué par » exacts », et `gh issue list --repo <proprietaire>/<nom>` en
+   donne N, les numéros qui se suivent. Si l'outil s'est arrêté sur un écart de numéros
+   (quelqu'un a ouvert un ticket entre-temps), rapporter son message tel quel : il dit
+   quelles issues sont créées et que faire (les fermer, puis relancer). Ne rien corriger à la main.

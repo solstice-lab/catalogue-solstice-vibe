@@ -280,7 +280,7 @@ l'arrêter d'abord.
 choisies vers un dossier vide hors du catalogue, et rien de ce qui
 fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md`,
 `outils/`, ni la skill `creer-appli` et l'agent
-`relecteur-blueprint`, ni le test de l'assembleur, ni
+`relecteur-blueprint`, ni les tests de l'assembleur et de l'outil des issues, ni
 le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`
 et les modèles de ticket et de PR, ni les captures du README, `docs/captures/`
 (liste `EXCLUS_DU_CATALOGUE` de
@@ -355,6 +355,23 @@ catalogue qui a des modifications non commitées, sauf avec
 - Ce que l'assembleur ne fait pas : mettre à jour une brique déjà installée,
   déployer, lire la blueprint pour choisir ce qui s'assemble.
 
+### Les issues de la section 9
+
+`outils/creer-issues.mjs` lit la section 9 d'une blueprint (une étape par `### 9.n Titre`,
+avec son contenu, `Vérifiable à l'écran :` et `Bloqué par :` : format dans
+`.claude/skills/creer-appli/blueprint-modele.md`) et crée une issue GitHub par étape, par
+`gh`, sans dépendance. Il tourne à blanc : il affiche chaque issue (titre, corps, dépendances)
+et ne crée rien. Le dépôt se nomme toujours (`--depot`), aucun n'est pris par défaut.
+`--confirmer`, tapé à la main, crée les issues et vérifie que chacune prend le numéro
+qu'annoncent les lignes « Bloqué par #n » ; au premier écart, il s'arrête et dit quoi faire.
+
+```
+node outils/creer-issues.mjs --blueprint ../mon-appli/blueprint.md --depot moi/mon-appli
+node outils/creer-issues.mjs --blueprint ../mon-appli/blueprint.md --depot moi/mon-appli --confirmer
+```
+
+Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reçoit pas.
+
 ### Structure
 
 - `src/ui/` — le kit visuel : `AppLayout` (en-tête, nav, signature, liens des
@@ -402,7 +419,8 @@ catalogue qui a des modifications non commitées, sauf avec
   de la brique `comptes` se déclarent dans `src/config/comptes.ts` (qui
   entre) et `src/config/acces.ts` (qui a droit à quoi).
 - `outils/` — l'assembleur (`assembler.mjs`), la liste de retrait des
-  briques et de la base qu'il applique (`modules.mjs`) et la note de conception de la
+  briques et de la base qu'il applique (`modules.mjs`), l'outil des issues de la
+  section 9 d'une blueprint (`creer-issues.mjs`) et la note de conception de la
   mise à jour d'une appli assemblée (`mise-a-jour.md`), propres au catalogue : une appli assemblée ne
   les reçoit pas.
 - `scripts/` — squelette des imports et correctifs de données : dry-run par
