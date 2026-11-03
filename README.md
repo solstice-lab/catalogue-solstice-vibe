@@ -397,8 +397,9 @@ catalogue qui a des modifications non commitées, sauf avec
   `ci.yml` et `render.yaml` (racine, adaptateur Render). Les droits
   de la brique `comptes` se déclarent dans `src/config/comptes.ts` (qui
   entre) et `src/config/acces.ts` (qui a droit à quoi).
-- `outils/` — l'assembleur (`assembler.mjs`) et la liste de retrait des
-  briques et de la base qu'il applique (`modules.mjs`), propres au catalogue : une appli assemblée ne
+- `outils/` — l'assembleur (`assembler.mjs`), la liste de retrait des
+  briques et de la base qu'il applique (`modules.mjs`) et la note de conception de la
+  mise à jour d'une appli assemblée (`mise-a-jour.md`), propres au catalogue : une appli assemblée ne
   les reçoit pas.
 - `scripts/` — squelette des imports et correctifs de données : dry-run par
   défaut, `--confirmer` à la main ; `bases-locales.ts`, qui crée les bases locales (voir

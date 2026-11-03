@@ -9,13 +9,14 @@ que l'assembleur ne copie pas : une appli assemblée n'a ni l'outil ni ce qui le
 Une appli assemblée est une copie figée : ses briques se choisissent une seule fois, à
 l'assemblage (`outils/assembler.mjs`). Deux manques en découlent :
 
-1. **Ajouter ensuite une brique non choisie** n'est pas outillé (« Hors v1 » de la skill
-   `creer-appli`, README de la brique notifications). La parade actuelle : prendre d'avance
-   les briques probables, avec leur code, leurs tables et leurs traitements déclarés, sans
-   usage.
+1. **Ajouter ensuite une brique non choisie** n'est pas outillé (README de la brique
+   notifications, « Ce qu'elle ne fait pas (v1) » ; étape 2 de la skill `creer-appli` pour
+   la base, qu'une appli « n'en recevra pas après coup »). La parade actuelle : prendre
+   d'avance les briques probables, avec leur code, leurs tables et leurs traitements
+   déclarés, sans usage.
 2. **Les corrections et évolutions d'une brique** n'arrivent dans l'appli que si quelqu'un
-   lit les `CHANGELOG.md` et les reporte à la main. Une correction de sécurité peut ne
-   jamais arriver.
+   lit les `CHANGELOG.md` et les reporte à la main (« Hors v1 » de `creer-appli`). Une
+   correction de sécurité peut ne jamais arriver.
 
 Le cas : le 2026-11-03, au cadrage d'une appli de répartition des tâches en colocation, la
 personne qui utilise le catalogue a demandé de pouvoir « piquer des briques au fur et à
@@ -49,13 +50,29 @@ de même au commit A'.
 Le manifeste prouve que la reproduction est exacte : les empreintes de l'origine rejouée
 doivent être **toutes** égales à celles du manifeste de l'appli. Au premier écart, l'outil
 s'arrête en nommant les fichiers : une fusion contre une origine fausse attribuerait à
-l'appli des retouches qu'elle n'a pas faites, ou l'inverse.
+l'appli des retouches qu'elle n'a pas faites, ou l'inverse. Le manifeste ne couvre que les
+fichiers venus du catalogue : ni `NOTICE` ni `blueprint.md`, que l'assembleur écrit
+lui-même, n'y ont d'empreinte. L'origine de `NOTICE` n'est donc pas prouvée ; elle ne
+dépend que de `LICENSE` et de la licence des polices au commit A.
+
+L'origine et la cible se lisent dans le commit que l'assembleur rejoué a fait, comme
+l'appli à son `HEAD` : le contenu que git enregistre, en LF, jamais le disque. Sous
+Windows, un fichier lu en CRLF d'un côté donnerait un conflit à chaque ligne.
+
+**Le Prettier du commit A.** L'assembleur remet en forme avec le Prettier de la racine du
+catalogue rejoué, et refuse sans lui ; un worktree neuf n'a pas de `node_modules`. Les
+empreintes dépendent de cette version : celle du commit A, pas celle du jour, que
+Dependabot monte. L'outil compare la version de Prettier du verrou au commit A à celle
+qu'a installée le catalogue : égales, le worktree emprunte les `node_modules` du
+catalogue ; différentes, il lance `npm ci` dans le worktree. C'est le seul appel au réseau
+de l'outil, du côté du catalogue et pour ses propres dépendances, jamais pour l'appli. La
+comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 
 ## Ce que l'outil lit
 
 | Source | Ce qu'il en tire |
 | --- | --- |
-| `catalogue.empreintes.json` de l'appli | Le commit A (`catalogue.commit`) ; les briques B, valeurs d'`unite` qui sont des briques au commit A (chaque brique a au moins son dossier, donc une entrée) ; Dependabot, par la présence de `.github/dependabot.yml` ; l'empreinte de chaque fichier reçu. |
+| `catalogue.empreintes.json` de l'appli | Le commit A (`catalogue.commit`) ; les briques B, valeurs d'`unite` qui sont des clés de `BRIQUES` d'`outils/modules.mjs` au commit A, ni `socle`, ni `donnees` (que `planifier` refuse dans `--briques`), ni les unités partagées `patron-dossiers` et `adresse-ip` (chaque brique a au moins son dossier, donc une entrée) ; Dependabot, par la présence de `.github/dependabot.yml` ; l'empreinte de chaque fichier venu du catalogue, hors `NOTICE` et `blueprint.md`. |
 | `package.json` de l'appli | Le nom du paquet, que l'assembleur y a reporté. Un nom changé depuis se voit à la vérification des empreintes (`package.json` et le verrou le portent). |
 | `blueprint.md` de l'appli | `commit_reference`, recoupé avec le manifeste ; un désaccord se signale. |
 | L'appli, à son `HEAD` | Le contenu de chaque fichier tel que git l'enregistre, comme le manifeste, pas le disque. L'arbre doit être propre. |
@@ -70,9 +87,14 @@ Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 - l'appli n'a pas de manifeste, ou son commit porte `+arbre-modifie` : l'origine ne se
   rejoue pas ;
 - le commit A est absent du catalogue (appli assemblée avant le dépôt public) ;
-- l'arbre de l'appli n'est pas propre ;
+- l'arbre de l'appli n'est pas propre, ou son `HEAD` n'est pas son `origin/main` à jour
+  (`solstice-livrer` §1 : une branche part de là) ;
 - une brique de B est inconnue au commit A' (renommée ou retirée du catalogue) ;
-- l'origine rejouée ne redonne pas les empreintes du manifeste.
+- le Prettier du commit A ne s'installe pas dans le worktree ;
+- l'origine rejouée ne redonne pas les empreintes du manifeste ;
+- un fichier neuf de la cible a le chemin d'un fichier de l'appli : le manifeste réécrit
+  donnerait ce fichier pour venu du catalogue, et l'opération suivante le fusionnerait avec
+  celui du catalogue. L'appli renomme le sien d'abord.
 
 ## Ce qu'il fait de chaque fichier
 
@@ -87,13 +109,13 @@ en-tête (plus bas). Pour les autres :
 | changé | retouché | fusion à trois (`git merge-file`). Sans conflit : écrit, listé « fusionné, à relire ». Avec conflits : écrit avec les marqueurs, listé « en conflit ». |
 | changé | supprimé par l'appli | laissé absent, signalé |
 | absent, puis présent | absent | ajouté |
-| absent, puis présent | présent (un fichier de l'appli au même chemin) | rien n'est écrit, signalé |
+| absent, puis présent | présent (un fichier de l'appli au même chemin) | arrêt, avant toute écriture (refus ci-dessus) |
 | présent, puis absent | intact | supprimé |
 | présent, puis absent | retouché | gardé, signalé : un renommage au catalogue perdrait sinon les retouches de l'appli |
 | changé, binaire (police, image) | retouché | gardé, signalé : un binaire ne se fusionne pas |
 
-`NOTICE` suit la même table : l'assembleur l'écrit depuis `LICENSE` et la licence des
-polices. Ont un traitement propre, dit dans les sections suivantes :
+`NOTICE` suit la même table, sans empreinte au manifeste : l'appli est jugée intacte si
+elle égale l'origine rejouée. Ont un traitement propre, dit dans les sections suivantes :
 `src/lib/db/migrations.ts`, `src/lib/db/schema.sql`, `package-lock.json`,
 `catalogue.empreintes.json` et l'en-tête de `blueprint.md`.
 
@@ -122,9 +144,12 @@ l'appli n'a pas réécrit les lignes voisines.
 
 Deux limites, que le rapport redit :
 
-- un `remplace` de la liste, rejoué à l'envers, réécrit un texte que l'appli a souvent
-  changé (la liste des pages publiques de `referencement.ts`, par exemple) : conflit
-  attendu ;
+- un `remplace` de la liste, rejoué à l'envers par l'ajout de sa brique, réécrit un texte
+  que l'appli a pu changer : ajouter `journal` remet `tracer(personne)` dans les gestes de
+  `src/app/comptes/actions.ts` ; ajouter `comptes`, hors v1 (question 2), réécrirait la
+  liste des pages publiques de `referencement.ts`, que toute appli remplit. Conflit attendu
+  dès que l'appli a touché ces lignes. Une mise à jour, elle, ne rejoue aucun retrait à
+  l'envers : les briques ne changent pas ;
 - l'écart vaut pour les fichiers du catalogue, pas pour les modules que l'appli a écrits en
   copiant le patron `dossiers`. Ajouter `journal` remet la trace dans
   `src/lib/db/dossiers.ts`, pas dans les modules de l'appli : les y brancher est un ticket
@@ -203,31 +228,35 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
 ## Le manifeste et la blueprint après l'opération
 
 - `catalogue.empreintes.json` est **réécrit** : celui de la cible, tel que l'assembleur du
-  commit A' l'écrirait (commit A', version, une empreinte par fichier de la cible, y compris
-  ceux que l'appli a retouchés ou supprimés). Il dit toujours ce que l'appli a reçu du
-  catalogue, et l'opération suivante le reproduira à l'identique.
+  commit A' l'écrirait (commit A', version, une empreinte par fichier venu du catalogue dans
+  la cible, y compris ceux que l'appli a retouchés ou supprimés). Il dit toujours ce que
+  l'appli a reçu du catalogue, et l'opération suivante le reproduira à l'identique.
 - `blueprint.md` : `commit_reference` devient A', comme l'écrit l'assembleur, et
   `briques_assemblees` reçoit les briques ajoutées (question 5). Le corps reste à l'appli :
-  une brique ajoutée « à brancher » y gagne son ticket de section 9, écrit dans la session
-  de l'appli.
+  une brique ajoutée « à brancher » s'y note en section 3 avec le ticket qui la branche,
+  repris en section 9 (`blueprint-modele.md` de `creer-appli`), dans la session de l'appli.
 
 ## Le circuit, et ce qui reste un geste humain
 
-1. **Depuis une session ouverte dans le catalogue** (l'appli n'a pas l'outil) :
+Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis un
+`origin/main` à jour, dans un worktree.
+
+1. **Le ticket, dans le dépôt de l'appli** : « ajouter la brique x » ou « reporter le
+   catalogue au commit A' ». Un `--a-blanc` préalable (étape 2) en donne le contenu.
+2. **Depuis une session ouverte dans le catalogue** (l'appli n'a pas l'outil), sur un
+   worktree de l'appli dont le `HEAD` est son `origin/main` à jour :
 
    ```
-   node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--ajouter <briques>] [--vers <commit>] [--a-blanc]
+   node outils/mettre-a-jour.mjs <dossier-de-l-appli> --branche <type>/<slug> [--ajouter <briques>] [--vers <commit>] [--a-blanc]
    ```
 
    Sans `--ajouter`, l'outil met à jour vers `--vers`, par défaut le `HEAD` du catalogue.
    Avec `--ajouter`, il ajoute au commit de l'appli (A' = A) : une opération à la fois
    (« Options écartées »). Une brique qui n'existe pas au commit A se refuse : mettre à
-   jour d'abord. `--a-blanc` donne le rapport et n'écrit rien.
-2. L'outil crée dans l'appli une branche neuve depuis son `HEAD`
-   (`feature/catalogue-ajout-<brique>` ou `feature/catalogue-<commit>`), y écrit, **ne
-   commite pas** et imprime le rapport en Markdown, pour le corps de la PR. Il ne touche ni
-   `main`, ni le remote, ni aucune base, ni aucun `.env*`.
-3. **Dans une session ouverte dans l'appli**, avec `solstice-livrer` : un ticket, la
+   jour d'abord. `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée la
+   branche nommée, y écrit, **ne commite pas** et imprime le rapport en Markdown, pour le
+   corps de la PR. Il ne touche ni `main`, ni le remote, ni aucune base, ni aucun `.env*`.
+3. **Dans une session ouverte dans ce worktree de l'appli**, avec `solstice-livrer` : la
    résolution des conflits listés, `npm install` si le verrou est à régénérer, les
    vérifications du `CLAUDE.md` de l'appli (§6), la relecture par sous-agents
    (`relecteur-migrations` dès qu'une étape est ajoutée), le commit, la PR avec le rapport.
@@ -259,8 +288,8 @@ Restent à un humain :
   pourrait servir d'origine, s'il n'a pas été réécrit.
 - **Prévenir** une appli qu'une correction l'attend : l'outil se lance à la demande, et rien
   ne tient la liste des applis assemblées (question 7).
-- **Le script de l'appli qui liste ses écarts au manifeste**, sans le catalogue : chantier
-  voisin, annoncé à l'arrivée du manifeste, que cet outil ne remplace pas.
+- **Un script de l'appli qui liste ses écarts au manifeste**, sans le catalogue : chantier
+  voisin, que cet outil ne remplace pas.
 
 ## Options écartées
 
@@ -275,16 +304,20 @@ Restent à un humain :
 | Copier l'outil dans l'appli | Il lui faut de toute façon le catalogue (son historique, l'assembleur du commit A), et l'appli ne reçoit pas `outils/`, par choix (`creer-appli`). |
 | Fusionner `migrations.ts` comme du texte | Placerait les étapes d'une brique ajoutée au milieu de celles de l'appli, contre la règle « en fin ». |
 | Laisser Claude réécrire les fichiers retouchés, sans fusion | Ni reproductible ni vérifiable. L'outil est déterministe ; Claude n'intervient que sur les conflits qu'il liste, et un humain relit. |
-| Ajout et mise à jour dans la même opération | Une PR qui mêle une brique neuve et les évolutions de toutes les autres se relit mal (`CLAUDE.md` §4 et §5 : une demande, un changement). Deux opérations, deux PR. |
+| Ajout et mise à jour dans la même opération | Une PR qui mêle une brique neuve et les évolutions de toutes les autres se relit mal (`CLAUDE.md` §5 : une demande, un changement). Deux opérations, deux PR. |
 | Un paquet npm versionné par brique | Une brique retouche des fichiers du socle (menu, droits, registre, migrations, variables) : elle ne s'isole pas en paquet sans refondre le catalogue. |
 | Continuer à prendre d'avance les briques probables | Du code et des tables sans usage en production, des traitements déclarés pour rien dans la politique, des variables et une surface d'attaque en plus. Reste possible ; ce n'est pas une réponse. |
 
 ## Découpage en tickets
 
-Chaque ticket est une tranche vérifiable, dans le catalogue, avec ses tests, dans un
-fichier écarté des copies comme ceux de l'assembleur (`EXCLUS_DU_CATALOGUE`). Les tests
-construisent leur propre catalogue d'essai à deux commits : la CI ne clone pas
-l'historique. Aucun ticket n'est créé avant la validation de cette note.
+Chaque tranche est un ticket, vérifiable, dans le catalogue, avec ses tests. Le fichier
+de tests de l'outil s'ajoute à `EXCLUS_DU_CATALOGUE`, comme celui de l'assembleur. S'il
+est long, il sort aussi de `npm test` : le script `"test"` de `package.json` et le
+`remplace` de `RETRAITS_DU_SOCLE` qui le réécrit dans les copies changent ensemble. Ses cas
+qui rejouent des migrations tournent avec Postgres, dans le job qui lance le test de
+l'assembleur (`assemblage.yml`). Les tests construisent leur propre catalogue d'essai à
+deux commits : la CI ne clone pas l'historique. Aucun ticket n'est créé avant la
+validation de cette note.
 
 1. **Assembleur : noter dans le manifeste les paramètres de l'assemblage.** Un format 2 :
    briques choisies et ajoutées d'office, nom du paquet, Dependabot, commit complet. Fait
@@ -292,13 +325,16 @@ l'historique. Aucun ticket n'est créé avant la validation de cette note.
    format 1, en déduisant (question 4).
 2. **Mise à jour : reproduire l'origine d'une appli et lister ses écarts** (`--a-blanc`
    seul). Lire le manifeste, déduire B, rejouer l'assembleur du commit A dans un worktree
-   temporaire, comparer les empreintes, les refus en clair, la liste des fichiers retouchés
-   et supprimés par l'appli. Fait quand l'origine d'une appli fraîchement assemblée se
-   reproduit sans écart, qu'une retouche est listée et qu'un manifeste faussé est refusé.
+   temporaire avec le Prettier de ce commit, comparer les empreintes, les refus en clair, la
+   liste des fichiers retouchés et supprimés par l'appli. Fait quand l'origine d'une appli
+   fraîchement assemblée se reproduit sans écart, qu'une retouche est listée, qu'un
+   manifeste faussé est refusé, et que l'origine se reproduit encore quand le catalogue a
+   monté Prettier depuis A.
 3. **Mise à jour : écrire la cible dans une branche de l'appli.** Le rejeu au commit A', la
    table « Ce qu'il fait de chaque fichier », la fusion à trois et ses marqueurs, la branche
-   neuve, le manifeste réécrit, `commit_reference`. Arrêt tant que `migrations.ts` ou
-   `schema.sql` diffèrent (ticket 4). Fait quand un test couvre chaque ligne de la table.
+   nommée, le manifeste réécrit, `commit_reference`. Arrêt tant que `migrations.ts` ou
+   `schema.sql` diffèrent (tranche 4). Fait quand un test couvre chaque ligne de la table,
+   lecture en LF comprise.
 4. **Mise à jour : les étapes de migration en fin de liste.** Les étapes lues par `nom`,
    l'ajout en fin, les arrêts, `schema.sql`, et un verrou au catalogue : deux étapes n'y
    portent pas le même `nom`. Fait quand l'étape neuve se trouve après celles de l'appli et
@@ -308,21 +344,29 @@ l'historique. Aucun ticket n'est créé avant la validation de cette note.
    l'opération, et après `npm install` quand le rapport le demande.
 6. **Mise à jour : le rapport.** Les entrées des `CHANGELOG.md` (ruptures en tête), les
    sujets des commits du socle, les variables nouvelles, la confidentialité, le registre,
-   ce que la fusion déclenche. Fait quand le rapport d'un cas d'essai porte chaque rubrique.
+   les briques « à brancher », ce que la fusion déclenche. Fait quand le rapport d'un cas
+   d'essai porte chaque rubrique.
 7. **Ajouter une brique à une appli assemblée** (`--ajouter`). `planifier` sur B plus x, les
-   refus (brique absente au commit A, base absente, `comptes`, selon les questions 1 et 2),
-   la mention « à brancher ». Fait quand ajouter `echeances` à une appli assemblée sans elle
-   donne les fichiers d'un assemblage direct avec elle, aux retouches de l'appli et à l'ordre
-   des migrations près, et que typecheck, tests et rejeu des migrations passent.
+   refus (brique absente au commit A, base absente, `comptes`, selon les questions 1 et 2).
+   Fait quand, sur une appli assemblée avec `comptes,mails` puis retouchée (droits, menu,
+   registre, politique, une étape de migration à elle), ajouter `journal` puis
+   `notifications` donne les fichiers d'un assemblage direct avec elles, aux retouches de
+   l'appli et à l'ordre des migrations près, et que typecheck, tests et rejeu des
+   migrations passent. Ces deux briques retouchent le plus de fichiers partagés : étapes de
+   migration, registre, politique, droits, menu, variables.
 8. **La skill et les documents.** Le circuit dans une skill du catalogue (ou une étape de
-   `creer-appli`), et les mentions « hors v1 » ou « pas outillé » à reprendre : `creer-appli`,
-   `choix.md`, README du catalogue, README de la brique notifications. Fait quand l'agent
-   `relecteur-docs` ne relève rien.
+   `creer-appli`), et les textes que l'outil rend faux : les mentions « hors v1 » ou « pas
+   outillé » (`creer-appli`, `choix.md`, README du catalogue, README de la brique
+   notifications), et ceux qui disent qu'aucun outil ne lit le manifeste ou que l'en-tête
+   de la blueprint n'est lu que pour `appli` et `commit_reference` (`blueprint-modele.md`,
+   `creer-appli`, le README du catalogue, le commentaire d'en-tête de la blueprint minimale
+   dans `assembler.mjs`). Fait quand l'agent `relecteur-docs` ne relève rien.
 9. **Essai réel** sur une appli assemblée : un ajout, puis une mise à jour. Fait quand les
    deux PR de l'appli sont fusionnées par un humain et que `/sante` répond après le
    déploiement.
 
-Bloqués par : 3 par 2 ; 4, 5 et 6 par 3 ; 7 par 4 ; 8 par 7 ; 9 par 8. Le 1 se fait à part.
+Bloquées par : 3 par 2 ; 4, 5 et 6 par 3 ; 7 par 4 et 6 ; 8 par 7 ; 9 par 5 et 8. La 1 se
+fait à part.
 
 ## Questions pour la personne responsable technique
 
@@ -335,7 +379,7 @@ Bloqués par : 3 par 2 ; 4, 5 et 6 par 3 ; 7 par 4 ; 8 par 7 ; 9 par 8. Le 1 se 
    Recommandation : refusé en v1, réassembler s'il le faut.
 3. **Le squash des PR d'appli est-il confirmé ?** Il écarte la branche fournisseur et décide
    du rejeu de l'assembleur. Recommandation : garder le squash.
-4. **Le manifeste au format 2 (ticket 1), et des versions numérotées du catalogue ?** Le
+4. **Le manifeste au format 2 (tranche 1), et des versions numérotées du catalogue ?** Le
    rejeu par commit rend la version numérotée inutile à l'outil ; elle resterait utile pour
    dire « la correction est dans la version x ». Recommandation : format 2 oui, versions
    plus tard.
@@ -349,7 +393,7 @@ Bloqués par : 3 par 2 ; 4, 5 et 6 par 3 ; 7 par 4 ; 8 par 7 ; 9 par 8. Le 1 se 
    de les prévenir. À décider hors de ce chantier.
 8. **L'outil écrit-il par défaut, ou rapporte-t-il seulement ?** Les scripts de données sont
    à blanc par défaut. Ici, l'écriture se fait sur une branche neuve d'un arbre propre, sans
-   base ni réseau, et se défait en supprimant la branche. Recommandation : écrire par
+   base et sans réseau pour l'appli, et se défait en supprimant la branche. Recommandation : écrire par
    défaut, `--a-blanc` pour le rapport seul.
 
 ## Sources
