@@ -373,6 +373,86 @@ export const MIGRATIONS: Migration[] = [
       );
     },
   },
+  {
+    // Brique espaces : des groupes de personnes (une coloc, une association)
+    // qu'on rejoint par un code. Né de l'essai tours-de-coloc (2026-11-03),
+    // où cinq tickets réécrivaient ces tables.
+    //
+    // Le code n'a que des caractères sans ambiguïté (ni 0, O, 1, I ni L) : la
+    // contrainte refuse tout autre code que la brique écrirait. Un espace ne
+    // se supprime pas : vide, il revient à la prochaine personne qui le rejoint.
+    //
+    // Une adhésion terminée reste (départ et motif) : la clé étrangère refuse
+    // de supprimer un espace ou un compte qui en a, et rien ne part en cascade.
+    // Une seule adhésion en cours par compte et par espace : deux demandes
+    // simultanées pour rejoindre n'en créent qu'une. « Un seul espace par
+    // compte » est un réglage de l'appli, tenu sous verrou par la brique, pas
+    // un index.
+    //
+    // espaces_invitations compte les invitations envoyées pour les plafonds,
+    // sans l'adresse invitée. espaces_essais_code compte les codes faux d'un
+    // compte, effacés au-delà d'une heure ; ce ne sont que des compteurs, ils
+    // partent avec le compte. Aucune ligne semée.
+    nom: "espaces, espaces_adhesions, espaces_invitations, espaces_essais_code : groupes de personnes (brique espaces)",
+    async appliquer(pool) {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS espaces (
+          id SERIAL PRIMARY KEY,
+          nom TEXT NOT NULL,
+          code TEXT NOT NULL,
+          cree_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          CONSTRAINT espaces_code_unique UNIQUE (code),
+          CONSTRAINT espaces_code_check CHECK (code ~ '^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$'),
+          CONSTRAINT espaces_nom_check CHECK (length(btrim(nom)) BETWEEN 1 AND 80)
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS espaces_adhesions (
+          id SERIAL PRIMARY KEY,
+          espace_id INTEGER NOT NULL REFERENCES espaces (id) ON DELETE RESTRICT,
+          utilisateur_id INTEGER NOT NULL REFERENCES utilisateurs (id) ON DELETE RESTRICT,
+          prenom TEXT NOT NULL,
+          role TEXT NOT NULL,
+          arrivee_le TIMESTAMPTZ NOT NULL DEFAULT now(),
+          depart_le TIMESTAMPTZ,
+          motif_depart TEXT,
+          CONSTRAINT espaces_adhesions_role_check CHECK (role IN ('gestionnaire', 'membre')),
+          CONSTRAINT espaces_adhesions_motif_check CHECK (motif_depart IN ('parti', 'retire', 'compte-desactive')),
+          CONSTRAINT espaces_adhesions_depart_check CHECK ((depart_le IS NULL) = (motif_depart IS NULL))
+        );
+      `);
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS espaces_adhesions_en_cours_idx
+          ON espaces_adhesions (espace_id, utilisateur_id) WHERE depart_le IS NULL;
+      `);
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS espaces_adhesions_utilisateur_idx ON espaces_adhesions (utilisateur_id);`
+      );
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS espaces_invitations (
+          id BIGSERIAL PRIMARY KEY,
+          espace_id INTEGER NOT NULL REFERENCES espaces (id) ON DELETE RESTRICT,
+          envoyee_le TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `);
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS espaces_invitations_espace_idx ON espaces_invitations (espace_id, envoyee_le);`
+      );
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS espaces_invitations_envoyee_le_idx ON espaces_invitations (envoyee_le);`
+      );
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS espaces_essais_code (
+          id BIGSERIAL PRIMARY KEY,
+          utilisateur_id INTEGER NOT NULL REFERENCES utilisateurs (id) ON DELETE CASCADE,
+          essaye_le TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `);
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS espaces_essais_code_utilisateur_idx ON espaces_essais_code (utilisateur_id, essaye_le);`
+      );
+    },
+  },
 ];
 
 export async function appliquerMigrations(pool: Pool): Promise<void> {

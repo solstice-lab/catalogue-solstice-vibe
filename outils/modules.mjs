@@ -726,6 +726,72 @@ export const BRIQUES = {
       ),
     ],
   },
+  // Des groupes de personnes (une coloc, une association) qu'on crée ou
+  // rejoint par un code, et l'accès unique qui isole leurs fiches. Arrive
+  // branchée (pages, droits, menu, registres) ; le module métier de l'appli
+  // rattache ses tables à un espace (README, « La brancher »). Comptes pour
+  // qui est connecté et les effets d'un compte désactivé, mails pour les
+  // invitations.
+  espaces: {
+    exige: ["donnees", "comptes", "mails"],
+    fichiers: [
+      "src/briques/espaces/",
+      "src/app/espace/",
+      "src/config/espaces.ts",
+      "tests/aide-espaces.ts",
+      "tests/espaces.test.ts",
+      "tests/espaces-acces.test.ts",
+      "tests/espaces-effets.test.ts",
+      "tests/espaces-invitations.test.ts",
+      "tests/espaces-isolation.test.ts",
+      "tests/espaces-isolement.test.ts",
+      "tests/espaces-saisie.test.ts",
+    ],
+    retraits: [
+      bloc(
+        "src/lib/db/migrations.ts",
+        "  {\n    // Brique espaces :",
+        "ON espaces_essais_code (utilisateur_id, essaye_le);`\n      );\n    },\n  },"
+      ),
+      // --- son droit et son entrée de menu (ces fichiers partent avec la
+      // brique comptes, qu'elle exige)
+      ligne("src/config/acces.ts", 'import { ACTIONS_ESPACES } from "@/briques/espaces/domaine";'),
+      ligne("src/config/acces.ts", "  ...ACTIONS_ESPACES,"),
+      bloc(
+        "src/config/acces.ts",
+        "  // Créer un espace, le rejoindre, le voir, le quitter (brique espaces)",
+        '  "espaces.participer": ["membre", "admin"],'
+      ),
+      ligne("src/lib/navigation.ts", 'import { majuscule } from "@/briques/espaces/reglages";'),
+      ligne("src/lib/navigation.ts", 'import { ESPACES } from "@/config/espaces";'),
+      ligne(
+        "src/lib/navigation.ts",
+        '{ libelle: majuscule(ESPACES.vocabulaire.mon), href: "/espace", visible: visiblePour("espaces.participer") },'
+      ),
+      // --- son entrée du registre des effets de comptes
+      ligne("src/config/effets-comptes.ts", 'import { EFFETS_ESPACES } from "@/briques/espaces/effets-comptes";'),
+      bloc("src/config/effets-comptes.ts", "  // Brique espaces : terminer les adhésions", "  EFFETS_ESPACES,"),
+      // --- ses sources de l'export des données d'une personne (brique rgpd,
+      // gardée d'office avec comptes)
+      ligne(
+        "src/config/donnees-personnelles.ts",
+        'import { SOURCES_ESPACES } from "@/briques/espaces/donnees-personnelles";'
+      ),
+      ligne("src/config/donnees-personnelles.ts", "  ...SOURCES_ESPACES,"),
+      bloc(
+        "src/config/donnees-personnelles.ts",
+        "  espaces_invitations:",
+        "pour les plafonds d'envoi (brique espaces), sans l'adresse invitée.\","
+      ),
+      // --- sa description de traitement (politique de confidentialité)
+      ligne("src/lib/confidentialite.ts", 'import { TRAITEMENTS_ESPACES } from "@/briques/espaces/confidentialite";'),
+      ligne("src/lib/confidentialite.ts", "  ...TRAITEMENTS_ESPACES,"),
+      ligne("src/lib/confidentialite.ts", '    espaces: { baseLegale: "", duree: "", destinataires: "" },'),
+      // --- le nettoyage des comptes des tests (le fichier part avec la brique
+      // comptes, qu'elle exige)
+      bloc("tests/aide-comptes.ts", "  // Brique espaces : une adhésion désigne", "  // Fin de la brique espaces."),
+    ],
+  },
 };
 
 // L'adresse IP du visiteur : pas une brique au choix. Seules la connexion

@@ -570,8 +570,8 @@ utilise. Les autres exports servent aux fichiers de la brique ou
   - `DOMAINES_GOOGLE_WORKSPACE`, le ou les Workspace dont la connexion avec Google
     accepte les comptes. Vide, elle accepte tout compte dont Google fait autorité.
 - `src/config/effets-comptes.ts` : `EFFETS_COMPTES`, une entrée par unité qui
-  réagit à un compte désactivé, réactivé ou effacé (le journal d'audit, si
-  l'appli l'a, y est déjà).
+  réagit à un compte désactivé, réactivé ou effacé (le journal d'audit et les
+  espaces, si l'appli les a, y sont déjà).
 
 **Interne** : `UTILISATEURS_DEMO`, `entrerEnDemo`, `demoProposee`,
 `lireSession`, `lireSessionDe`, `trouverUtilisateur`, `fermerLesSessionsDe`,

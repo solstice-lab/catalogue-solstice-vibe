@@ -141,6 +141,7 @@ Ce sont exactement celles que l'assembleur sait livrer (`BRIQUES` de
 | `rgpd` | L'export des données d'une personne en JSON, par elle-même (`/mes-donnees`) ou par l'admin (`/donnees-personnelles`), et leur effacement ou anonymisation, par l'admin seul (`/donnees-personnelles`) ; chaque table se déclare dans `src/config/donnees-personnelles.ts`. Pas encore : la purge | la base, `comptes` | le socle |
 | `journal` | Le journal d'audit : qui a créé, modifié ou supprimé quoi, et quand, dans la transaction de l'écriture, sans valeur de champ ; écran `/journal` et historique de fiche pour l'admin ; branché sur le patron `dossiers` et, avec `gestion-comptes`, sur les gestes de `/comptes` | la base, `comptes` | le patron `dossiers` |
 | `gestion-comptes` | L'écran `/comptes`, où un admin invite, change un rôle, désactive ou réactive un compte et ouvre un domaine ; le dernier admin actif y est protégé | la base, `comptes` | le socle |
+| `espaces` | Des groupes de personnes (une coloc, une association) qu'on crée ou rejoint par un code, un lien ou une invitation par e-mail plafonnée ; rôles d'espace, dernier gestionnaire protégé, écrans « Créer ou rejoindre » et « Mon espace ». L'accès unique `exigerMonEspace()` isole les fiches de chaque espace, et un test-verrou refuse un module qui lirait sans lui | la base, `comptes`, `mails` | le socle, puis le module métier |
 
 La base (brique données, `src/lib/db/`) ne se choisit pas : l'assembleur la
 garde dès qu'une brique gardée l'exige. Une brique qui en exige
@@ -324,7 +325,7 @@ catalogue qui a des modifications non commitées, sauf avec
   et les droits, avec un accueil à écrire ; `contact` (avec `mails`) donne
   la base pour la limite d'envois, sans les écrans du patron `dossiers`, qui
   appellent `exiger` et ne se gardent qu'avec `comptes` ; `rgpd` vient
-  d'office avec `comptes`, `journal` et `gestion-comptes` s'y ajoutent. Une
+  d'office avec `comptes`, `journal`, `gestion-comptes` et `espaces` s'y ajoutent. Une
   brique à brancher (`echeances`, `calendrier`, `validation`, `import-lot`,
   `notifications`) donne la base et attend son branchement dans l'appli.
 - Le retrait est une liste déclarative, `outils/modules.mjs` : pour

@@ -2,6 +2,7 @@ import { MENTIONS_LEGALES, type MentionsLegales } from "@/lib/mentions-legales";
 import { TRAITEMENTS_COMPTES } from "@/briques/comptes/confidentialite";
 import { TRAITEMENTS_CONTACT } from "@/briques/contact/confidentialite";
 import { LIEUX_DEPLOIEMENT } from "@/briques/deploiement/confidentialite";
+import { TRAITEMENTS_ESPACES } from "@/briques/espaces/confidentialite";
 import { TRAITEMENTS_JOURNAL } from "@/briques/journal/confidentialite";
 import { TRAITEMENTS_MAILS } from "@/briques/mails/confidentialite";
 import { TRAITEMENTS_NOTIFICATIONS } from "@/briques/notifications/confidentialite";
@@ -112,6 +113,7 @@ export const CONFIDENTIALITE: Confidentialite = {
     // 12 mois recommandés (README de la brique notifications), à valider par le
     // client, et à régler aussi dans conservationMois de sa route.
     notifications: { baseLegale: "", duree: "", destinataires: "" },
+    espaces: { baseLegale: "", duree: "", destinataires: "" },
   },
   lieux: {
     // Ignoré avec la brique déploiement : le lieu se lit alors dans sa
@@ -131,6 +133,7 @@ const TRAITEMENTS_DES_BRIQUES: Traitement[] = [
   ...TRAITEMENTS_JOURNAL,
   ...TRAITEMENTS_MAILS,
   ...TRAITEMENTS_NOTIFICATIONS,
+  ...TRAITEMENTS_ESPACES,
 ];
 
 // Les lieux que le code établit, apportés par les briques (la région de

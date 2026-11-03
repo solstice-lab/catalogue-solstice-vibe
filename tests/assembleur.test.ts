@@ -145,6 +145,13 @@ const TEMOINS: Record<string, string[]> = {
     "src/app/mes-donnees/page.tsx",
     "tests/rgpd-export.test.ts",
   ],
+  // Les groupes de personnes et l'isolation de leurs fiches.
+  espaces: [
+    "src/briques/espaces/acces.ts",
+    "src/app/espace/page.tsx",
+    "src/config/espaces.ts",
+    "tests/espaces-isolation.test.ts",
+  ],
   // L'écran d'administration des comptes, optionnel.
   "gestion-comptes": [
     "src/briques/gestion-comptes/EcranComptes.tsx",
@@ -292,6 +299,11 @@ const AVEC_GESTION_COMPTES = { nom: "comptes + gestion-comptes", briques: ["comp
 // brancher ensuite sur sa propre entité.
 const AVEC_IMPORT_LOT = { nom: "comptes + import-lot", briques: ["comptes", "mails", "import-lot"] };
 
+// Les espaces (une coloc, une association) arrivent branchés sur comptes,
+// rgpd et ses registres, sans le journal : son entrée du registre des effets
+// de comptes reste seule, et le nettoyage des comptes des tests garde la sienne.
+const AVEC_ESPACES = { nom: "comptes + espaces", briques: ["comptes", "mails", "espaces"] };
+
 // Les briques à brancher, sans la brique comptes : elles lisent la base et
 // rien d'autre, et une copie qui les prend sans connexion doit compiler.
 const A_BRANCHER_SANS_COMPTES = {
@@ -299,7 +311,8 @@ const A_BRANCHER_SANS_COMPTES = {
   briques: ["echeances", "calendrier", "validation", "import-lot"],
 };
 
-// Les briques optionnelles ensemble, sans les briques à brancher.
+// Les briques optionnelles ensemble, sans les briques à brancher ; espaces a sa
+// combinaison à part (AVEC_ESPACES) et entre dans « toutes les briques ».
 const AVEC_BRIQUES_OPTIONNELLES = {
   nom: "comptes + notifications + journal + gestion-comptes + contact",
   briques: ["comptes", "mails", "notifications", "journal", "gestion-comptes", "contact"],
@@ -321,6 +334,7 @@ const TOUTES_LES_COMBINAISONS = [
   AVEC_NOTIFICATIONS,
   AVEC_GESTION_COMPTES,
   AVEC_IMPORT_LOT,
+  AVEC_ESPACES,
   A_BRANCHER_SANS_COMPTES,
   AVEC_BRIQUES_OPTIONNELLES,
   TOUTES_LES_BRIQUES,
@@ -555,6 +569,7 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
     expect(/TRAITEMENTS_NOTIFICATIONS|^\s+notifications: \{/m.test(politique), "notifications").toBe(
       gardee("notifications")
     );
+    expect(/TRAITEMENTS_ESPACES|^\s+espaces: \{/m.test(politique), "espaces").toBe(gardee("espaces"));
   });
 
   // Le registre de l'export ne nomme que les unités gardées. Le
@@ -571,6 +586,7 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
       expect(registre.includes("SOURCES_IMPORT_LOT"), "import-lot").toBe(gardee("import-lot"));
       expect(registre.includes("SOURCES_JOURNAL"), "journal").toBe(gardee("journal"));
       expect(registre.includes("SOURCES_NOTIFICATIONS"), "notifications").toBe(gardee("notifications"));
+      expect(/SOURCES_ESPACES|espaces_invitations/.test(registre), "espaces").toBe(gardee("espaces"));
       expect(registre.includes('quoi: "E-mails envoyés"'), "mails").toBe(gardee("mails"));
       expect(registre.includes('quoi: "Messages du formulaire de contact"'), "contact").toBe(gardee("contact"));
     }
@@ -586,6 +602,7 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
       const registre = lireAssemble(assemble.dossier, "src/config/effets-comptes.ts");
       expect(registre).toContain("export const EFFETS_COMPTES: EffetsDeCompte[] = [");
       expect(registre.includes("EFFETS_JOURNAL"), "journal").toBe(gardee("journal"));
+      expect(registre.includes("EFFETS_ESPACES"), "espaces").toBe(gardee("espaces"));
     }
   );
 
@@ -610,6 +627,7 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
         contact: ["contact_envois"],
         journal: ["journal_audit"],
         notifications: ["notifications_envois", "notifications_lancements"],
+        espaces: ["espaces", "espaces_adhesions", "espaces_invitations", "espaces_essais_code"],
       };
       expect(resultat.objets).toContain("dossiers");
       for (const [unite, objets] of Object.entries(tablesParUnite)) {
@@ -905,6 +923,12 @@ describe("refus de l'assembleur", () => {
   it("refuse la brique gestion-comptes sans la brique comptes, en nommant les deux et l'option", () => {
     expect(() => planifier({ briques: ["mails", "gestion-comptes"] })).toThrow(
       "La brique « gestion-comptes » exige la ou les briques comptes, qui ne sont pas choisies. Les ajouter à --briques."
+    );
+  });
+
+  it("refuse la brique espaces sans la brique comptes, en nommant les deux et l'option", () => {
+    expect(() => planifier({ briques: ["mails", "espaces"] })).toThrow(
+      "La brique « espaces » exige la ou les briques comptes, qui ne sont pas choisies. Les ajouter à --briques."
     );
   });
 

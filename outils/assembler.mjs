@@ -184,8 +184,9 @@ export function planifier({ briques: choisies }, catalogue = { BRIQUES }) {
   // Aucune brique qui lit la base : un site sans base. La brique comptes
   // garde la base et son patron dossiers, d'où partira le premier module
   // métier de l'appli, avec, s'il est choisi, l'écran /comptes de la brique
-  // gestion-comptes ; la brique contact garde la base sans les écrans du
-  // patron ; les briques echeances, calendrier, validation, import-lot et
+  // gestion-comptes, et les espaces de la brique du même nom ; la brique
+  // contact garde la base sans les écrans du patron ; les briques
+  // echeances, calendrier, validation, import-lot et
   // notifications la gardent et arrivent à brancher sur ce module métier.
   const lisentLaBase = briques.filter((nom) => lesBriques[nom].exige.includes(BASE));
   const baseGardee = lisentLaBase.length > 0;

@@ -109,7 +109,10 @@ briques:
   `branchement: src/config/acces.ts` ; `rgpd`, `entite: aucune` et
   `branchement: src/app/mes-donnees/page.tsx` (elle ne se refuse pas : l'assembleur la garde
   avec `comptes`) ; `gestion-comptes`, `entite: aucune` et
-  `branchement: src/app/comptes/page.tsx` ; `journal`, `entite: dossiers` et
+  `branchement: src/app/comptes/page.tsx` ; `espaces`, `entite: aucune` et
+  `branchement: src/config/espaces.ts`, chaque entité rattachée à un espace portant en
+  section 2 la ligne « rattachée à un espace (colonne `espace_id`) », distincte de
+  `rattache_a` ; `journal`, `entite: dossiers` et
   `branchement: src/lib/db/dossiers.ts` (le patron), le module métier s'y branchant par
   ticket.
 - **Site vitrine** (sans brique qui lit la base) : `entites: []`.
@@ -151,14 +154,16 @@ la description, puis :
    `src/lib/navigation.ts`, ordinateur et téléphone, sans citer le détail de ce fichier.
    Chaque écran a l'une de trois origines, dite dans le tableau : une brique gardée qui
    apporte ses écrans (`/connexion`, `/mes-donnees`, `/donnees-personnelles`, `/comptes`,
-   `/journal`, `/contact`) ; le socle (`/kit` et, avec `comptes`, `/dossiers`, à remplacer
+   `/journal`, `/contact`, `/espace` et `/espace/rejoindre`) ; le socle (`/kit` et, avec `comptes`, `/dossiers`, à remplacer
    par ticket ; `/mentions-legales`, `/confidentialite`, à remplir) ; ou une page que
    l'appli écrira (l'accueil, les écrans de chaque entité, les vues des briques à
    brancher), marquée « à écrire » avec son ticket.
 5. **Accès et thème** : ce qui est décidé des droits (`src/config/acces.ts` : rôles, et
    qui a droit à chaque action ; avec un seul rôle, dire que toute personne connectée a
    droit aux actions sensibles : décider, importer, supprimer, avec `gestion-comptes` administrer les
-   comptes, et avec `rgpd` exporter et effacer les données de n'importe quelle adresse), le thème
+   comptes, et avec `rgpd` exporter et effacer les données de n'importe quelle adresse ; avec
+   `espaces` et une entrée fermée, comment une adresse invitée est admise : configuration,
+   domaine ou `/comptes`, l'invitation ne créant pas de compte), le thème
    (charte du client, ou thème de repli du catalogue : la charte Solstice Lab), qui livre
    l'appli et le sort de la signature Solstice Lab (gardée, obligatoire pour une livraison
    Solstice Lab ; ou à retirer, avec son ticket en section 9), le nom de l'appli. Avec la
