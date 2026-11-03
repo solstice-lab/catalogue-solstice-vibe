@@ -213,14 +213,18 @@ ouverte à la racine du catalogue.
    « Assembler une appli »). Elle crée ensuite le dépôt distant, privé par
    défaut, après un accord explicite, et dit quoi taper.
 3. **Régler l'appli assemblée**, ce que l'assembleur ne fait pas :
-   `NOM_APP` dans `src/lib/navigation.ts` (repris par le titre de chaque
-   page ; `package.json` porte déjà le nom de l'appli), `LOCALE`, `DEVISE` et
-   `FUSEAU` en tête de `src/lib/format.ts` (le fuseau décide du jour qui
-   compte pour les échéances). Avant toute mise en ligne, remplir
-   `src/lib/mentions-legales.ts` (éditeur, directeur de la publication,
-   hébergeur), `src/lib/confidentialite.ts` (contact, base légale, durée et
-   destinataires de chaque traitement, validés par le client) et
-   `src/lib/referencement.ts` (site public ou non, description).
+   `LOCALE`, `DEVISE` et `FUSEAU` en tête de `src/lib/format.ts` (le fuseau
+   décide du jour qui compte pour les échéances). L'assembleur a écrit ce que
+   l'en-tête de la blueprint déclare : le nom affiché (`NOM_APP` de
+   `src/lib/navigation.ts`, repris par le titre de chaque page), la description
+   et le choix site public ou fermé de `src/lib/referencement.ts`, le nom du
+   service et de la base de `render.yaml` et le nom de l'hébergeur des mentions
+   légales ; un champ absent laisse sa valeur de remplacement. Avant toute mise
+   en ligne, remplir `src/lib/mentions-legales.ts` (éditeur, directeur de la
+   publication, coordonnées de l'hébergeur) et `src/lib/confidentialite.ts`
+   (contact, base légale, durée et destinataires de chaque traitement, validés
+   par le client), et ajouter les pages publiques à
+   `src/lib/referencement.ts`.
 4. `npm ci` et, si l'appli a la base, les bases locales (voir « Démarrer en
    local ») : `DATABASE_URL` est requise par les tests et l'appli, pas par le
    build.

@@ -34,6 +34,7 @@ import {
   NOM_DU_CATALOGUE,
   PATRON_DOSSIERS,
   RETRAITS_DU_SOCLE,
+  remplissagesDeLEnTete,
   retraitsDuNom,
 } from "./modules.mjs";
 
@@ -293,11 +294,12 @@ export function appliquerRetrait(texte, retrait) {
 
 // Les retraits à appliquer, dans l'ordre : les réécritures d'abord (voir
 // outils/modules.mjs), les retraits de lignes et de blocs ensuite.
-function retraitsAAppliquer(unites, nomPaquet) {
+function retraitsAAppliquer(unites, nomPaquet, valeurs) {
   const retirees = unites.filter((unite) => !unite.gardee);
   const retraits = retirees.flatMap((unite) => unite.definition.retraits);
   // Le nom après la licence : l'extrait de la licence dans le verrou porte le nom du catalogue.
   retraits.push(...RETRAITS_DU_SOCLE, ...retraitsDuNom(nomPaquet));
+  retraits.push(...remplissagesDeLEnTete(valeurs));
   return [...retraits.filter((r) => r.geste === "remplace"), ...retraits.filter((r) => r.geste !== "remplace")];
 }
 
@@ -578,10 +580,55 @@ function noterLeCommit(markdown, commit) {
   return `---\n${corps}\n---\n${texte.slice(entete[0].length)}`;
 }
 
-// Le champ « appli » de l'en-tête, s'il y en a un, sans guillemets ni commentaire.
-function appliDeLaBlueprint(markdown) {
+/*
+ * Un champ de l'en-tête de la blueprint, à une ligne : sans guillemets (un
+ * commentaire « # » après un espace est écarté), entre guillemets doubles
+ * (échappements du JSON) ou entre apostrophes (« '' » pour une apostrophe).
+ * Entre guillemets, un « # » fait partie du texte : une description qui en
+ * porte un ne doit pas être coupée. Absent ou vide : undefined.
+ */
+function champDeLEntete(markdown, cle) {
   const entete = /^---\n([\s\S]*?)\n---/.exec(markdown)?.[1] ?? "";
-  return /^appli:[ \t]*(.*?)[ \t]*(?:[ \t]#.*)?$/m.exec(entete)?.[1].replace(/^(["'])(.*)\1$/, "$2") || undefined;
+  const brut = new RegExp(`^${cle}:[ \\t]*(.*?)[ \\t]*$`, "m").exec(entete)?.[1];
+  if (brut === undefined) return undefined;
+  const double = /^"((?:[^"\\]|\\.)*)"(?:[ \t]+#.*)?$/.exec(brut);
+  if (double) {
+    try {
+      return JSON.parse(`"${double[1]}"`) || undefined;
+    } catch {
+      throw new ErreurAssemblage(
+        `En-tête de la blueprint, ${cle} : la valeur entre guillemets doubles n'est pas lisible (échappements du JSON seuls admis).`
+      );
+    }
+  }
+  const simple = /^'((?:[^']|'')*)'(?:[ \t]+#.*)?$/.exec(brut);
+  if (simple) return simple[1].replace(/''/g, "'") || undefined;
+  // Un guillemet mal fermé, un bloc YAML (> ou |) ou une liste s'écriraient tels
+  // quels dans le code de l'appli, sans erreur : mieux vaut refuser.
+  if (/^["'>|[{]/.test(brut)) {
+    throw new ErreurAssemblage(
+      `En-tête de la blueprint, ${cle} : une valeur sur une seule ligne est attendue (ni guillemet mal fermé, ni bloc « > » ou « | », ni liste).`
+    );
+  }
+  return brut.replace(/(?:^|[ \t]+)#.*$/, "").replace(/^(["'])(.*)\1$/, "$2") || undefined;
+}
+
+// Le champ « appli » de l'en-tête, s'il y en a un.
+const appliDeLaBlueprint = (markdown) => champDeLEntete(markdown, "appli");
+
+// Ce que l'en-tête déclare pour remplir l'appli : le nom affiché, la description
+// et le choix site public ou fermé. Un choix qu'on ne comprend pas est refusé :
+// « publique » lu comme « fermé » laisserait un site vitrine invisible des moteurs.
+function valeursDeLEntete(markdown) {
+  const site = champDeLEntete(markdown, "site");
+  if (site !== undefined && site !== "public" && site !== "ferme") {
+    throw new ErreurAssemblage(`En-tête de la blueprint, site : public ou ferme attendu, « ${site} » trouvé.`);
+  }
+  return {
+    nomAffiche: champDeLEntete(markdown, "nom_affiche"),
+    description: champDeLEntete(markdown, "description"),
+    sitePublic: site === undefined ? undefined : site === "public",
+  };
 }
 
 /*
@@ -750,8 +797,8 @@ function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
     "# Blueprint de l'appli, créée par outils/assembler.mjs. L'en-tête ne porte que",
-    "# l'essentiel, en clair : l'assembleur en lit appli et commit_reference ; tout",
-    "# le reste est dans le corps, à écrire.",
+    "# l'essentiel, en clair : l'assembleur en lit appli, nom_affiche, description, site",
+    "# et commit_reference ; tout le reste est dans le corps, à écrire.",
     "format: 1",
     `appli: ${nom}`,
     "statut: assemblée depuis le catalogue, à décrire",
@@ -836,16 +883,27 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   const contenuFiche = fiche === undefined ? undefined : lireLaFiche(fiche);
   const contenuAvis = avisDeLicence(racine);
   const version = versionDuCatalogue(racine);
-  const nomPaquet = nomDuPaquet(
-    nom ?? (blueprint && appliDeLaBlueprint(contenuBlueprint)) ?? path.basename(destination)
-  );
+  // Le nom que la personne a donné (--nom ou appli de la blueprint) : le nom du
+  // dossier de sortie n'en est pas un, il ne nomme pas un service chez l'hébergeur.
+  const nomDonne = nom ?? (blueprint && appliDeLaBlueprint(contenuBlueprint)) ?? undefined;
+  const nomPaquet = nomDuPaquet(nomDonne ?? path.basename(destination));
 
   // Les fichiers à retoucher : lus une fois, retouchés dans l'ordre, écrits avec
   // leurs fins de ligne d'origine (les extraits de la liste sont en « \n »),
   // puis remis en forme, donc en LF, par Prettier.
   const textes = new Map();
   const finsDeLigne = new Map();
-  for (const retrait of retraitsAAppliquer(unites, nomPaquet)) {
+  // Ce que la blueprint fait écrire. Sans blueprint, la copie reste celle du
+  // catalogue, hors le nom du paquet et, si --nom le donne, celui du service. L'hébergeur
+  // est celui de la brique gardée qui le déclare : sans elle, il reste à remplir.
+  const valeurs = {
+    ...(blueprint && valeursDeLEntete(contenuBlueprint)),
+    nomService: nomDonne === undefined ? undefined : nomPaquet,
+    hebergeur: blueprint
+      ? unites.find((unite) => unite.gardee && unite.definition.hebergeur)?.definition.hebergeur
+      : undefined,
+  };
+  for (const retrait of retraitsAAppliquer(unites, nomPaquet, valeurs)) {
     // Un fichier retiré par une autre unité n'a plus rien à retoucher.
     if (aSupprimer(retrait.fichier) || correspond(retrait.fichier, EXCLUS_DU_CATALOGUE)) continue;
     if (!copies.includes(retrait.fichier)) {
@@ -960,7 +1018,9 @@ const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste
                       locales) et, sans --blueprint, celui de la blueprint minimale
                       (défaut : le champ appli de la blueprint, sinon le nom du dossier)
   --blueprint <fichier>  une blueprint existante, copiée dans le dossier avec le
-                      commit de référence mis à jour (défaut : une blueprint minimale)
+                      commit de référence mis à jour (défaut : une blueprint minimale).
+                      Son en-tête donne aussi le nom affiché (nom_affiche), la description
+                      et le choix site: public ou ferme, écrits dans l'appli
   --fiche <fichier>   la fiche projet, copiée telle quelle en PROJET.md à la racine
                       (défaut : pas de PROJET.md)
   --dependabot        garder .github/dependabot.yml, à demander quand quelqu'un entretient

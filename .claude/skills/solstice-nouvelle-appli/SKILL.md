@@ -97,7 +97,9 @@ commit de la branche du premier ticket. Contenu :
   **Mentions légales** : les réponses du bloc « La mise en ligne », et l'hébergeur (nom,
   adresse, téléphone) d'après l'hébergement retenu. Une réponse manquante s'écrit « à
   demander » et passe aussi aux questions ouvertes (le client, avant la mise en ligne).
-  Les valeurs se recopient dans `src/lib/mentions-legales.ts`, que la page
+  Les valeurs se recopient dans `src/lib/mentions-legales.ts` (avec la brique
+  `deploiement`, l'assembleur y a déjà écrit le nom de l'hébergeur : adresse et
+  téléphone restent à recopier), que la page
   `/mentions-legales` affiche ;
 - pour une nouvelle appli aussi, une rubrique **Confidentialité** : le courriel où exercer
   ses droits, le délégué à la protection des données s'il y en a un, l'autorité de contrôle,
