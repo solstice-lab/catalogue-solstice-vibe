@@ -1074,7 +1074,8 @@ describe("blueprint donnée à l'assembleur", () => {
     return fichier;
   }
 
-  it("remplace le commit de référence de son en-tête et garde le reste tel quel", () => {
+  // Chaque cas assemble une appli entière : sous Windows, plus de 5 s.
+  it("remplace le commit de référence de son en-tête et garde le reste tel quel", { timeout: ENTIER }, () => {
     const blueprint = blueprintDe("---\nformat: 1\nappli: x\ncommit_reference: ancien\n---\n\n# Corps\n\nTexte.\n");
     const { dossier } = assemblerEnTemporaire(variante, { blueprint });
     expect(lireAssemble(dossier, "blueprint.md")).toBe(
@@ -1082,7 +1083,7 @@ describe("blueprint donnée à l'assembleur", () => {
     );
   });
 
-  it("ajoute le commit de référence à un en-tête qui n'en avait pas", () => {
+  it("ajoute le commit de référence à un en-tête qui n'en avait pas", { timeout: ENTIER }, () => {
     const blueprint = blueprintDe("---\nformat: 1\nappli: x\n---\n\n# Corps\n");
     const { dossier } = assemblerEnTemporaire(variante, { blueprint });
     expect(lireAssemble(dossier, "blueprint.md")).toBe(
@@ -1148,7 +1149,7 @@ describe("blueprint donnée à l'assembleur", () => {
     expect(fs.existsSync(sortie)).toBe(false);
   });
 
-  it("accepte un en-tête dont la fermeture finit le fichier, sans saut de ligne", () => {
+  it("accepte un en-tête dont la fermeture finit le fichier, sans saut de ligne", { timeout: ENTIER }, () => {
     const blueprint = blueprintDe("---\nformat: 1\nappli: x\n---");
     const { dossier } = assemblerEnTemporaire(variante, { blueprint });
     expect(lireAssemble(dossier, "blueprint.md")).toBe(
