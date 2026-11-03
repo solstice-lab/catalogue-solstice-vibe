@@ -1,7 +1,7 @@
 # Ajouter une brique à une appli assemblée, et la tenir à jour
 
-Note de conception, écrite avant tout code le 2026-11-03, à valider par la personne
-responsable technique du projet. Rien ici n'est encore outillé. Elle vit dans `outils/`,
+Note de conception, écrite avant tout code le 2026-11-03 ; ses questions ont été tranchées
+le même jour (« Décisions prises »). Rien ici n'est encore outillé. Elle vit dans `outils/`,
 que l'assembleur ne copie pas : une appli assemblée n'a ni l'outil ni ce qui le décrit.
 
 ## Le besoin
@@ -78,7 +78,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | L'appli, à son `HEAD` | Le contenu de chaque fichier tel que git l'enregistre, comme le manifeste, pas le disque. L'arbre doit être propre. |
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
-| L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle reçu par l'appli : le socle n'a pas de `CHANGELOG.md` (question 6). |
+| L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle reçu par l'appli : le socle n'a pas de `CHANGELOG.md` (décision 6). |
 
 Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 
@@ -232,7 +232,7 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
   la cible, y compris ceux que l'appli a retouchés ou supprimés). Il dit toujours ce que
   l'appli a reçu du catalogue, et l'opération suivante le reproduira à l'identique.
 - `blueprint.md` : `commit_reference` devient A', comme l'écrit l'assembleur, et
-  `briques_assemblees` reçoit les briques ajoutées (question 5). Le corps reste à l'appli :
+  `briques_assemblees` reçoit les briques ajoutées (décision 5). Le corps reste à l'appli :
   une brique ajoutée « à brancher » s'y note en section 3 avec le ticket qui la branche,
   repris en section 9 (`blueprint-modele.md` de `creer-appli`), dans la session de l'appli.
 
@@ -314,7 +314,7 @@ Restent à un humain :
 - **Les applis sans manifeste**, assemblées avant le 2026-11-02 : leur premier commit
   pourrait servir d'origine, s'il n'a pas été réécrit.
 - **Prévenir** une appli qu'une correction l'attend : l'outil se lance à la demande, et rien
-  ne tient la liste des applis assemblées (question 7).
+  ne tient la liste des applis assemblées (décision 7).
 - **Un script de l'appli qui liste ses écarts au manifeste**, sans le catalogue : chantier
   voisin, que cet outil ne remplace pas.
 
@@ -344,13 +344,12 @@ l'assembleur. S'il est long, il sort aussi de `npm test` : le script `"test"` de
 `package.json` et le `remplace` de `RETRAITS_DU_SOCLE` qui le réécrit dans les copies
 changent ensemble. Ses cas qui rejouent des migrations tournent avec Postgres, dans le job
 qui lance le test de l'assembleur (`assemblage.yml`). Les tests construisent leur propre
-catalogue d'essai à deux commits : la CI ne clone pas l'historique. Aucun ticket n'est créé
-avant la validation de cette note.
+catalogue d'essai à deux commits : la CI ne clone pas l'historique.
 
 1. **Reproduire l'origine d'une appli et lister ses écarts** (`--a-blanc` seul). Lire le
    manifeste, déduire B, rejouer l'assembleur du commit A dans un worktree temporaire avec
    le Prettier de ce commit, comparer les empreintes, les refus en clair, la liste des
-   fichiers retouchés et supprimés par l'appli. Avec, si la question 4 l'accepte, le
+   fichiers retouchés et supprimés par l'appli. Avec le
    format 2 du manifeste (briques choisies et ajoutées d'office, nom du paquet, Dependabot,
    commit complet), l'outil lisant encore le format 1 en déduisant. Utile seul : on voit ce
    qu'une appli a retouché. Fait quand l'origine d'une appli fraîchement assemblée se
@@ -393,35 +392,21 @@ avant la validation de cette note.
 
 Bloquées par : 2 par 1 ; 3 par 2 ; 4 par 3 ; 5 par 4.
 
-## Questions pour la personne responsable technique
+## Décisions prises
 
-1. **Une appli sans base peut-elle recevoir une brique qui l'exige ?** La skill
-   `creer-appli` dit aujourd'hui le contraire (« n'en recevra pas après coup »). Avis de la
-   personne qui utilise le catalogue, le 2026-11-03 : un cadrage se trompe parfois, mieux
-   vaut ne rien interdire. Recommandation : permis, comme ajout lourd (section « Les ajouts
-   lourds »), et le cadrage insiste pour en décider dès l'assemblage.
-2. **Ajouter `comptes` après coup ?** Toutes les pages passent derrière la connexion
-   (proxy, bandeau, droits, `rgpd` d'office) : un changement structurel de l'appli, que
-   `tests/gardes-acces.test.ts` rend sûr en nommant chaque page à trancher. Même avis, même
-   recommandation : permis comme ajout lourd, et le cadrage insiste.
-3. **Le squash des PR d'appli est-il confirmé ?** Il écarte la branche fournisseur et décide
-   du rejeu de l'assembleur. Recommandation : garder le squash.
-4. **Le manifeste au format 2 (tranche 1), et des versions numérotées du catalogue ?** Le
-   rejeu par commit rend la version numérotée inutile à l'outil ; elle resterait utile pour
-   dire « la correction est dans la version x ». Recommandation : format 2 oui, versions
-   plus tard.
-5. **L'outil réécrit-il l'en-tête de `blueprint.md`** (`commit_reference`,
-   `briques_assemblees`) ? Recommandation : oui pour ces deux champs, jamais le corps.
-6. **Un `CHANGELOG.md` du socle ?** Le kit, le proxy, les gardes et les skills changent sans
-   journal ; l'outil n'aurait que les sujets des commits. Recommandation : oui, au moins
-   pour les ruptures et la sécurité, dans un ticket à part.
-7. **Qui sait quelles applis attendent une correction ?** L'outil se lance à la demande. Une
-   liste des applis assemblées (dépôt, commit, briques), hors du dépôt public, permettrait
-   de les prévenir. À décider hors de ce chantier.
-8. **L'outil écrit-il par défaut, ou rapporte-t-il seulement ?** Les scripts de données sont
-   à blanc par défaut. Ici, l'écriture se fait sur une branche neuve d'un arbre propre, sans
-   base et sans réseau pour l'appli, et se défait en supprimant la branche. Recommandation : écrire par
-   défaut, `--a-blanc` pour le rapport seul.
+Par la personne qui pilote le catalogue, le 2026-11-03, sur les recommandations de cette
+note :
+
+| N° | Question | Décision |
+| --- | --- | --- |
+| 1 | Une appli sans base peut-elle recevoir une brique qui l'exige ? | Oui, comme ajout lourd (« Les ajouts lourds »). Un cadrage se trompe parfois : mieux vaut ne rien interdire, et le cadrage insiste pour en décider dès l'assemblage. |
+| 2 | Ajouter `comptes` après coup ? | Oui, comme ajout lourd : `tests/gardes-acces.test.ts` nomme chaque page de l'appli à trancher. Le cadrage insiste de même. |
+| 3 | Les PR des applis restent-elles fusionnées en squash ? | Oui : rien ne change pour qui fusionne. C'est ce qui écarte la branche fournisseur et fait rejouer l'assembleur. |
+| 4 | Manifeste au format 2, versions numérotées du catalogue ? | Format 2 dans la tranche 1 ; l'outil lit encore le format 1. Les versions numérotées viendront plus tard, pour dire où se trouve une correction : l'outil n'en a pas besoin. |
+| 5 | L'outil réécrit-il l'en-tête de `blueprint.md` ? | Oui, `commit_reference` et `briques_assemblees`, jamais le corps. |
+| 6 | Un `CHANGELOG.md` du socle ? | Oui, au moins pour les ruptures et la sécurité, dans un ticket à part de ce chantier. |
+| 7 | Une liste des applis assemblées, pour prévenir d'une correction ? | Plus tard, hors de ce chantier et hors du dépôt public. |
+| 8 | L'outil écrit-il par défaut ? | Oui, sur une branche neuve d'un arbre propre, sans base et sans réseau pour l'appli ; `--a-blanc` donne le rapport seul. |
 
 ## Sources
 
