@@ -432,32 +432,69 @@ main().catch((erreur) => {
 });
 `;
 
-// Rejoue schéma et migrations de l'appli assemblée sur une base NEUVE, deux fois,
-// puis rend ce qu'elle contient (tables, vues, séquences). La base est créée sur
-// le serveur local de DATABASE_URL puis supprimée, quoi qu'il arrive.
-export async function migrationsSurBaseNeuve(
-  assemble: string
-): Promise<{ code: number; objets: string[]; sortie: string }> {
+// Lance un script TypeScript dans une copie de l'appli assemblée, contre une
+// base NEUVE créée sur le serveur local de DATABASE_URL puis supprimée, quoi
+// qu'il arrive.
+async function surBaseNeuve(assemble: string, script: string): Promise<{ code: number; sortie: string }> {
   const dossier = copieDeTravail(assemble);
   const nomBase = `asm_${process.pid}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
   const adresse = new URL(process.env.DATABASE_URL as string);
   adresse.pathname = `/${nomBase}`;
   await query(`CREATE DATABASE ${nomBase}`);
   try {
-    fs.writeFileSync(path.join(dossier, "verifier-migrations.mts"), SCRIPT_DES_MIGRATIONS);
+    fs.writeFileSync(path.join(dossier, "verifier-sur-base.mts"), script);
     try {
       const sortie = execFileSync(
         process.execPath,
-        [path.join(SOURCE, "node_modules", "tsx", "dist", "cli.mjs"), "verifier-migrations.mts"],
+        [path.join(SOURCE, "node_modules", "tsx", "dist", "cli.mjs"), "verifier-sur-base.mts"],
         { cwd: dossier, encoding: "utf-8", stdio: "pipe", env: { ...process.env, DATABASE_URL: adresse.toString() } }
       );
-      const ligne = sortie.split("\n").find((l) => l.startsWith("OBJETS:"));
-      return { code: 0, objets: ligne ? JSON.parse(ligne.slice("OBJETS:".length)) : [], sortie };
+      return { code: 0, sortie };
     } catch (erreur) {
       const e = erreur as { status?: number; stdout?: string; stderr?: string };
-      return { code: e.status ?? 1, objets: [], sortie: `${e.stdout ?? ""}${e.stderr ?? ""}` };
+      return { code: e.status ?? 1, sortie: `${e.stdout ?? ""}${e.stderr ?? ""}` };
     }
   } finally {
     await query(`DROP DATABASE IF EXISTS ${nomBase} WITH (FORCE)`);
   }
+}
+
+// Rejoue schéma et migrations de l'appli assemblée sur une base NEUVE, deux fois,
+// puis rend ce qu'elle contient (tables, vues, séquences).
+export async function migrationsSurBaseNeuve(
+  assemble: string
+): Promise<{ code: number; objets: string[]; sortie: string }> {
+  const { code, sortie } = await surBaseNeuve(assemble, SCRIPT_DES_MIGRATIONS);
+  const ligne = sortie.split("\n").find((l) => l.startsWith("OBJETS:"));
+  return { code, objets: code === 0 && ligne ? JSON.parse(ligne.slice("OBJETS:".length)) : [], sortie };
+}
+
+const SCRIPT_DE_L_ENTREE = (adresse: string) => `
+import { appliquerSchemaEtMigrations } from "./src/lib/db/client";
+import { admettre } from "./src/briques/comptes/entree";
+
+async function main() {
+  await appliquerSchemaEtMigrations();
+  const compte = await admettre(${JSON.stringify(adresse)});
+  console.log("COMPTE:" + JSON.stringify(compte));
+  process.exit(0);
+}
+
+main().catch((erreur) => {
+  console.error(erreur);
+  process.exit(1);
+});
+`;
+
+// Ce que l'appli assemblée fait d'une adresse que personne n'a listée : admise
+// avec son rôle, ou refusée (compte: null). Par le vrai code de la brique
+// comptes, sur une base neuve : la configuration écrite par l'assembleur est
+// celle qui décide, pas une copie de ses règles.
+export async function connexionDUneAdresseInconnue(
+  assemble: string,
+  adresse: string
+): Promise<{ code: number; compte: { email: string; role: string } | null; sortie: string }> {
+  const { code, sortie } = await surBaseNeuve(assemble, SCRIPT_DE_L_ENTREE(adresse));
+  const ligne = sortie.split("\n").find((l) => l.startsWith("COMPTE:"));
+  return { code, compte: code === 0 && ligne ? JSON.parse(ligne.slice("COMPTE:".length)) : null, sortie };
 }

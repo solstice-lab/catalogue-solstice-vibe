@@ -18,8 +18,8 @@ base distante, taper un `--confirmer`, écrire un `.env*`, fusionner, déployer.
 taper (`CLAUDE.md` §3 et §8).
 
 **Hors v1** : mettre à jour une brique déjà installée dans une appli assemblée, déployer,
-faire lire la blueprint par le script (il n'en lit que `appli`, `nom_affiche`, `description`
-et `site` ; le reste de son en-tête reste informatif), plugin sur
+faire lire la blueprint par le script (il n'en lit que `appli`, `nom_affiche`, `description`,
+`site`, `entree`, `role_par_defaut` et `methodes` ; le reste de son en-tête reste informatif), plugin sur
 marketplace. Le module métier d'une appli (ses entités, sur le patron `dossiers`) ne
 s'assemble pas : il s'écrit dans l'appli, par tickets, une fois le dossier livré (étape 5 ;
 `solstice-nouvelle-appli`, §2, ligne « Module dans cette appli »).
@@ -61,6 +61,16 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   Blueprint Render quitte le Blueprint, sans message). Il se note dans le champ `appli:` de
   la blueprint, que l'assembleur reporte. **Le nom affiché** (`NOM_APP`, titre des pages)
   est une autre question, à faire valider avec lui : il se note dans `nom_affiche:`.
+- **L'entrée, avec la brique `comptes`** : les réponses du bloc « Les accès » de
+  `solstice-nouvelle-appli` §1 (une liste d'adresses ou de domaines, ou un outil ouvert à toute
+  adresse ; le rôle de qui entre sans rôle attribué ; code par e-mail, Google ou les
+  deux) se notent dans l'en-tête de la blueprint : `entree: ferme` ou `ouverte`,
+  `role_par_defaut:` et `methodes: [code-email, google]`. L'assembleur les écrit dans
+  `src/config/comptes.ts` et `src/config/acces.ts`. Le rôle par défaut n'est jamais un rôle
+  qui administre, et une entrée ouverte demande donc un rôle de plus que l'administration
+  (le catalogue en a deux : `membre` et `admin`). Les adresses et domaines admis ne se
+  notent pas : ils sont à écrire dans `ENTREE`, avec le premier admin
+  (`COMPTES_PREMIER_ADMIN`).
 - **Qui livre l'appli ?** Elle décide de la signature « Conçu par Solstice Lab » que
   le kit affiche en pied de page (`AppLayout`, `PageVitrine`).
   - Pour une livraison Solstice Lab : la signature reste, même pour un prototype
@@ -252,7 +262,9 @@ de sortie), ramené en minuscules sans accent ni espace ; `--nom` l'emporte, et 
 fait valider au cadrage : `NOM_APP` (`nom_affiche:`), la description et `sitePublic` du
 référencement (`description:`, `site:`), le nom du service et de la base de `render.yaml`
 (d'après `appli:` ou `--nom`, avec la brique `deploiement` ; le nom du dossier de sortie n'en est pas un) et le nom de l'hébergeur des
-mentions légales (avec cette brique). Un champ absent de l'en-tête laisse sa valeur de
+mentions légales (avec cette brique), puis, avec la brique `comptes`, l'entrée (`entree:`,
+`role_par_defaut:`, `methodes:` : `ouverte` de `ENTREE`, `ROLE_PAR_DEFAUT` et `METHODES`,
+où `"demo"` reste en dernier pour le local). Un champ absent de l'en-tête laisse sa valeur de
 remplacement. Rien de ce qui engage la personne n'est rempli. `node outils/assembler.mjs --aide`
 rappelle les options.
 
@@ -282,7 +294,8 @@ attendu », se corrigent en relisant la commande.
 | « « donnees » ne se choisit pas » | La retirer de `--briques` : la base vient d'office avec les briques qui la lisent. |
 | « La brique … exige la ou les briques … » | Ajouter ces briques à `--briques`, après avoir vérifié à l'étape 2 que le besoin les veut. La mention « (ajoutée d'office avec comptes) » désigne `rgpd`, que `comptes` entraîne. |
 | « Nom d'appli … » | Le champ `appli:` de la blueprint (ou le nom du dossier) donne un nom de paquet refusé (pas de lettre en tête, trop long, celui du catalogue) : corriger `appli:`, ou passer `--nom`. |
-| « En-tête de la blueprint, … » | Le champ cité (`site:` : `public` ou `ferme` ; une valeur sur plusieurs lignes ou à guillemet mal fermé) est à corriger dans l'en-tête de la blueprint. Rien n'est écrit. |
+| « En-tête de la blueprint, … » | Le champ cité (`site:` : `public` ou `ferme` ; `entree:` : `ouverte` ou `ferme` ; `role_par_defaut:` jamais un rôle d'administration ; `methodes:` une liste entre crochets ; une valeur sur plusieurs lignes ou à guillemet mal fermé) est à corriger dans l'en-tête de la blueprint. Rien n'est écrit. |
+| « … règle l'entrée … la brique qui porte la connexion n'est pas gardée » | L'en-tête déclare `entree`, `role_par_defaut` ou `methodes` sans la brique `comptes` : l'ajouter à `--briques` (avec `mails`) si le besoin veut des connexions, sinon retirer ces champs. |
 | « Le dossier de sortie … n'est pas vide » | En choisir un autre. **Ne jamais vider un dossier à la place de l'humain.** |
 | « … est dans le catalogue » ou « … est un fichier » | Un dossier à côté du catalogue, pas dedans. |
 | « Le catalogue a des modifications non commitées » | `git status --short`, dire lesquelles à l'humain. `--tolerer-arbre-modifie` seulement s'il le demande : le commit noté devient `<commit>+arbre-modifie` et ne décrit plus ce qui est copié. |
@@ -544,7 +557,7 @@ la production** : retirer `"demo"` de `METHODES` (`src/config/comptes.ts`) avant
 première mise en ligne, sinon le déploiement échoue ; `COMPTES_PREMIER_ADMIN` se déclare
 chez l'hébergeur. Si le client veut se connecter avec Google (Workspace ou Gmail) :
 créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`,
-ajouter `"google"` à `METHODES` et, pour un client Workspace, ses domaines à
+(`"google"` est déjà dans `METHODES` si la blueprint le déclare ; sinon l'y ajouter) et, pour un client Workspace, ses domaines à
 `DOMAINES_GOOGLE_WORKSPACE` (section « La connexion avec Google » du README de la
 brique). Et ce que l'assembleur n'a **pas** fait :
 `src/lib/format.ts` garde le fuseau du

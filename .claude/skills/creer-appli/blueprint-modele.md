@@ -2,7 +2,7 @@
 
 Chargé par `SKILL.md` à l'étape 3. Le format est décrit ici en entier : un en-tête YAML
 court, entre deux lignes `---` en tête de fichier, lu par l'assembleur pour `appli`, `commit_reference`,
-`nom_affiche`, `description` et `site`, puis un corps Markdown : un
+`nom_affiche`, `description`, `site`, `entree`, `role_par_defaut` et `methodes`, puis un corps Markdown : un
 titre, un paragraphe, et neuf sections numérotées dans l'ordre donné plus bas. Le ton :
 des phrases courtes, au présent, qui décrivent sans recopier ; la précision attendue :
 chaque règle a une valeur (un délai en jours, un volume, une clé), et chaque section
@@ -25,14 +25,17 @@ dans une autre section.
 ```yaml
 ---
 # Blueprint de l'appli <nom>. L'en-tête ne porte que l'essentiel, en clair :
-# l'assembleur en lit appli, nom_affiche, description, site et commit_reference ;
-# tout le reste est dans le corps. Il ne recopie pas le branchement : il reste
+# l'assembleur en lit appli, nom_affiche, description, site, entree,
+# role_par_defaut, methodes et commit_reference ; tout le reste est dans le corps. Il ne recopie pas le branchement : il reste
 # dans son fichier.
 format: 1
 appli: <nom>
 nom_affiche: <nom affiché dans l'appli, validé au cadrage>
 description: <une ou deux phrases pour les moteurs et l'aperçu, sur une ligne>
 site: <public | ferme>
+entree: <ferme | ouverte>                          # avec la brique comptes seulement
+role_par_defaut: <rôle de qui entre sans rôle attribué, jamais un rôle d'administration>
+methodes: [<code-email, google>]                    # « demo » reste en local, sans être listée
 statut: <écrite avant tout code, brouillon validé par <qui> le <date>>
 commit_reference: <à renseigner : l'assembleur le remplace>
 briques_assemblees: [<briques choisies, plus rgpd avec comptes>]
@@ -73,6 +76,23 @@ briques:
     légales, durées, coordonnées de l'hébergeur restent « À compléter ». Avec la brique
     `deploiement`, le nom de l'hébergeur (Render Services, Inc.) est écrit dans les
     mentions légales ; son adresse et son téléphone, non.
+- `entree`, `role_par_defaut`, `methodes` : l'entrée tranchée au cadrage (`solstice-nouvelle-appli`
+  §1, « Les accès »), que l'assembleur écrit dans `src/config/comptes.ts` et
+  `src/config/acces.ts`. **Seulement avec la brique `comptes`** : déclarés sans elle, ils
+  sont refusés, comme une promesse de connexion que l'appli ne tiendrait pas.
+  - `entree` : `ouverte` (toute adresse bien formée entre : un outil public, ouvert à
+    l'inscription) ou `ferme` (le défaut : une adresse listée, un domaine, ou le premier
+    admin). `ouverte` pose `ouverte: true` dans `ENTREE`.
+  - `role_par_defaut` : le rôle de qui entre sans rôle attribué (`ROLE_PAR_DEFAUT`),
+    `membre` si le champ manque. Un rôle de l'appli (`src/config/acces.ts`) et **jamais un
+    rôle qui administre**, pour aucune entrée : l'assembleur le refuse. Un rôle de plus
+    s'ajoute par ticket après l'assemblage.
+  - `methodes` : une liste sur une ligne parmi `code-email` et `google`, écrite dans
+    `METHODES` ; sans le champ, `code-email`. `"demo"` est toujours gardée en dernier, pour
+    le local, et se retire à la mise en ligne (elle refuse la production). `google` ne dit
+    pas que son application OAuth existe : ses variables restent à déclarer.
+  - Reste à faire par ticket : les actions du module métier qu'un visiteur de l'entrée
+    ouverte aura le droit de faire (`src/config/acces.ts`).
 - `briques_assemblees` est la liste que l'assembleur écrit dans sa blueprint minimale :
   c'est ce qui dit, sans lire le code, ce qui a été installé. **Elle doit redire exactement
   la liste passée à `--briques`, plus les briques ajoutées d'office (`rgpd` avec
@@ -168,7 +188,9 @@ la description, puis :
    textes qui la décrivent : `CLAUDE.md` §1, skill `solstice-ui`,
    commentaires de `PiedDePage.tsx`, `ui.css` et `tokens.css`, exception de
    `tests/kit-tokens.test.ts`) ; écrire l'adaptateur de déploiement d'un hébergeur autre que
-   Render (avec la brique `deploiement`).
+   Render (avec la brique `deploiement`). Avec la brique `comptes` : retirer `"demo"` de
+   `METHODES` (`src/config/comptes.ts`) avant la première mise en ligne, car elle refuse la
+   production ; elle reste en local, que la blueprint la déclare ou non.
 
 ## Ce que la blueprint ne cite pas
 
