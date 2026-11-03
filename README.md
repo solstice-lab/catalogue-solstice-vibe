@@ -119,7 +119,8 @@ Un seul dépôt catalogue, un dépôt par appli assemblée : chaque brique
 n'existe qu'une fois, et le client ne reçoit que ce qu'il a choisi. La skill
 `creer-appli` mène le cadrage, écrit la blueprint de l'appli, un `.md` à
 en-tête YAML (commit de référence du catalogue, entités, briques et leurs
-branchements), et lance l'assembleur.
+branchements), lance l'assembleur, crée le dépôt distant et les issues de la
+section 9 de la blueprint.
 
 ## Briques
 
@@ -211,7 +212,10 @@ ouverte à la racine du catalogue.
    blueprint, la fait relire par l'agent `relecteur-blueprint`, puis lance
    `outils/assembler.mjs` vers un dossier vide hors du catalogue (voir
    « Assembler une appli »). Elle crée ensuite le dépôt distant, privé par
-   défaut, après un accord explicite, et dit quoi taper.
+   défaut, après un accord explicite (en disant d'abord si la protection de `main`
+   y sera possible), puis les issues de la section 9 de la blueprint par
+   `outils/creer-issues.mjs` (voir « Les issues de la section 9 »), et dit quoi
+   taper.
 3. **Régler l'appli assemblée**, ce que l'assembleur ne fait pas :
    `LOCALE`, `DEVISE` et `FUSEAU` en tête de `src/lib/format.ts` (le fuseau
    décide du jour qui compte pour les échéances). L'assembleur a écrit ce que
@@ -436,7 +440,7 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   `solstice-nouvelle-appli` (cadrage, fiche projet, socle prêt pour la prod,
   découpage), `solstice-livrer` (du ticket à la mise en ligne) et
   `creer-appli` (le dialogue de cadrage, la blueprint, l'appel de l'assembleur, puis
-  le dépôt distant privé créé après accord ;
+  le dépôt distant privé créé après accord, puis les issues de la section 9 ;
   propre au catalogue, une appli assemblée ne la reçoit pas).
 - `.claude/agents/` — `relecteur-migrations` et `relecteur-docs`, lancés
   avant une PR selon ce que touche le diff ; `relecteur-blueprint`, lancé par

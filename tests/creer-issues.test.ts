@@ -146,6 +146,28 @@ describe("lecture de la section 9", () => {
     expect(() => lireLesEtapes(doublon)).toThrow(/même titre/);
   });
 
+  it("reconnaît les champs avec l'apostrophe typographique, en liste ou en gras (un texte français les amène)", () => {
+    const texte = BLUEPRINT.replace(
+      "Vérifiable à l'écran : le titre de l'onglet porte le nom de l'appli.\nBloqué par : aucune",
+      "- **Vérifiable à l’écran** : le titre de l'onglet porte le nom de l'appli.\n- **Bloqué par :** aucune"
+    );
+    const [premiere] = lireLesEtapes(texte);
+    expect(premiere.verifiable).toBe("le titre de l'onglet porte le nom de l'appli.");
+    expect(premiere.bloquePar).toEqual([]);
+  });
+
+  it("ne lit pas un bloc de code : un titre, un « ## » ou un champ qui s'y trouve reste du contenu", () => {
+    const texte = BLUEPRINT.replace(
+      "Deuxième paragraphe du contenu.",
+      "```markdown\n## 9. Autre\n\n### 9.7 Titre d'exemple\n\nBloqué par : 9.4\n```\n\nDeuxième paragraphe du contenu."
+    );
+    const etapes = lireLesEtapes(texte);
+    expect(etapes.map((e: { reference: string }) => e.reference)).toEqual(["9.1", "9.2", "9.3"]);
+    expect(etapes[0].contenu).toContain("### 9.7 Titre d'exemple");
+    expect(etapes[0].contenu).toContain("Bloqué par : 9.4");
+    expect(etapes[0].bloquePar).toEqual([]);
+  });
+
   it("n'est pas dérouté par un sous-titre d'une autre forme dans le contenu d'une étape", () => {
     const texte = BLUEPRINT.replace(
       "Deuxième paragraphe du contenu.",
@@ -203,6 +225,16 @@ describe("création", () => {
     expect(erreur?.message).toContain("#14");
     expect(erreur?.message).toMatch(/gh issue close/);
     expect(erreur?.message).toMatch(/#12/);
+  });
+
+  it("garde la liste des issues déjà créées quand gh échoue en cours de route (réseau, quota)", () => {
+    const { gh: ghSain } = fauxGh();
+    let creations = 0;
+    const gh = (args: string[], entree?: string) => {
+      if (args[1] === "create" && ++creations === 2) throw new ErreurIssues("gh issue create a échoué : quota");
+      return ghSain(args, entree);
+    };
+    expect(() => creerLesIssues({ plan, gh, depot: DEPOT })).toThrow(/quota.*#12 \(9\.1\)/s);
   });
 
   it("s'arrête dès la première issue si son numéro n'est pas le suivant du dépôt (un ticket supprimé laisse un trou)", () => {
@@ -263,6 +295,18 @@ describe("commande", () => {
       /--depot/
     );
     expect(appels).toHaveLength(0);
+  });
+
+  it("ne crée jamais d'issues dans le dépôt du catalogue : elles sont celles d'une appli (à blanc, il reste lisible)", () => {
+    const { gh, creations } = fauxGh();
+    const contexte = { gh, lireBlueprint: lire, ecrire: () => {} };
+    expect(() =>
+      executer(["--blueprint", "b.md", "--depot", "solstice-lab/catalogue-solstice-vibe", "--confirmer"], contexte)
+    ).toThrow(/catalogue/);
+    expect(creations()).toHaveLength(0);
+    expect(() =>
+      executer(["--blueprint", "b.md", "--depot", "solstice-lab/catalogue-solstice-vibe"], contexte)
+    ).not.toThrow();
   });
 
   it("refuse un dépôt mal écrit, une option inconnue et une blueprint absente", () => {

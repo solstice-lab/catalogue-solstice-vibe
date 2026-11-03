@@ -1,6 +1,6 @@
 ---
 name: creer-appli
-description: "Assembler une appli client depuis le catalogue Solstice-vibe (un socle et des briques) : mener le cadrage, choisir les briques que l'assembleur sait donner, écrire la blueprint de l'appli et la faire relire, lancer outils/assembler.mjs vers un dossier vide, créer son dépôt distant après accord et dire à l'humain quoi taper ensuite. À charger quand la personne qui utilise le catalogue veut créer une appli client depuis ce dépôt (pas depuis une appli client déjà assemblée)."
+description: "Assembler une appli client depuis le catalogue Solstice-vibe (un socle et des briques) : mener le cadrage, choisir les briques que l'assembleur sait donner, écrire la blueprint de l'appli et la faire relire, lancer outils/assembler.mjs vers un dossier vide, créer son dépôt distant après accord, en créer les issues de la section 9 de la blueprint et dire à l'humain quoi taper ensuite. À charger quand la personne qui utilise le catalogue veut créer une appli client depuis ce dépôt (pas depuis une appli client déjà assemblée)."
 ---
 
 # creer-appli — du cadrage à un dossier assemblé
@@ -22,7 +22,7 @@ taper (`CLAUDE.md` §3 et §8).
 faire lire la blueprint par le script (il n'en lit que `appli`, `nom_affiche`, `description`,
 `site`, `entree`, `role_par_defaut` et `methodes` ; le reste de son en-tête reste informatif), plugin sur
 marketplace. Le module métier d'une appli (ses entités, sur le patron `dossiers`) ne
-s'assemble pas : il s'écrit dans l'appli, par tickets, une fois le dossier livré (étape 5 ;
+s'assemble pas : il s'écrit dans l'appli, par tickets, une fois le dossier livré (étapes 5 et 6 ;
 `solstice-nouvelle-appli`, §2, ligne « Module dans cette appli »).
 
 ## 0. Avant la première question
@@ -384,7 +384,7 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
      compte personnel, `gh api user --jq .plan.name`, que GitHub ne renvoie qu'avec la
      permission `user` du jeton (sinon `null`). `free`, ou une réponse illisible : la
      protection n'est pas assurée, la traiter comme impossible.
-   - **Impossible ou incertaine** : **le dire avant de créer**, avec les trois issues, et
+   - **Impossible ou incertaine** : **le dire avant de créer**, avec les trois options, et
      laisser l'humain choisir : dépôt public (rien du code ne devient secret, à ne choisir
      que si le client l'accepte), forfait payant du propriétaire, ou dépôt privé **sans
      protection**, en connaissance de cause (la CI tourne, mais ne bloque pas la fusion :
@@ -416,7 +416,7 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
 Claude remet un message court : où est le dossier, le commit de référence, les briques
 gardées et retirées, l'URL du dépôt distant et sa visibilité (avec, si le dépôt est privé sans
 protection de `main`, la phrase qui le dit : le choix de l'étape 5.2 n'est pas à retrouver
-dans la conversation), puis la liste suivante, qui s'achève par les tickets (étape 6). Les
+dans la conversation), puis la liste suivante ; une fois l'appli lancée, les tickets de la section 9 se créent à l'étape 6. Les
 commandes sont **une par bloc**, chacune suivie de sa vérification et de ce qu'elle doit
 afficher, dans le shell du poste de la personne : **PowerShell** sous Windows (ci-dessous),
 **bash ou zsh** sous macOS et Linux (leurs équivalents en 5.4). Claude demande le système
@@ -608,7 +608,7 @@ script de données : son module métier se construit par tickets, en copiant le 
 `dossiers`, et les briques « à brancher » s'y branchent ensuite. Pour un site vitrine, écrire
 l'accueil et les pages vient juste après la vérification des valeurs écrites, les réglages, les mentions légales,
 la politique de confidentialité et le référencement : le contenu vient du client, l'assembleur n'en invente pas. Ce sont
-les premiers tickets, listés à la section 9 de la blueprint.
+les premiers tickets, listés à la section 9 de la blueprint (étape 6 pour les créer).
 
 ### 5.4 Sous macOS ou Linux
 
@@ -709,7 +709,7 @@ reprendre.
    corps. Un refus (« La section 9 de la blueprint n'est pas lisible ») se corrige dans la
    blueprint du dossier assemblé, qu'on re-présente : ce n'est pas une brique du catalogue.
 2. **Le feu vert se donne à la personne, la création se tape à la main** : Claude ne lance jamais
-   `--confirmer` (`CLAUDE.md` §3 et §8). Il donne la même commande suivie de `--confirmer`, et
+   `--confirmer` (`CLAUDE.md` §8). Il donne la même commande suivie de `--confirmer`, et
    dit qu'elle crée les issues, une fois, dans ce dépôt, et pas ailleurs.
 3. **Vérifier**, une fois les issues créées : la sortie finit par « N issues créées … chacune
    avec ses « Bloqué par » exacts », et `gh issue list --repo <proprietaire>/<nom>` en

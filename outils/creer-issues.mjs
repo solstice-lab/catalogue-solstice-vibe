@@ -19,6 +19,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { NOM_DU_CATALOGUE } from "./modules.mjs";
 
 export class ErreurIssues extends Error {
   constructor(message) {
@@ -34,7 +35,25 @@ const ETIQUETTE_DEPENDANCES = "Bloqué par";
 // que porte chaque issue, lisible dès l'ouverture du dépôt du client.
 const BLUEPRINT_DE_L_APPLI = "blueprint.md";
 
-const debutDeChamp = (etiquette) => new RegExp(`^${etiquette}\\s*:\\s*`);
+// « Vérifiable à l'écran : », avec l'apostrophe droite ou typographique (un
+// texte français les mélange), en liste ou en gras (« - **Bloqué par** : »).
+const debutDeChamp = (etiquette) =>
+  new RegExp(`^(?:[-*]\\s+)?(?:\\*\\*)?${etiquette.replace("'", "['’]")}\\s*(?:\\*\\*)?\\s*:\\s*(?:\\*\\*)?\\s*`, "i");
+
+// Un exemple de section 9 dans un bloc de code (comme celui du modèle de
+// blueprint) ne doit ouvrir ni section, ni étape, ni champ.
+const BORNE_DE_BLOC = /^\s*(```|~~~)/;
+
+function lignesDeBloc(lignes) {
+  let ouvert = false;
+  return lignes.map((ligne) => {
+    if (BORNE_DE_BLOC.test(ligne)) {
+      ouvert = !ouvert;
+      return true;
+    }
+    return ouvert;
+  });
+}
 
 /*
  * Lecture de la section 9. Une étape est un sous-titre « ### 9.n Titre », puis
@@ -44,20 +63,20 @@ const debutDeChamp = (etiquette) => new RegExp(`^${etiquette}\\s*:\\s*`);
  */
 export function lireLesEtapes(texte) {
   const lignes = texte.split(/\r?\n/);
-  const debut = lignes.findIndex((ligne) => /^## 9[.\s]/.test(ligne));
+  const enBloc = lignesDeBloc(lignes);
+  const debut = lignes.findIndex((ligne, i) => !enBloc[i] && /^## 9[.\s]/.test(ligne));
   if (debut === -1) {
     throw new ErreurIssues("La blueprint n'a pas de section 9 (un titre « ## 9. Pour poursuivre »).");
   }
-  let fin = lignes.findIndex((ligne, i) => i > debut && /^## /.test(ligne));
+  let fin = lignes.findIndex((ligne, i) => i > debut && !enBloc[i] && /^## /.test(ligne));
   if (fin === -1) fin = lignes.length;
-  const section = lignes.slice(debut + 1, fin);
 
   // Seul « ### 9.n » ouvre une étape : un autre sous-titre appartient au contenu.
   const departs = [];
-  section.forEach((ligne, i) => {
-    const m = /^### 9\.(\d+)\s+(.+?)\s*$/.exec(ligne);
+  for (let i = debut + 1; i < fin; i++) {
+    const m = enBloc[i] ? null : /^### 9\.(\d+)\s+(.+?)\s*$/.exec(lignes[i]);
     if (m) departs.push({ i, numero: Number(m[1]), titre: m[2] });
-  });
+  }
   if (departs.length === 0) {
     throw new ErreurIssues(
       "La section 9 n'a aucune étape au format « ### 9.1 Titre » : voir la section 9 du modèle de blueprint " +
@@ -73,20 +92,30 @@ export function lireLesEtapes(texte) {
         `Les étapes se numérotent 9.1, 9.2, 9.3… sans trou : « ${reference} » est à la place de 9.${rang + 1}.`
       );
     }
-    const corps = section.slice(depart.i + 1, rang + 1 < departs.length ? departs[rang + 1].i : section.length);
-    const paragraphes = corps
-      .join("\n")
-      .split(/\n\s*\n/)
-      .map((p) => p.trim())
-      .filter(Boolean);
+    // Les paragraphes se coupent aux lignes vides, sauf dans un bloc de code.
+    const paragraphes = [];
+    let courant = [];
+    const fermer = () => {
+      if (courant.length > 0) paragraphes.push(courant);
+      courant = [];
+    };
+    const finDeLEtape = rang + 1 < departs.length ? departs[rang + 1].i : fin;
+    for (let i = depart.i + 1; i < finDeLEtape; i++) {
+      if (!enBloc[i] && lignes[i].trim() === "") fermer();
+      else courant.push({ ligne: lignes[i], code: enBloc[i] });
+    }
+    fermer();
     const champs = { verifiable: [], bloquePar: [] };
     const contenu = [];
     // Un paragraphe peut porter les deux champs, sur deux lignes consécutives.
     for (const paragraphe of paragraphes) {
       const reste = [];
       let champCourant = null;
-      for (const ligne of paragraphe.split("\n")) {
-        if (debutDeChamp(ETIQUETTE_VERIFIABLE).test(ligne)) {
+      for (const { ligne, code } of paragraphe) {
+        if (code) {
+          champCourant = null;
+          reste.push(ligne);
+        } else if (debutDeChamp(ETIQUETTE_VERIFIABLE).test(ligne)) {
           champCourant = "verifiable";
           champs.verifiable.push(ligne.replace(debutDeChamp(ETIQUETTE_VERIFIABLE), ""));
         } else if (debutDeChamp(ETIQUETTE_DEPENDANCES).test(ligne)) {
@@ -128,7 +157,7 @@ export function lireLesEtapes(texte) {
       if (!/^aucune$/i.test(valeur)) {
         for (const morceau of valeur.split(",").map((m) => m.trim())) {
           const m = /^9\.(\d+)$/.exec(morceau);
-          if (!m || Number(m[1]) < 1 || Number(m[1]) >= depart.numero || Number(m[1]) > departs.length) {
+          if (!m || Number(m[1]) < 1 || Number(m[1]) >= depart.numero) {
             problemes.push(
               `${reference} : « ${ETIQUETTE_DEPENDANCES} : ${valeur} » : « aucune », ou des étapes précédentes séparées par des virgules (9.1, 9.3).`
             );
@@ -178,7 +207,17 @@ export function planDesIssues(etapes, { premierNumero }) {
 export function creerLesIssues({ plan, gh, depot }) {
   const crees = [];
   for (const etape of plan) {
-    const sortie = gh(["issue", "create", "--repo", depot, "--title", etape.titre, "--body-file", "-"], etape.corps);
+    let sortie;
+    try {
+      sortie = gh(["issue", "create", "--repo", depot, "--title", etape.titre, "--body-file", "-"], etape.corps);
+    } catch (erreur) {
+      // Une panne de gh (réseau, quota) en cours de route ne doit pas faire
+      // oublier ce qui est déjà créé : la relance serait refusée sans le dire.
+      throw new ErreurIssues(
+        `${erreur.message}\nÉtape ${etape.reference} non créée. ${resume(crees)}` +
+          `Vérifier le dépôt, fermer ces issues (gh issue close <n> --repo ${depot} --reason "not planned"), puis relancer l'outil.`
+      );
+    }
     const trouve = /\/issues\/(\d+)\s*$/.exec(sortie.trim());
     if (!trouve) {
       throw new ErreurIssues(
@@ -280,6 +319,11 @@ export function executer(
   if (!depot) throw new ErreurIssues(`--depot est requis : aucun dépôt par défaut.\n\n${AIDE}`);
   if (!/^[\w.-]+\/[\w.-]+$/.test(depot)) {
     throw new ErreurIssues(`--depot s'écrit proprietaire/nom (reçu « ${depot} »).`);
+  }
+  // Les issues de la section 9 sont celles d'une appli : le dépôt du catalogue
+  // n'en reçoit jamais (à blanc, il reste lisible pour voir une sortie).
+  if (options.drapeaux.has("confirmer") && depot.split("/")[1].toLowerCase() === NOM_DU_CATALOGUE) {
+    throw new ErreurIssues(`--confirmer refuse le dépôt du catalogue (${NOM_DU_CATALOGUE}) : donner celui de l'appli.`);
   }
 
   let texte;
