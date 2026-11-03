@@ -55,7 +55,7 @@ briques:
   locales), en minuscules sans accent, en tirets. Il refuse un nom qui ne commence pas par
   une lettre, trop long (plus de 58 caractères une fois ramené) ou qui est celui du
   catalogue. `--nom` l'emporte ; sans `appli`, le nom du dossier de sortie sert. Avec la
-  brique `deploiement`, il nomme aussi le service (`<nom>`) et la base (`<nom>-db`) de
+  brique `deploiement`, `appli` (ou `--nom`, jamais le nom du dossier) nomme aussi le service (`<nom>`) et la base (`<nom>-db`) de
   `render.yaml` : un service renommé après la création du Blueprint Render quitte le
   Blueprint, sans message.
 - `nom_affiche`, `description`, `site` : les valeurs validées au cadrage, que l'assembleur

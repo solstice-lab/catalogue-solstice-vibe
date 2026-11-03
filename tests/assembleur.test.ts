@@ -1472,6 +1472,16 @@ describe("valeurs de l'en-tête de la blueprint écrites par l'assembleur", () =
   );
 
   it(
+    "ne nomme pas le service d'après le dossier de sortie, et n'écrit pas l'hébergeur, sans blueprint ni nom donné : la copie reste celle du catalogue",
+    { timeout: ENTIER },
+    () => {
+      const { dossier } = assemblerEnTemporaire(AVEC_BASE);
+      expect(lireAssemble(dossier, "render.yaml")).toMatch(/^ {4}name: mon-appli$/m);
+      expect(lireAssemble(dossier, "src/lib/mentions-legales.ts")).toMatch(/hebergeur: \{\n {4}nom: "",/);
+    }
+  );
+
+  it(
     "écrit l'hébergeur dans les mentions légales avec la brique qui le connaît, et rien de ce qui engage la personne",
     { timeout: ENTIER },
     () => {

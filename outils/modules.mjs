@@ -958,20 +958,27 @@ export function retraitsDuNom(nomPaquet) {
 // fausser. Rien de ce qui engage la personne n'y figure : éditeur, courriel des
 // droits, bases légales, durées et coordonnées de l'hébergeur se remplissent à
 // la mise en ligne, par quelqu'un qui en répond.
-//   nomPaquet  : toujours connu ; nomme le service et la base de render.yaml. Un
-//                service renommé après la création du Blueprint Render quitte le
-//                Blueprint sans message, d'où le renommage dès l'assemblage ;
+//   nomService : le nom donné à l'appli (appli de la blueprint, ou --nom), s'il y
+//                en a un ; nomme le service et la base de render.yaml. Un service
+//                renommé après la création du Blueprint Render quitte le Blueprint
+//                sans message, d'où le renommage dès l'assemblage. Sans nom donné,
+//                le nom du dossier de sortie n'est pas un nom de service :
+//                render.yaml garde sa valeur de remplacement ;
 //   nomAffiche, description, sitePublic : de l'en-tête, s'ils y sont ;
 //   hebergeur  : celui de la brique déploiement gardée, s'il y en a une.
 // Le nom du site (REFERENCEMENT.nom) lit NOM_APP : une seule source.
-export function remplissagesDeLEnTete({ nomPaquet, nomAffiche, description, sitePublic, hebergeur }) {
+export function remplissagesDeLEnTete({ nomService, nomAffiche, description, sitePublic, hebergeur }) {
   const texte = (valeur) => JSON.stringify(valeur);
   return [
     // render.yaml part avec la brique déploiement ; sans elle, ces trois
     // retouches n'ont plus de fichier et l'assembleur les saute.
-    remplace("render.yaml", "    name: mon-appli\n", `    name: ${nomPaquet}\n`),
-    remplace("render.yaml", "          name: mon-appli-db\n", `          name: ${nomPaquet}-db\n`),
-    remplace("render.yaml", "  - name: mon-appli-db\n", `  - name: ${nomPaquet}-db\n`),
+    ...(nomService === undefined
+      ? []
+      : [
+          remplace("render.yaml", "    name: mon-appli\n", `    name: ${nomService}\n`),
+          remplace("render.yaml", "          name: mon-appli-db\n", `          name: ${nomService}-db\n`),
+          remplace("render.yaml", "  - name: mon-appli-db\n", `  - name: ${nomService}-db\n`),
+        ]),
     ...(nomAffiche === undefined
       ? []
       : [

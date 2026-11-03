@@ -299,9 +299,7 @@ function retraitsAAppliquer(unites, nomPaquet, valeurs) {
   const retraits = retirees.flatMap((unite) => unite.definition.retraits);
   // Le nom après la licence : l'extrait de la licence dans le verrou porte le nom du catalogue.
   retraits.push(...RETRAITS_DU_SOCLE, ...retraitsDuNom(nomPaquet));
-  // L'hébergeur est celui de la brique gardée qui le déclare : sans elle, il reste à remplir.
-  const hebergeur = unites.find((unite) => unite.gardee && unite.definition.hebergeur)?.definition.hebergeur;
-  retraits.push(...remplissagesDeLEnTete({ nomPaquet, ...valeurs, hebergeur }));
+  retraits.push(...remplissagesDeLEnTete(valeurs));
   return [...retraits.filter((r) => r.geste === "remplace"), ...retraits.filter((r) => r.geste !== "remplace")];
 }
 
@@ -885,16 +883,26 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   const contenuFiche = fiche === undefined ? undefined : lireLaFiche(fiche);
   const contenuAvis = avisDeLicence(racine);
   const version = versionDuCatalogue(racine);
-  const nomPaquet = nomDuPaquet(
-    nom ?? (blueprint && appliDeLaBlueprint(contenuBlueprint)) ?? path.basename(destination)
-  );
+  // Le nom que la personne a donné (--nom ou appli de la blueprint) : le nom du
+  // dossier de sortie n'en est pas un, il ne nomme pas un service chez l'hébergeur.
+  const nomDonne = nom ?? (blueprint && appliDeLaBlueprint(contenuBlueprint)) ?? undefined;
+  const nomPaquet = nomDuPaquet(nomDonne ?? path.basename(destination));
 
   // Les fichiers à retoucher : lus une fois, retouchés dans l'ordre, écrits avec
   // leurs fins de ligne d'origine (les extraits de la liste sont en « \n »),
   // puis remis en forme, donc en LF, par Prettier.
   const textes = new Map();
   const finsDeLigne = new Map();
-  const valeurs = blueprint ? valeursDeLEntete(contenuBlueprint) : {};
+  // Ce que la blueprint fait écrire. Sans blueprint, la copie reste celle du
+  // catalogue, hors le nom du paquet et, si --nom le donne, celui du service. L'hébergeur
+  // est celui de la brique gardée qui le déclare : sans elle, il reste à remplir.
+  const valeurs = {
+    ...(blueprint && valeursDeLEntete(contenuBlueprint)),
+    nomService: nomDonne === undefined ? undefined : nomPaquet,
+    hebergeur: blueprint
+      ? unites.find((unite) => unite.gardee && unite.definition.hebergeur)?.definition.hebergeur
+      : undefined,
+  };
   for (const retrait of retraitsAAppliquer(unites, nomPaquet, valeurs)) {
     // Un fichier retiré par une autre unité n'a plus rien à retoucher.
     if (aSupprimer(retrait.fichier) || correspond(retrait.fichier, EXCLUS_DU_CATALOGUE)) continue;

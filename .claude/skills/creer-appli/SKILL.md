@@ -251,7 +251,7 @@ de sortie), ramené en minuscules sans accent ni espace ; `--nom` l'emporte, et 
 écrit sans `--blueprint`. Il écrit aussi dans le code ce que l'en-tête de la blueprint a
 fait valider au cadrage : `NOM_APP` (`nom_affiche:`), la description et `sitePublic` du
 référencement (`description:`, `site:`), le nom du service et de la base de `render.yaml`
-(d'après le nom du paquet, avec la brique `deploiement`) et le nom de l'hébergeur des
+(d'après `appli:` ou `--nom`, avec la brique `deploiement` ; le nom du dossier de sortie n'en est pas un) et le nom de l'hébergeur des
 mentions légales (avec cette brique). Un champ absent de l'en-tête laisse sa valeur de
 remplacement. Rien de ce qui engage la personne n'est rempli. `node outils/assembler.mjs --aide`
 rappelle les options.

@@ -74,7 +74,7 @@ eu lieu.
 
 1. **Avant le Blueprint**, dans une PR : vérifier le nom du service et de la
    base dans `render.yaml`. L'assembleur les a écrits d'après `appli` dans
-   l'en-tête de la blueprint (le nom du paquet, et `<nom>-db` pour la base) ;
+   l'en-tête de la blueprint (ou `--nom` ; le nom du paquet, et `<nom>-db` pour la base) ;
    un nom à changer se change ici, avant la création. Un service renommé après
    sa création quitte le Blueprint, sans message.
 2. **Le coût** : un service web `0.5c-512mb` et une base `0.1c-256mb`, plus le
