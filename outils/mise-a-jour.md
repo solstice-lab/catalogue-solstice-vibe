@@ -263,7 +263,7 @@ en tête ce qui change pour toute l'appli, puis les décisions et les gestes qui
 
 Parce que l'ajout reste coûteux, **le cadrage insiste** : `creer-appli` pose la question de
 la base et des comptes comme une décision à prendre maintenant, en disant ce que coûterait
-de les ajouter plus tard, plutôt que comme une porte fermée (tranche 9).
+de les ajouter plus tard, plutôt que comme une porte fermée (tranche 4).
 
 ## Le circuit, et ce qui reste un geste humain
 
@@ -337,69 +337,61 @@ Restent à un humain :
 
 ## Découpage en tickets
 
-Chaque tranche est un ticket, vérifiable, dans le catalogue, avec ses tests. Le fichier
-de tests de l'outil s'ajoute à `EXCLUS_DU_CATALOGUE`, comme celui de l'assembleur. S'il
-est long, il sort aussi de `npm test` : le script `"test"` de `package.json` et le
-`remplace` de `RETRAITS_DU_SOCLE` qui le réécrit dans les copies changent ensemble. Ses cas
-qui rejouent des migrations tournent avec Postgres, dans le job qui lance le test de
-l'assembleur (`assemblage.yml`). Les tests construisent leur propre catalogue d'essai à
-deux commits : la CI ne clone pas l'historique. Aucun ticket n'est créé avant la
-validation de cette note.
+Cinq tranches, un ticket chacune, vérifiables dans le catalogue avec leurs tests. Les textes
+que chaque tranche rend faux changent dans sa PR, pas dans un ticket de documentation à
+part. Le fichier de tests de l'outil s'ajoute à `EXCLUS_DU_CATALOGUE`, comme celui de
+l'assembleur. S'il est long, il sort aussi de `npm test` : le script `"test"` de
+`package.json` et le `remplace` de `RETRAITS_DU_SOCLE` qui le réécrit dans les copies
+changent ensemble. Ses cas qui rejouent des migrations tournent avec Postgres, dans le job
+qui lance le test de l'assembleur (`assemblage.yml`). Les tests construisent leur propre
+catalogue d'essai à deux commits : la CI ne clone pas l'historique. Aucun ticket n'est créé
+avant la validation de cette note.
 
-1. **Assembleur : noter dans le manifeste les paramètres de l'assemblage.** Un format 2 :
-   briques choisies et ajoutées d'office, nom du paquet, Dependabot, commit complet. Fait
-   quand une appli assemblée les porte et qu'un test les relit. L'outil lit aussi le
-   format 1, en déduisant (question 4).
-2. **Mise à jour : reproduire l'origine d'une appli et lister ses écarts** (`--a-blanc`
-   seul). Lire le manifeste, déduire B, rejouer l'assembleur du commit A dans un worktree
-   temporaire avec le Prettier de ce commit, comparer les empreintes, les refus en clair, la
-   liste des fichiers retouchés et supprimés par l'appli. Fait quand l'origine d'une appli
-   fraîchement assemblée se reproduit sans écart, qu'une retouche est listée, qu'un
-   manifeste faussé est refusé, et que l'origine se reproduit encore quand le catalogue a
-   monté Prettier depuis A.
-3. **Mise à jour : écrire la cible dans une branche de l'appli.** Le rejeu au commit A', la
-   table « Ce qu'il fait de chaque fichier », la fusion à trois et ses marqueurs, la branche
-   nommée, le manifeste réécrit, `commit_reference`. Arrêt tant que `migrations.ts` ou
-   `schema.sql` diffèrent (tranche 4). Fait quand un test couvre chaque ligne de la table,
-   lecture en LF comprise.
-4. **Mise à jour : les étapes de migration en fin de liste.** Les étapes lues par `nom`,
-   l'ajout en fin, les arrêts, `schema.sql`, et un verrou au catalogue : deux étapes n'y
-   portent pas le même `nom`. Fait quand l'étape neuve se trouve après celles de l'appli et
-   que le rejeu sur une base de test passe.
-5. **Mise à jour : les dépendances npm.** `package.json` fusionné, verrou remplacé ou à
-   régénérer, dit au rapport. Fait quand `npm ci` passe dans l'appli d'essai après
-   l'opération, et après `npm install` quand le rapport le demande.
-6. **Mise à jour : le rapport.** Les entrées des `CHANGELOG.md` (ruptures en tête), les
-   sujets des commits du socle, les variables nouvelles, la confidentialité, le registre,
-   les briques « à brancher », ce que la fusion déclenche. Fait quand le rapport d'un cas
-   d'essai porte chaque rubrique.
-7. **Ajouter une brique à une appli assemblée** (`--ajouter`), hors ajouts lourds.
-   `planifier` sur B plus x, le refus d'une brique absente au commit A. Fait quand, sur une appli assemblée avec `comptes,mails` puis retouchée (droits, menu,
-   registre, politique, une étape de migration à elle), ajouter `journal` puis
-   `notifications` donne les fichiers d'un assemblage direct avec elles, aux retouches de
-   l'appli et à l'ordre des migrations près, et que typecheck, tests et rejeu des
-   migrations passent. Ces deux briques retouchent le plus de fichiers partagés : étapes de
-   migration, registre, politique, droits, menu, variables.
-8. **Les ajouts lourds : la base et `comptes`.** Leur mention en tête du rapport, avec les
-   décisions et les gestes de la section « Les ajouts lourds ». Fait quand une vitrine
-   assemblée sans base, avec une page à elle, reçoit `mails,contact` puis `comptes` : après
-   l'opération, typecheck et rejeu des migrations passent, et `tests/gardes-acces.test.ts`
-   échoue sur la seule page de l'appli, nommée au rapport.
-9. **La skill et les documents.** Le circuit dans une skill du catalogue (ou une étape de
-   `creer-appli`). Au cadrage, `creer-appli` insiste sur la base et les comptes : une
-   décision à prendre maintenant, avec ce que coûterait de les ajouter plus tard. Et les
-   textes que l'outil rend faux : « n'en recevra pas après coup » (`creer-appli`, étapes 1
-   et 2), les mentions « hors v1 » ou « pas outillé » (`creer-appli`, `choix.md`, README du
-   catalogue, README de la brique notifications), et ceux qui disent qu'aucun outil ne lit le manifeste ou que l'en-tête
-   de la blueprint n'est lu que pour `appli` et `commit_reference` (`blueprint-modele.md`,
-   `creer-appli`, le README du catalogue, le commentaire d'en-tête de la blueprint minimale
-   dans `assembler.mjs`). Fait quand l'agent `relecteur-docs` ne relève rien.
-10. **Essai réel** sur une appli assemblée : un ajout, puis une mise à jour. Fait quand les
-    deux PR de l'appli sont fusionnées par un humain et que `/sante` répond après le
-    déploiement.
+1. **Reproduire l'origine d'une appli et lister ses écarts** (`--a-blanc` seul). Lire le
+   manifeste, déduire B, rejouer l'assembleur du commit A dans un worktree temporaire avec
+   le Prettier de ce commit, comparer les empreintes, les refus en clair, la liste des
+   fichiers retouchés et supprimés par l'appli. Avec, si la question 4 l'accepte, le
+   format 2 du manifeste (briques choisies et ajoutées d'office, nom du paquet, Dependabot,
+   commit complet), l'outil lisant encore le format 1 en déduisant. Utile seul : on voit ce
+   qu'une appli a retouché. Fait quand l'origine d'une appli fraîchement assemblée se
+   reproduit sans écart, qu'une retouche est listée, qu'un manifeste faussé est refusé, et
+   que l'origine se reproduit encore quand le catalogue a monté Prettier depuis A.
+2. **Mettre à jour une appli, hors migrations.** Le rejeu au commit A', la table « Ce qu'il
+   fait de chaque fichier », la fusion à trois et ses marqueurs, la branche nommée, le
+   manifeste réécrit, l'en-tête de `blueprint.md`, les dépendances npm, le rapport (entrées
+   des `CHANGELOG.md`, ruptures en tête, sujets des commits du socle, variables nouvelles,
+   confidentialité, registre, ce que la fusion déclenche). Arrêt net si `migrations.ts` ou
+   `schema.sql` diffèrent entre l'origine et la cible. Les textes qui disent la mise à jour
+   « hors v1 » ou le manifeste lu par aucun outil (`creer-appli`, `choix.md`, README du
+   catalogue). Fait quand un test couvre chaque ligne de la table, lecture en LF comprise,
+   que `npm ci` passe dans l'appli d'essai après l'opération (après `npm install` quand le
+   rapport le demande), et que le rapport d'un cas d'essai porte chaque rubrique.
+3. **Les étapes de migration en fin de liste.** À part, parce que c'est la partie qui peut
+   mettre une appli à terre en production. Les étapes lues par `nom`, l'ajout en fin, les
+   arrêts, `schema.sql`, et un verrou au catalogue : deux étapes n'y portent pas le même
+   `nom`. Fait quand l'étape neuve se trouve après celles de l'appli et que le rejeu sur une
+   base de test passe.
+4. **Ajouter une brique, simple ou lourde** (`--ajouter`). `planifier` sur B plus x, le
+   refus d'une brique absente au commit A, les briques « à brancher » et les ajouts lourds
+   en tête du rapport. Le cadrage de `creer-appli` insiste sur la base et les comptes (une
+   décision à prendre maintenant, avec ce que coûterait de les ajouter plus tard), et les
+   textes que l'ajout rend faux : « n'en recevra pas après coup » (`creer-appli`, étapes 1
+   et 2), « pas outillé » (README de la brique notifications), et ceux qui disent l'en-tête
+   de la blueprint lu pour `appli` et `commit_reference` seulement (`blueprint-modele.md`,
+   le commentaire de la blueprint minimale dans `assembler.mjs`). Fait quand deux cas
+   d'essai passent :
+   - une appli `comptes,mails` retouchée (droits, menu, registre, politique, une étape de
+     migration à elle) reçoit `journal` puis `notifications` : les fichiers d'un
+     assemblage direct avec elles, aux retouches de l'appli et à l'ordre des migrations
+     près, puis typecheck, tests et rejeu des migrations ;
+   - une vitrine sans base, avec une page à elle, reçoit `mails,contact` puis `comptes` :
+     typecheck et rejeu des migrations passent, et `tests/gardes-acces.test.ts` échoue sur
+     la seule page de l'appli, nommée au rapport.
+5. **Essai réel** sur une appli assemblée : un ajout, puis une mise à jour. Fait quand les
+   deux PR de l'appli sont fusionnées par un humain et que `/sante` répond après le
+   déploiement.
 
-Bloquées par : 3 par 2 ; 4, 5 et 6 par 3 ; 7 par 4 et 6 ; 8 par 7 ; 9 par 8 ; 10 par 5 et 9.
-La 1 se fait à part.
+Bloquées par : 2 par 1 ; 3 par 2 ; 4 par 3 ; 5 par 4.
 
 ## Questions pour la personne responsable technique
 
