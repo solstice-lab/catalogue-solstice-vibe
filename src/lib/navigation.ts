@@ -1,5 +1,7 @@
 import type { LienNavigation } from "@/ui";
 import { visiblePour } from "@/briques/comptes/roles";
+import { majuscule } from "@/briques/espaces/reglages";
+import { ESPACES } from "@/config/espaces";
 
 // Le garde d'affichage d'une entrée : la MÊME action que celle que la page
 // exige en première ligne (briques/comptes/roles.ts), jamais une règle recopiée ici — un
@@ -21,6 +23,7 @@ export const NAVIGATION: LienNavigation[] = [
   { libelle: "Données personnelles", href: "/donnees-personnelles", visible: visiblePour("donnees.exporter") },
   { libelle: "Journal", href: "/journal", visible: visiblePour("journal.consulter") },
   { libelle: "Comptes", href: "/comptes", visible: visiblePour("comptes.administrer") },
+  { libelle: majuscule(ESPACES.vocabulaire.mon), href: "/espace", visible: visiblePour("espaces.participer") },
 ];
 
 export const NOM_APP = "NOM_APP"; // à remplacer à la mise en route du projet

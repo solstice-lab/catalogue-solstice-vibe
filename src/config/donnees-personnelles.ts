@@ -1,5 +1,6 @@
 import type { DonneeNonExportee, SourceDonnees } from "@/briques/rgpd/export";
 import { SOURCES_COMPTES } from "@/briques/comptes/donnees-personnelles";
+import { SOURCES_ESPACES } from "@/briques/espaces/donnees-personnelles";
 import { SOURCES_IMPORT_LOT } from "@/briques/import-lot/donnees-personnelles";
 import { SOURCES_JOURNAL } from "@/briques/journal/donnees-personnelles";
 import { SOURCES_NOTIFICATIONS } from "@/briques/notifications/donnees-personnelles";
@@ -33,6 +34,7 @@ export const SOURCES: SourceDonnees[] = [
   ...SOURCES_IMPORT_LOT,
   ...SOURCES_JOURNAL,
   ...SOURCES_NOTIFICATIONS,
+  ...SOURCES_ESPACES,
 ];
 
 // Un objet par entrée : l'assembleur retire celle d'une unité absente.
@@ -68,4 +70,6 @@ export const TABLES_SANS_DONNEE_PERSONNELLE: Record<string, string> = {
   domaines_admis:
     "Les domaines ouverts à la connexion par un admin (brique comptes), sans adresse e-mail ; les messageries publiques y sont refusées.",
   notifications_lancements: "Les jours où chaque branchement de notifications a envoyé (brique notifications).",
+  espaces_invitations:
+    "L'espace et l'heure de chaque invitation par e-mail, pour les plafonds d'envoi (brique espaces), sans l'adresse invitée.",
 };

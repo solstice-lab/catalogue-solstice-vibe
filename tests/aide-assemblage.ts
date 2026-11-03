@@ -255,6 +255,11 @@ export const REFERENCES: Record<string, RegExp> = {
   // leurs tables restent avec comptes.
   "gestion-comptes":
     /briques\/gestion-comptes|app\/comptes|comptes\.administrer|ACTIONS_GESTION_COMPTES|["'`]\/comptes\b/,
+  // Les espaces : sa brique, ses pages, ses réglages, ses tables, son droit et
+  // ses entrées des registres. Ses pages par leur nom exact : un exemple
+  // fictif de tests/referencement.test.ts prend « /espace/offres ».
+  espaces:
+    /briques\/espaces|app\/espace\/(page|actions|rejoindre)|config\/espaces|espaces_(adhesions|invitations|essais_code)|espaces\.participer|(ACTIONS|TRAITEMENTS|SOURCES|EFFETS)_ESPACES|["'`]\/espace(\/rejoindre)?["'`?]|\b(FROM|JOIN|INTO|UPDATE|TABLE)\s+espaces\b/,
 };
 
 // Ce que le code n'importe pas mais qui nomme quand même des fichiers ou des

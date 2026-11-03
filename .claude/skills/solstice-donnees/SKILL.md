@@ -96,6 +96,10 @@ brancher ») :
   de navigation ne protège rien. Refus = 404, pas 403. L'entrée de
   `lib/navigation.ts` déclare `visible: visiblePour(action)` avec la MÊME
   action que la page : sinon un membre voit un lien qui mène à un 404.
+- **Une table rattachée à un espace** (colonne `espace_id`, avec la brique
+  espaces) : ses fonctions de données prennent la `base` que rend
+  `exigerMonEspace()`, appelé juste après `exiger`, et n'importent pas `query` ;
+  un test-verrou refuse le contraire (README de la brique, « La brancher »).
 - **Slugs** : `lib/slug.ts`, recalculés jamais stockés. Déclarer les segments
   statiques du module dans `SEGMENTS_RESERVES_PAR_MODULE`.
 - **Un compte désactivé, réactivé ou effacé** qui doit changer quelque chose

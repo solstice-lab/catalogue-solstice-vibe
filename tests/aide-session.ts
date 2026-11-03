@@ -22,6 +22,12 @@ export function jouer(role: string | null): void {
         : { email: `${role}@demo.solstice-lab.example`, role };
 }
 
+// Une personne précise, quand le test a besoin de son adresse : la brique
+// espaces retrouve le compte en base par l'adresse de la personne connectée.
+export function jouerLaPersonne(personne: Utilisateur): void {
+  joue = personne;
+}
+
 export function personneJouee(): Utilisateur | null {
   return joue;
 }

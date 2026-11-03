@@ -152,7 +152,8 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   restent à ajouter par ticket.
 - **Ce que le client suit, entité par entité**, pour choisir les briques dont le module
   métier de l'appli aura besoin (étape 2) : une date à surveiller appelle `echeances`, un
-  fichier à reprendre `import-lot`, une décision à tracer `validation`. Un vrai exemple de
+  fichier à reprendre `import-lot`, une décision à tracer `validation`, des groupes de
+  personnes qui partagent leurs fiches (une coloc, une association) `espaces`. Un vrai exemple de
   sa donnée, avant de choisir. Sauf pour un site vitrine.
 
 La fiche validée est **le préalable** : pas d'assemblage avant. Elle deviendra le
@@ -184,15 +185,16 @@ Règles de l'assembleur :
   - Un site qui a vraiment besoin du cache CDN : le dire, et laisser la personne
     responsable technique du projet trancher.
 - **La base vient avec les briques qui la lisent.** `comptes`, `contact`, `rgpd`,
-  `journal`, `gestion-comptes`, `echeances`, `calendrier`, `validation`, `import-lot` et
-  `notifications` exigent la brique `donnees` (base, migrations, couche données du patron
+  `journal`, `gestion-comptes`, `espaces`, `echeances`, `calendrier`, `validation`,
+  `import-lot` et `notifications` exigent la brique `donnees` (base, migrations, couche données du patron
   `dossiers`), que l'assembleur garde d'office dès qu'une brique gardée l'exige : ne pas la
   nommer. Sans aucune d'elles, l'appli n'a pas de base, et n'en recevra pas après coup. Les
   écrans du patron `dossiers` ne viennent qu'avec `comptes` (chaque page appelle `exiger`).
 - Une brique peut en exiger une autre : l'assembleur refuse de la garder sans elle et
   nomme l'option à ajouter. **`comptes`, `contact` et `notifications` exigent `mails`**
   (le code de connexion part par e-mail : nommer `comptes,mails`) ; **`rgpd`, `journal` et
-  `gestion-comptes` exigent `comptes`**. Il n'ajoute rien en silence : seule `rgpd` vient
+  `gestion-comptes` exigent `comptes`**, et **`espaces` exige `comptes` et `mails`**. Il
+  n'ajoute rien en silence : seule `rgpd` vient
   d'office avec `comptes`, et il le dit.
 - `comptes` (avec `mails`) donne la base, les droits et le patron `dossiers`, écrans
   compris : c'est le départ de toute appli qui garde des données, dont le module métier
@@ -201,8 +203,8 @@ Règles de l'assembleur :
 - **`rgpd` vient d'office avec `comptes`** (l'export et l'effacement des données d'une
   personne) : une appli qui a des comptes doit pouvoir répondre à une demande d'accès ou
   d'effacement. L'assembleur l'ajoute (`entraine` dans `outils/modules.mjs`) et le dit ; la
-  nommer dans `--briques` reste permis. Comme `comptes`, `contact`, `journal` et
-  `gestion-comptes`, elle arrive branchée (pages, droits, menu) : la règle « à brancher »
+  nommer dans `--briques` reste permis. Comme `comptes`, `contact`, `journal`,
+  `gestion-comptes` et `espaces`, elle arrive branchée (pages, droits, menu) : la règle « à brancher »
   ci-dessous ne la vise pas.
 - **Les briques qui lisent la base sans se brancher sur le socle** (`echeances`,
   `calendrier`, `validation`, `import-lot`, `notifications`) se gardent seules, avec la

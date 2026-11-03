@@ -3,6 +3,7 @@ import { ACTIONS_RGPD } from "@/briques/rgpd/actions";
 import { ACTIONS_GESTION_COMPTES } from "@/briques/gestion-comptes/domaine";
 import { ACTIONS_DOSSIERS } from "@/lib/dossiers-domaine";
 import { ACTIONS_JOURNAL } from "@/briques/journal/evenements";
+import { ACTIONS_ESPACES } from "@/briques/espaces/domaine";
 
 /*
  * Qui a le droit de faire quoi dans cette appli : le fichier que
@@ -38,6 +39,7 @@ export const ACTIONS = [
   ...ACTIONS_RGPD,
   ...ACTIONS_JOURNAL,
   ...ACTIONS_GESTION_COMPTES,
+  ...ACTIONS_ESPACES,
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -71,4 +73,7 @@ export const DROITS = {
   // L'écran /comptes (brique gestion-comptes) : ROLE_ADMIN au moins, le
   // rôle que la brique comptes protège du « dernier admin désactivé ».
   "comptes.administrer": ["admin"],
+  // Créer un espace, le rejoindre, le voir, le quitter (brique espaces) : à
+  // tout compte. Gérer un espace se décide par l'adhésion, pas ici.
+  "espaces.participer": ["membre", "admin"],
 } satisfies Droits;

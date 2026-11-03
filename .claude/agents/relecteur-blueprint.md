@@ -58,7 +58,8 @@ prototype de demande d'achat, ou le texte même de l'assembleur.
 `---` **en tête de fichier** ; un nom qui n'est pas une clé de `BRIQUES` ; `donnees` nommée
 dans `--briques` (la base vient d'office avec les briques qui la lisent) ; une brique dont
 les briques d'`exige` (hors `donnees`) manquent de `--briques` (`comptes`, `contact` et
-`notifications` exigent `mails` ; `rgpd`, `journal` et `gestion-comptes` exigent `comptes`) ;
+`notifications` exigent `mails` ; `rgpd`, `journal` et `gestion-comptes` exigent `comptes` ;
+`espaces` exige `comptes` et `mails`) ;
 un champ `appli:` dont le nom de paquet ne commence pas par une lettre, dépasse
 58 caractères ou est celui du catalogue (sauf `--nom`). Les trois derniers se jugent sur la
 commande prévue et l'en-tête, pas sur le corps. Il ne refuse **pas** une brique qui lit la
@@ -81,7 +82,9 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   outil ouvert à toute adresse, rôles, code par e-mail ou Google) : une entrée `ouverte`
   avec des droits que la section 5 réserve à des personnes listées est un constat. Un champ
   absent laisse le défaut (entrée fermée, rôle `membre`, méthode `code-email`) : constat si
-  la section 5 ou la fiche dit autre chose. Section 9 :
+  la section 5 ou la fiche dit autre chose. Avec `espaces` et une entrée fermée, la
+  section 5 dit comment une adresse invitée est admise (l'invitation ne crée pas de
+  compte) : constat si elle ne le dit pas. Section 9 :
   le retrait de `"demo"` de `METHODES` avant la mise en ligne y figure.
 - **La liste de l'en-tête redit exactement** la valeur de `--briques`, plus les briques
   ajoutées d'office (`rgpd` avec `comptes`) : c'est ce qui dit, sans lire le code, ce qui
@@ -141,7 +144,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   une brique gardée qui apporte ses écrans, à comparer aux routes de `src/app/` listées
   dans ses `fichiers` (`/connexion` avec `comptes`, `/mes-donnees` et
   `/donnees-personnelles` avec `rgpd`, `/comptes` avec `gestion-comptes`, `/journal` avec
-  `journal`, `/contact` avec `contact`) ; le socle (`/kit`, toujours là, et `/dossiers`,
+  `journal`, `/contact` avec `contact`, `/espace` et `/espace/rejoindre` avec `espaces`) ; le socle (`/kit`, toujours là, et `/dossiers`,
   dans `PATRON_DOSSIERS`, avec `comptes`, à remplacer par un ticket ; `/mentions-legales`
   et `/confidentialite`, toujours là, à remplir ; `/robots.txt`, `/sitemap.xml`,
   `/opengraph-image`, `/twitter-image`, remplis depuis `src/lib/referencement.ts` ; `/`,
@@ -158,7 +161,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   donne.
 - Section 4 contre les briques et la section 9 : chaque écran, URL et entrée de navigation
   décrit appartient à une brique gardée qui apporte ses écrans (`comptes`, `rgpd`,
-  `gestion-comptes`, `journal`, `contact`), au socle, ou aux pages prévues à écrire, qui
+  `gestion-comptes`, `journal`, `contact`, `espaces`), au socle, ou aux pages prévues à écrire, qui
   ont leur ticket ; et inversement chaque brique gardée qui apporte ses écrans les a dans
   la section 4, et chaque entité de la section 2 a ses écrans, à écrire.
 - Section 6 contre la section 9 : les scripts de données cités sont ceux que l'appli écrira,

@@ -1,4 +1,5 @@
 import type { EffetsDeCompte } from "@/briques/comptes/effets";
+import { EFFETS_ESPACES } from "@/briques/espaces/effets-comptes";
 import { EFFETS_JOURNAL } from "@/briques/journal/effets-comptes";
 
 /*
@@ -19,6 +20,9 @@ import { EFFETS_JOURNAL } from "@/briques/journal/effets-comptes";
  */
 
 export const EFFETS_COMPTES: EffetsDeCompte[] = [
+  // Brique espaces : terminer les adhésions, nommer un autre gestionnaire,
+  // remplacer le prénom à l'effacement.
+  EFFETS_ESPACES,
   // Le journal en dernier : il trace le geste une fois que les effets des
   // modules sont passés.
   EFFETS_JOURNAL,
