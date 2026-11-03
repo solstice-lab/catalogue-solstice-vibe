@@ -116,7 +116,18 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   bloc « La mise en ligne » de `solstice-nouvelle-appli` §1, posé pendant ce cadrage et
   non à la veille de la mise en ligne (éditeur, directeur de la publication, champs
   facultatifs ; l'hébergeur ne se redemande pas : c'est celui retenu à la question
-  précédente). Les réponses vont dans la rubrique « Mentions légales » de la fiche.
+  précédente). Commencer par le statut de l'éditeur : **professionnel** (société,
+  association, indépendant qui édite pour son activité) ou **particulier à titre non
+  professionnel**. Le second peut ne publier que les coordonnées de l'hébergeur, à
+  condition de lui avoir communiqué son identité (LCEN, art. 6, III, 2) : ni éditeur ni
+  directeur de la publication à demander (le texte ne prévoit que l'hébergeur), mais la
+  confirmation que l'identité a bien été communiquée à l'hébergeur
+  (`identiteCommuniqueeALHebergeur`), et le courriel où exercer ses droits
+  (confidentialité) reste requis. Le statut se règle par `statutEditeur` dans
+  `src/lib/mentions-legales.ts`. Rien dans le code ne le vérifie : un site avec publicité
+  ou vente n'est plus à titre non professionnel. En cas de doute sur le statut, ne pas
+  trancher : c'est une question ouverte, « à faire valider » par le client. Les réponses vont dans la rubrique « Mentions
+  légales » de la fiche.
 - **La politique de confidentialité** (`src/lib/confidentialite.ts`, page
   `/confidentialite`) : le courriel où exercer ses droits, le délégué à la protection des
   données s'il y en a un, l'autorité de contrôle (la CNIL pour un client établi en France),
@@ -564,7 +575,8 @@ brique). Et ce que l'assembleur n'a **pas** fait :
 catalogue, le thème est le thème de repli du catalogue (la charte Solstice Lab), la
 signature Solstice Lab est en place (à retirer par ticket si la fiche le dit, étape 1),
 `/kit` (et `dossiers`, avec la brique `comptes`) sont toujours là, et
-`src/lib/mentions-legales.ts` est vide hors le nom de l'hébergeur (la page
+`src/lib/mentions-legales.ts` est vide hors le nom de l'hébergeur et le statut de
+l'éditeur, « professionnel » par défaut (la page
 `/mentions-legales` le signale), comme les
 choix de `src/lib/confidentialite.ts` (la page `/confidentialite` le signale). Le nom
 affiché, la description et le choix public ou fermé de `src/lib/referencement.ts` ne sont

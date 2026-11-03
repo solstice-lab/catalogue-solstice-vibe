@@ -80,7 +80,7 @@ Lab) et la signature Solstice Lab du pied de page (obligatoire pour une livraiso
 Lab, retirable par ticket sinon : `SKILL.md`, étape 1), la vitrine `/kit` (à remplacer par les
 premiers écrans réels, voir `CLAUDE.md` et la skill `solstice-ui`), l'accueil « Page
 d'accueil à écrire », la page
-`/mentions-legales` et sa configuration `src/lib/mentions-legales.ts` (vide, à remplir), la
+`/mentions-legales` et sa configuration `src/lib/mentions-legales.ts` (vide, statut « professionnel » d'office, à remplir), la
 page `/confidentialite` et sa configuration `src/lib/confidentialite.ts` (les traitements des
 briques gardées y sont décrits, les choix du responsable sont vides, à remplir), le
 référencement (`src/lib/referencement.ts`, `robots.ts`, `sitemap.ts`, image de partage),

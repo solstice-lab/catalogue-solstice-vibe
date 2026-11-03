@@ -24,7 +24,11 @@ import { TRAITEMENTS_NOTIFICATIONS } from "@/briques/notifications/confidentiali
  *   d'avance passerait pour vraie ; un champ vide se voit, la page l'annonce.
  *
  * Le responsable du traitement n'est pas resaisi ici : c'est l'éditeur des
- * mentions légales (src/lib/mentions-legales.ts), comme l'hébergeur.
+ * mentions légales (src/lib/mentions-legales.ts), comme l'hébergeur. Un éditeur
+ * particulier non professionnel, qui ne publie pas son identité (LCEN art. 6,
+ * III, 2), reste le responsable du traitement : les personnes concernées le
+ * joignent par le courriel des droits ci-dessous, qui reste requis, et son nom
+ * n'est pas réclamé.
  */
 
 export type SousTraitant = {
@@ -179,7 +183,8 @@ export function champsManquants(
   const manquants: ChampManquant[] = [];
   const manque = (libelle: string, section: string) => manquants.push({ libelle, section });
 
-  if (vide(mentions.editeur.nom)) manque("Responsable du traitement : nom (mentions légales)", "responsable");
+  if (mentions.statutEditeur === "professionnel" && vide(mentions.editeur.nom))
+    manque("Responsable du traitement : nom (mentions légales)", "responsable");
   if (vide(config.contact.courriel)) manque("Courriel pour exercer ses droits", "responsable");
   if (vide(config.miseAJour)) manque("Date de mise à jour", "responsable");
 

@@ -72,7 +72,7 @@ briques:
     outil interne, même en ligne). L'assembleur en tire `sitePublic` ; sans le champ, le
     site reste fermé, et toute autre valeur est refusée.
   - Un champ absent laisse sa valeur de remplacement, à remplir par ticket. Rien de ce qui
-    engage la personne ne passe par l'en-tête : éditeur, courriel des droits, bases
+    engage la personne ne passe par l'en-tête : statut de l'éditeur, éditeur, courriel des droits, bases
     légales, durées, coordonnées de l'hébergeur restent « À compléter ». Avec la brique
     `deploiement`, le nom de l'hébergeur (Render Services, Inc.) est écrit dans les
     mentions légales ; son adresse et son téléphone, non.
@@ -178,8 +178,9 @@ la description, puis :
    `sitePublic` du référencement, les noms du service et de la base de `render.yaml`,
    l'hébergeur des mentions légales ; ce qu'un champ absent a laissé à sa valeur de
    remplacement se remplit ici), régler `src/lib/format.ts`, remplir le reste des
-   mentions légales (`src/lib/mentions-legales.ts`, avant toute mise en ligne : éditeur,
-   directeur de la publication, coordonnées de l'hébergeur), remplir la politique de confidentialité
+   mentions légales (`src/lib/mentions-legales.ts`, avant toute mise en ligne : statut de
+   l'éditeur ; pour un professionnel, éditeur et directeur de la publication ; coordonnées
+   de l'hébergeur), remplir la politique de confidentialité
    (`src/lib/confidentialite.ts`, avant toute mise en ligne, choix validés par le client), compléter le référencement (`src/lib/referencement.ts` : les pages publiques), thématiser, écrire
    l'accueil, construire chaque entité de la section 2 en copiant le patron `dossiers`
    (puis remplacer ou retirer `dossiers`), brancher les briques « à brancher », écrire les
