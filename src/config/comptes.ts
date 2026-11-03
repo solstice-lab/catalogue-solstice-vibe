@@ -29,9 +29,15 @@ export const METHODES: readonly MethodeDeConnexion[] = ["code-email", "demo"];
 //
 // Le premier admin ne s'écrit pas ici : COMPTES_PREMIER_ADMIN, au premier
 // démarrage (voir .env.example).
+//
+// ouverte : true pour un outil public, ouvert à l'inscription. Toute adresse
+// entre alors, avec ROLE_PAR_DEFAUT seulement ; les adresses listées et le
+// premier admin gardent leur rôle. Deux rôles au moins (src/config/acces.ts) :
+// avec un seul, ROLE_PAR_DEFAUT administre, et la brique refuse de démarrer.
 export const ENTREE: Entree = {
   adresses: {},
   domaines: [],
+  ouverte: false,
 };
 
 // Connexion avec Google : le ou les domaines Google Workspace du client

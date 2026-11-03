@@ -88,6 +88,18 @@ function parDomaine(email: string, contexte: ContexteEntree): boolean {
   return domaine !== null && contexte.entree.domaines.some((admis) => normaliser(admis) === domaine);
 }
 
+// L'entrée ouverte : une adresse bien formée suffit (un seul « @ », un domaine
+// avec un point). La méthode a déjà vérifié que la personne la détient (le
+// code reçu, le compte Google), mais admettre() est exportée : elle ne se fie
+// pas à son appelant. Jamais une adresse de démo : sans la démo (en
+// production), un compte de démo resté en base n'entre plus, et l'entrée
+// ouverte ne doit pas le faire revenir.
+const ADRESSE_BIEN_FORMEE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function parEntreeOuverte(email: string, contexte: ContexteEntree): boolean {
+  return contexte.entree.ouverte === true && ADRESSE_BIEN_FORMEE.test(email) && !estAdresseDeDemo(email);
+}
+
 function estDemo(email: string, contexte: ContexteEntree): boolean {
   return contexte.demo && estAdresseDeDemo(email);
 }
@@ -98,7 +110,7 @@ function estPremierAdmin(email: string, contexte: ContexteEntree): boolean {
 
 // Ce qui fait entrer un compte déjà en base, dans l'ordre où roleEffectif le
 // lit ; « aucune » pour qui n'est plus admis.
-export type OrigineDuCompte = "appli" | "configuration" | "demo" | "domaine" | "premier-admin" | "aucune";
+export type OrigineDuCompte = "appli" | "configuration" | "demo" | "domaine" | "premier-admin" | "ouverte" | "aucune";
 
 export function origineDuCompte(email: string, contexte = contexteDeLAppli(), enBase = RIEN_EN_BASE): OrigineDuCompte {
   const adresse = normaliser(email);
@@ -111,6 +123,8 @@ export function origineDuCompte(email: string, contexte = contexteDeLAppli(), en
   // ramener au rôle par défaut (voir roleEffectif).
   if (estPremierAdmin(adresse, contexte)) return "premier-admin";
   if (parDomaine(adresse, contexte) || enBase.domaineOuvert) return "domaine";
+  // En dernier : une voie qui donne un rôle (liste, premier admin) l'emporte.
+  if (parEntreeOuverte(adresse, contexte)) return "ouverte";
   return "aucune";
 }
 
@@ -122,7 +136,8 @@ export function origineDuCompte(email: string, contexte = contexteDeLAppli(), en
 // Sauf par un domaine ouvert depuis l'écran : ROLE_PAR_DEFAUT, jamais le rôle
 // en base. Ce rôle-là, aucun admin ne l'a choisi à l'écran (il aurait alors
 // repris le compte) : c'est celui que la ligne garde d'avant, et ouvrir le
-// domaine rendait « admin » à un ancien admin retiré de la configuration.
+// domaine rendait « admin » à un ancien admin retiré de la configuration. Même
+// règle, pour la même raison, par l'entrée ouverte.
 export function roleEffectif(
   email: string,
   roleEnBase: string,
@@ -134,6 +149,7 @@ export function roleEffectif(
   if (origine === "aucune") return null;
   if (origine === "configuration") return roleListe(adresse, contexte.entree);
   if (origine === "domaine" && !parDomaine(adresse, contexte)) return ROLE_PAR_DEFAUT;
+  if (origine === "ouverte") return ROLE_PAR_DEFAUT;
   return roleEnBase;
 }
 
@@ -164,7 +180,9 @@ async function roleInitial(email: string, contexte: ContexteEntree): Promise<str
     if (!admin) return ROLE_ADMIN;
   }
   // Jamais l'administration par un domaine : n'importe qui du domaine entre.
-  return parDomaine(email, contexte) || (await domaineOuvertEnBase(email)) ? ROLE_PAR_DEFAUT : null;
+  return parDomaine(email, contexte) || (await domaineOuvertEnBase(email)) || parEntreeOuverte(email, contexte)
+    ? ROLE_PAR_DEFAUT
+    : null;
 }
 
 // Le rôle avec lequel une adresse normalisée entrerait, sans rien écrire ; null

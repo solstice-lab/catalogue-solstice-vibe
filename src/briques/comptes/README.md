@@ -44,6 +44,8 @@ ni base, ni droits, ni protection des routes : c'est un site vitrine. Son
    Avec la brique rgpd, toute personne connectée peut alors exporter et
    effacer les données de n'importe quelle adresse (`donnees.exporter`,
    `donnees.effacer`) : le dire dans la blueprint, ou réserver ces actions.
+   L'entrée ouverte (`ouverte` de `ENTREE`) refuse ce niveau : elle donnerait
+   toutes les actions à n'importe quelle adresse.
 2. **Rôles en configuration** : plusieurs rôles dans `ROLES`, et qui a
    droit à quoi dans `DROITS`. C'est le niveau du catalogue (membre, admin).
 3. **Administration des comptes dans l'appli** : l'écran `/comptes` de
@@ -77,6 +79,16 @@ ni base, ni droits, ni protection des routes : c'est un site vitrine. Son
     démo, désactivés compris) n'a jamais eu ce rôle ;
   - au niveau 3, un compte géré par l'appli entre avec son rôle en base, et un
     domaine ouvert depuis l'écran vaut un domaine listé (voir « Le niveau 3 ») ;
+  - avec `ouverte: true` dans `ENTREE` (un outil public, ouvert à
+    l'inscription), toute autre adresse bien formée (hors adresses de démo)
+    entre avec
+    `ROLE_PAR_DEFAUT`, et le garde à chaque requête : jamais le rôle que sa ligne
+    garde en base, pour qu'un ancien admin retiré de la configuration ne le
+    redevienne pas. Avec le code par e-mail, ses limites de demandes (voir « La
+    connexion par code envoyé par e-mail ») sont alors le seul frein aux
+    inscriptions ; avec Google, l'appli n'en oppose aucun. L'option exige deux
+    rôles au moins : avec un seul, `ROLE_PAR_DEFAUT` administre, et la brique
+    refuse de démarrer ;
   - toute autre adresse est refusée.
 - **Comptes en base.** Un compte naît à sa première connexion, ou à son
   invitation au niveau 3 : rien n'est semé par migration. On désactive un
@@ -124,7 +136,7 @@ et une bascule « la base pour tous » lui aurait rendu ce rôle.
   outlook.com…) sont refusées, car elles ouvriraient l'appli à tout le monde ;
 - **fermer un domaine** : les comptes entrés par lui, et que l'appli ne gère
   pas, perdent l'accès, comme au niveau 2 quand un domaine sort de la
-  configuration. Les domaines de la configuration s'affichent, mais ne se
+  configuration (sauf avec l'entrée ouverte, où ils restent entrés par elle). Les domaines de la configuration s'affichent, mais ne se
   ferment pas d'ici.
 
 **Le dernier admin actif est protégé à deux portes** :
@@ -295,8 +307,9 @@ et les limites par adresse restent. **À vérifier par un humain sur une requêt
 déploiement.**
 
 En local (`MAILS_FOURNISSEUR=console`), le mail, et donc le code, s'affiche dans
-le terminal où tourne `npm run dev`. Une adresse doit être admise : listée dans
-`ENTREE` (`src/config/comptes.ts`) ou déclarée dans `COMPTES_PREMIER_ADMIN`.
+le terminal où tourne `npm run dev`. Une adresse doit être admise par `ENTREE`
+(`src/config/comptes.ts` : adresse, domaine, ou toute adresse avec
+`ouverte: true`) ou déclarée dans `COMPTES_PREMIER_ADMIN`.
 
 Dans `tests/comptes-session.test.ts`, la politique de confidentialité est
 tenue d'accord avec le code : « dit la vraie durée du cookie de session et la
@@ -447,7 +460,8 @@ relus le 2026-10-23 (menu « Google Auth Platform »).
    - ajouter `"google"` à `METHODES`, en premier si c'est la méthode principale du
      client ;
    - pour un client Workspace, ajouter ses domaines à `DOMAINES_GOOGLE_WORKSPACE` ;
-   - lister les adresses ou les domaines admis dans `ENTREE`, comme pour le code.
+   - lister les adresses ou les domaines admis dans `ENTREE`, comme pour le code,
+     ou poser `ouverte: true` pour un outil public.
 
 En local, `npm run dev` sert `http://localhost:3000`, l'adresse déclarée à
 l'étape 4.
@@ -486,10 +500,10 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `protection.ts` | `protegerLaRoute(requete)` → `NextResponse \| null`, `ROUTES_OUVERTES`, `estOuverte(chemin)` → `boolean` | Appelé par `src/proxy.ts`. Une route ouverte de plus s'ajoute à `ROUTES_OUVERTES`, avec sa raison, sur sa propre ligne : une brique qui ouvre sa route la retire avec elle dans la liste de l'assembleur (la brique contact le fait pour `/contact`). `estOuverte` est vrai pour une route de la liste ou l'un de ses sous-chemins ; lu par `tests/referencement.test.ts`. |
 | `EcranConnexion.tsx` | `EcranConnexion({ retour, erreur? })` | Le contenu de `/connexion`, que la page entoure de `AppLayout`. `erreur` reçoit le paramètre `erreur` de l'adresse, tel quel : seul un code de refus de Google connu affiche un message. |
 | `BandeauSession.tsx` | `BandeauSession` | Placé dans `src/app/layout.tsx`. |
-| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"google"`, `"demo"`), `Entree` ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
+| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"google"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif) ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
 | `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code` et `connexion-google`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code et celle avec Google n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et la vie du cookie de parcours de Google sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
 | `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse)` : le compte s'anonymise (`anonymiserLeCompte`), sessions et demandes de code sont supprimées. |
-| `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
+| `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine`, `ouverte` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
 | `administration.ts` | `anonymiserLeCompte(executeur, email, contexte?)` → `Promise<CompteAnonymise \| Refus \| null>`, `adresseAnonymisee(id)` → `string` | L'anonymisation du compte d'une adresse, dans la transaction de l'appelant (l'effacement de la brique rgpd) : `null` sans compte, `Refus` pour le dernier admin actif ou un compte de démo. `CompteAnonymise` : `{ id, geste, avertissement? }`, où `geste` est la modification de « compte n°<id> » à tracer, et `avertissement` dit de retirer l'adresse de la configuration. `avertissementDeConfiguration(email, contexte?)` → `string | null` donne cet avertissement aussi pour une adresse sans compte en base. |
 | `administration.ts` | types `CompteAdministre`, `DomaineAdministre`, `StatutDuCompte`, `Invitation`, `Prevenir`, `Refus`, `Trace`, `Geste`, `CompteAnonymise` | Les formes que rendent les fonctions ci-dessous ; l'écran de gestion-comptes les importe en `import type`. |
 | `administration.ts` | `listerComptes(contexte?)` → `Promise<CompteAdministre[]>`, `listerDomaines(contexte?)` → `Promise<DomaineAdministre[]>` | Le niveau 3, pour l'écran de la brique gestion-comptes. Un compte porte son rôle effectif, son origine, son statut (`actif`, `desactive`, `sans-acces`) et `protege`, vrai sur le dernier admin actif. Un domaine dit ce que sa fermeture retirerait (`comptesQuiPerdraientLAcces`). |
@@ -503,7 +517,8 @@ utilise. Les autres exports servent aux fichiers de la brique ou
   premier admin ; `DROITS satisfies Droits`.
 - `src/config/comptes.ts` :
   - `METHODES`, les méthodes proposées ;
-  - `ENTREE`, qui entre (adresses et domaines) ;
+  - `ENTREE`, qui entre (adresses et domaines, et `ouverte` pour un outil
+    ouvert à toute adresse) ;
   - `DOMAINES_GOOGLE_WORKSPACE`, le ou les Workspace dont la connexion avec Google
     accepte les comptes. Vide, elle accepte tout compte dont Google fait autorité.
 

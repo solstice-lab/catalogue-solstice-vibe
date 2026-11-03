@@ -44,8 +44,9 @@ export type Action = (typeof ACTIONS)[number];
 export const ROLES = ["membre", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
-// Le rôle d'une personne entrée sans rôle attribué (par son domaine, voir
-// src/config/comptes.ts) : jamais un rôle d'administration.
+// Le rôle d'une personne entrée sans rôle attribué (par son domaine ou par
+// l'entrée ouverte, voir src/config/comptes.ts) : jamais un rôle
+// d'administration.
 export const ROLE_PAR_DEFAUT: Role = "membre";
 
 // Le rôle que reçoit le premier admin (COMPTES_PREMIER_ADMIN), tant qu'aucun
