@@ -11,7 +11,10 @@ aucun fichier. Tu ne lances **jamais** `node outils/assembler.mjs` avec un dossi
 
 L'assembleur ne lit pas le corps de la blueprint : il en remplace la ligne `commit_reference`
 et la recopie à la racine de l'appli. De l'en-tête, il lit `appli`, `nom_affiche`,
-`description` et `site` (`public` ou `ferme`, sinon il refuse) et les écrit dans l'appli. Il ne vérifie ni le contenu, ni la cohérence avec la
+`description` et `site` (`public` ou `ferme`, sinon il refuse) et les écrit dans l'appli ; avec
+la brique `comptes`, il lit aussi `entree` (`ouverte` ou `ferme`), `role_par_defaut` (jamais un
+rôle d'administration) et `methodes`, écrits dans `src/config/comptes.ts` et
+`src/config/acces.ts`, avec `"demo"` gardée en local. Déclarés sans `comptes`, ils sont refusés. Il ne vérifie ni le contenu, ni la cohérence avec la
 liste de la commande. Une blueprint fausse ne se voit donc qu'une fois l'appli assemblée, ou
 des mois plus tard quand quelqu'un s'y fie. Tu es ce contrôle.
 
@@ -73,7 +76,13 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   (`public` ou `ferme`) : un champ absent laisse sa valeur de remplacement (`NOM_APP`,
   titres « À compléter », site fermé), ce qui est un constat si le corps ou la fiche les
   dit décidés. `nom_affiche`, `description` et le choix `site` redisent la fiche et la
-  section 5 ; `appli` n'est pas le nom affiché.
+  section 5 ; `appli` n'est pas le nom affiché. Avec `comptes`, `entree`, `role_par_defaut`
+  et `methodes` redisent ce que la section 5 et la fiche tranchent (liste d'adresses ou
+  outil ouvert à toute adresse, rôles, code par e-mail ou Google) : une entrée `ouverte`
+  avec des droits que la section 5 réserve à des personnes listées est un constat. Un champ
+  absent laisse le défaut (entrée fermée, rôle `membre`, méthode `code-email`) : constat si
+  la section 5 ou la fiche dit autre chose. Section 9 :
+  le retrait de `"demo"` de `METHODES` avant la mise en ligne y figure.
 - **La liste de l'en-tête redit exactement** la valeur de `--briques`, plus les briques
   ajoutées d'office (`rgpd` avec `comptes`) : c'est ce qui dit, sans lire le code, ce qui
   est installé.
@@ -108,7 +117,9 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   renommer l'appli au-delà de ce que l'en-tête déclare (`appli:` donne le paquet et, avec
   `deploiement`, le service et la base de `render.yaml` ; `nom_affiche:`, `description:` et
   `site:` donnent `NOM_APP`, la description et `sitePublic` ; sans ces champs, ces valeurs
-  gardent leur valeur de remplacement), régler
+  gardent leur valeur de remplacement ; avec `comptes`, `entree:`, `role_par_defaut:` et
+  `methodes:` donnent `ouverte`, `ROLE_PAR_DEFAUT` et `METHODES`, et absents, l'entrée reste
+  fermée, le rôle `membre`, la méthode `code-email`), régler
   `src/lib/format.ts` (langue, devise, fuseau), remplir les mentions légales
   (`src/lib/mentions-legales.ts` : seul le nom de l'hébergeur de Render est écrit), la
   politique de confidentialité (`src/lib/confidentialite.ts`) et les pages publiques du

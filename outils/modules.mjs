@@ -342,6 +342,10 @@ export const BRIQUES = {
   // brique : ils partent avec elle. Les écrans du patron dossiers l'exigent,
   // chacune de leurs pages appelant exiger (PATRON_DOSSIERS).
   comptes: {
+    // `connexion` : la brique qui porte la connexion, donc l'entrée que
+    // l'en-tête de la blueprint règle (remplissagesDeLEntree). Une blueprint qui
+    // la règle sans que la brique soit gardée est refusée.
+    connexion: true,
     // mails : la connexion par code, méthode par défaut, envoie son code par
     // e-mail. Sans elle, seule Google vaudrait en production.
     exige: ["donnees", "mails"],
@@ -991,6 +995,44 @@ export function remplissagesDeLEnTete({ nomService, nomAffiche, description, sit
             "src/lib/mentions-legales.ts",
             '  hebergeur: {\n    nom: "",\n',
             `  hebergeur: {\n    nom: ${texte(hebergeur)},\n`
+          ),
+        ]),
+  ];
+}
+
+// Les méthodes de connexion que la blueprint peut déclarer (MethodeDeConnexion
+// de src/briques/comptes/methodes.ts, que tests/assembleur.test.ts relit). « demo »
+// n'en fait pas partie : elle reste en local, que la blueprint la cite ou non,
+// et se retire à la mise en ligne.
+export const METHODES_DE_CONNEXION = ["code-email", "google"];
+
+// L'entrée de l'appli, tranchée au cadrage (essai de tours-de-coloc : l'ouvrir à
+// toute adresse a pris un ticket entier). La configuration est celle de la
+// brique comptes : l'assembleur n'y ajoute aucune règle, il écrit des valeurs
+// que la brique garde (une entrée ouverte ne donne jamais le rôle d'administration :
+// refuserUneEntreeOuverteQuiAdministre, et le refus de l'assembleur en amont).
+//   ouverte        : `true` ouvre l'entrée à toute adresse ; `false` est le défaut ;
+//   roleParDefaut  : le rôle de qui entre sans rôle attribué (ROLE_PAR_DEFAUT) ;
+//   methodes       : METHODES, « demo » toujours en dernier.
+export function remplissagesDeLEntree({ ouverte, roleParDefaut, methodes }) {
+  return [
+    ...(ouverte === true ? [remplace("src/config/comptes.ts", "  ouverte: false,\n", "  ouverte: true,\n")] : []),
+    ...(methodes === undefined
+      ? []
+      : [
+          remplace(
+            "src/config/comptes.ts",
+            'export const METHODES: readonly MethodeDeConnexion[] = ["code-email", "demo"];',
+            `export const METHODES: readonly MethodeDeConnexion[] = ${JSON.stringify([...methodes, "demo"]).replaceAll(",", ", ")};`
+          ),
+        ]),
+    ...(roleParDefaut === undefined
+      ? []
+      : [
+          remplace(
+            "src/config/acces.ts",
+            'export const ROLE_PAR_DEFAUT: Role = "membre";',
+            `export const ROLE_PAR_DEFAUT: Role = ${JSON.stringify(roleParDefaut)};`
           ),
         ]),
   ];

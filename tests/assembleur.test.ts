@@ -11,8 +11,16 @@ import {
   estUnSecret,
   planifier,
   retirerLesDependances,
+  rolesDeLApp,
 } from "../outils/assembler.mjs";
-import { ADRESSE_IP, BRIQUES, DONNEES, EXCLUS_DU_CATALOGUE, PATRON_DOSSIERS } from "../outils/modules.mjs";
+import {
+  ADRESSE_IP,
+  BRIQUES,
+  DONNEES,
+  EXCLUS_DU_CATALOGUE,
+  METHODES_DE_CONNEXION,
+  PATRON_DOSSIERS,
+} from "../outils/modules.mjs";
 import { nomsDesBases } from "../scripts/lib/bases-locales";
 import {
   assemblerEnTemporaire,
@@ -25,6 +33,7 @@ import {
   importsInvalides,
   lireAssemble,
   memeDossier,
+  connexionDUneAdresseInconnue,
   migrationsSurBaseNeuve,
   nettoyerLesAssemblages,
   referencesA,
@@ -1567,6 +1576,132 @@ describe("valeurs de l'en-tête de la blueprint écrites par l'assembleur", () =
         site
       ).toThrow(/site : public ou ferme/);
       expect(fs.readdirSync(sortie), site).toEqual([]);
+    }
+  });
+});
+
+// Constaté à l'essai de tours-de-coloc : ouvrir l'entrée à toute adresse a pris un
+// ticket entier (ouverte: true dans src/config/comptes.ts, la méthode par code
+// par e-mail gardée), alors que le choix était fait au cadrage et écrit dans la
+// blueprint. L'assembleur écrit ce choix, sans jamais donner un rôle qui administre.
+describe("entrée de l'appli écrite par l'assembleur depuis la blueprint", () => {
+  const AVEC_COMPTES = { briques: ["comptes", "mails"] };
+  const SANS_COMPTES = { briques: [] };
+  const INCONNU = "inconnu@exemple.fr";
+
+  function blueprintDe(entete: string): string {
+    const fichier = path.join(dossierTemporaireVide(), "blueprint-source.md");
+    fs.writeFileSync(fichier, `---\nformat: 1\nappli: entree-test\n${entete}\n---\n\n# Corps\n`);
+    return fichier;
+  }
+
+  const assemblerAvec = (entete: string) =>
+    assemblerEnTemporaire(AVEC_COMPTES, { blueprint: blueprintDe(entete) }).dossier;
+
+  it(
+    "ouvre l'entrée à toute adresse avec le rôle par défaut, jamais un rôle qui administre (une adresse inconnue entre et reçoit membre)",
+    { timeout: ENTIER },
+    async () => {
+      const dossier = assemblerAvec("entree: ouverte\nrole_par_defaut: membre\nmethodes: [code-email]");
+      const comptes = lireAssemble(dossier, "src/config/comptes.ts");
+      expect(comptes).toContain("ouverte: true,");
+      expect(comptes).toContain('METHODES: readonly MethodeDeConnexion[] = ["code-email", "demo"];');
+      expect(lireAssemble(dossier, "src/config/acces.ts")).toContain('ROLE_PAR_DEFAUT: Role = "membre";');
+
+      const connexion = await connexionDUneAdresseInconnue(dossier, INCONNU);
+      expect(connexion.code, connexion.sortie).toBe(0);
+      expect(connexion.compte).toMatchObject({ email: INCONNU, role: "membre" });
+      expect((await typecheck(dossier)).code).toBe(0);
+    }
+  );
+
+  it(
+    "laisse l'entrée fermée quand la blueprint la dit fermée, ou ne dit rien : une adresse inconnue n'entre pas",
+    { timeout: ENTIER },
+    async () => {
+      for (const entete of ["entree: ferme", ""]) {
+        const dossier = assemblerAvec(entete);
+        expect(lireAssemble(dossier, "src/config/comptes.ts"), entete).toContain("ouverte: false,");
+        const connexion = await connexionDUneAdresseInconnue(dossier, INCONNU);
+        expect(connexion.code, connexion.sortie).toBe(0);
+        expect(connexion.compte, entete).toBeNull();
+      }
+    }
+  );
+
+  it(
+    "écrit les méthodes de connexion déclarées et garde « demo » en dernier, pour le local (la retirer reste un geste de la mise en ligne)",
+    { timeout: ENTIER },
+    () => {
+      const methodes = (entete: string) =>
+        /METHODES: readonly MethodeDeConnexion\[\] = (\[.*\]);/.exec(
+          lireAssemble(assemblerAvec(entete), "src/config/comptes.ts")
+        )?.[1];
+      expect(methodes("methodes: [code-email, google]")).toBe('["code-email", "google", "demo"]');
+      expect(methodes("methodes: [demo, google, code-email, google]")).toBe('["google", "code-email", "demo"]');
+      expect(methodes("entree: ouverte")).toBe('["code-email", "demo"]');
+    }
+  );
+
+  it("refuse, sans rien écrire, un rôle par défaut qui administre, inconnu de l'appli, ou une entrée que l'assembleur ne comprend pas", () => {
+    const refus: [string, RegExp][] = [
+      ["entree: ouverte\nrole_par_defaut: admin", /rôle qui administre/],
+      ["entree: ferme\nrole_par_defaut: admin", /rôle qui administre/],
+      ["role_par_defaut: gestionnaire", /rôle de l'appli/],
+      ["entree: publique", /ouverte ou ferme/],
+      ["methodes: [sms]", /méthode/],
+      ["methodes: [demo]", /méthode/],
+      ["methodes: code-email", /liste/],
+    ];
+    for (const [entete, motif] of refus) {
+      const sortie = dossierTemporaireVide();
+      const blueprint = blueprintDe(entete);
+      expect(
+        () => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...AVEC_COMPTES, blueprint }),
+        entete
+      ).toThrow(motif);
+      expect(fs.readdirSync(sortie), entete).toEqual([]);
+    }
+  });
+
+  it("n'admet que les méthodes du type MethodeDeConnexion de la brique (un type qui change fait échouer ce test, pas l'appli d'un client)", () => {
+    const type = /export type MethodeDeConnexion = ([^;]*);/.exec(
+      fs.readFileSync(path.join(SOURCE, "src/briques/comptes/methodes.ts"), "utf-8")
+    )?.[1];
+    const declarees = [...(type ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+    expect(declarees).toEqual([...METHODES_DE_CONNEXION, "demo"].sort());
+  });
+
+  it("lit les rôles dans la déclaration de acces.ts, pas dans l'exemple du commentaire de tête (un rôle ajouté à ROLES aurait été refusé)", () => {
+    const reel = fs.readFileSync(path.join(SOURCE, "src/config/acces.ts"), "utf-8");
+    expect(rolesDeLApp(reel)).toEqual({ connus: ["membre", "admin"], roleAdmin: "admin" });
+    const avecUnRoleDePlus = reel.replace(
+      'export const ROLES = ["membre", "admin"]',
+      'export const ROLES = ["membre", "lecteur", "admin"]'
+    );
+    expect(avecUnRoleDePlus).not.toBe(reel);
+    expect(rolesDeLApp(avecUnRoleDePlus).connus).toEqual(["membre", "lecteur", "admin"]);
+    expect(() => rolesDeLApp("// rien\n")).toThrow(ErreurAssemblage);
+  });
+
+  it("refuse une valeur qui se poursuit sur la ligne suivante (une liste en bloc lue comme vide laisserait l'entrée au défaut, sans un mot)", () => {
+    const sortie = dossierTemporaireVide();
+    const blueprint = blueprintDe("methodes:\n  - code-email\n  - google");
+    expect(() => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...AVEC_COMPTES, blueprint })).toThrow(
+      /une valeur sur une seule ligne/
+    );
+    expect(fs.readdirSync(sortie)).toEqual([]);
+  });
+
+  it("refuse une entrée déclarée sans la brique comptes : promettre une connexion qu'elle ne donnerait pas", () => {
+    for (const entete of ["entree: ouverte", "entree: ferme", "role_par_defaut: membre", "methodes: [code-email]"]) {
+      const sortie = dossierTemporaireVide();
+      const blueprint = blueprintDe(entete);
+      expect(
+        () => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...SANS_COMPTES, blueprint }),
+        entete
+      ).toThrow(/brique qui porte la connexion/);
+      expect(fs.readdirSync(sortie), entete).toEqual([]);
     }
   });
 });

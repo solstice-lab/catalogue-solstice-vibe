@@ -27,6 +27,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ADRESSE_IP,
+  METHODES_DE_CONNEXION,
   BRIQUES,
   DONNEES,
   EXCLUS_DU_CATALOGUE,
@@ -35,6 +36,7 @@ import {
   PATRON_DOSSIERS,
   RETRAITS_DU_SOCLE,
   remplissagesDeLEnTete,
+  remplissagesDeLEntree,
   retraitsDuNom,
 } from "./modules.mjs";
 
@@ -294,12 +296,12 @@ export function appliquerRetrait(texte, retrait) {
 
 // Les retraits à appliquer, dans l'ordre : les réécritures d'abord (voir
 // outils/modules.mjs), les retraits de lignes et de blocs ensuite.
-function retraitsAAppliquer(unites, nomPaquet, valeurs) {
+function retraitsAAppliquer(unites, nomPaquet, valeurs, entree) {
   const retirees = unites.filter((unite) => !unite.gardee);
   const retraits = retirees.flatMap((unite) => unite.definition.retraits);
   // Le nom après la licence : l'extrait de la licence dans le verrou porte le nom du catalogue.
   retraits.push(...RETRAITS_DU_SOCLE, ...retraitsDuNom(nomPaquet));
-  retraits.push(...remplissagesDeLEnTete(valeurs));
+  retraits.push(...remplissagesDeLEnTete(valeurs), ...remplissagesDeLEntree(entree));
   return [...retraits.filter((r) => r.geste === "remplace"), ...retraits.filter((r) => r.geste !== "remplace")];
 }
 
@@ -587,9 +589,21 @@ function noterLeCommit(markdown, commit) {
  * Entre guillemets, un « # » fait partie du texte : une description qui en
  * porte un ne doit pas être coupée. Absent ou vide : undefined.
  */
-function champDeLEntete(markdown, cle) {
+function ligneDeLEntete(markdown, cle) {
   const entete = /^---\n([\s\S]*?)\n---/.exec(markdown)?.[1] ?? "";
-  const brut = new RegExp(`^${cle}:[ \\t]*(.*?)[ \\t]*$`, "m").exec(entete)?.[1];
+  // Une valeur qui se poursuit sur la ligne suivante (liste en bloc, texte replié) :
+  // lue comme vide, elle ferait retomber l'appli sur sa valeur de remplacement,
+  // sans un mot.
+  if (new RegExp(`^${cle}:.*\\n[ \\t]+\\S`, "m").test(entete)) {
+    throw new ErreurAssemblage(
+      `En-tête de la blueprint, ${cle} : une valeur sur une seule ligne est attendue (pas de suite sur la ligne d'après).`
+    );
+  }
+  return new RegExp(`^${cle}:[ \\t]*(.*?)[ \\t]*$`, "m").exec(entete)?.[1];
+}
+
+function champDeLEntete(markdown, cle) {
+  const brut = ligneDeLEntete(markdown, cle);
   if (brut === undefined) return undefined;
   const double = /^"((?:[^"\\]|\\.)*)"(?:[ \t]+#.*)?$/.exec(brut);
   if (double) {
@@ -613,6 +627,22 @@ function champDeLEntete(markdown, cle) {
   return brut.replace(/(?:^|[ \t]+)#.*$/, "").replace(/^(["'])(.*)\1$/, "$2") || undefined;
 }
 
+// Une liste de l'en-tête, entre crochets sur une ligne : « [code-email, google] ».
+// Absente ou vide : undefined.
+function listeDeLEntete(markdown, cle) {
+  const brut = ligneDeLEntete(markdown, cle)?.replace(/(?:^|[ \t]+)#.*$/, "");
+  if (brut === undefined || brut === "") return undefined;
+  const liste = /^\[(.*)\]$/.exec(brut)?.[1];
+  if (liste === undefined) {
+    throw new ErreurAssemblage(`En-tête de la blueprint, ${cle} : une liste entre crochets est attendue (« [a, b] »).`);
+  }
+  const noms = liste
+    .split(",")
+    .map((nom) => nom.trim().replace(/^(["'])(.*)\1$/, "$2"))
+    .filter(Boolean);
+  return noms.length === 0 ? undefined : noms;
+}
+
 // Le champ « appli » de l'en-tête, s'il y en a un.
 const appliDeLaBlueprint = (markdown) => champDeLEntete(markdown, "appli");
 
@@ -629,6 +659,85 @@ function valeursDeLEntete(markdown) {
     description: champDeLEntete(markdown, "description"),
     sitePublic: site === undefined ? undefined : site === "public",
   };
+}
+
+/**
+ * Les rôles de l'appli et celui qui administre, lus dans src/config/acces.ts.
+ * Les déclarations sont ancrées en début de ligne : le commentaire de tête du
+ * fichier cite un exemple `export const ROLES = ["membre"] as const;`, que la
+ * première correspondance aurait pris pour les rôles de l'appli (tout rôle
+ * ajouté aurait été refusé).
+ * @param {string} acces le texte de src/config/acces.ts
+ * @returns {{ connus: string[], roleAdmin: string }}
+ */
+export function rolesDeLApp(acces) {
+  const texte = acces.replace(/\r\n/g, "\n");
+  const roles = /^export const ROLES = \[([^\]]*)\] as const;/m.exec(texte)?.[1].match(/"([^"]+)"/g);
+  const roleAdmin = /^export const ROLE_ADMIN: Role = "([^"]+)";/m.exec(texte)?.[1];
+  if (!roles || !roleAdmin) {
+    throw new ErreurAssemblage(
+      "src/config/acces.ts : ROLES et ROLE_ADMIN introuvables (outils/assembler.mjs est à jour du code ?)."
+    );
+  }
+  return { connus: roles.map((role) => role.slice(1, -1)), roleAdmin };
+}
+
+/*
+ * L'entrée de l'appli que déclare l'en-tête : `entree` (ouverte ou ferme),
+ * `role_par_defaut` et `methodes`. Refusée avant toute écriture :
+ *   - sans la brique qui porte la connexion, la promesse ne serait pas tenue ;
+ *   - un rôle par défaut qui administre : une entrée ouverte le donnerait à
+ *     n'importe quelle adresse d'Internet, et un domaine à tout son personnel.
+ *     Refusé pour toute entrée : ce rôle ne s'attribue jamais en masse ;
+ *   - un rôle absent de l'appli, ou une méthode inconnue, qui casseraient le
+ *     typecheck de l'appli au lieu d'un refus clair ici.
+ * `demo` reste dans METHODES, en local : elle refuse de démarrer en production,
+ * et son retrait fait partie des gestes de la mise en ligne.
+ */
+function entreeDeLEntete(markdown, { unites, racine }) {
+  const entree = champDeLEntete(markdown, "entree");
+  if (entree !== undefined && entree !== "ouverte" && entree !== "ferme") {
+    throw new ErreurAssemblage(`En-tête de la blueprint, entree : ouverte ou ferme attendu, « ${entree} » trouvé.`);
+  }
+  const roleParDefaut = champDeLEntete(markdown, "role_par_defaut");
+  const liste = listeDeLEntete(markdown, "methodes");
+  if (entree === undefined && roleParDefaut === undefined && liste === undefined) return {};
+
+  if (!unites.some((unite) => unite.gardee && unite.definition.connexion)) {
+    throw new ErreurAssemblage(
+      "L'en-tête de la blueprint règle l'entrée (entree, role_par_defaut ou methodes), mais la brique qui porte la connexion n'est pas gardée : l'ajouter à --briques, ou retirer ces champs."
+    );
+  }
+  if (roleParDefaut !== undefined) {
+    const acces = fs.readFileSync(path.join(racine, "src/config/acces.ts"), "utf-8");
+    const { connus, roleAdmin } = rolesDeLApp(acces);
+    if (roleParDefaut === roleAdmin) {
+      throw new ErreurAssemblage(
+        `En-tête de la blueprint, role_par_defaut : « ${roleParDefaut} » est un rôle qui administre, jamais le rôle par défaut (n'importe quelle adresse entrée par l'entrée ouverte ou par un domaine l'obtiendrait).`
+      );
+    }
+    if (!connus.includes(roleParDefaut)) {
+      throw new ErreurAssemblage(
+        `En-tête de la blueprint, role_par_defaut : « ${roleParDefaut} » n'est pas un rôle de l'appli (src/config/acces.ts : ${connus.join(", ")}). Un rôle de plus s'ajoute par ticket, après l'assemblage.`
+      );
+    }
+  }
+  let methodes;
+  if (liste !== undefined) {
+    const inconnue = liste.find((nom) => nom !== "demo" && !METHODES_DE_CONNEXION.includes(nom));
+    if (inconnue !== undefined) {
+      throw new ErreurAssemblage(
+        `En-tête de la blueprint, methodes : méthode de connexion « ${inconnue} » inconnue (${METHODES_DE_CONNEXION.join(", ")}).`
+      );
+    }
+    methodes = [...new Set(liste.filter((nom) => nom !== "demo"))];
+    if (methodes.length === 0) {
+      throw new ErreurAssemblage(
+        "En-tête de la blueprint, methodes : au moins une méthode de connexion autre que demo, qui n'ouvre rien en production."
+      );
+    }
+  }
+  return { ouverte: entree === undefined ? undefined : entree === "ouverte", roleParDefaut, methodes };
 }
 
 /*
@@ -797,8 +906,9 @@ function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
     "# Blueprint de l'appli, créée par outils/assembler.mjs. L'en-tête ne porte que",
-    "# l'essentiel, en clair : l'assembleur en lit appli, nom_affiche, description, site",
-    "# et commit_reference ; tout le reste est dans le corps, à écrire.",
+    "# l'essentiel, en clair : l'assembleur en lit appli, nom_affiche, description, site,",
+    "# entree, role_par_defaut, methodes et commit_reference ; tout le reste est dans le",
+    "# corps, à écrire.",
     "format: 1",
     `appli: ${nom}`,
     "statut: assemblée depuis le catalogue, à décrire",
@@ -903,7 +1013,8 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
       ? unites.find((unite) => unite.gardee && unite.definition.hebergeur)?.definition.hebergeur
       : undefined,
   };
-  for (const retrait of retraitsAAppliquer(unites, nomPaquet, valeurs)) {
+  const entree = blueprint ? entreeDeLEntete(contenuBlueprint, { unites, racine }) : {};
+  for (const retrait of retraitsAAppliquer(unites, nomPaquet, valeurs, entree)) {
     // Un fichier retiré par une autre unité n'a plus rien à retoucher.
     if (aSupprimer(retrait.fichier) || correspond(retrait.fichier, EXCLUS_DU_CATALOGUE)) continue;
     if (!copies.includes(retrait.fichier)) {
@@ -1020,7 +1131,8 @@ const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste
   --blueprint <fichier>  une blueprint existante, copiée dans le dossier avec le
                       commit de référence mis à jour (défaut : une blueprint minimale).
                       Son en-tête donne aussi le nom affiché (nom_affiche), la description
-                      et le choix site: public ou ferme, écrits dans l'appli
+                      et le choix site: public ou ferme, écrits dans l'appli ; avec la
+                      brique comptes, l'entrée (entree, role_par_defaut, methodes)
   --fiche <fichier>   la fiche projet, copiée telle quelle en PROJET.md à la racine
                       (défaut : pas de PROJET.md)
   --dependabot        garder .github/dependabot.yml, à demander quand quelqu'un entretient
