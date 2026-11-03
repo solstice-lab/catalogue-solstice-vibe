@@ -285,7 +285,7 @@ l'arrêter d'abord.
 choisies vers un dossier vide hors du catalogue, et rien de ce qui
 fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md`,
 `outils/`, ni la skill `creer-appli` et l'agent
-`relecteur-blueprint`, ni les tests de l'assembleur et de l'outil des issues, ni
+`relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues et de l'outil de mise à jour, ni
 le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`
 et les modèles de ticket et de PR, ni les captures du README, `docs/captures/`
 (liste `EXCLUS_DU_CATALOGUE` de
@@ -351,9 +351,10 @@ catalogue qui a des modifications non commitées, sauf avec
   `npm test`, qui l'écarte : il dure plus de 10 minutes. `tests/mettre-a-jour.test.ts`,
   celui de l'outil de mise à jour, l'accompagne : il rejoue des assemblages et lance un
   vrai `npm ci`. Le job `assembleur` de
-  `.github/workflows/assemblage.yml` le lance sur chaque pull request prête à
+  `.github/workflows/assemblage.yml` lance le test de l'assembleur sur chaque pull request prête à
   relire, réduit à un échantillon de combinaisons (`ECHANTILLON`), et en entier
-  chaque nuit si main a changé, ou à la main. En entier, il assemble des combinaisons de briques, la vide
+  chaque nuit si main a changé, ou à la main ; celui de l'outil de mise à jour y passe en
+  entier à chaque fois. En entier, il assemble des combinaisons de briques, la vide
   comprise, dans un dossier temporaire et vérifie les fichiers présents et
   absents, les imports, les références aux unités retirées, la présence de
   chaque extrait de la liste dans le catalogue, la mise en forme que vérifie sa CI, le typecheck de l'appli assemblée et,
@@ -473,7 +474,7 @@ npm run format:check   # npm run format met en forme
 npm run lint
 npm run typecheck
 DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm test
-DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm run test:assembleur   # long (plus de 10 min) ; la CI n'en lance qu'un échantillon sur chaque pull request, le complet la nuit
+DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm run test:assembleur   # long (plus de 10 min) ; la CI ne lance qu'un échantillon des combinaisons de l'assembleur sur chaque pull request, le complet la nuit
 npm run build
 ```
 

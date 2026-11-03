@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 /*
  * Test-verrou du test de l'assembleur, lancé à part. tests/assembleur.test.ts
  * dure plus de 10 minutes : npm test l'écarte, et seul le job assembleur de
- * .github/workflows/assemblage.yml le lance encore. Ce verrou tourne dans
+ * .github/workflows/assemblage.yml le lance encore, avec tests/mettre-a-jour.test.ts
+ * (celui de l'outil de mise à jour, qui rejoue des assemblages). Ce verrou tourne dans
  * npm test : placé dans le fichier qu'il garde, il ne tournait que dans le
  * job qu'il devait garder, et la disparition du job serait passée inaperçue.
  *

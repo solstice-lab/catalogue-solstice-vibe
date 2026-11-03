@@ -75,7 +75,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | --- | --- |
 | `catalogue.empreintes.json` de l'appli | Le commit A (`catalogue.commit`, et `catalogue.commitComplet` au format 2) ; au format 2, les réglages de l'assemblage (`assemblage`, « Ce qui est outillé ») ; au format 1, des réglages déduits : les briques B, valeurs d'`unite` qui sont des clés de `BRIQUES` d'`outils/modules.mjs` au commit A, ni `socle`, ni `donnees` (que `planifier` refuse dans `--briques`), ni les unités partagées `patron-dossiers` et `adresse-ip` (chaque brique a au moins son dossier, donc une entrée) ; Dependabot, par la présence de `.github/dependabot.yml` ; l'empreinte de chaque fichier venu du catalogue, hors `NOTICE` et `blueprint.md`. |
 | `package.json` de l'appli | Au format 1, le nom du paquet, que l'assembleur y a reporté. Un nom changé depuis se voit à la vérification des empreintes (`package.json` et le verrou le portent). |
-| `blueprint.md` de l'appli | `commit_reference`, recoupé avec le manifeste ; un désaccord se signale. Au format 1, son en-tête, que l'assembleur rejoué relit (nom affiché, description, site, entrée). |
+| `blueprint.md` de l'appli | `commit_reference`, recoupé avec le manifeste ; un désaccord se signale. Au format 1, son en-tête, que l'assembleur rejoué relit (`appli`, nom affiché, description, site, entrée, rôle par défaut, méthodes de connexion), sauf la blueprint minimale qu'il écrit sans `--blueprint`. |
 | L'appli, à son `HEAD` | Le contenu de chaque fichier tel que git l'enregistre, comme le manifeste, pas le disque. L'arbre doit être propre. |
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
@@ -281,6 +281,7 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    node outils/mettre-a-jour.mjs <dossier-de-l-appli> --branche <type>/<slug> [--ajouter <briques>] [--vers <commit>] [--a-blanc]
    ```
 
+   Seul `--a-blanc`, sans les autres options, est outillé à ce jour (« Ce qui est outillé »).
    Sans `--ajouter`, l'outil met à jour vers `--vers`, par défaut le `HEAD` du catalogue.
    Avec `--ajouter`, il ajoute au commit de l'appli (A' = A) : une opération à la fois
    (« Options écartées »). Une brique qui n'existe pas au commit A se refuse : mettre à
@@ -356,8 +357,8 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    commit complet), l'outil lisant encore le format 1 en déduisant. Utile seul : on voit ce
    qu'une appli a retouché. Fait quand l'origine d'une appli fraîchement assemblée se
    reproduit sans écart, qu'une retouche est listée, qu'un manifeste faussé est refusé, et
-   que l'origine se reproduit encore quand le catalogue a monté Prettier depuis A. Fait le
-   2026-11-03 (« Ce qui est outillé »).
+   que l'origine se reproduit encore quand le catalogue a monté Prettier depuis A. Outillée
+   (« Ce qui est outillé »).
 2. **Mettre à jour une appli, hors migrations.** Le rejeu au commit A', la table « Ce qu'il
    fait de chaque fichier », la fusion à trois et ses marqueurs, la branche nommée, le
    manifeste réécrit, l'en-tête de `blueprint.md`, les dépendances npm, le rapport (entrées
@@ -409,11 +410,14 @@ catalogue. Sans `--a-blanc`, l'outil refuse : rien n'écrit encore dans l'appli.
   l'identique, car le nom donné nomme le service de `render.yaml` et l'en-tête remplit
   `navigation.ts`, `referencement.ts`, `mentions-legales.ts` et la configuration de
   `comptes`. L'outil rejoue l'en-tête par une blueprint qui n'a que ces champs.
-- **Le format 1, déduit** : les briques des unités, le nom par celui du paquet (donné à
-  `--nom`, il redonne le paquet et le nom du service), Dependabot par son fichier, la
-  blueprint de l'appli à son `HEAD`. Une appli assemblée sans aucun nom donné, ou dont
-  l'en-tête a changé depuis, ne se rejoue pas ainsi : l'écart des empreintes le dit, et
-  l'outil s'arrête.
+- **Le format 1, déduit** : les briques des unités, le paquet par `package.json`, Dependabot
+  par son fichier, la blueprint de l'appli à son `HEAD` avec le paquet à `--nom` (il redonne
+  le paquet et le nom du service de `render.yaml`). La blueprint minimale que l'assembleur
+  écrit sans `--blueprint` ne se redonne pas : elle remplirait l'hébergeur et l'entrée.
+  L'assemblage se rejoue dans un dossier nommé comme le paquet, d'où l'assembleur le tire
+  sans nom donné. Ne se rejouent pas ainsi, et l'écart des empreintes le dit : un en-tête
+  changé depuis ; avec la brique `deploiement`, une blueprint sans `appli` ni `--nom`, ou
+  `--nom` sans blueprint.
 - **Le rejeu** : l'assembleur du commit A est appelé par sa fonction `assembler`, dans un
   Node à part, et non par sa ligne de commande, qui refuse un catalogue dont l'arbre n'est
   pas propre : la jonction vers `node_modules` en est une modification pour git (le motif
@@ -423,8 +427,10 @@ catalogue. Sans `--a-blanc`, l'outil refuse : rien n'écrit encore dans l'appli.
   unité et empreinte de chaque fichier ; `NOTICE` contre l'origine rejouée.
 - **Les refus outillés** : dossier qui n'est pas la racine d'un dépôt git, arbre pas
   propre, manifeste absent, illisible ou d'un format inconnu, `+arbre-modifie`, commit A
-  absent du catalogue, Prettier du commit A qui ne s'installe pas, assembleur du commit A
-  qui refuse, unité inconnue au commit A (format 1), empreintes qui ne se retrouvent pas.
+  absent du catalogue, worktree temporaire impossible à créer, verrou du commit A sans
+  Prettier, Prettier du commit A qui ne s'installe pas, assembleur du commit A qui refuse,
+  au format 1 une unité inconnue au commit A ou un `package.json` sans nom de paquet,
+  empreintes qui ne se retrouvent pas.
   Le désaccord de `commit_reference` se signale.
 - **Les refus laissés à la tranche 2**, qui ne valent qu'avec une cible ou une écriture :
   le catalogue propre et à `origin/main` (son `HEAD` devient le commit A'), l'appli à son
@@ -450,7 +456,8 @@ note :
 ## Sources
 
 - `outils/assembler.mjs` et `outils/modules.mjs` ; le manifeste et ses tests
-  (`tests/assembleur.test.ts`).
+  (`tests/assembleur.test.ts`, `tests/mettre-a-jour.test.ts`) ; l'outil
+  `outils/mettre-a-jour.mjs`.
 - La skill `creer-appli` (« Hors v1 », étapes 0 et 4) et son `choix.md`.
 - `src/lib/db/migrations.ts`, la skill `solstice-donnees`, `docs/cicatrices.md` (D1, D2).
 - Les README et `CHANGELOG.md` des briques, dont la brique notifications (« Ce qu'elle ne

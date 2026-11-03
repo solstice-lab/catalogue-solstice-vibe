@@ -61,7 +61,7 @@ import {
  * (lourds ; lancés à la main).
  *
  * Il dure plus de 10 minutes : npm test l'écarte, npm run test:assembleur le
- * lance seul, et la CI du catalogue (assemblage.yml) : un échantillon sur
+ * lance avec tests/mettre-a-jour.test.ts, et la CI du catalogue (assemblage.yml) : un échantillon sur
  * chaque pull request (ECHANTILLON), le tout la nuit si main a changé ;
  * tests/assemblage-ci.test.ts le verrouille.
  */

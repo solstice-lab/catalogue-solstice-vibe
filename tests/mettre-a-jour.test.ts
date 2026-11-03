@@ -119,9 +119,9 @@ beforeAll(() => {
 }, REJEU);
 
 // Une copie de l'appli d'essai, retouchée et commitée.
-function appliRetouchee(retoucher: (dossier: string) => void): string {
+function appliRetouchee(retoucher: (dossier: string) => void, source = appli): string {
   const dossier = path.join(dossierTemporaire("appli-retouchee-"), "appli");
-  git(path.dirname(dossier), "clone", "-q", appli, dossier);
+  git(path.dirname(dossier), "clone", "-q", source, dossier);
   retoucher(dossier);
   git(dossier, "add", "-A");
   git(dossier, "commit", "-q", "--allow-empty", "-m", "Retouche de l'appli");
@@ -146,7 +146,19 @@ function rienNEstEcrit(dossier: string, head: string) {
   expect(git(dossier, "status", "--porcelain")).toBe("");
   expect(git(dossier, "rev-parse", "HEAD")).toBe(head);
   expect(git(catalogue, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+  // Le worktree emprunte le node_modules du catalogue par un lien : le retirer
+  // ne doit jamais emporter ce qu'il vise.
+  expect(fs.existsSync(path.join(SOURCE, "node_modules", "prettier", "package.json"))).toBe(true);
 }
+
+// Le manifeste tel que l'écrivait l'assembleur avant le format 2.
+const enFormat1 = (dossier: string) =>
+  reecrireLeManifeste(dossier, ({ note, catalogue: { version, commit }, fichiers }) => ({
+    format: 1,
+    note,
+    catalogue: { version, commit },
+    fichiers,
+  }));
 
 describe("mettre-a-jour --a-blanc : l'origine d'une appli rejouée au commit de son manifeste", () => {
   it("reproduit sans écart l'origine d'une appli fraîchement assemblée, et ne liste rien", { timeout: REJEU }, () => {
@@ -198,14 +210,7 @@ describe("mettre-a-jour --a-blanc : l'origine d'une appli rejouée au commit de 
     "lit encore le format 1, en déduisant briques, nom du paquet, Dependabot et en-tête de la blueprint",
     { timeout: REJEU },
     () => {
-      const dossier = appliRetouchee((d) =>
-        reecrireLeManifeste(d, ({ note, catalogue: { version, commit }, fichiers }) => ({
-          format: 1,
-          note,
-          catalogue: { version, commit },
-          fichiers,
-        }))
-      );
+      const dossier = appliRetouchee(enFormat1);
       const resultat = examiner({ catalogue, appli: dossier });
       // rgpd, ajoutée d'office, se lit comme une brique choisie : elle donne les mêmes fichiers.
       expect([...resultat.briques].sort()).toEqual(["comptes", "mails", "rgpd"]);
@@ -216,6 +221,26 @@ describe("mettre-a-jour --a-blanc : l'origine d'une appli rejouée au commit de 
         dependabot: true,
         retouches: [],
         supprimes: [],
+      });
+    }
+  );
+
+  // Le cas qu'une relecture a trouvé : rejouée dans un dossier « appli », une appli
+  // assemblée sans nom ni blueprint prenait ce nom pour paquet. Avec la brique
+  // deploiement, render.yaml et les mentions légales disent aussi si un nom ou une
+  // blueprint ont été donnés.
+  it(
+    "reproduit une appli assemblée sans nom ni blueprint, au format 2 comme au format 1 (sa blueprint minimale ne se redonne pas)",
+    { timeout: REJEU },
+    () => {
+      const sansNom = path.join(dossierTemporaire("appli-"), "vitrine-sans-nom");
+      assembler({ source: catalogue, sortie: sansNom, commit: commitA, briques: ["deploiement"] });
+      const attendu = { paquet: "vitrine-sans-nom", dependabot: false, retouches: [], supprimes: [] };
+      expect(examiner({ catalogue, appli: sansNom })).toMatchObject({ format: 2, ...attendu });
+      expect(examiner({ catalogue, appli: appliRetouchee(enFormat1, sansNom) })).toMatchObject({
+        format: 1,
+        briques: ["deploiement"],
+        ...attendu,
       });
     }
   );
@@ -256,6 +281,12 @@ describe("mettre-a-jour --a-blanc : refus en clair, avant tout rejeu", () => {
     );
   });
 
+  it("refuse un sous-dossier de l'appli : seule sa racine se lit", () => {
+    expect(() => examiner({ catalogue, appli: path.join(appli, "src") })).toThrow(
+      /n'est pas la racine de son dépôt git/
+    );
+  });
+
   it("refuse une appli dont l'arbre n'est pas propre : l'outil lit son HEAD", () => {
     const dossier = appliRetouchee(() => {});
     fs.writeFileSync(path.join(dossier, "src/lib/navigation.ts"), "// en cours\n");
@@ -284,6 +315,17 @@ describe("mettre-a-jour --a-blanc : refus en clair, avant tout rejeu", () => {
       })
     );
     expect(() => examiner({ catalogue, appli: dossier })).toThrow(/absent du catalogue.*git fetch origin/s);
+  });
+
+  it("refuse, au format 1, une unité qui n'est pas une brique au commit du manifeste", { timeout: REJEU }, () => {
+    const dossier = appliRetouchee((d) => {
+      enFormat1(d);
+      reecrireLeManifeste(d, (manifeste) => {
+        manifeste.fichiers["src/lib/navigation.ts"].unite = "inconnue";
+      });
+    });
+    expect(() => examiner({ catalogue, appli: dossier })).toThrow(/l'unité « inconnue »/);
+    expect(git(catalogue, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
   });
 
   it("refuse un manifeste d'un format inconnu", () => {

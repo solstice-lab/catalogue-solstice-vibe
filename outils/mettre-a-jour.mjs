@@ -63,9 +63,10 @@ function contenusDuCommit(depot, commit = "HEAD") {
     .split("\0")
     .filter(Boolean)
     .map((ligne) => {
-      const [meta, chemin] = ligne.split("\t");
-      const [, type, objet] = meta.split(" ");
-      return { chemin, type, objet };
+      // Au premier « \t » seulement : un chemin peut en contenir un.
+      const tabulation = ligne.indexOf("\t");
+      const [, type, objet] = ligne.slice(0, tabulation).split(" ");
+      return { chemin: ligne.slice(tabulation + 1), type, objet };
     })
     .filter(({ type }) => type === "blob");
   const sortie = execFileSync("git", ["-C", depot, "cat-file", "--batch"], {
@@ -129,13 +130,15 @@ const illisible = (quoi) =>
   new ErreurMiseAJour(`${MANIFESTE} de l'appli est illisible : ${quoi}. Il a été retouché à la main ?`);
 
 function verifierLeManifeste(manifeste) {
+  if (typeof manifeste !== "object" || manifeste === null || Array.isArray(manifeste)) throw illisible("pas un objet");
   if (manifeste.format !== 1 && manifeste.format !== 2) {
     throw new ErreurMiseAJour(
       `${MANIFESTE} de l'appli est au format ${manifeste.format}, que cet outil ne lit pas (formats 1 et 2) : ` +
         "mettre le catalogue à jour (git pull), puis relancer."
     );
   }
-  const commit = manifeste.catalogue?.commit;
+  if (typeof manifeste.catalogue !== "object" || manifeste.catalogue === null) throw illisible("pas de catalogue");
+  const commit = manifeste.catalogue.commit;
   if (typeof commit !== "string" || commit === "") throw illisible("pas de catalogue.commit");
   if (typeof manifeste.fichiers !== "object" || manifeste.fichiers === null) throw illisible("pas de fichiers");
   for (const [chemin, entree] of Object.entries(manifeste.fichiers)) {
@@ -151,13 +154,15 @@ function verifierLeManifeste(manifeste) {
   }
   if (manifeste.format === 2) {
     const { catalogue, assemblage } = manifeste;
-    if (!/^[0-9a-f]{40}$/.test(catalogue.commitComplet ?? ""))
-      throw illisible("catalogue.commitComplet n'est pas un commit");
+    if (!/^[0-9a-f]{40}$/.test(catalogue.commitComplet ?? "") || !catalogue.commitComplet.startsWith(commit)) {
+      throw illisible("catalogue.commitComplet n'est pas le commit complet de catalogue.commit");
+    }
     const estUneListe = (valeur) => Array.isArray(valeur) && valeur.every((nom) => typeof nom === "string");
     if (
       typeof assemblage !== "object" ||
       assemblage === null ||
       !estUneListe(assemblage.briques) ||
+      !PAQUET.test(assemblage.paquet ?? "") ||
       typeof assemblage.dependabot !== "boolean" ||
       !(assemblage.nom === null || typeof assemblage.nom === "string") ||
       !(assemblage.entete === null || (typeof assemblage.entete === "object" && !Array.isArray(assemblage.entete)))
@@ -187,14 +192,17 @@ function commitDuCatalogue(catalogue, manifeste) {
  *   - les briques : les unités du manifeste qui sont des briques au commit A. Une
  *     brique ajoutée d'office (rgpd avec comptes) se lit comme choisie, ce qui
  *     donne les mêmes fichiers ;
- *   - le nom : celui du paquet, que l'assembleur a reporté dans package.json.
- *     Donné à --nom, il redonne ce paquet et nomme le service de render.yaml
- *     comme l'avait fait le nom d'origine. Seule une appli assemblée sans aucun
- *     nom (ni --nom, ni appli dans la blueprint) ne se rejoue pas ainsi : l'écart
- *     des empreintes le dit ;
+ *   - le paquet : celui de package.json, où l'assembleur l'a reporté ;
  *   - Dependabot : la présence de son fichier au manifeste ;
  *   - la blueprint : celle de l'appli à son HEAD, dont l'assembleur relit
- *     l'en-tête. Un en-tête retouché depuis se voit, lui aussi, à l'écart.
+ *     l'en-tête, avec le paquet à --nom : il redonne le paquet et nomme le
+ *     service de render.yaml comme le nom d'origine. La blueprint minimale que
+ *     l'assembleur écrit sans --blueprint ne se redonne pas : elle déclencherait
+ *     ce qu'une blueprint donnée remplit (hébergeur, entrée). Sans blueprint, ni
+ *     --nom : le paquet vient du dossier de sortie, nommé comme lui.
+ * Limites, que l'écart des empreintes dit : un en-tête retouché depuis ; avec la
+ * brique deploiement, une blueprint sans appli ni --nom, ou --nom sans
+ * blueprint (le nom du service de render.yaml ne se déduit pas).
  */
 function reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit }) {
   if (manifeste.format === 2) {
@@ -221,20 +229,30 @@ function reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit }) {
   } catch {
     paquet = undefined;
   }
-  if (typeof paquet !== "string" || paquet === "") {
+  if (!PAQUET.test(paquet ?? "")) {
     throw new ErreurMiseAJour(
-      "package.json de l'appli est absent ou sans nom : au format 1 du manifeste, c'est lui qui donne le nom de l'appli."
+      "package.json de l'appli est absent, sans nom ou d'un nom que l'assembleur n'écrit pas : au format 1 du manifeste, c'est lui qui donne le nom de l'appli."
     );
   }
+  const blueprint = contenus.get("blueprint.md")?.toString("utf-8");
+  const donnee = blueprint !== undefined && !blueprint.includes(DEBUT_DE_LA_BLUEPRINT_MINIMALE);
   return {
     briques: briquesDuCommit.filter((nom) => unites.includes(nom)),
-    nom: paquet,
+    nom: donnee ? paquet : undefined,
     dependabot: ".github/dependabot.yml" in manifeste.fichiers,
-    blueprint: contenus.get("blueprint.md")?.toString("utf-8"),
+    blueprint: donnee ? blueprint : undefined,
     paquet,
     deduits: true,
   };
 }
+
+// Un nom de paquet tel que l'assembleur l'écrit (nomDuPaquet d'outils/assembler.mjs) :
+// il nomme aussi le dossier où l'assemblage se rejoue.
+const PAQUET = /^[a-z][a-z0-9-]*$/;
+
+// La première ligne de la blueprint minimale de l'assembleur (blueprintParDefaut),
+// la même depuis l'arrivée du manifeste.
+const DEBUT_DE_LA_BLUEPRINT_MINIMALE = "# Blueprint de l'appli, créée par outils/assembler.mjs.";
 
 // Une blueprint qui n'a que les champs lus à l'assemblage, recopiés tels quels.
 function blueprintDeLEntete(entete) {
@@ -374,12 +392,23 @@ const ECARTS_NOMMES = 30;
 
 function retirerLeWorktree(catalogue, arbre) {
   const lien = path.join(arbre, "node_modules");
-  // Le lien seul, jamais ce qu'il vise : le node_modules du catalogue.
+  // Le lien seul, jamais ce qu'il vise : le node_modules du catalogue. Resté en
+  // place, rien n'est supprimé en dessous, plutôt que de risquer de le suivre.
   if (fs.lstatSync(lien, { throwIfNoEntry: false })?.isSymbolicLink()) {
     try {
       fs.unlinkSync(lien);
     } catch {
-      fs.rmdirSync(lien);
+      try {
+        fs.rmdirSync(lien);
+      } catch {
+        // Constaté juste après.
+      }
+    }
+    if (fs.lstatSync(lien, { throwIfNoEntry: false })) {
+      throw new ErreurMiseAJour(
+        `Le lien ${lien} vers le node_modules du catalogue n'a pas pu être retiré : le retirer à la main (le lien seul), ` +
+          `puis git worktree remove --force ${arbre} dans le catalogue.`
+      );
     }
   }
   try {
@@ -415,7 +444,9 @@ export function examiner({ catalogue, appli }) {
     }
     const reglages = reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit: briquesDuCommit(arbre) });
     const prettier = installerPrettier({ catalogue: racineCatalogue, arbre, commit: sha });
-    const sortie = path.join(temporaire, "origine", "appli");
+    // Nommé comme le paquet : sans nom donné, l'assembleur tire le paquet du
+    // dossier de sortie (un premier jet le nommait « appli », et le paquet avec).
+    const sortie = path.join(temporaire, "origine", reglages.paquet);
     rejouerLAssembleur({ arbre, sortie, commit, reglages });
 
     const origine = contenusDuCommit(sortie);
@@ -444,10 +475,10 @@ export function examiner({ catalogue, appli }) {
     }
 
     const avertissements = [];
-    const reference = /^---\r?\n[\s\S]*?^commit_reference:[ \t]*(\S+)/m.exec(
-      contenus.get("blueprint.md")?.toString("utf-8") ?? ""
-    )?.[1];
-    if (reference !== undefined && reference !== commit) {
+    // Dans l'en-tête seul : le corps peut citer un autre commit.
+    const entete = /^---\r?\n([\s\S]*?)\r?\n---/.exec(contenus.get("blueprint.md")?.toString("utf-8") ?? "")?.[1];
+    const reference = /^commit_reference:[ \t]*(\S+)/m.exec(entete ?? "")?.[1];
+    if (reference !== undefined && reference !== commit && !(reference.length >= 7 && sha.startsWith(reference))) {
       avertissements.push(
         `blueprint.md dit commit_reference: ${reference}, le manifeste ${commit} : le manifeste fait foi, la blueprint est à corriger.`
       );
@@ -469,8 +500,13 @@ export function examiner({ catalogue, appli }) {
       avertissements,
     };
   } finally {
-    retirerLeWorktree(racineCatalogue, arbre);
-    fs.rmSync(temporaire, { recursive: true, force: true });
+    // Un nettoyage qui échoue ne masque pas le refus qui l'a précédé : il se dit à côté.
+    try {
+      retirerLeWorktree(racineCatalogue, arbre);
+      fs.rmSync(temporaire, { recursive: true, force: true });
+    } catch (erreur) {
+      console.error(`Nettoyage incomplet : ${erreur.message}`);
+    }
   }
 }
 
