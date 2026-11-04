@@ -247,7 +247,7 @@ export const BRIQUES = {
       ligne("src/lib/confidentialite.ts", "  ...TRAITEMENTS_NOTIFICATIONS,"),
       bloc(
         "src/lib/confidentialite.ts",
-        "    // 12 mois recommandés (README de la brique notifications), à valider par le",
+        "    // Une durée surchargée dans `durees` se règle aussi dans conservationMois",
         '    notifications: { baseLegale: "", duree: "", destinataires: "" },'
       ),
       // Sa source de l'export des données d'une personne (brique rgpd ; sans
@@ -492,10 +492,13 @@ export const BRIQUES = {
       "src/config/donnees-personnelles.ts",
       "src/app/mes-donnees/",
       "src/app/donnees-personnelles/",
+      // La purge des données au terme de leur durée de conservation.
+      "scripts/purger-donnees.ts",
       "tests/rgpd-export.test.ts",
       "tests/rgpd-effacement.test.ts",
       "tests/rgpd-routes.test.ts",
       "tests/rgpd-isolement.test.ts",
+      "tests/rgpd-purge.test.ts",
     ],
     retraits: [
       // Ses droits (les retraits se sautent sans comptes : acces.ts part avec elle).
@@ -542,6 +545,12 @@ export const BRIQUES = {
         "src/lib/db/migrations.ts",
         "  {\n    // Brique journal :",
         "FOR EACH ROW EXECUTE FUNCTION journal_audit_refuser_modification();\n      `);\n    },\n  },"
+      ),
+      // L'action « export » (l'export de l'admin, brique rgpd), ajoutée après.
+      bloc(
+        "src/lib/db/migrations.ts",
+        "  {\n    // Brique journal, action « export » :",
+        "        $$;\n      `);\n    },\n  },"
       ),
       // --- le droit de lire le journal (acces.ts part avec la brique comptes :
       // sans elle, ces retraits se sautent)
@@ -648,13 +657,14 @@ export const BRIQUES = {
         "  // Brique journal : l'anonymisation du compte se trace",
         "  // Fin de la brique journal."
       ),
+      bloc(
+        "tests/rgpd-routes.test.ts",
+        "  // Brique journal : l'export de l'admin se trace",
+        "  // Fin de la brique journal."
+      ),
       // --- sa description de traitement (politique de confidentialité)
       ligne("src/lib/confidentialite.ts", 'import { TRAITEMENTS_JOURNAL } from "@/briques/journal/confidentialite";'),
       ligne("src/lib/confidentialite.ts", "  ...TRAITEMENTS_JOURNAL,"),
-      ligne(
-        "src/lib/confidentialite.ts",
-        "    // 12 mois recommandés (README de la brique journal), à valider par le client."
-      ),
       ligne("src/lib/confidentialite.ts", '    journal: { baseLegale: "", duree: "", destinataires: "" },'),
       // --- sa source de l'export des données d'une personne (brique rgpd ;
       // sans elle, le registre et le test partent, ces retraits se sautent)
@@ -732,8 +742,8 @@ export const BRIQUES = {
       ),
       remplace(
         "src/briques/journal/confidentialite.ts",
-        '    personnes:\n      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a créé ou modifié le compte.",',
-        '    personnes: "Les personnes qui ont un compte et modifient des fiches.",'
+        '    personnes:\n      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a créé ou modifié le compte, ou exporté les données.",',
+        '    personnes:\n      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a exporté les données.",'
       ),
     ],
   },

@@ -1,6 +1,6 @@
 import { NON_EXPORTEES, SOURCES, TABLES_SANS_DONNEE_PERSONNELLE } from "@/config/donnees-personnelles";
 import { aujourdhui } from "@/lib/format";
-import type { AuteurEffacement, EffacementSource, ExecuteurEffacement } from "./effacement";
+import type { AuteurEffacement, EffacementSource, ExecuteurEffacement, OptionsEffacement } from "./effacement";
 
 /*
  * L'export des données d'une personne : tout ce que l'appli garde sur
@@ -35,6 +35,12 @@ export type SourceDonnees = {
    * des effets de comptes (src/config/effets-comptes.ts).
    */
   effacer(executeur: ExecuteurEffacement, adresse: string, auteur: AuteurEffacement): Promise<EffacementSource>;
+  /**
+   * Facultatif : ce que la source fait quand l'admin exporte l'adresse (minuscules, sans espaces),
+   * dans la transaction reçue, au nom de `auteur`, l'admin. La source du journal d'audit y trace
+   * l'export ; sans elle, rien ne se trace.
+   */
+  tracerExport?(executeur: ExecuteurEffacement, adresse: string, auteur: AuteurEffacement): Promise<void>;
 };
 
 /** Ce que l'appli garde sans pouvoir le rattacher à une adresse, ou ne garde pas elle-même. */
@@ -108,6 +114,26 @@ export async function exporterDonnees(adresse: string, maintenant: Date = new Da
     sources,
     non_exportees: NON_EXPORTEES.map(({ quoi, pourquoi }) => ({ quoi, pourquoi })),
   };
+}
+
+/**
+ * L'export de l'admin se trace, par les sources qui le font (la brique journal,
+ * quand l'appli l'a) : il sort toutes les données d'une personne pour une
+ * autre. Celui que la personne fait de ses propres données ne se trace pas.
+ * Une seule transaction, avant d'envoyer le fichier : une trace qui échoue
+ * lève, et le fichier ne part pas. `demandeur` : l'adresse de l'admin.
+ */
+export async function tracerExportDeLAdmin(
+  adresse: string,
+  options: Pick<OptionsEffacement, "transaction" | "demandeur">
+): Promise<void> {
+  const traceuses = SOURCES.filter((source) => source.tracerExport);
+  if (traceuses.length === 0) return;
+  const normalisee = normaliserAdresse(adresse);
+  const auteur: AuteurEffacement = { email: normaliserAdresse(options.demandeur) };
+  await options.transaction(async (executeur) => {
+    for (const source of traceuses) await source.tracerExport?.(executeur, normalisee, auteur);
+  });
 }
 
 /** Le fichier à télécharger : indenté pour se lire dans un éditeur, jamais gardé en cache. */

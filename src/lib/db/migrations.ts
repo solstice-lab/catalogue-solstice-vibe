@@ -247,7 +247,7 @@ export const MIGRATIONS: Migration[] = [
     // RGPD) anonymise le journal sans le réécrire. Aucune valeur de
     // champ : seulement les noms des champs changés (données personnelles).
     // Conservation : 12 mois recommandés, à valider par le client ; la purge
-    // de la brique RGPD n'est pas encore livrée. ON DELETE
+    // est le script de la brique RGPD (scripts/purger-donnees.ts). ON DELETE
     // RESTRICT n'emporte rien : un compte qui a laissé une trace ne se supprime
     // plus (la brique comptes désactive, elle ne supprime pas) ; une purge qui
     // supprimerait un compte efface d'abord ses lignes du journal.
@@ -451,6 +451,32 @@ export const MIGRATIONS: Migration[] = [
       await pool.query(
         `CREATE INDEX IF NOT EXISTS espaces_essais_code_utilisateur_idx ON espaces_essais_code (utilisateur_id, essaye_le);`
       );
+    },
+  },
+  {
+    // Brique journal, action « export » : l'export des données d'une
+    // personne par l'admin (brique rgpd), que le journal trace désormais.
+    // Le CREATE TABLE de journal_audit est sur main : la contrainte se
+    // remplace ici. Seulement si elle n'admet pas encore « export » : la
+    // remplacer relit toute la table, ce qu'un redémarrage n'a pas à refaire.
+    nom: "journal_audit : action export (export des données d'une personne par l'admin)",
+    async appliquer(pool) {
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+             WHERE conname = 'journal_audit_action_check'
+               AND conrelid = 'journal_audit'::regclass
+               AND pg_get_constraintdef(oid) LIKE '%''export''%'
+          ) THEN
+            ALTER TABLE journal_audit DROP CONSTRAINT IF EXISTS journal_audit_action_check;
+            ALTER TABLE journal_audit ADD CONSTRAINT journal_audit_action_check
+              CHECK (action IN ('creation', 'modification', 'suppression', 'export'));
+          END IF;
+        END
+        $$;
+      `);
     },
   },
 ];

@@ -6,8 +6,10 @@ import { describe, expect, it } from "vitest";
  * Test-verrou : la brique rgpd ne connaît aucune table ni aucun module.
  * Ce que l'appli garde sur une personne, chaque unité le décrit chez elle, et
  * src/config/donnees-personnelles.ts les rassemble, comme src/config/acces.ts
- * rassemble les actions. La brique n'importe donc que ce registre, le format
- * des dates et ses propres fichiers. Liste blanche, comme
+ * rassemble les actions. De même, chaque brique déclare la durée de ses
+ * données dans son confidentialite.ts, et src/lib/confidentialite.ts les
+ * rassemble pour la purge. La brique n'importe donc que ces deux registres, le
+ * format des dates et ses propres fichiers. Liste blanche, comme
  * tests/contact-isolement.test.ts.
  */
 
@@ -16,6 +18,7 @@ const DOSSIER_BRIQUE = path.join(process.cwd(), "src", "briques", "rgpd");
 const IMPORTS_PERMIS = [
   /^\.\/[^/]+$/, // un fichier de la brique elle-même, jamais « ../ »
   /^@\/config\/donnees-personnelles$/,
+  /^@\/lib\/confidentialite$/,
   /^@\/lib\/format$/,
 ];
 
@@ -37,7 +40,7 @@ function fichiersDe(dossier: string): string[] {
 }
 
 describe("isolement de la brique rgpd", () => {
-  it("n'importe que ses fichiers, le registre des données personnelles et le format : ni table, ni module, ni paquet", () => {
+  it("n'importe que ses fichiers, le registre des données personnelles, celui des durées de conservation et le format : ni table, ni module, ni paquet", () => {
     const fichiers = fichiersDe(DOSSIER_BRIQUE);
     // Sans fichier, le verrou passerait sans rien vérifier.
     expect(fichiers.length).toBeGreaterThan(0);

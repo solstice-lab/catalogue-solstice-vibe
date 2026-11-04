@@ -105,7 +105,7 @@ journal.
 | `filtres.ts` | `heureDAffichage()` → `number` | L'heure à passer au formulaire, à chaque rendu (la page est en `force-dynamic`). |
 | `contact.ts` | `traiterMessageContact(donnees, enTetes)` → `Promise<EtatContact>` | Le traitement d'un envoi, pour une autre page qui porterait le formulaire. Lève une erreur si `CONTACT_DESTINATAIRE` manque. |
 | `champs.ts` | type `EtatContact` | `{ envoye: true }`, ou `{ erreur, valeurs }`. |
-| `confidentialite.ts` | `TRAITEMENTS_CONTACT` | Le traitement du formulaire (clé `contact`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe. L'assembleur retire cet import et la ligne `contact` des choix quand la brique part. |
+| `confidentialite.ts` | `TRAITEMENTS_CONTACT` | Le traitement du formulaire (clé `contact`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe, avec sa `conservation` : l'empreinte de l'adresse IP une heure (clé `contact-envois`, purgée par la brique rgpd) et les messages 3 ans hors de l'appli (clé `contact-messages`, rappelée par le script de purge). L'assembleur retire cet import et la ligne `contact` des choix quand la brique part. |
 
 **Règle d'entretien.** Tout changement d'interface publique (symbole ajouté,
 retiré ou renommé, signature modifiée, variable ajoutée) met à jour cette
@@ -190,13 +190,15 @@ faire valider par le client :
 
 - la base légale (répondre à une demande : intérêt légitime ou mesures
   précontractuelles, à faire valider) ;
-- la durée de conservation, y compris celle des messages dans la boîte du
-  destinataire, hors de l'appli ;
+- la validation des durées de conservation que `confidentialite.ts` propose :
+  une heure pour l'empreinte de l'adresse IP, 3 ans après le dernier échange
+  pour les messages dans la boîte du destinataire, hors de l'appli (une durée
+  autre s'écrit dans `CONFIDENTIALITE.durees`) ;
 - le lieu de traitement de Resend (brique mails) et ses garanties de
   transfert hors de l'Union européenne.
 
-Restent à venir, avec la purge du RGPD : les traces de la limite. L'empreinte de
-l'adresse IP est effacée au premier message reçu après une heure, et seulement
-alors (pas de purge planifiée). C'est une pseudonymisation, pas une
-anonymisation : sans sel, une adresse IPv4 se retrouve en les essayant toutes.
-Un HMAC avec un secret, ou une purge planifiée, sont à trancher.
+Les traces de la limite : l'empreinte de l'adresse IP est effacée au premier
+message reçu après une heure, et, sans nouveau message, par le script de purge
+de la brique rgpd (clé `contact-envois`). Reste à trancher : c'est une
+pseudonymisation, pas une anonymisation (sans sel, une adresse IPv4 se retrouve
+en les essayant toutes) ; un HMAC avec un secret la renforcerait.

@@ -15,8 +15,10 @@ import { describe, expect, it } from "vitest";
  * 2. Le journal ne s'efface ni ne se réécrit depuis l'appli. La base refuse
  *    l'UPDATE (trigger de l'étape de migration) mais garde le DELETE pour la
  *    purge de la brique RGPD, un script lancé par un humain : c'est ce
- *    verrou qui l'interdit au code de l'appli. Le script de purge, à venir,
- *    s'ajoutera, nommément, à PURGES_AUTORISEES.
+ *    verrou qui l'interdit au code de l'appli. Cette purge n'écrit pas la
+ *    requête en toutes lettres : elle la bâtit depuis la durée que la brique
+ *    déclare (confidentialite.ts), et tests/journal.test.ts vérifie que
+ *    cette durée ne se purge jamais au passage d'une requête.
  */
 
 const RACINE = process.cwd();
@@ -55,7 +57,7 @@ function fichiersDe(dossier: string): string[] {
 const relatif = (chemin: string) => path.relative(RACINE, chemin).split(path.sep).join("/");
 
 // Les seuls fichiers qui peuvent supprimer des lignes du journal, chacun avec
-// sa raison. Vide tant que la purge de la brique RGPD n'existe pas.
+// sa raison. Vide : la purge de la brique RGPD ne nomme aucune table.
 const PURGES_AUTORISEES: Record<string, string> = {};
 
 describe("isolement de la brique journal", () => {

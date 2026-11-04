@@ -12,7 +12,9 @@ pouvoir répondre à une demande d'accès ou d'effacement. Elle se garde donc sa
 module (`--briques comptes,mails`).
 
 La politique de confidentialité (`/confidentialite`, socle) est une autre
-affaire : elle décrit les traitements, cette brique sort les données.
+affaire : elle décrit les traitements, cette brique sort les données. Les deux
+se rejoignent sur les durées de conservation : la politique les affiche, cette
+brique les applique (« Durées de conservation et purge »).
 
 ## Ce qu'elle apporte
 
@@ -84,10 +86,88 @@ affaire : elle décrit les traitements, cette brique sort les données.
   des comptes, une modification de « compte n°<id> », au nom de l'admin. Une
   adresse sans compte ne joue aucun effet : le journal ne garde aucune adresse.
 
-Hors v1 :
-- les durées de conservation par donnée et la purge (à venir) ;
-- la trace des exports dans le journal d'audit ;
-- une recherche par nom.
+Hors v1 : une recherche par nom.
+
+## L'export de l'admin se trace
+
+Chaque export de `/donnees-personnelles` se trace avant que le fichier parte,
+par les sources du registre qui déclarent `tracerExport` : avec la brique
+journal, une ligne `export` sur « compte n°<id> », au nom de l'admin ; sans
+elle, rien ne se trace. Une trace qui échoue lève, et le fichier ne part pas.
+Une adresse sans compte ne laisse rien : le journal ne garde aucune adresse.
+L'export que la personne fait de ses propres données (`/mes-donnees`) ne se
+trace pas.
+
+Décision (question ouverte de la v1, tranchée avec la purge) : l'export sort
+toutes les données d'une personne pour une autre, il doit se retrouver. Il
+passe par le registre existant, pour que la brique ne connaisse pas le journal.
+
+## Durées de conservation et purge
+
+**Les durées se déclarent par donnée**, à côté de la description des
+traitements que chaque brique porte (`conservation` de son
+`confidentialite.ts`, type `Conservation` de `src/lib/confidentialite.ts`) :
+la donnée, la durée (`{ heures }`, `{ jours }` ou `{ mois }`), d'où elle
+court, et comment elle s'efface :
+
+| `purge` | Ce qui se passe au terme |
+| --- | --- |
+| `{ table, colonne }` | Le script efface les lignes dont `colonne` a passé la durée. |
+| `{ table, colonne, auPassage: true }` | Pareil, et `purgerAuPassage` aussi, au détour d'une lecture. |
+| `{ table, colonne, aLaMain }` | Rien ne l'efface d'office : le script compte les lignes échues et rappelle `aLaMain` (un compte s'anonymise par l'effacement, il ne se supprime pas). |
+| `{ horsBase }` | Hors de la base (la boîte de l'éditeur) : le script la rappelle. |
+
+**La politique les affiche**, donnée par donnée, et les dit « à valider »
+tant que le projet ne les a pas revues (`CONFIDENTIALITE.dureesRevues`). Une
+durée autre que celle que la brique propose s'écrit dans
+`CONFIDENTIALITE.durees`, par la clé de la conservation : la page et la purge
+lisent la même. Un traitement sans conservation (l'hébergement, l'envoi des
+e-mails, que le site ne garde pas) garde sa durée écrite par le projet dans
+`CONFIDENTIALITE.choix`.
+
+Durées proposées par le catalogue, **à valider** :
+
+| Brique | Clé | Donnée | Durée | Purge |
+| --- | --- | --- | --- | --- |
+| `comptes` | `comptes-inactifs` | Compte | 24 mois après la dernière connexion | À la main (effacement) |
+| `comptes` | `sessions` | Sessions | 1 jour après leur expiration | Script |
+| `comptes` | `codes-connexion`, `codes-connexion-essais` | Empreintes des demandes et des saisies de code | 1 heure | Script (et le code, à la demande suivante) |
+| `contact` | `contact-envois` | Empreinte de l'adresse IP | 1 heure | Script (et le code, au message suivant) |
+| `contact` | `contact-messages` | Messages reçus par e-mail | 36 mois après le dernier échange | Hors base |
+| `journal` | `journal` | Lignes du journal | 12 mois après le geste | Script seul, jamais au passage |
+| `notifications` | `notifications` | Trace de chaque notification | 12 mois après l'envoi | Script (et la route, à chaque envoi) |
+| `espaces` | `espaces-adhesions-terminees` | Adhésion terminée | 12 mois après le départ | À la main |
+| `espaces` | `espaces-essais-code` | Codes faux saisis | 1 heure | Script (et le code) |
+
+Les briques `validation` et `import-lot` gardent des adresses (décideur,
+lignes importées) sans décrire de traitement : leur durée se décide avec le
+traitement du projet qui les emploie.
+
+**Le script** : `npx tsx --env-file=<fichier> scripts/purger-donnees.ts`,
+dry-run par défaut. Il nomme la base en première ligne, joue la purge dans une
+transaction et l'annule, et liste ce qu'il effacerait, les lignes échues à
+traiter à la main et les durées hors base. `--confirmer` se tape à la main,
+par un humain, après relecture. Une clé de `CONFIDENTIALITE.durees` que rien
+ne déclare l'arrête avant tout. Le journal d'audit, dont la base garde le
+`DELETE` pour cette purge, n'est purgé que par lui.
+
+**Au passage**, pour une appli sans tâche planifiée : `purgerAuPassage({
+transaction })`, appelée au détour d'une lecture (tours-de-coloc : au moment où
+une lecture crée les tours d'une nouvelle semaine), ne purge que les données
+marquées `auPassage`. Un verrou consultatif pris dans la transaction fait
+passer son chemin à une seconde purge simultanée (`{ occupee: true }`) ;
+rejouée, elle ne trouve plus rien.
+
+## Les gabarits (`gabarits/`)
+
+Hors code, en Markdown, à copier dans les documents du client et à faire
+valider par lui, champs à remplir marqués `[À REMPLIR : …]` :
+
+| Fichier | Contenu |
+| --- | --- |
+| `registre-des-traitements.md` | Le registre de l'article 30 : une fiche par traitement, reprise de la politique de confidentialité, et les mesures de sécurité communes. |
+| `accord-de-sous-traitance.md` | Les clauses de l'article 28, à joindre au contrat de prestation ou à comparer à l'accord d'un prestataire. |
+| `hebergement-ue.md` | La checklist d'un hébergement dans l'Union européenne : lieu des données et des sauvegardes, accès, contrat, sécurité. |
 
 ## Le registre : `src/config/donnees-personnelles.ts`
 
@@ -141,14 +221,18 @@ L'administration des comptes : la source `compte` sort aussi
 | `effacement.ts` | `apercevoirEffacement`, `effacerDonnees`, et les types de l'effacement. |
 | `origine.ts` | `vientDUnAutreSite` : le contrôle d'origine du formulaire de l'admin, sur le modèle de celui de l'import (brique import-lot). |
 | `actions.ts` | `ACTIONS_RGPD`. |
+| `purge.ts` | `apercevoirPurge`, `purger`, `purgerAuPassage` et leurs types. |
+| `gabarits/` | Les trois gabarits hors code. |
 
 Les pages `src/app/mes-donnees/` et `src/app/donnees-personnelles/` partent
 avec la brique ; la seconde porte l'écran de l'effacement
 (`EffacementDonnees.tsx`) et ses server actions (`actions.ts`).
 
-La brique n'importe que ses fichiers, le registre et `@/lib/format`. Elle
-n'importe pas la base : l'appelant de l'effacement lui passe sa fonction de
-transaction.
+La brique n'importe que ses fichiers, le registre, `@/lib/confidentialite`
+(les durées déclarées) et `@/lib/format`. Elle n'importe pas la base :
+l'appelant de l'effacement, de la trace de l'export et de la purge lui passe sa
+fonction de transaction. Le script `scripts/purger-donnees.ts` part avec
+elle.
 `tests/rgpd-isolement.test.ts` refuse tout autre import : ni la base, ni un
 module, ni une autre brique.
 
@@ -163,14 +247,17 @@ journal.
 | `export.ts` | `exporterDonnees(adresse, maintenant?)` → `Promise<ExportDonnees>` | Le contenu du fichier pour une adresse, normalisée (minuscules, sans espaces), les adresses d'autrui masquées. Une adresse inconnue donne toutes les sources, vides, et les notes. `maintenant` : l'heure de `genere_le`, pour les tests. |
 | `export.ts` | `reponseFichier(donnees, maintenant?)` → `Response` | Le fichier en pièce jointe (`donnees-personnelles-aaaa-mm-jj.json`, jour de `maintenant`), `Cache-Control: no-store`. |
 | `export.ts` | `normaliserAdresse(adresse)` → `string`, `adresseLisible(adresse)` → `boolean` | L'adresse telle qu'elle est rangée ; le refus d'une saisie qui n'est pas une adresse (la route de l'admin). |
-| `export.ts` | types `SourceDonnees`, `DonneeNonExportee`, `ExportDonnees` | `SourceDonnees` : `{ cle, titre, tables, lire(adresse), note?, effacement, effacer(executeur, adresse, auteur) }`, où `lire` reçoit l'adresse normalisée et ne rend jamais une empreinte ; `effacement` dit à l'admin ce que l'effacement fait des lignes, et `effacer` le fait dans la transaction reçue, en rendant `EffacementSource`. `auteur` (`AuteurEffacement`, `{ email }`) est l'admin qui efface : la source du compte le passe aux effets d'effacement du registre des effets de comptes. `DonneeNonExportee` : `{ quoi, pourquoi, tables }`. |
+| `export.ts` | types `SourceDonnees`, `DonneeNonExportee`, `ExportDonnees` | `SourceDonnees` : `{ cle, titre, tables, lire(adresse), note?, effacement, effacer(executeur, adresse, auteur) }`, où `lire` reçoit l'adresse normalisée et ne rend jamais une empreinte ; `effacement` dit à l'admin ce que l'effacement fait des lignes, et `effacer` le fait dans la transaction reçue, en rendant `EffacementSource`. `auteur` (`AuteurEffacement`, `{ email }`) est l'admin qui efface : la source du compte le passe aux effets d'effacement du registre des effets de comptes. `tracerExport(executeur, adresse, auteur)`, facultatif : ce que la source fait quand l'admin exporte l'adresse (la source du journal y trace l'export). `DonneeNonExportee` : `{ quoi, pourquoi, tables }`. |
 | `export.ts` | `tablesNonDeclarees(tables)` → `{ oubliees, fantomes }` | Le verrou du registre, pour le test d'une appli. |
+| `export.ts` | `tracerExportDeLAdmin(adresse, { transaction, demandeur })` → `Promise<void>` | Trace l'export de l'admin par les sources qui déclarent `tracerExport`, dans une transaction ; lève si une trace échoue (le fichier ne part pas). Rien sans source qui trace. |
 | `origine.ts` | `vientDUnAutreSite(request)` → `boolean` | Vrai si l'en-tête Origin désigne un autre site (la route de l'admin répond alors 403). Sans en-tête Origin : faux, un appel hors navigateur n'a pas de session à voler. |
 | `effacement.ts` | `apercevoirEffacement(adresse, options)`, `effacerDonnees(adresse, options)` → `Promise<BilanEffacement \| { erreur }>` | L'aperçu joue l'effacement et l'annule ; `effacerDonnees` le fait. Tout se passe dans une transaction : un refus d'une source (`{ erreur }`, à afficher tel quel) ou un effet du registre des effets de comptes qui lève annule tout. `options` : `{ transaction, demandeur }`, où `transaction` est celle de la base (`transaction` de `src/lib/db/client.ts`) et `demandeur` l'adresse de l'admin : la sienne est refusée, et il est l'auteur que reçoit chaque source. |
 | `effacement.ts` | types `BilanEffacement`, `EffacementSource`, `AuteurEffacement`, `ExecuteurEffacement`, `OptionsEffacement` | `BilanEffacement` : `{ adresse, effectue, sources: [{ cle, titre, lignes, effacement }], avertissements, nonEffacees: [{ quoi, pourquoi }] }`. `EffacementSource` : `{ lignes, avertissement? }` ou `{ erreur }`. `AuteurEffacement` : `{ email }`, l'adresse normalisée du demandeur. |
+| `purge.ts` | `apercevoirPurge(options)`, `purger(options)`, `purgerAuPassage(options)` → `Promise<BilanPurge \| PurgeOccupee>` | L'aperçu joue la purge et l'annule ; `purger` efface tout ce qui a passé sa durée déclarée ; `purgerAuPassage` seulement les données marquées `auPassage`. Une purge en cours ailleurs rend `{ occupee: true }`. `options` : `{ transaction, conservations? }` (`conservations` : celles de l'appli par défaut, pour les tests). Lève `ErreurPurge` sur une table ou une colonne qui n'est pas un identifiant simple, avant toute requête. |
+| `purge.ts` | types `OptionsPurge`, `BilanPurge`, `PurgeOccupee` ; classe `ErreurPurge` | `BilanPurge` : `{ effectue, effacees, aLaMain, horsBase }`, chaque ligne avec `cle`, `traitement`, `donnee` et `duree` (« 12 mois après le geste ») ; `effacees` et `aLaMain` ajoutent `table` et `lignes`, `aLaMain` et `horsBase` la `raison`. |
 | `actions.ts` | `ACTIONS_RGPD` | `mes-donnees.exporter` (catalogue : membre et admin), `donnees.exporter` et `donnees.effacer` (catalogue : admin). |
 
-**Interne** : `masquerAutresAdresses`, exportée pour son test.
+**Interne** : `masquerAutresAdresses` et `CLE_VERROU_PURGE`, exportées pour leurs tests.
 
 **Ce que l'appli remplit** :
 - `src/config/acces.ts` : `...ACTIONS_RGPD` dans `ACTIONS`, et le rôle de chaque
@@ -179,7 +266,10 @@ journal.
   l'effacement des données de n'importe quelle adresse : le dire dans la
   blueprint, ou réserver ces actions ;
 - `src/config/donnees-personnelles.ts` : une ligne par source, donnée non
-  exportée ou table sans donnée personnelle.
+  exportée ou table sans donnée personnelle ;
+- `src/lib/confidentialite.ts` : `durees` (les durées choisies autrement que
+  par les briques) et `dureesRevues`, une fois les durées validées avec le
+  client ; la `conservation` de chaque traitement du projet.
 
 **Règle d'entretien.** Tout changement d'interface publique (symbole ajouté,
 retiré ou renommé, signature modifiée) met à jour cette section et ajoute une
@@ -189,8 +279,9 @@ le fait : date, ce qui change pour l'appelant, raison.
 ## La brancher
 
 Rien à faire dans le catalogue : les deux pages, l'écran de l'effacement, les
-droits et les entrées de menu (« Mes données », « Données personnelles ») sont
-en place. Le journal d'audit, quand l'appli l'a, trace l'effacement par le
+droits, les entrées de menu (« Mes données », « Données personnelles ») et le
+script de purge sont en place. Le journal d'audit, quand l'appli l'a, trace
+chaque export de l'admin, par sa source du registre, et l'effacement par le
 registre des effets de comptes, sans rien brancher sur les actions de
 l'effacement.
 
@@ -204,19 +295,26 @@ l'export d'abord, si la personne veut garder ses données. Relire l'aperçu, pui
 faire à la main ce que le bilan liste (adresse dans la configuration, données
 non retrouvées par l'adresse).
 
+**Purger** (équipe technique) : lancer le script en dry-run sur la base
+visée, relire la première ligne et le rapport, puis relancer avec
+`--confirmer`, à la main ; traiter ensuite ce qu'il liste à la main. La
+fréquence (par exemple chaque mois) se décide avec le client et s'écrit dans
+le registre des traitements.
+
 **Un module neuf ou une table neuve** : décrire sa source chez lui, avec son
 effacement (sur le modèle de `SOURCES_COMPTES`,
 `src/briques/comptes/donnees-personnelles.ts`, et de `SOURCES_CONTRATS` pour
 des données métier qui restent sans l'adresse), le tester dans ses propres
 tests,
 ou sa ligne dans `NON_EXPORTEES` ou `TABLES_SANS_DONNEE_PERSONNELLE`, puis
-l'ajouter au registre. Dans le catalogue, déclarer aussi son retrait dans la
+l'ajouter au registre. Déclarer aussi la durée de ses données, dans la
+`conservation` de son traitement. Dans le catalogue, déclarer aussi son retrait dans la
 liste de l'assembleur.
 
 ## Pièges verrouillés
 
-Tests dans `tests/rgpd-export.test.ts`, `tests/rgpd-effacement.test.ts` et
-`tests/rgpd-routes.test.ts` ; l'effacement de chaque source, dans les tests de
+Tests dans `tests/rgpd-export.test.ts`, `tests/rgpd-effacement.test.ts`,
+`tests/rgpd-routes.test.ts` et `tests/rgpd-purge.test.ts` ; l'effacement de chaque source, dans les tests de
 son unité.
 
 | Piège | Test |
@@ -234,10 +332,16 @@ son unité.
 | Une adresse lue de travers | « refuse une confirmation qui ne redit pas l'adresse, et n'efface rien » |
 | Un admin qui s'efface lui-même | « refuse qu'un admin efface ses propres données » |
 | Un membre qui efface | « répond 404 à un membre, à l'aperçu comme à l'effacement » |
+| Une durée annoncée que rien ne tient | « efface ce qui a passé sa durée et garde le reste… » ; « chaque purge déclarée vise une table et une colonne de date qui existent dans la base » |
+| Une durée sans purge passée sous silence | « une durée déclarée sans purge possible est signalée, jamais ignorée… » |
+| Une purge lancée sans relecture | « l'aperçu compte ce qui serait effacé, sans rien effacer… » ; « en dry-run, nomme la base en première ligne… » |
+| Deux purges au passage simultanées | « au passage, une purge déjà en cours ailleurs fait passer son chemin à la seconde… » |
+| Le journal purgé par une requête | « le journal déclare 12 mois après le geste, purgés par le script seul, jamais au passage » (`tests/journal.test.ts`) |
+| Une surcharge de durée mal tapée | « chaque durée surchargée par le projet désigne une conservation déclarée… » |
+| Un export de l'admin sans trace | « trace l'export au journal, au nom de l'admin… » |
 
 ## Questions ouvertes
 
 | Question | Qui tranche | Avant quelle étape |
 | --- | --- | --- |
-| Tracer chaque export de l'admin dans le journal d'audit ? | Personne responsable du projet | Avec la purge, à venir |
 | Une recherche par nom pour les données sans adresse (client d'un dossier, intervenant) ? | Personne responsable du projet | Au premier besoin réel d'un client |

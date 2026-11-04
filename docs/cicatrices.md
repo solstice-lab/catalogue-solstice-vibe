@@ -175,7 +175,7 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 | --- | --- | --- | --- |
 | P1 | Données réelles, exports, dumps et clés n'entrent jamais dans l'historique git. | Des données personnelles sont entrées dans l'historique d'un projet, coûteuses à purger. Un fichier retiré après coup reste lisible dans l'historique. | `.gitignore:14` ; `tests/gitignore.test.ts:71` ; garde `git add -f` (`.claude/hooks/gardes.mjs:166`) |
 | P2 | Une donnée sensible masquée l'est sur toutes ses facettes : libellé, famille, couleur, légende. | Un motif d'absence masqué restait trahi par la couleur de sa légende. | **Non tenue** |
-| P3 | Les gabarits de conformité (registre des traitements, trame de sous-traitance, hébergement dans l'Union européenne) sont prêts avant la mise en ligne. | Un hébergement a été déplacé d'une région américaine vers l'Union européenne après coup. | **En partie** : hébergement tenu par DP5 ; ni registre des traitements ni trame de sous-traitance |
+| P3 | Les gabarits de conformité (registre des traitements, trame de sous-traitance, hébergement dans l'Union européenne) sont prêts avant la mise en ligne. | Un hébergement a été déplacé d'une région américaine vers l'Union européenne après coup. | Gabarits de la brique rgpd (`src/briques/rgpd/gabarits/`) : registre des traitements, trame d'accord de sous-traitance, checklist d'hébergement dans l'UE ; hébergement tenu aussi par DP5 |
 | P4 | La position sur l'envoi de données vers des services d'IA se documente par projet. | Point ouvert d'un projet antérieur qui envoyait des données à des modèles d'IA ; les archives ne détaillent pas d'incident. | **Non tenue** |
 
 ## 11. Dates et fuseaux

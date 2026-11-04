@@ -3,7 +3,10 @@ import { METHODES } from "@/config/comptes";
 /*
  * Les traitements de la brique comptes, pour la politique de confidentialité
  * (src/lib/confidentialite.ts) : des faits que le code établit, jamais
- * une base légale ni une durée de conservation, que le projet choisit.
+ * une base légale, que le projet choisit. La durée de conservation de chaque
+ * donnée (`conservation`) est une valeur par défaut que la purge de la brique
+ * rgpd applique, à valider avec le client, qui la surcharge par sa clé
+ * (CONFIDENTIALITE.durees).
  *
  * Forme : `Traitement` de src/lib/confidentialite.ts, vérifiée là où le socle
  * les assemble. La brique n'importe pas le socle qui l'importe.
@@ -34,6 +37,34 @@ const COMPTES = {
     "Un cookie de session, nécessaire à la connexion, est déposé pour 30 jours. Il ne sert à rien d'autre.",
     "Un administrateur peut créer un compte pour une adresse avant toute connexion, et prévenir la personne par un e-mail d'information (voir « Envoi des e-mails »).",
   ],
+  conservation: [
+    {
+      // 24 mois sans connexion : le délai au-delà duquel un compte inutilisé
+      // n'a plus de raison d'être gardé, l'usage courant pour un outil
+      // professionnel. Un compte jamais connecté n'a pas de dernière
+      // connexion : le script ne le compte pas.
+      cle: "comptes-inactifs",
+      donnee: "Compte (adresse e-mail, rôle, dates)",
+      duree: { mois: 24 },
+      depart: "après la dernière connexion",
+      purge: {
+        table: "utilisateurs",
+        colonne: "derniere_connexion",
+        aLaMain:
+          "Un compte ne se supprime pas : il s'anonymise par l'effacement des données de la personne (« Données personnelles »), qui joue ce que les autres unités en font. L'admin vérifie chaque compte listé (une personne en congé, un compte de service) avant de l'effacer.",
+      },
+    },
+    {
+      // Une session expirée ne sert plus à rien ; elle n'est effacée qu'à la
+      // connexion suivante du même compte, qui peut ne jamais venir. Un jour
+      // de marge après l'expiration (30 jours après l'ouverture).
+      cle: "sessions",
+      donnee: "Sessions ouvertes",
+      duree: { jours: 1 },
+      depart: "après leur expiration",
+      purge: { table: "sessions", colonne: "expire_le" },
+    },
+  ],
 };
 
 const CONNEXION_CODE = {
@@ -48,7 +79,26 @@ const CONNEXION_CODE = {
   sousTraitants: [],
   precisions: [
     "Le code part par e-mail (voir « Envoi des e-mails ») et vaut 10 minutes.",
-    "Ce sont des empreintes à clé : l'adresse, le code et l'adresse IP n'y figurent pas en clair. Elles ne servent qu'une heure. Passé ce délai, elles sont effacées lors d'une prochaine demande ou saisie de code sur le site, et restent en base jusque-là.",
+    "Ce sont des empreintes à clé : l'adresse, le code et l'adresse IP n'y figurent pas en clair. Elles ne servent qu'une heure. Passé ce délai, elles sont effacées lors d'une prochaine demande ou saisie de code sur le site, ou par la purge des données que l'équipe technique lance.",
+  ],
+  // Une heure : CONSERVATION_S de code-email.ts, la fenêtre des limites de
+  // demandes. Le code les efface déjà à la demande suivante ; la purge
+  // rattrape celles qu'aucune demande ne suit.
+  conservation: [
+    {
+      cle: "codes-connexion",
+      donnee: "Demandes de code (empreintes)",
+      duree: { heures: 1 },
+      depart: "après la demande",
+      purge: { table: "codes_connexion", colonne: "cree_le" },
+    },
+    {
+      cle: "codes-connexion-essais",
+      donnee: "Codes saisis par erreur (empreinte de l'adresse IP)",
+      duree: { heures: 1 },
+      depart: "après la saisie",
+      purge: { table: "codes_connexion_essais", colonne: "cree_le" },
+    },
   ],
 };
 
@@ -71,6 +121,9 @@ const CONNEXION_GOOGLE = {
     "L'appli ne garde que l'adresse e-mail, dans le compte (voir « Comptes et connexion »). Le domaine sert à vérifier l'accès et n'est pas conservé.",
     "Un cookie, nécessaire à la connexion, est déposé pour 10 minutes le temps de l'aller-retour chez Google, puis effacé au retour.",
   ],
+  // Rien de propre à ce traitement n'est gardé : l'adresse l'est dans le
+  // compte, avec sa durée. Le projet écrit la sienne dans ses choix.
+  conservation: [],
 };
 
 // Microsoft, comme Google, est destinataire de la demande et non
@@ -91,6 +144,9 @@ const CONNEXION_MICROSOFT = {
     "L'appli ne garde que l'adresse e-mail, dans le compte (voir « Comptes et connexion »). L'identifiant de l'annuaire sert à vérifier l'accès et n'est pas conservé.",
     "Un cookie, nécessaire à la connexion, est déposé pour 10 minutes le temps de l'aller-retour chez Microsoft, puis effacé au retour.",
   ],
+  // Comme pour Google : rien de propre n'est gardé, le projet écrit la durée
+  // dans ses choix.
+  conservation: [],
 };
 
 /** Les traitements selon les méthodes proposées : une méthode retirée de la configuration n'est plus décrite. */

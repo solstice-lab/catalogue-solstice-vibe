@@ -49,3 +49,20 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   passaient par le registre des effets de comptes ; l'ordre des tours, les
   tours futurs et les échanges en attente gardaient l'ancien membre, sauf à
   y penser dans chaque lecture.
+
+## 2026-11-04 · Durées de conservation déclarées par donnée · Ajout
+
+- **Ce qui change** : chaque traitement de `confidentialite.ts` porte un
+  champ `conservation` (type `Conservation[]` de `src/lib/confidentialite.ts`) :
+  une adhésion terminée 12 mois après le départ (comptée par le script,
+  effacée à la main), les codes faux une heure.
+  La politique de confidentialité les affiche, « à valider » tant que le
+  projet ne les a pas revues ; le script de purge de la brique rgpd les
+  applique. Clés : `espaces-adhesions-terminees`, `espaces-essais-code`.
+- **Appelant** : rien à changer pour la brique. Une appli qui a écrit son
+  propre `Traitement` (dans `traitementsDuProjet`) ajoute `conservation`,
+  vide ou rempli : le typecheck le signale. Une durée autre que celle proposée
+  s'écrit dans `CONFIDENTIALITE.durees`, par sa clé.
+- **Pourquoi** : une durée de conservation qui n'est qu'un texte de la
+  politique n'est tenue par rien ; déclarée par donnée, elle se purge et se
+  vérifie.
