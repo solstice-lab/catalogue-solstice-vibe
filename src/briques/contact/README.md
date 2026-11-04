@@ -85,8 +85,8 @@ au milieu de pages publiques.
 
 La page lit ce fait dans `NAVIGATION` (`src/lib/navigation.ts`) : une entrée de
 menu n'y porte un garde que par la brique comptes. Elle n'importe donc pas
-cette brique, qu'une appli assemblée sans elle n'a plus (l'assembleur refuse
-tout import mort), et aucun réglage n'est à poser : la règle suffit, il n'y a
+cette brique, qu'une appli assemblée sans elle n'a plus : l'import ne
+compilerait plus (le typecheck de `npm run test:assembleur` le verrouille), et aucun réglage n'est à poser : la règle suffit, il n'y a
 pas de variable ni de constante de la brique à régler.
 
 Dans les deux cas, la page reste publique (aucune lecture de session) et le
