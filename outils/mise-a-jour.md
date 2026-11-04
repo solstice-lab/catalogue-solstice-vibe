@@ -33,7 +33,8 @@ Les deux besoins sont une seule opération : faire passer l'appli de l'assemblag
 (commit A, briques B) à l'assemblage (commit A', briques B').
 
 - **Ajouter la brique x** : A' = A, B' = B plus x et ce que x entraîne.
-- **Mettre à jour** : A' = le commit visé du catalogue, B' = B.
+- **Mettre à jour** : A' = le commit visé du catalogue, B' = B pour les briques choisies,
+  plus ce que l'assembleur du commit A' y ajoute d'office.
 
 Pour chaque fichier venu du catalogue, trois versions :
 
@@ -79,7 +80,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | L'appli, à son `HEAD` | Le contenu de chaque fichier tel que git l'enregistre, comme le manifeste, pas le disque. L'arbre doit être propre. |
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
-| L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle reçu par l'appli : le socle n'a pas de `CHANGELOG.md` (décision 6). |
+| L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle que le report change : le socle n'a pas de `CHANGELOG.md` (décision 6). |
 
 Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 
@@ -151,8 +152,9 @@ Deux limites, que le rapport redit :
   que l'appli a pu changer : ajouter `journal` remet `tracer(personne)` dans les gestes de
   `src/app/comptes/actions.ts` ; ajouter `comptes`, un ajout lourd (plus bas), réécrirait la
   liste des pages publiques de `referencement.ts`, que toute appli remplit. Conflit attendu
-  dès que l'appli a touché ces lignes. Une mise à jour, elle, ne rejoue aucun retrait à
-  l'envers : les briques ne changent pas ;
+  dès que l'appli a touché ces lignes. Une mise à jour, elle, ne rejoue de retrait à
+  l'envers que pour une brique que l'assembleur du commit A' ajoute d'office : les briques
+  choisies ne changent pas ;
 - l'écart vaut pour les fichiers du catalogue, pas pour les modules que l'appli a écrits en
   copiant le patron `dossiers`. Ajouter `journal` remet la trace dans
   `src/lib/db/dossiers.ts`, pas dans les modules de l'appli : les y brancher est un ticket
@@ -311,8 +313,9 @@ Restent à un humain :
 - **choisir la valeur du client** pour un token de thème que le catalogue ajoute :
   `tokens.css` est le contrat de thème, retouché dans toute appli thématisée ;
 - **trancher** ce que l'outil signale sans écrire : fichier supprimé par l'appli et changé
-  au catalogue, fichier retouché que le catalogue retire, binaire retouché, fichier de
-  l'appli au chemin d'un fichier neuf du catalogue.
+  au catalogue, fichier retouché que le catalogue retire, binaire retouché. Un fichier de
+  l'appli au chemin d'un fichier neuf du catalogue arrête l'outil avant toute écriture :
+  l'appli renomme le sien d'abord.
 
 ## Hors v1
 
@@ -457,7 +460,7 @@ depuis le catalogue (« Le circuit »).
   l'assembleur rend identique, comme le script de test de `package.json`, n'en fait pas
   venir), les variables nouvelles de `.env.example` et `render.yaml`, les traitements ajoutés (une clé `cle` neuve dans un
   `confidentialite.ts` de brique) ou changés, le registre RGPD, ce que la fusion
-  déclenche, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans
+  déclenche, le manifeste et la blueprint réécrits avec les avertissements, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans
   aucun fichier à reporter : il dit ce qu'elle a retouché, l'usage seul de la tranche 1.
 - **Les refus de la tranche 2**, avant toute écriture : le catalogue sans `origin/main` ;
   visant son `HEAD`, le catalogue aux modifications non commitées ou dont le `HEAD` n'est

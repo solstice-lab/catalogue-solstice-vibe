@@ -961,7 +961,7 @@ function supprimerDansLAppli(racine, chemin) {
 
 /**
  * Reporte dans l'appli le catalogue du commit visé (le HEAD du catalogue, ou
- * `vers`), avec les mêmes briques. Écrit sur la branche neuve `branche`, sans
+ * `vers`), avec les mêmes briques choisies. Écrit sur la branche neuve `branche`, sans
  * commit ; `aBlanc` : rien n'est écrit, le résultat dit ce qui le serait.
  * @param {{ catalogue: string, appli: string, vers?: string, branche?: string, aBlanc?: boolean }} options
  */
@@ -1301,7 +1301,11 @@ function rubriqueDeLaFusion(resultat) {
 }
 
 function rubriqueDeLaSuite(resultat) {
+  const { fichiers } = resultat;
+  const aTrancher =
+    fichiers.supprimesParLAppli.length + fichiers.retouchesRetires.length + fichiers.binairesRetouches.length;
   const humain = [
+    ...(aTrancher > 0 ? ["trancher les fichiers signalés, que l'outil n'a pas écrits"] : []),
     "fusionner la PR",
     ...(resultat.variables.length > 0 ? ["déclarer les variables nouvelles chez l'hébergeur"] : []),
     ...(resultat.traitements.ajoutes.length + resultat.traitements.changes.length > 0
@@ -1312,16 +1316,12 @@ function rubriqueDeLaSuite(resultat) {
       : []),
     "valider le rendu des écrans changés",
   ];
-  const { fichiers } = resultat;
-  const aTrancher =
-    fichiers.supprimesParLAppli.length + fichiers.retouchesRetires.length + fichiers.binairesRetouches.length;
   return [
     "## Ensuite, dans une session ouverte dans l'appli",
     "",
     ...(fichiers.enConflit.length > 0
       ? ["- Résoudre les conflits listés ; relire les fusions."]
       : ["- Relire les fusions."]),
-    ...(aTrancher > 0 ? ["- Trancher les fichiers signalés, que l'outil n'a pas écrits."] : []),
     ...(resultat.verrou === "à régénérer"
       ? ["- `npm install` pour régénérer le verrou, puis `npm ci`."]
       : ["- `npm ci`."]),
@@ -1379,7 +1379,7 @@ export function rapport(resultat) {
 
 const AIDE = `Usage : node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--vers <commit>] [--branche <nom>] [--a-blanc]
 
-Reporte dans l'appli le catalogue d'un commit plus récent, avec les mêmes briques
+Reporte dans l'appli le catalogue d'un commit plus récent, avec les mêmes briques choisies
 (outils/mise-a-jour.md) : rejoue l'assemblage d'origine (commit et réglages de
 son catalogue.empreintes.json), vérifie qu'il redonne les empreintes du
 manifeste, rejoue l'assemblage au commit visé, puis traite chaque fichier venu

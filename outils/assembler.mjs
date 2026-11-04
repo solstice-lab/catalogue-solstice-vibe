@@ -955,8 +955,9 @@ function blueprintParDefaut({ nom, commit, briques }) {
     "",
     `# Blueprint : ${nom}`,
     "",
-    "Appli assemblée depuis le catalogue Solstice-vibe au commit de l'en-tête. Ce que",
-    "chaque brique a changé depuis ce commit est dans son `CHANGELOG.md`, dans",
+    "Appli assemblée depuis le catalogue Solstice-vibe. L'en-tête note le commit du",
+    "catalogue qu'elle a reçu en dernier (assemblage, ou report par outils/mettre-a-jour.mjs).",
+    "Ce que chaque brique a changé depuis ce commit est dans son `CHANGELOG.md`, dans",
     "`src/briques/<brique>/` du catalogue.",
     "",
   ].join("\n");
