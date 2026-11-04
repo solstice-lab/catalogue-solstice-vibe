@@ -236,6 +236,8 @@ const CATALOGUE = [
   "tests/assembleur.test.ts",
   "tests/aide-assemblage.ts",
   "tests/creer-issues.test.ts",
+  // Importe outils/mettre-a-jour.mjs, qu'une copie n'a pas.
+  "tests/mettre-a-jour-migrations.test.ts",
   "tests/assemblage-ci.test.ts",
   // Prouve le build du socle sans base et lance ce test-ci : une copie n'a
   // ni l'assembleur ni de quoi le lancer.

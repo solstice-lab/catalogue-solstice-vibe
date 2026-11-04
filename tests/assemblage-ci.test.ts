@@ -117,6 +117,20 @@ describe("test de l'assembleur, lancé à part (plus de 10 minutes à chaque npm
     expect(neRelanceLaNuitQueSiMainAChange(avec(/^( {6}reponse: ).*$/m, "$1''"))).toBe(false);
   });
 
+  // tests/mettre-a-jour.test.ts y rejoue les étapes qu'une mise à jour reporte dans une
+  // appli : sans base, vitest.config.ts refuserait le lancement, et rien d'autre ne les rejoue.
+  it("donne au job assembleur un Postgres démarré avant le test et une DATABASE_URL locale : les migrations reportées par une mise à jour s'y rejouent", () => {
+    const aSaBase = (bloc: string) =>
+      /^ {6}DATABASE_URL: postgresql:\/\/[^@\s]+@localhost:5432\/\w+_test$/m.test(bloc) &&
+      bloc.indexOf("- name: Démarrer Postgres") > -1 &&
+      bloc.indexOf("- name: Démarrer Postgres") < bloc.indexOf("run: npm run test:assembleur");
+    const bloc = job(WORKFLOW, "assembleur");
+    expect(aSaBase(bloc)).toBe(true);
+    // Cas fautifs : plus de base, ou Postgres démarré après le test.
+    expect(aSaBase(bloc.replace(/^ {6}DATABASE_URL: .*\n/m, ""))).toBe(false);
+    expect(aSaBase(bloc.replace("- name: Démarrer Postgres", "- name: Autre chose"))).toBe(false);
+  });
+
   it("ne lance le job socle-seul ni la nuit ni à la main : main l'a déjà passé à son arrivée", () => {
     expect(condition(job(WORKFLOW, "socle-seul"))).toBe(
       "github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)"

@@ -65,8 +65,10 @@ export const EXCLUS_DU_CATALOGUE = [
   // Verrouillent l'assembleur : sans objet dans une copie qui ne l'a pas.
   "tests/assembleur.test.ts",
   "tests/aide-assemblage.ts",
-  // Verrouille l'outil de mise à jour (outils/mettre-a-jour.mjs), absent de l'appli.
+  // Verrouillent l'outil de mise à jour (outils/mettre-a-jour.mjs), absent de
+  // l'appli ; le second, sans assemblage, tourne avec npm test.
   "tests/mettre-a-jour.test.ts",
+  "tests/mettre-a-jour-migrations.test.ts",
   // Verrouille l'outil des issues de la section 9 (outils/creer-issues.mjs),
   // absent de l'appli : sans lui, ce test ne trouverait rien à importer.
   "tests/creer-issues.test.ts",
