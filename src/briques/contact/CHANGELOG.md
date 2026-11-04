@@ -29,3 +29,16 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   de la clé `contact` dans `CONFIDENTIALITE`.
 - **Pourquoi** : le RGPD (art. 13) demande d'informer qui écrit par le
   formulaire.
+
+## 2026-11-04 · Squelette de `/contact` · Changement de comportement
+
+- **Ce qui change** : la page `/contact` prend `PageVitrine` quand l'appli n'a
+  pas la brique comptes (un site public), et reste sous `AppLayout` avec elle.
+  Le choix se lit dans `NAVIGATION` (une entrée à garde n'existe qu'avec
+  comptes) : aucun réglage, aucun symbole ajouté ni retiré.
+- **Appelant** : rien à changer. Une vitrine assemblée avec `mails` et
+  `contact` voit son formulaire sous l'en-tête de site, avec le titre `Contact`
+  et les entrées publiques de `src/lib/navigation.ts` ; son menu n'a plus de
+  sous-titre d'écran.
+- **Pourquoi** : dans un site vitrine, le formulaire avait l'allure d'un écran
+  de gestion au milieu de pages publiques.
