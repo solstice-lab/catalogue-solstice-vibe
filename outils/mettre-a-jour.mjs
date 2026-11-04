@@ -302,10 +302,15 @@ function dansUnNodeAPart(script, donnees, env = environnementDeGit()) {
 
 // Les briques de outils/modules.mjs au commit rejoué, avec ce que chacune exige et
 // entraîne : de quoi refuser un ajout incomplet en le disant, avant l'assemblage.
+// Et les profils de départ, avec les briques que chacun admet en plus (`permises`) :
+// {} à un commit d'avant les profils.
 function definitionsDuCommit(arbre) {
   const script =
-    "const { BRIQUES } = await import(donnees.module);" +
-    "console.log(JSON.stringify(Object.fromEntries(Object.entries(BRIQUES).map(([nom, { exige, entraine }]) => [nom, { exige: exige ?? [], entraine: entraine ?? [] }]))));";
+    "const { BRIQUES, PROFILS = {} } = await import(donnees.module);" +
+    "console.log(JSON.stringify({" +
+    "briques: Object.fromEntries(Object.entries(BRIQUES).map(([nom, { exige, entraine }]) => [nom, { exige: exige ?? [], entraine: entraine ?? [] }]))," +
+    "profils: Object.fromEntries(Object.entries(PROFILS).map(([nom, { briques, permises }]) => [nom, { briques: briques ?? [], permises: permises ?? null }]))," +
+    "}));";
   return JSON.parse(dansUnNodeAPart(script, { module: pathToFileURL(path.join(arbre, "outils", "modules.mjs")).href }));
 }
 
@@ -479,9 +484,9 @@ function rejouer({ catalogue, temporaire, nom, sha, commit, reglagesDe, controle
         `Le worktree temporaire du commit ${commit} n'a pas pu être créé : ${erreur.stderr?.trim() || erreur.message}`
       );
     }
-    const definitions = definitionsDuCommit(arbre);
+    const { briques: definitions, profils } = definitionsDuCommit(arbre);
     const reglages = reglagesDe(Object.keys(definitions));
-    controler?.(definitions, reglages);
+    controler?.(definitions, reglages, profils);
     const prettier = installerPrettier({ catalogue, arbre, commit: sha });
     // Nommé comme le paquet : sans nom donné, l'assembleur tire le paquet du
     // dossier de sortie (un premier jet le nommait « appli », et le paquet avec).
@@ -1558,19 +1563,23 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
   if (!aBlanc) verifierLaBranche(dossierAppli, nomDeBranche);
 
   return avecUnDossierTemporaire((temporaire) => {
+    // Les profils de départ du commit A, lus avec ses briques (ajout seulement).
+    let profils = {};
     const examen = examinerDans(temporaire, {
       racineCatalogue,
       dossierAppli,
       lecture,
       sha: shaOrigine,
       controler: ajout
-        ? (definitions, reglages) =>
+        ? (definitions, reglages, lesProfils) => {
             controlerLAjout({
               ajouter,
               presentes: briquesRecues(manifeste, reglages),
               definitions,
               commit: commitOrigine,
-            })
+            });
+            profils = lesProfils;
+          }
         : undefined,
     });
     const { origine } = examen;
@@ -1660,6 +1669,20 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
       }
     } else {
       avertissements.push("L'appli n'a pas de blueprint.md : commit_reference n'est noté que dans le manifeste.");
+    }
+    // Un profil qui n'admet pas une brique arrivée (comptes dans une vitrine) : l'en-tête
+    // dirait une autre appli que celle qu'elle devient. L'outil ne choisit pas le profil
+    // suivant, et ne s'en sert pas au rejeu (ses briques sont au manifeste) : à reprendre.
+    const profil = champDeLaBlueprint(contenus, "profil");
+    const permises = profils[profil]?.permises;
+    const horsProfil = Array.isArray(permises) ? ajoutees.filter((nom) => !permises.includes(nom)) : [];
+    if (horsProfil.length > 0) {
+      avertissements.push(
+        `blueprint.md déclare profil: ${profil}, qui n'admet en plus que ${permises.join(", ")} : avec ${horsProfil.join(", ")}, ` +
+          `l'appli n'en est plus une. Reprendre profil: à la main (${Object.keys(profils)
+            .filter((nom) => nom !== profil)
+            .join(" ou ")}), et le corps de la blueprint avec.`
+      );
     }
 
     // Les fichiers du socle que le report change : un commit qui ne touche au socle

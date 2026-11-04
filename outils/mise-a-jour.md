@@ -423,7 +423,7 @@ lourds »).
 - **Le manifeste au format 2** (décision 4), écrit par l'assembleur :
   `catalogue.commitComplet` à côté du commit court, et `assemblage` : `briques` (les
   choisies, celles du profil de l'en-tête comprises ; le profil lui-même n'est pas noté, et
-  l'outil n'a rien à savoir des profils), `ajouteesDOffice` (`{ nom, par }`), `paquet`, `nom` (le `--nom` donné, sinon
+  l'outil n'a pas besoin des profils pour rejouer), `ajouteesDOffice` (`{ nom, par }`), `paquet`, `nom` (le `--nom` donné, sinon
   `null`), `dependabot`, `entete` (les champs de l'en-tête de la blueprint que l'assembleur
   lit, hors `profil`, recopiés tels quels, guillemets compris ; `null` sans blueprint). `nom` et `entete`
   s'ajoutent à la liste de la décision : sans eux, l'assemblage ne se rejoue pas à
@@ -540,7 +540,11 @@ lourds »).
   (`echeances`, `calendrier`, `validation`, `import-lot`, `notifications`, le vocabulaire
   de `creer-appli`, hors `mails` seule, que ce repérage ne voit pas), chacune avec son
   ticket de l'appli ; celles dont elle part seulement du patron `dossiers` arrivent branchées sur le
-  catalogue, à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Au
+  catalogue, à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Une appli
+  assemblée par profil reçoit une brique comme une autre (les briques du profil sont au
+  manifeste) ; si son profil n'admet pas une brique arrivée (`permises` de `PROFILS` au
+  commit A : `comptes` dans une `vitrine`), le rapport avertit que `profil:` de l'en-tête
+  est à reprendre à la main. Au
   même commit, le rapport ne recopie ni les
   journaux des briques ni les commits du socle. Les deux cas d'essai de la tranche sont
   dans `tests/mettre-a-jour.test.ts`, avec un assemblage direct au commit A pour comparer,

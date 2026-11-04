@@ -1379,6 +1379,32 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
     }
   );
 
+  // Les profils de départ : leurs briques sont au manifeste, et le rejeu se fait sans
+  // `profil:` (il redonnerait les briques du profil du jour). Un ajout que le profil
+  // n'admet pas laisserait l'en-tête dire une autre appli : le rapport le signale.
+  it(
+    "ajoute à une appli assemblée par profil, et signale un ajout que son profil n'admet pas (comptes dans une vitrine)",
+    { timeout: 2 * REJEU },
+    () => {
+      const parProfil = path.join(dossierTemporaire("appli-"), "vitrine-profilee");
+      assemblerAuCommitA({ sortie: parProfil, briques: [], entete: "appli: Vitrine profilée\nprofil: vitrine" });
+      const head = git(parProfil, "rev-parse", "HEAD");
+
+      const admis = mettreAJour({ catalogue, appli: parProfil, ajouter: ["mails", "contact"], aBlanc: true });
+      expect(admis).toMatchObject({ ajoutees: ["mails", "contact"], lourds: { base: true, comptes: false } });
+      expect(admis.avertissements.join("\n")).not.toMatch(/profil/);
+
+      const horsProfil = mettreAJour({ catalogue, appli: parProfil, ajouter: ["comptes", "mails"], aBlanc: true });
+      expect(horsProfil).toMatchObject({ ajoutees: ["comptes", "mails", "rgpd"], lourds: { comptes: true } });
+      expect(horsProfil.avertissements.join("\n")).toMatch(
+        /profil: vitrine, qui n'admet en plus que mails, contact, deploiement : avec comptes, rgpd.*outil-interne ou portail/s
+      );
+      expect(rapport(horsProfil)).toMatch(/^- Attention : blueprint\.md déclare profil: vitrine/m);
+      expect(git(parProfil, "status", "--porcelain")).toBe("");
+      expect(git(parProfil, "rev-parse", "HEAD")).toBe(head);
+    }
+  );
+
   describe("refus en clair, avant toute écriture", () => {
     let publiee: string;
     beforeAll(() => {
