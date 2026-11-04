@@ -1077,6 +1077,7 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
       commitCible,
       branche: nomDeBranche,
       aBlanc,
+      aJour: shaCible === shaOrigine,
       retouchesAvant: examen.resultat.retouches,
       supprimesAvant: examen.resultat.supprimes,
       fichiers,
@@ -1327,6 +1328,19 @@ function rubriqueDeLaSuite(resultat) {
 
 /** Le rapport d'une mise à jour, en Markdown : le corps de la PR de l'appli. */
 export function rapport(resultat) {
+  // Une appli déjà au commit visé : rien à reporter, seulement ce qu'elle a retouché.
+  if (resultat.aJour) {
+    const lignes = [
+      `# Ce que l'appli a retouché du catalogue au commit ${resultat.commitOrigine}`,
+      "",
+      `Appli ${code(resultat.paquet)}, briques : ${resultat.briques.length === 0 ? "aucune" : resultat.briques.join(", ")}.`,
+      "À blanc : rien n'est écrit dans l'appli, déjà au commit visé.",
+      "",
+      ...rubriqueDesFichiers(resultat),
+      ...resultat.avertissements.map((texte) => `- Attention : ${texte}`),
+    ];
+    return `${lignes.join("\n").trimEnd()}\n`;
+  }
   const lignes = [
     `# Reporter le catalogue de ${resultat.commitOrigine} à ${resultat.commitCible}`,
     "",
@@ -1374,11 +1388,13 @@ signalé). Imprime le rapport en Markdown, le corps de la PR de l'appli.
   --a-blanc         le rapport seul : rien n'est écrit dans l'appli
 
 Le dossier est la racine d'un worktree de l'appli à l'arbre propre et, sauf
---a-blanc, dont le HEAD est son origin/main (git fetch origin avant). À blanc,
-une appli déjà au commit visé reçoit le rapport de ce qu'elle a retouché.
-L'outil crée la branche, y
-écrit et ne commite pas ; il s'arrête avant toute écriture si migrations.ts ou
-schema.sql changent entre l'origine et la cible (pas encore outillé). Seul appel
+--a-blanc, dont le HEAD est son origin/main (git fetch origin avant). L'outil y
+crée la branche, y écrit et ne commite pas ; le rapport s'écrit aussi dans le
+dossier git du worktree (git rev-parse --git-path catalogue-mise-a-jour.md). À
+blanc, une appli déjà au commit visé reçoit le rapport de ce qu'elle a
+retouché. L'outil s'arrête avant toute écriture si migrations.ts ou schema.sql
+changent entre l'origine et la cible (pas encore outillé). Le catalogue doit
+avoir le commit de l'appli (git fetch origin dans le catalogue). Seul appel
 au réseau : npm ci dans un worktree temporaire du catalogue, quand le Prettier
 d'un commit n'est pas celui qu'a installé le catalogue. L'ajout d'une brique
 (--ajouter) n'est pas encore outillé.`;

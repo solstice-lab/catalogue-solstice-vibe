@@ -92,7 +92,7 @@ Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 - l'arbre de l'appli n'est pas propre, ou, sauf à blanc, son `HEAD` n'est pas son
   `origin/main` à jour (`solstice-livrer` §1 : une branche part de là) ;
 - une brique de B est inconnue au commit A' (renommée ou retirée du catalogue) ;
-- le Prettier du commit A ne s'installe pas dans le worktree ;
+- le Prettier du commit A ou A' ne s'installe pas dans le worktree ;
 - l'origine rejouée ne redonne pas les empreintes du manifeste ;
 - un fichier neuf de la cible a le chemin d'un fichier de l'appli : le manifeste réécrit
   donnerait ce fichier pour venu du catalogue, et l'opération suivante le fusionnerait avec
@@ -353,7 +353,8 @@ changent ensemble. Ses cas qui rejouent des migrations tournent avec Postgres, d
 qui lance le test de l'assembleur (`assemblage.yml`). Les tests construisent leur propre
 catalogue d'essai à deux commits : la CI ne clone pas l'historique.
 
-1. **Reproduire l'origine d'une appli et lister ses écarts** (`--a-blanc` seul). Lire le
+1. **Reproduire l'origine d'une appli et lister ses écarts** (la fonction `examiner`, alors
+   exposée par `--a-blanc` seul). Lire le
    manifeste, déduire B, rejouer l'assembleur du commit A dans un worktree temporaire avec
    le Prettier de ce commit, comparer les empreintes, les refus en clair, la liste des
    fichiers retouchés et supprimés par l'appli. Avec le
@@ -425,17 +426,19 @@ depuis le catalogue (« Le circuit »).
   sans nom donné. Ne se rejouent pas ainsi, et l'écart des empreintes le dit : un en-tête
   changé depuis ; avec la brique `deploiement`, une blueprint sans `appli` ni `--nom`, ou
   `--nom` sans blueprint.
-- **Le rejeu** : l'assembleur du commit A est appelé par sa fonction `assembler`, dans un
+- **Le rejeu** : l'assembleur du commit A, puis celui du commit A' pour la cible, chacun
+  dans son worktree temporaire, est appelé par sa fonction `assembler`, dans un
   Node à part, et non par sa ligne de commande, qui refuse un catalogue dont l'arbre n'est
   pas propre : la jonction vers `node_modules` en est une modification pour git (le motif
   `node_modules/` ne vise pas un lien). Le `npm ci` du Prettier se fait sans les scripts
-  d'installation. Le worktree temporaire est retiré à la fin, refus compris.
+  d'installation. Les worktrees temporaires sont retirés à la fin, refus compris.
 - **La comparaison** : le manifeste que l'assembleur rejoué écrit, contre celui de l'appli,
   unité et empreinte de chaque fichier ; `NOTICE` contre l'origine rejouée.
 - **Les refus outillés** : dossier qui n'est pas la racine d'un dépôt git, arbre pas
   propre, manifeste absent, illisible ou d'un format inconnu, `+arbre-modifie`, commit A
-  absent du catalogue, worktree temporaire impossible à créer, verrou du commit A sans
-  Prettier, Prettier du commit A qui ne s'installe pas, assembleur du commit A qui refuse,
+  absent du catalogue, worktree temporaire impossible à créer, verrou du commit A (ou A')
+  sans Prettier, Prettier du commit A (ou A') qui ne s'installe pas, assembleur du commit A
+  (ou A') qui refuse,
   au format 1 une unité inconnue au commit A ou un `package.json` sans nom de paquet,
   empreintes qui ne se retrouvent pas.
   Le désaccord de `commit_reference` se signale.
