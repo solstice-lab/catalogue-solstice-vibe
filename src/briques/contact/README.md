@@ -197,8 +197,8 @@ faire valider par le client :
 - le lieu de traitement de Resend (brique mails) et ses garanties de
   transfert hors de l'Union européenne.
 
-Restent à venir, avec la purge du RGPD : les traces de la limite. L'empreinte de
-l'adresse IP est effacée au premier message reçu après une heure, et seulement
-alors (pas de purge planifiée). C'est une pseudonymisation, pas une
-anonymisation : sans sel, une adresse IPv4 se retrouve en les essayant toutes.
-Un HMAC avec un secret, ou une purge planifiée, sont à trancher.
+Les traces de la limite : l'empreinte de l'adresse IP est effacée au premier
+message reçu après une heure, et, sans nouveau message, par le script de purge
+de la brique rgpd (clé `contact-envois`). Reste à trancher : c'est une
+pseudonymisation, pas une anonymisation (sans sel, une adresse IPv4 se retrouve
+en les essayant toutes) ; un HMAC avec un secret la renforcerait.

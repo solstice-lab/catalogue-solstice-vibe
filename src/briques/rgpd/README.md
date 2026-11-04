@@ -281,7 +281,7 @@ le fait : date, ce qui change pour l'appelant, raison.
 Rien à faire dans le catalogue : les deux pages, l'écran de l'effacement, les
 droits, les entrées de menu (« Mes données », « Données personnelles ») et le
 script de purge sont en place. Le journal d'audit, quand l'appli l'a, trace
-aussi chaque export de l'admin, par sa source du registre. Le journal d'audit, quand l'appli l'a, trace l'effacement par le
+chaque export de l'admin, par sa source du registre, et l'effacement par le
 registre des effets de comptes, sans rien brancher sur les actions de
 l'effacement.
 

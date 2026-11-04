@@ -70,19 +70,27 @@ export const CLE_VERROU_PURGE = "brique rgpd : purge des données";
 
 const IDENTIFIANT = /^[a-z_][a-z0-9_]*$/;
 
-// Les noms de table et de colonne entrent dans le SQL tels quels : seul un
-// identifiant simple passe, vérifié pour toutes les conservations avant la
-// première requête.
-function verifierIdentifiants(liste: ConservationLue[]): void {
-  for (const { cle, purge } of liste) {
+const UNITES_SQL: Record<string, string> = { heures: "hours", jours: "days", mois: "months" };
+
+// Vérifié pour toutes les conservations avant la première requête :
+// - les noms de table et de colonne entrent dans le SQL tels quels, seul un
+//   identifiant simple passe ;
+// - une durée nulle effacerait toute la table ({ mois: 0 } viderait le
+//   journal) : un seul nombre entier, au moins 1, dans une unité connue. Le
+//   typage ne suffit pas, une surcharge du projet passe aussi par ici.
+function verifier(liste: ConservationLue[]): void {
+  for (const { cle, purge, duree } of liste) {
+    const unites = Object.entries(duree);
+    const [unite, nombre] = unites[0] ?? [];
+    if (unites.length !== 1 || !(unite in UNITES_SQL) || !Number.isInteger(nombre) || nombre < 1) {
+      throw new ErreurPurge(`« ${cle} » : la durée doit être un nombre entier, au moins 1, en heures, jours ou mois.`);
+    }
     if (!("table" in purge)) continue;
     if (!IDENTIFIANT.test(purge.table) || !IDENTIFIANT.test(purge.colonne)) {
       throw new ErreurPurge(`« ${cle} » : table et colonne doivent être des identifiants simples ([a-z_][a-z0-9_]*).`);
     }
   }
 }
-
-const UNITES_SQL: Record<string, string> = { heures: "hours", jours: "days", mois: "months" };
 
 // La condition d'échéance, à l'horloge de la base, comme les purges que font
 // déjà les briques (codes de connexion, notifications).
@@ -110,7 +118,7 @@ async function jouer(
   auPassage: boolean
 ): Promise<BilanPurge | PurgeOccupee> {
   const toutes = options.conservations ?? conservations();
-  verifierIdentifiants(toutes);
+  verifier(toutes);
   const retenues = auPassage ? toutes.filter(({ purge }) => "auPassage" in purge && purge.auPassage === true) : toutes;
   try {
     return await options.transaction(async (executeur) => {

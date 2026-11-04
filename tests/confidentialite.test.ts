@@ -225,7 +225,9 @@ describe("politique de confidentialité (RGPD art. 13)", () => {
     });
 
     it("deux conservations ne partagent jamais une clé, et chaque durée est un nombre entier positif", () => {
-      const toutes = conservations(MENTIONS, rempli());
+      // Avec le traitement factice : une appli dont aucune brique gardée ne
+      // déclare de durée (une vitrine sans contact) en a quand même une à lire.
+      const toutes = conservations(MENTIONS, avecDeclare(rempli()));
       expect(toutes.length).toBeGreaterThan(0);
       const cles = toutes.map((conservation) => conservation.cle);
       expect(new Set(cles).size).toBe(cles.length);

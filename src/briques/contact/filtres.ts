@@ -60,9 +60,10 @@ export async function reserverUnEnvoi(empreinte: string | null): Promise<boolean
     // toutes deux sous la limite. Le formulaire reçoit quelques messages par
     // heure, les attendre l'une après l'autre ne coûte rien.
     await client.query(`SELECT pg_advisory_xact_lock(hashtext('contact_envois'))`);
-    // La purge des traces se fait ici, et nulle part ailleurs : sans nouveau
-    // message, les traces de plus d'une heure restent en base (au plus
-    // PLAFOND_GLOBAL lignes). Durée à trancher (à venir, avec la brique RGPD).
+    // La purge des traces se fait ici, à chaque message. Sans nouveau message,
+    // les traces de plus d'une heure restent en base (au plus PLAFOND_GLOBAL
+    // lignes) jusqu'au script de purge de la brique rgpd, qui lit la même
+    // durée dans confidentialite.ts (clé contact-envois).
     await client.query(`DELETE FROM contact_envois WHERE recu_le < now() - make_interval(secs => $1)`, [FENETRE_S]);
     const compte = await client.queryOne<{ adresse: number; total: number }>(
       `SELECT count(*) FILTER (WHERE empreinte = $1)::int AS adresse, count(*)::int AS total FROM contact_envois`,

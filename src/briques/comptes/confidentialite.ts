@@ -46,7 +46,7 @@ const COMPTES = {
       cle: "comptes-inactifs",
       donnee: "Compte (adresse e-mail, rôle, dates)",
       duree: { mois: 24 },
-      depart: "après la dernière connexion, puis effacé",
+      depart: "après la dernière connexion",
       purge: {
         table: "utilisateurs",
         colonne: "derniere_connexion",
@@ -79,7 +79,7 @@ const CONNEXION_CODE = {
   sousTraitants: [],
   precisions: [
     "Le code part par e-mail (voir « Envoi des e-mails ») et vaut 10 minutes.",
-    "Ce sont des empreintes à clé : l'adresse, le code et l'adresse IP n'y figurent pas en clair. Elles ne servent qu'une heure. Passé ce délai, elles sont effacées lors d'une prochaine demande ou saisie de code sur le site, et restent en base jusque-là.",
+    "Ce sont des empreintes à clé : l'adresse, le code et l'adresse IP n'y figurent pas en clair. Elles ne servent qu'une heure. Passé ce délai, elles sont effacées lors d'une prochaine demande ou saisie de code sur le site, ou par la purge des données que l'équipe technique lance.",
   ],
   // Une heure : CONSERVATION_S de code-email.ts, la fenêtre des limites de
   // demandes. Le code les efface déjà à la demande suivante ; la purge

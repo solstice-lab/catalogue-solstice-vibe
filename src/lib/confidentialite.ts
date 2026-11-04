@@ -144,7 +144,11 @@ export type Confidentialite = {
   /**
    * La durée choisie par le projet pour une conservation déclarée, par sa clé,
    * quand elle diffère de celle que la brique propose (une obligation légale
-   * plus longue chez le client). La page et la purge lisent la même.
+   * plus longue chez le client). La page et la purge lisent la même. Une
+   * donnée que sa brique efface déjà elle-même (codes de connexion, traces du
+   * contact, codes faux d'un espace, notifications) garde aussi sa durée dans
+   * le code de la brique : surchargée ici seule, la politique et le script
+   * changent, pas ce que fait la brique ; la régler aux deux endroits.
    */
   durees: Record<string, Duree>;
   /** Vrai une fois les durées déclarées validées avec le client, surcharges comprises. */

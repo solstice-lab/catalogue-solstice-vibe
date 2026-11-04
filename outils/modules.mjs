@@ -742,8 +742,8 @@ export const BRIQUES = {
       ),
       remplace(
         "src/briques/journal/confidentialite.ts",
-        '    personnes:\n      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a créé ou modifié le compte.",',
-        '    personnes: "Les personnes qui ont un compte et modifient des fiches.",'
+        '    personnes:\n      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a créé ou modifié le compte, ou exporté les données.",',
+        '    personnes:\n      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a exporté les données.",'
       ),
     ],
   },

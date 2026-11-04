@@ -467,6 +467,7 @@ export const MIGRATIONS: Migration[] = [
           IF NOT EXISTS (
             SELECT 1 FROM pg_constraint
              WHERE conname = 'journal_audit_action_check'
+               AND conrelid = 'journal_audit'::regclass
                AND pg_get_constraintdef(oid) LIKE '%''export''%'
           ) THEN
             ALTER TABLE journal_audit DROP CONSTRAINT IF EXISTS journal_audit_action_check;

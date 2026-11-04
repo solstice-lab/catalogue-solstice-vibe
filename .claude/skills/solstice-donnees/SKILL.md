@@ -80,7 +80,9 @@ est citée quand elle existe.
    table sans donnée personnelle. Une source dit aussi comment elle s'efface
    (`effacer`, testé dans les tests de son unité) : on anonymise ou on retire
    l'adresse, on ne supprime pas une pièce de gestion. `tests/rgpd-export.test.ts` refuse une
-   table oubliée : sinon, elle manquerait à l'export sans que rien le dise.
+   table oubliée : sinon, elle manquerait à l'export sans que rien le dise. Sa
+   durée de conservation se déclare aussi, dans la `conservation` de son
+   traitement (`confidentialite.ts`), que la purge de la brique applique.
 
 Avant la PR, l'agent `relecteur-migrations` relit toute évolution de schéma.
 

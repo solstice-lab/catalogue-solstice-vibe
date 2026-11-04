@@ -156,6 +156,17 @@ describe("purge des données au terme de leur durée de conservation", () => {
     expect(await purger({ transaction, conservations: [CODES] })).toMatchObject({ effacees: [{ lignes: 0 }] });
   });
 
+  // Une durée nulle effacerait toute la table : { mois: 0 } sur le journal le
+  // viderait. Le typage ne l'empêche pas, et une surcharge du projet non plus.
+  it("refuse une durée nulle, négative, fractionnaire ou à deux unités, avant toute requête, et n'efface rien", async () => {
+    await codeAge(2);
+    for (const duree of [{ heures: 0 }, { mois: -1 }, { jours: 1.5 }, { mois: 12, jours: 1 }]) {
+      const fautive = { ...CODES, duree } as ConservationLue;
+      await expect(purger({ transaction, conservations: [fautive] })).rejects.toThrow(/durée/);
+    }
+    expect(await codesRestants()).toBe(1);
+  });
+
   it("refuse une table ou une colonne qui n'est pas un identifiant simple, avant toute requête", async () => {
     const piege: ConservationLue = {
       ...CODES,

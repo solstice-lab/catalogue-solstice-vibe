@@ -20,7 +20,7 @@ export const TRAITEMENTS_JOURNAL = [
       "Pour chaque export des données d'une personne par un administrateur : le compte de l'administrateur, la date et l'heure, et le compte exporté, désigné par son numéro.",
     ],
     personnes:
-      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a créé ou modifié le compte.",
+      "Les personnes qui ont un compte et modifient des fiches, et celles dont un administrateur a créé ou modifié le compte, ou exporté les données.",
     sousTraitants: [],
     precisions: [
       "Le journal ne garde aucune valeur saisie : seulement le nom des champs changés.",

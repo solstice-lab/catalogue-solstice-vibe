@@ -137,8 +137,11 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   `/confidentialite`) : le courriel où exercer ses droits, le délégué à la protection des
   données s'il y en a un, l'autorité de contrôle (la CNIL pour un client établi en France),
   et, pour chaque traitement des briques retenues, la base légale, la durée de conservation
-  et les destinataires. Le catalogue n'en propose aucune : elles engagent le client et
-  se font valider par lui (son conseil ou son délégué). Aussi : les données métier que
+  et les destinataires. Le catalogue ne propose ni base légale ni destinataires ; il
+  propose la durée des données que chaque brique déclare (`conservation`), affichée
+  « à valider ». Tout engage le client et se fait valider par lui (son conseil ou son
+  délégué) : une durée autre va dans `CONFIDENTIALITE.durees`, la validation dans
+  `dureesRevues`. Aussi : les données métier que
   l'appli gardera, à décrire comme traitements du projet. Les réponses vont dans la
   rubrique « Confidentialité » de la fiche ; une réponse manquante s'écrit « à faire
   valider » et passe aux questions ouvertes.

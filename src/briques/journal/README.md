@@ -11,7 +11,8 @@ responsable du projet.
 ## Ce qu'elle apporte (v1)
 
 - **Une table `journal_audit`** : l'instant, l'auteur, l'action (*création*,
-  *modification*, *suppression*), l'entité, son identifiant, sa référence au
+  *modification*, *suppression*, et *export* pour l'export des données d'une
+  personne par l'admin), l'entité, son identifiant, sa référence au
   moment du geste et, pour une modification, les **noms** des champs changés.
 - **Une trace écrite dans la transaction de l'écriture** (`journaliser`) : une
   écriture qui échoue ne laisse pas de trace, une trace qui échoue annule
@@ -28,8 +29,11 @@ responsable du projet.
   - la base refuse tout `UPDATE` sur la table (trigger) ;
   - un test-verrou (`tests/journal-isolement.test.ts`) interdit à `src/` et à
     `scripts/` tout `DELETE`, `TRUNCATE` ou `UPDATE` de la table ;
-  - la base garde le `DELETE` pour la purge de la brique RGPD, dont le
-    script s'ajoutera nommément aux exemptions de ce test-verrou.
+  - la base garde le `DELETE` pour la purge de la brique RGPD
+    (`scripts/purger-donnees.ts`), qui bâtit sa requête depuis la durée que
+    la brique déclare, sans nommer la table : le test-verrou n'a pas
+    d'exemption, et `tests/journal.test.ts` vérifie que cette durée ne se
+    purge jamais au passage d'une requête.
 
 Elle est branchée sur le patron `dossiers` : création, modification, suppression
 unitaire et en lot (une ligne par dossier). C'est le modèle qu'un module copie.

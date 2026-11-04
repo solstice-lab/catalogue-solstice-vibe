@@ -62,7 +62,8 @@ demander ce que le code ou le `CLAUDE.md` tranchent déjà.
   s'il y en a un, l'autorité de contrôle (la CNIL en France), la base légale, la durée de
   conservation et les destinataires de chaque traitement, et les données métier que
   l'appli gardera. Ces choix engagent le client : ni Claude ni la personne
-  qui mène le cadrage ne les proposent, ils sont « à faire valider » par lui (son conseil ou son délégué) tant qu'il ne les
+  qui mène le cadrage ne les proposent (seule exception, la durée des données
+  qu'une brique déclare, proposée par le catalogue, à valider de même), ils sont « à faire valider » par lui (son conseil ou son délégué) tant qu'il ne les
   a pas donnés, et la mise en ligne attend.
 - Quelqu'un entretiendra-t-il l'appli après la livraison (mises à jour des dépendances et des
   actions de la CI, correctifs de sécurité) ? Qui, et à quel rythme ? Recommandation : non
@@ -116,8 +117,9 @@ commit de la branche du premier ticket. Contenu :
   `src/lib/confidentialite.ts`, et les données métier propres au projet), le lieu des
   sous-traitants que le code ne situe pas. Ces choix engagent le client : « à faire
   valider » tant qu'il ne les a pas validés, et la question passe aux questions ouvertes.
-  Les valeurs se recopient dans `src/lib/confidentialite.ts`, que la page
-  `/confidentialite` affiche ;
+  Les valeurs se recopient dans `src/lib/confidentialite.ts` (`choix`, et
+  `durees` et `dureesRevues` pour les durées que les briques proposent), que
+  la page `/confidentialite` affiche ;
 - pour une nouvelle appli, une rubrique **Entretien après livraison** : quelqu'un entretient-il
   l'appli (mises à jour des dépendances et des actions de la CI, correctifs de sécurité) ?
   Qui, et à quel rythme ? La réponse décide de Dependabot (`socle.md`, « La CI ») : gardé si oui, retiré sinon

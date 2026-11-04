@@ -9,6 +9,7 @@ import {
   lireJournal,
 } from "../src/briques/journal/journal";
 import { SOURCES_JOURNAL } from "../src/briques/journal/donnees-personnelles";
+import { TRAITEMENTS_JOURNAL } from "../src/briques/journal/confidentialite";
 import { purger } from "../src/briques/rgpd/purge";
 import { conservations } from "../src/lib/confidentialite";
 import { UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
@@ -155,7 +156,7 @@ describe("table journal_audit", () => {
     ]);
     // « r » : RESTRICT. Un compte qui a laissé une trace ne se supprime pas
     // (on le désactive) ; l'effacement RGPD l'anonymise sans le supprimer, et la
-    // purge, à venir, efface ses lignes avant.
+    // purge de la brique RGPD n'efface que des lignes du journal, jamais un compte.
     const cle = await queryOne<{ confdeltype: string }>(
       "SELECT confdeltype FROM pg_constraint WHERE conname = 'journal_audit_utilisateur_fk'"
     );
@@ -261,14 +262,25 @@ describe("export des données d'une personne par l'admin", () => {
 });
 
 // La base garde le DELETE du journal pour cette purge seule : 12 mois après
-// le geste, par le script de la brique rgpd, que lance un humain.
+// le geste, par le script de la brique rgpd, que lance un humain. Les durées
+// proposées par la brique, pas celles de l'appli : un client qui surcharge la
+// sienne (CONFIDENTIALITE.durees) garde ce test vert.
 describe("purge du journal au terme de sa conservation (brique rgpd)", () => {
-  const DU_JOURNAL = conservations().filter(({ purge }) => "table" in purge && purge.table === "journal_audit");
+  const DU_JOURNAL = TRAITEMENTS_JOURNAL.flatMap(({ titre, conservation }) =>
+    conservation.map((declaree) => ({ ...declaree, traitement: titre }))
+  );
 
   it("le journal déclare 12 mois après le geste, purgés par le script seul, jamais au passage", () => {
     expect(DU_JOURNAL).toEqual([
       expect.objectContaining({ duree: { mois: 12 }, purge: { table: "journal_audit", colonne: "le" } }),
     ]);
+    // Et aucune autre déclaration de l'appli ne vise le journal (un module qui
+    // le purgerait au passage).
+    expect(
+      conservations()
+        .filter(({ purge }) => "table" in purge && purge.table === "journal_audit")
+        .map(({ cle }) => cle)
+    ).toEqual(["journal"]);
   });
 
   it("efface les lignes de plus de 12 mois et garde les plus récentes", async () => {

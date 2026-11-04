@@ -40,7 +40,7 @@ export const TRAITEMENTS_ESPACES = [
           table: "espaces_adhesions",
           colonne: "depart_le",
           aLaMain:
-            "Les données d'un module peuvent citer une adhésion terminée : la supprimer d'office les casserait. À anonymiser ou supprimer à la main, avec ce qui la cite.",
+            "Les données d'un module peuvent citer une adhésion terminée : la supprimer d'office les casserait. À supprimer à la main, avec ce qui la cite : le script la compte tant qu'elle reste.",
         },
       },
       {
