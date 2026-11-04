@@ -6,10 +6,22 @@ publique » du `README.md` de chaque brique (ce qu'une appli peut importer). Les
 avant de proposer un choix ; si un écart apparaît, croire le code, le dire, et corriger ce
 fichier dans une PR à part.
 
-Le résumé, arrêté au 2026-11-03, couvre le socle, la brique données, les briques `mails`,
+Le résumé, arrêté au 2026-11-04, couvre le socle, la brique données, les briques `mails`,
 `comptes`, `rgpd`, `gestion-comptes`, `espaces`, `journal`, `contact`, `notifications`, `echeances`,
-`calendrier`, `validation`, `import-lot` et `deploiement`, les dépendances entre briques et
-le site vitrine.
+`calendrier`, `validation`, `import-lot` et `deploiement`, les dépendances entre briques, les
+profils de départ et le site vitrine.
+
+## Les profils de départ (`profil:` de la blueprint)
+
+Trois points de départ, définis dans `PROFILS` d'`outils/modules.mjs` : le profil donne ses
+briques, `--briques` ajoute les autres (tableau de `SKILL.md`, étape 2).
+
+- **`vitrine`** : le socle seul. Au plus `mails`, `contact` et `deploiement` en plus ;
+  toute autre brique est refusée.
+- **`outil-interne`** : `comptes` et `mails`, donc la base et `rgpd` d'office. Le module
+  métier s'écrit dans l'appli sur le patron `dossiers`, avec les briques qu'il appelle.
+- **`portail`** : l'outil interne avec `gestion-comptes`, pour des personnes extérieures
+  qu'un admin invite. `espaces` en plus si le besoin est des groupes.
 
 ## Le catalogue : un socle et des briques
 

@@ -23,7 +23,7 @@ Reporter dans une appli assemblée un catalogue plus récent ne passe pas par ce
 étapes de migration neuves comprises, ajoutées en fin de la liste de l'appli.
 
 **Hors v1** : ajouter une brique à une appli déjà assemblée, déployer,
-faire lire la blueprint par le script (il n'en lit que `appli`, `nom_affiche`, `description`,
+faire lire la blueprint par le script (il n'en lit que `appli`, `profil`, `nom_affiche`, `description`,
 `site`, `entree`, `role_par_defaut` et `methodes` ; le reste de son en-tête reste informatif), plugin sur
 marketplace. Le module métier d'une appli (ses entités, sur le patron `dossiers`) ne
 s'assemble pas : il s'écrit dans l'appli, par tickets, une fois le dossier livré (étapes 5 et 6 ;
@@ -48,10 +48,13 @@ message, avec recommandation), le §2 (la forme : ici, une nouvelle appli assemb
 et le §3 (la fiche projet, présentée et validée dans la conversation). **Ne pas recopier ses
 questions ici.** Y ajouter ce que seul l'assemblage demande :
 
-- **Un site vitrine, ou une appli ?** À poser juste après le bloc « Le besoin ». Le besoin
-  a-t-il des données à garder (fiches, saisies, imports) ? Des personnes qui se
-  connectent ? Si c'est non aux deux, recommander le **site vitrine**, c'est-à-dire le
-  socle sans base (étape 2).
+- **Le profil de départ : vitrine, outil interne ou portail ?** À poser juste après le
+  bloc « Le besoin », avant toute brique. Le besoin a-t-il des données à garder (fiches,
+  saisies, imports) ? Des personnes qui se connectent ? Si c'est non aux deux,
+  recommander la **vitrine**, c'est-à-dire le socle sans base (étape 2). Sinon, les
+  personnes qui se connectent sont-elles toutes de l'organisation du client (**outil
+  interne**), ou aussi des personnes extérieures qu'un admin invite (**portail**) ? Le
+  profil retenu se note dans `profil:` de l'en-tête de la blueprint. Avec la vitrine :
   - Le client obtient : des pages dont le contenu est écrit dans le code, le kit, les
     mentions légales, la politique de confidentialité, `/sante` et la CSP du socle.
   - Il n'obtient pas : de base, de connexion ni de saisie gardée en base. L'assembleur ne
@@ -174,6 +177,18 @@ vérité, `choix.md` un résumé daté). Le catalogue est un socle et des brique
 aucun écran métier. Le module métier de l'appli (ses entités, leurs fiches et formulaires,
 leur couche données) s'écrit ensuite dans l'appli, par tickets, en copiant le patron
 `dossiers` (`CLAUDE.md` §3) ; ici, on choisit les briques dont ce module aura besoin.
+
+**Proposer le profil d'abord, puis les briques en plus.** Les profils sont définis dans
+`PROFILS` d'`outils/modules.mjs`, que l'assembleur lit aussi (la liste fait foi) :
+
+| Profil | Briques gardées | À proposer en plus, si le besoin les demande |
+| --- | --- | --- |
+| `vitrine` | aucune : le socle seul, sans base ni connexion | `mails`, `contact` (avec `mails`), `deploiement` ; **aucune autre** : l'assembleur refuse toute autre brique (`comptes`, une brique qui garde des fiches), qui n'en ferait plus une vitrine |
+| `outil-interne` | `comptes`, `mails`, donc la base et `rgpd` d'office | les briques que le module métier appellera, entité par entité (étape 1, dernière question) ; le module s'écrit ensuite sur le patron `dossiers` |
+| `portail` | l'outil interne, plus `gestion-comptes` (l'admin invite et gère les comptes sur `/comptes`) | `espaces` si le besoin est des groupes (une coloc, une association) qui ne voient que leurs fiches ; puis, comme l'outil interne, les briques du module métier |
+
+Le profil va dans `profil:` de l'en-tête, les briques en plus dans `--briques` (étape 4).
+Un besoin qu'aucun profil ne décrit s'assemble sans `profil:`, par `--briques` seul.
 Règles de l'assembleur :
 
 - **Site vitrine** (non aux deux questions de la première ligne de l'étape 1) : aucune
@@ -223,8 +238,8 @@ Règles de l'assembleur :
   métier s'écrit dans l'appli, sur le patron `dossiers`, et on choisit ici les briques dont
   il aura besoin. Assembler sans brique qui lit la base donne une appli sans base, qui n'en
   recevra pas après coup : ce n'est la réponse que si le besoin n'a pas de données à garder.
-  Si le besoin a des données, `--briques comptes,mails` au moins (avec `rgpd`, d'office)
-  garde la base, les droits, l'export et l'effacement des données d'une personne et le
+  Si le besoin a des données, le profil `outil-interne` au moins (sans profil,
+  `--briques comptes,mails`, avec `rgpd` d'office) garde la base, les droits, l'export et l'effacement des données d'une personne et le
   patron `dossiers` à copier. Un doute sur ce que le besoin garde : le dire, et laisser la
   personne responsable du projet trancher (retirer ensuite des écrans à la main est un
   changement structurel, `CLAUDE.md` §5).
@@ -273,8 +288,21 @@ node outils/assembler.mjs <dossier-de-sortie> --briques <liste> --blueprint <fic
 `.github/dependabot.yml`, que l'appli ne reçoit sinon pas. Sans lui, la sortie dit
 « Dependabot : retiré ».
 
-`--briques` nomme les briques retenues à l'étape 2, avec celles qu'elles exigent (`comptes,mails` ; `rgpd` vient d'office) ; `donnees` ne s'y nomme pas, la base suit les briques qui la lisent.
-Un site vitrine s'assemble sans `--briques`, ou avec `mails`, `deploiement` ou `mails,contact`, s'il y a lieu : `node outils/assembler.mjs <dossier-de-sortie> --blueprint <fichier> --fiche <fichier> [--briques <liste>] [--dependabot]`.
+Le profil de l'en-tête (`profil:`) donne ses briques ; `--briques` nomme celles retenues
+**en plus** à l'étape 2, avec celles qu'elles exigent ; `donnees` ne s'y nomme pas, la base
+suit les briques qui la lisent. Sans profil, `--briques` nomme toutes les briques
+(`comptes,mails` au moins pour une appli qui garde des données ; `rgpd` vient d'office).
+Une liste vide se dit en omettant `--briques`. Pour chaque profil :
+
+| `profil:` de l'en-tête | Commande |
+| --- | --- |
+| `vitrine` | `node outils/assembler.mjs <dossier-de-sortie> --blueprint <fichier> --fiche <fichier>`, avec `--briques mails`, `deploiement` ou `mails,contact` s'il y a lieu |
+| `outil-interne` | `node outils/assembler.mjs <dossier-de-sortie> --blueprint <fichier> --fiche <fichier>`, avec `--briques echeances,import-lot` (par exemple) pour le module métier |
+| `portail` | `node outils/assembler.mjs <dossier-de-sortie> --blueprint <fichier> --fiche <fichier> --briques espaces`, `espaces` seulement si le besoin est des groupes |
+
+`--dependabot` s'ajoute à chacune, comme dit plus haut. Le manifeste
+(`catalogue.empreintes.json`) note la liste réelle des briques, pas le profil : l'outil de
+mise à jour la rejoue telle quelle.
 
 Liste séparée par des virgules, sans espace. Le nom du paquet de l'appli (`package.json`,
 d'où ses bases locales) vient du champ `appli:` de la blueprint (à défaut, du nom du dossier
@@ -312,6 +340,8 @@ attendu », se corrigent en relisant la commande.
 | Le motif contient | Que faire |
 | --- | --- |
 | « Brique inconnue » | Corriger le nom ; le message liste les valeurs permises. |
+| « Profil inconnu » | Corriger `profil:` dans l'en-tête de la blueprint ; le message liste les profils. |
+| « Le profil … n'admet en plus que … » | Une brique de `--briques` sort du profil (une vitrine avec `comptes`) : revenir à l'étape 2 avec la personne responsable du projet. Soit le besoin veut cette brique, et le profil change (`outil-interne` ou `portail`, blueprint à reprendre) ; soit il ne la veut pas, et elle sort de `--briques`. |
 | « « donnees » ne se choisit pas » | La retirer de `--briques` : la base vient d'office avec les briques qui la lisent. |
 | « La brique … exige la ou les briques … » | Ajouter ces briques à `--briques`, après avoir vérifié à l'étape 2 que le besoin les veut. La mention « (ajoutée d'office avec comptes) » désigne `rgpd`, que `comptes` entraîne. |
 | « Nom d'appli … » | Le champ `appli:` de la blueprint (ou le nom du dossier) donne un nom de paquet refusé (pas de lettre en tête, trop long, celui du catalogue) : corriger `appli:`, ou passer `--nom`. |
@@ -331,7 +361,8 @@ attendu », se corrigent en relisant la commande.
 | « la mise en forme des fichiers retouchés a échoué » | Laisse des fichiers, comme la ligne suivante. Rapporter le message à l'humain ; c'est lui qui vide le dossier, puis on relance. |
 | « … le premier commit a échoué » | **Refus qui laisse des fichiers** : l'appli est copiée, son dépôt créé, sans commit. Rapporter la cause à l'humain ; une fois corrigée, c'est lui qui vide le dossier, puis on relance. |
 
-Relire la sortie : la ligne « Assemblé : … » (nombre de fichiers, commit), la ligne
+Relire la sortie : la ligne « Assemblé : … » (nombre de fichiers, commit), avec un profil la
+ligne « Profil : … », qui redit les briques du profil puis celles de `--briques`, la ligne
 « Ajouté d'office : rgpd (avec comptes). » quand `comptes` est choisi sans `rgpd`, et la ligne
 « Retiré : … », qui doit contenir tout ce qui n'a été ni choisi ni ajouté d'office : chaque
 brique non choisie, `partagée patron-dossiers` quand `comptes` ne l'est pas, `partagée

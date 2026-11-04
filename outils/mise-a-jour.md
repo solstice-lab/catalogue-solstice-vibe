@@ -390,7 +390,7 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    décision à prendre maintenant, avec ce que coûterait de les ajouter plus tard), et les
    textes que l'ajout rend faux : « n'en recevra pas après coup » (`creer-appli`, étapes 1
    et 2), « pas outillé » (README de la brique notifications), et ceux qui disent l'en-tête
-   de la blueprint lu pour `appli`, `nom_affiche`, `description`, `site`, `entree`, `role_par_defaut`, `methodes` et `commit_reference` seulement (`blueprint-modele.md`,
+   de la blueprint lu pour `appli`, `profil`, `nom_affiche`, `description`, `site`, `entree`, `role_par_defaut`, `methodes` et `commit_reference` seulement (`blueprint-modele.md`,
    le commentaire de la blueprint minimale dans `assembler.mjs`). Fait quand deux cas
    d'essai passent :
    - une appli `comptes,mails` retouchée (droits, menu, registre, politique, une étape de
@@ -416,15 +416,17 @@ migration, en fin de liste (« Les migrations »).
 
 - **Le manifeste au format 2** (décision 4), écrit par l'assembleur :
   `catalogue.commitComplet` à côté du commit court, et `assemblage` : `briques` (les
-  choisies), `ajouteesDOffice` (`{ nom, par }`), `paquet`, `nom` (le `--nom` donné, sinon
+  choisies, celles du profil de l'en-tête comprises ; le profil lui-même n'est pas noté, et
+  l'outil n'a rien à savoir des profils), `ajouteesDOffice` (`{ nom, par }`), `paquet`, `nom` (le `--nom` donné, sinon
   `null`), `dependabot`, `entete` (les champs de l'en-tête de la blueprint que l'assembleur
-  lit, recopiés tels quels, guillemets compris ; `null` sans blueprint). `nom` et `entete`
+  lit, hors `profil`, recopiés tels quels, guillemets compris ; `null` sans blueprint). `nom` et `entete`
   s'ajoutent à la liste de la décision : sans eux, l'assemblage ne se rejoue pas à
   l'identique, car le nom donné nomme le service de `render.yaml` et l'en-tête remplit
   `navigation.ts`, `referencement.ts`, `mentions-legales.ts` et la configuration de
   `comptes`. L'outil rejoue l'en-tête par une blueprint qui n'a que ces champs.
 - **Le format 1, déduit** : les briques des unités, le paquet par `package.json`, Dependabot
-  par son fichier, la blueprint de l'appli à son `HEAD` avec le paquet à `--nom` (il redonne
+  par son fichier, la blueprint de l'appli à son `HEAD`, sans le `profil:` de son en-tête
+  (ses briques sont déjà dans les unités), avec le paquet à `--nom` (il redonne
   le paquet et le nom du service de `render.yaml`). La blueprint minimale que l'assembleur
   écrit sans `--blueprint` ne se redonne pas : elle remplirait l'hébergeur et l'entrée.
   L'assemblage se rejoue dans un dossier nommé comme le paquet, d'où l'assembleur le tire

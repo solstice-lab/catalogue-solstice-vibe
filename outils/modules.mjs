@@ -828,6 +828,45 @@ export const BRIQUES = {
   },
 };
 
+// Les profils de départ : trois points de départ qui simplifient le choix des
+// briques au cadrage, plutôt qu'un choix parmi toutes et leurs exigences. La skill
+// creer-appli propose le profil d'abord, puis les briques en plus ; l'assembleur
+// le lit dans l'en-tête de la blueprint (`profil:`) et en déduit les briques,
+// auxquelles --briques ajoute. Le manifeste de l'appli note la liste réelle des
+// briques, jamais le profil : outils/mettre-a-jour.mjs n'a rien à savoir des
+// profils, et un profil qui change ici ne change pas une appli déjà assemblée.
+//   briques   : ce que le profil garde, avec ce que ces briques exigent ; ce
+//               qu'elles entraînent (rgpd avec comptes) vient d'office, et la
+//               sortie de l'assembleur le dit ;
+//   permises  : les seules briques qui peuvent s'y ajouter, quand le profil
+//               borne sa liste ; absent, toute brique du catalogue ;
+//   proposees : les briques que la skill propose en plus, si le besoin les demande.
+export const PROFILS = {
+  // Un site sans connexion ni données gardées, son contenu écrit dans le code.
+  // Une brique qui connecte ou garde des fiches en ferait une autre appli :
+  // refusée plutôt que de laisser croire à une vitrine. contact garde la base
+  // pour sa limite d'envois, sans connexion.
+  vitrine: {
+    briques: [],
+    permises: ["mails", "contact", "deploiement"],
+    proposees: ["mails", "contact", "deploiement"],
+  },
+  // Une appli à comptes pour les personnes de l'organisation. Son module métier
+  // s'écrit dans l'appli sur le patron dossiers ; les briques qu'il appelle se
+  // choisissent entité par entité au cadrage (skill creer-appli, étape 1).
+  "outil-interne": {
+    briques: ["comptes", "mails"],
+    proposees: [],
+  },
+  // Un outil interne ouvert à des personnes extérieures : un admin y gère les
+  // comptes et les invitations (/comptes). espaces si le besoin est des groupes
+  // (une coloc, une association) qui ne voient que leurs fiches.
+  portail: {
+    briques: ["comptes", "mails", "gestion-comptes"],
+    proposees: ["espaces"],
+  },
+};
+
 // L'adresse IP du visiteur : pas une brique au choix. Seules la connexion
 // par code (brique comptes) et la limite d'envois du formulaire de contact la
 // lisent ; elle reste tant que l'une des deux reste, et un site vitrine sans

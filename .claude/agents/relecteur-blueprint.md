@@ -10,7 +10,9 @@ aucun fichier. Tu ne lances **jamais** `node outils/assembler.mjs` avec un dossi
 `cat-file`, `show`).
 
 L'assembleur ne lit pas le corps de la blueprint : il en remplace la ligne `commit_reference`
-et la recopie à la racine de l'appli. De l'en-tête, il lit `appli`, `nom_affiche`,
+et la recopie à la racine de l'appli. De l'en-tête, il lit `profil` (`vitrine`,
+`outil-interne` ou `portail` : `PROFILS` d'`outils/modules.mjs`), dont il garde les briques
+avant celles de `--briques`, puis `appli`, `nom_affiche`,
 `description` et `site` (`public` ou `ferme`, sinon il refuse) et les écrit dans l'appli ; avec
 la brique `comptes`, il lit aussi `entree` (`ouverte` ou `ferme`), `role_par_defaut` (jamais un
 rôle d'administration) et `methodes`, écrits dans `src/config/comptes.ts` et
@@ -26,7 +28,8 @@ l'aura, avec un ticket pour chaque chose que l'assembleur ne donne pas.
 ## Ce qu'on te donne
 
 Le chemin de la blueprint, et si possible la valeur prévue de `--briques`. Sans elle, prends
-celle de l'en-tête (`briques_assemblees`) et dis que tu n'as pu la comparer à rien. Tu
+celle de l'en-tête (`briques_assemblees`, moins les briques du profil et `rgpd`) et dis
+que tu n'as pu la comparer à rien. Tu
 travailles depuis la racine du catalogue.
 
 Tu ne commentes pas l'état de l'arbre git du catalogue (modifications non commitées,
@@ -36,7 +39,8 @@ branche) : c'est l'étape 0 de la skill, pas la blueprint.
 
 1. `.claude/skills/creer-appli/blueprint-modele.md` : le format (en-tête, neuf sections dans
    l'ordre, ce que la blueprint ne cite pas).
-2. `outils/modules.mjs` : `BRIQUES` (noms, `exige`, `entraine`, `fichiers`), les unités
+2. `outils/modules.mjs` : `BRIQUES` (noms, `exige`, `entraine`, `fichiers`), `PROFILS`
+   (les briques de chaque profil, et celles qu'il admet en plus), les unités
    partagées `PATRON_DOSSIERS` (les écrans du patron, gardés avec `comptes`), `ADRESSE_IP`
    et `DONNEES` (la base, gardée dès qu'une brique gardée l'exige), `EXCLUS_DU_CATALOGUE`.
    La liste est la vérité ; `.claude/skills/creer-appli/choix.md` n'en est qu'un résumé
@@ -59,9 +63,11 @@ prototype de demande d'achat, ou le texte même de l'assembleur.
 dans `--briques` (la base vient d'office avec les briques qui la lisent) ; une brique dont
 les briques d'`exige` (hors `donnees`) manquent de `--briques` (`comptes`, `contact` et
 `notifications` exigent `mails` ; `rgpd`, `journal` et `gestion-comptes` exigent `comptes` ;
-`espaces` exige `comptes` et `mails`) ;
+`espaces` exige `comptes` et `mails`), une fois les briques du profil ajoutées ; un
+`profil:` qui n'est pas une clé de `PROFILS` ; une brique de `--briques` que le profil
+n'admet pas (`permises` : une vitrine avec `comptes`) ;
 un champ `appli:` dont le nom de paquet ne commence pas par une lettre, dépasse
-58 caractères ou est celui du catalogue (sauf `--nom`). Les trois derniers se jugent sur la
+58 caractères ou est celui du catalogue (sauf `--nom`). Ces refus se jugent sur la
 commande prévue et l'en-tête, pas sur le corps. Il ne refuse **pas** une brique qui lit la
 base sans écran métier pour la brancher : `echeances`, `calendrier`, `validation`,
 `import-lot` et `notifications` se gardent seules, avec la base, et arrivent à brancher.
@@ -72,6 +78,9 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
 
 **Le script ne vérifie rien de ce qui suit**, la blueprint doit donc être juste d'elle-même :
 
+- `profil` est présent si la fiche ou le cadrage en retient un ; absent, `--briques` doit
+  nommer toutes les briques (un outil interne sans `profil:` ni `comptes` dans
+  `--briques` s'assemble sans connexion, et rien ne le refuse).
 - `format`, `appli`, `statut`, `commit_reference`, `briques_assemblees`, `entites`,
   `briques` sont présents dans l'en-tête, ainsi que `nom_affiche`, `description` et `site`
   (`public` ou `ferme`) : un champ absent laisse sa valeur de remplacement (`NOM_APP`,
@@ -86,9 +95,11 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   section 5 dit comment une adresse invitée est admise (l'invitation ne crée pas de
   compte) : constat si elle ne le dit pas. Section 9 :
   le retrait de `"demo"` de `METHODES` avant la mise en ligne y figure.
-- **La liste de l'en-tête redit exactement** la valeur de `--briques`, plus les briques
-  ajoutées d'office (`rgpd` avec `comptes`) : c'est ce qui dit, sans lire le code, ce qui
-  est installé.
+- **La liste de l'en-tête redit exactement** les briques du profil, puis la valeur de
+  `--briques`, plus les briques ajoutées d'office (`rgpd` avec `comptes`) : c'est ce qui
+  dit, sans lire le code, ce qui est installé. Le profil redit aussi le corps : une vitrine
+  dont le corps décrit des connexions, un outil interne ouvert à des personnes extérieures
+  qu'un admin invite (c'est le `portail`), un portail sans personne extérieure : constat.
 - `commit_reference` : « à renseigner » ou un commit réel (`git cat-file -e`). Un commit
   inventé est un constat : l'assembleur écrit le sien. **(client)**
 - **(client)** L'emplacement du fichier : dans le dépôt catalogue, il serait un fichier non
@@ -104,7 +115,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   « fourni »), ou une entité sans ticket à la section 9. Un besoin sans aucune entité ni
   aucune donnée à garder, assemblé avec la base : le dire, c'est une décision pour la
   personne responsable du projet, pas une blueprint à valider.
-- **Un site vitrine** (`entites: []`, au plus `mails`, `deploiement` et `contact` dans
+- **Un site vitrine** (`profil: vitrine`, `entites: []`, au plus `mails`, `deploiement` et `contact` dans
   `briques_assemblees`) n'a pas d'entité, et c'est voulu. Il y a constat si son corps décrit
   des données à garder, une saisie gardée en base, ou des personnes qui se connectent :
   l'appli n'aura pas de connexion, et pas de base hors celle de `contact` (sa limite

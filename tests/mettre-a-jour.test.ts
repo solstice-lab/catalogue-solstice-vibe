@@ -248,6 +248,49 @@ describe("mettre-a-jour, examen : l'origine d'une appli rejouée au commit de so
     }
   );
 
+  // Le profil de l'en-tête (outils/modules.mjs, PROFILS) ne passe pas au
+  // manifeste : ses briques y sont notées comme choisies, et l'outil les rejoue
+  // sans rien savoir des profils.
+  it(
+    "reproduit sans écart une appli assemblée avec un profil, d'après les briques notées au manifeste",
+    { timeout: REJEU },
+    () => {
+      const portail = path.join(dossierTemporaire("appli-"), "essai-portail");
+      assembler({
+        source: catalogue,
+        sortie: portail,
+        commit: commitA,
+        briques: [],
+        blueprint: blueprint("appli: Essai de portail\nprofil: portail"),
+      });
+      expect(examiner({ catalogue, appli: portail })).toMatchObject({
+        format: 2,
+        briques: ["comptes", "mails", "gestion-comptes"],
+        deduits: false,
+        paquet: "essai-de-portail",
+        retouches: [],
+        supprimes: [],
+      });
+    }
+  );
+
+  // Au format 1, l'outil redonne la blueprint de l'appli : un `profil:` ajouté à
+  // son en-tête après coup y aurait fait garder en silence les briques du profil.
+  it(
+    "ignore, au format 1, un profil ajouté à l'en-tête de la blueprint de l'appli : les briques sont celles des unités",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliRetouchee((d) => {
+        enFormat1(d);
+        const fichier = path.join(d, "blueprint.md");
+        fs.writeFileSync(fichier, fs.readFileSync(fichier, "utf-8").replace("---\n", "---\nprofil: portail\n"));
+      });
+      const resultat = examiner({ catalogue, appli: dossier });
+      expect([...resultat.briques].sort()).toEqual(["comptes", "mails", "rgpd"]);
+      expect(resultat).toMatchObject({ format: 1, retouches: [], supprimes: [] });
+    }
+  );
+
   it(
     "refuse un manifeste faussé, en nommant les fichiers dont l'empreinte ne se retrouve pas",
     { timeout: REJEU },

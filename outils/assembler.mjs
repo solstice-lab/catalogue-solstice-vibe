@@ -8,6 +8,10 @@
  *        --briques comptes,mails,echeances,calendrier [--nom mon-appli] [--blueprint fichier.md] \
  *        [--fiche fiche-projet.md] [--dependabot]
  *
+ * Le profil de départ (vitrine, outil-interne, portail : PROFILS
+ * d'outils/modules.mjs) se lit dans l'en-tête de la blueprint (`profil:`) ;
+ * --briques ajoute à ses briques.
+ *
  * Il ne déploie rien, ne touche à aucune base, ne lit ni n'écrit aucun
  * secret : il copie des fichiers suivis par git vers un dossier, puis fait de
  * ce dossier un dépôt git LOCAL d'un seul commit, sans remote ni
@@ -34,6 +38,7 @@ import {
   OPTIONS_DU_SOCLE,
   NOM_DU_CATALOGUE,
   PATRON_DOSSIERS,
+  PROFILS,
   RETRAITS_DU_SOCLE,
   remplissagesDeLEnTete,
   remplissagesDeLEntree,
@@ -139,6 +144,41 @@ export function briquesEntrainees(briques, catalogue = { BRIQUES }) {
   }
   return ajoutees;
 }
+
+/**
+ * Les briques d'un assemblage : celles du profil de départ (`profil:` de
+ * l'en-tête de la blueprint, PROFILS d'outils/modules.mjs), puis celles de
+ * --briques qui n'y sont pas déjà. Sans profil, --briques seul. Un profil qui
+ * borne sa liste (`permises`) refuse une brique de plus qui en ferait une autre
+ * appli, au lieu de la garder sous un nom qui ne la décrit plus. Ce qui est
+ * entraîné (rgpd avec comptes) se calcule ensuite, comme pour --briques seul.
+ * @param {{ profil?: string, briques: string[] }} choix
+ * @param {{ PROFILS: Record<string, { briques: string[], permises?: string[] }> }} [catalogue]
+ * @returns {string[]}
+ */
+export function briquesDeLAssemblage({ profil, briques }, catalogue = { PROFILS }) {
+  if (profil === undefined) return [...briques];
+  const definition = catalogue.PROFILS[profil];
+  if (definition === undefined) {
+    throw new ErreurAssemblage(`Profil inconnu « ${profil} ». Profils : ${Object.keys(catalogue.PROFILS).join(", ")}.`);
+  }
+  const enPlus = briques.filter((nom) => !definition.briques.includes(nom));
+  const refusee = enPlus.find((nom) => definition.permises !== undefined && !definition.permises.includes(nom));
+  if (refusee !== undefined) {
+    const autres = Object.keys(catalogue.PROFILS).filter((nom) => nom !== profil);
+    throw new ErreurAssemblage(
+      `Le profil « ${profil} » n'admet en plus que ${definition.permises.join(", ")} : « ${refusee} » en ferait une autre appli. ` +
+        `Choisir un autre profil (${autres.join(", ")}), ou retirer « ${refusee} ».`
+    );
+  }
+  return [...new Set([...definition.briques, ...enPlus])];
+}
+
+// Le profil que déclare l'en-tête de la blueprint, s'il y en a un. L'en-tête
+// seul, sans option --profil : le cadrage y écrit déjà tous ses choix, et deux
+// sources pour un même choix pourraient se contredire. Les fins de ligne sont
+// ramenées à « \n » ici parce que main() le lit avant noterLeCommit.
+const profilDeLaBlueprint = (markdown) => champDeLEntete(markdown.replace(/\r\n/g, "\n"), "profil");
 
 // Qui est gardé, qui est retiré. La base n'est pas au choix : elle suit les
 // briques qui l'exigent.
@@ -533,10 +573,14 @@ function preparerLeDepot(destination, premierCree) {
 // `manifeste` : écrit une fois les fichiers dans l'index, dont il lit les empreintes,
 // puis remis en forme par `formater` : au format 2, ses listes s'écrivent sur une
 // ligne pour Prettier, et la CI de l'appli refusait sinon son premier commit.
-function commiterLeSocle(destination, { commit, gardees, ajoutees, retirees, dependabot, manifeste, formater }) {
+function commiterLeSocle(
+  destination,
+  { commit, profil, gardees, ajoutees, retirees, dependabot, manifeste, formater }
+) {
   const corps = [
     "Assemblée par l'assembleur du catalogue Solstice-vibe. Dépôt local, sans remote : rien n'est poussé.",
     "",
+    ...(profil === undefined ? [] : [`Profil : ${profil}.`]),
     `Gardé : ${gardees.join(", ")}.`,
     ...(ajoutees.length > 0 ? [`Ajouté d'office : ${ajoutees.join(", ")}.`] : []),
     `Retiré : ${retirees.length === 0 ? "rien" : retirees.join(", ")}.`,
@@ -880,7 +924,9 @@ const FORMAT_DU_MANIFESTE = 2;
 
 // Les champs de l'en-tête de la blueprint qui changent les fichiers de l'appli,
 // recopiés tels quels (guillemets et commentaire compris) : rejoués dans une
-// blueprint qui n'a qu'eux, ils redonnent les mêmes valeurs.
+// blueprint qui n'a qu'eux, ils redonnent les mêmes valeurs. Hors `profil` :
+// ses briques sont dans `assemblage.briques`, et le rejouer les redonnerait
+// selon le profil du jour, pas celui de l'assemblage.
 const CHAMPS_DE_L_ENTETE_LUS = ["appli", "nom_affiche", "description", "site", "entree", "role_par_defaut", "methodes"];
 
 function enteteLue(markdown) {
@@ -943,9 +989,9 @@ function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
     "# Blueprint de l'appli, créée par outils/assembler.mjs. L'en-tête ne porte que",
-    "# l'essentiel, en clair : l'assembleur en lit appli, nom_affiche, description, site,",
-    "# entree, role_par_defaut, methodes et commit_reference ; tout le reste est dans le",
-    "# corps, à écrire.",
+    "# l'essentiel, en clair : l'assembleur en lit appli, profil, nom_affiche, description,",
+    "# site, entree, role_par_defaut, methodes et commit_reference ; tout le reste est dans",
+    "# le corps, à écrire.",
     "format: 1",
     `appli: ${nom}`,
     "statut: assemblée depuis le catalogue, à décrire",
@@ -969,17 +1015,25 @@ function blueprintParDefaut({ nom, commit, briques }) {
  * l'appelant le choisit (la ligne de commande lit celui du dépôt, un test en
  * donne un fictif). `fiche`, si donnée, devient le PROJET.md de l'appli.
  * `dependabot` : garder .github/dependabot.yml, que l'appli ne reçoit sinon pas.
+ * `briques` s'ajoute à celles du profil que déclare l'en-tête de la blueprint
+ * (`profil:`), s'il y en a un (briquesDeLAssemblage).
  */
 /**
  * @param {{ source: string, sortie: string, briques: string[], commit: string, nom?: string, blueprint?: string, fiche?: string, dependabot?: boolean }} options
- * @returns {{ fichiers: string[], retires: string[], ajoutees: string[], commitInitial: string }}
- *   `ajoutees` : les briques gardées sans être choisies, « rgpd (avec comptes) ».
+ * @returns {{ fichiers: string[], retires: string[], ajoutees: string[], commitInitial: string, profil?: string, briques: string[] }}
+ *   `ajoutees` : les briques gardées sans être choisies, « rgpd (avec comptes) » ;
+ *   `briques` : les choisies, celles du profil d'abord, telles que notées au manifeste.
  */
 export function assembler({ source, sortie, briques, commit, nom, blueprint, fiche, dependabot = false }) {
   const racine = path.resolve(source);
   const destination = path.resolve(sortie);
-  const unites = planifier({ briques });
-  const entrainees = briquesEntrainees(briques);
+  // La blueprint est lue d'abord : son en-tête peut donner le profil de départ,
+  // dont les briques passent avant celles de --briques.
+  const blueprintDonnee = blueprint ? lireLaBlueprint(blueprint) : undefined;
+  const profil = blueprintDonnee === undefined ? undefined : profilDeLaBlueprint(blueprintDonnee);
+  const choisies = briquesDeLAssemblage({ profil, briques });
+  const unites = planifier({ briques: choisies });
+  const entrainees = briquesEntrainees(choisies);
 
   const relatif = path.relative(racine, destination);
   if (relatif === "" || (!relatif.startsWith("..") && !path.isAbsolute(relatif))) {
@@ -1022,11 +1076,11 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   const prettier = prettierDuCatalogue(racine);
   const nomAppli = nom ?? path.basename(destination);
   const contenuBlueprint = blueprint
-    ? noterLeCommit(lireLaBlueprint(blueprint), commit)
+    ? noterLeCommit(blueprintDonnee, commit)
     : blueprintParDefaut({
         nom: nomAppli,
         commit,
-        briques: [...briques, ...entrainees.map(({ nom }) => nom)],
+        briques: [...choisies, ...entrainees.map(({ nom }) => nom)],
       });
   const contenuFiche = fiche === undefined ? undefined : lireLaFiche(fiche);
   const contenuAvis = avisDeLicence(racine);
@@ -1145,19 +1199,22 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   const ajoutees = entrainees.map(({ nom, par }) => `${nom} (avec ${par})`);
   const commitInitial = commiterLeSocle(destination, {
     commit,
+    profil,
     gardees: unites.filter((unite) => unite.gardee).map(nommer),
     ajoutees,
     retirees,
     dependabot,
-    // Les briques telles que choisies, celles ajoutées d'office à part, et le
-    // nom tel que donné : ce sont eux que l'assembleur rejoué doit recevoir.
+    // Les briques telles que choisies (celles du profil comprises, le profil
+    // lui-même non : enteteLue ne le recopie pas), celles ajoutées d'office à
+    // part, et le nom tel que donné : ce sont eux que l'assembleur rejoué doit
+    // recevoir.
     manifeste: () =>
       manifesteDEmpreintes(destination, {
         version,
         commit,
         commitComplet,
         assemblage: {
-          briques,
+          briques: choisies,
           ajouteesDOffice: entrainees,
           paquet: nomPaquet,
           nom: nom ?? null,
@@ -1170,7 +1227,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
     formater: (fichiers) => mettreEnForme(prettier, destination, fichiers),
   });
 
-  return { fichiers: ecrits, retires: retirees, ajoutees, commitInitial };
+  return { fichiers: ecrits, retires: retirees, ajoutees, commitInitial, profil, briques: choisies };
 }
 
 // ---------------------------------------------------------------- ligne de commande
@@ -1178,7 +1235,8 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
 const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste>] [options]
 
   --briques <liste>   briques à garder, séparées par des virgules : ${Object.keys(BRIQUES).join(", ")}
-                      (aucune : un site sans base de données ;
+                      (en plus de celles du profil de la blueprint, s'il y en a un ;
+                      aucune, sans profil : un site sans base de données ;
                       une brique exige les siennes : voir le message d'erreur ;
                       la base, « donnees », vient d'office avec une brique qui la lit ;
                       rgpd vient d'office avec comptes, et la sortie le dit)
@@ -1187,9 +1245,10 @@ const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste
                       (défaut : le champ appli de la blueprint, sinon le nom du dossier)
   --blueprint <fichier>  une blueprint existante, copiée dans le dossier avec le
                       commit de référence mis à jour (défaut : une blueprint minimale).
-                      Son en-tête donne aussi le nom affiché (nom_affiche), la description
-                      et le choix site: public ou ferme, écrits dans l'appli ; avec la
-                      brique comptes, l'entrée (entree, role_par_defaut, methodes)
+                      Son en-tête donne aussi le profil de départ (profil: ${Object.keys(PROFILS).join(", ")}),
+                      dont les briques passent avant --briques, le nom affiché (nom_affiche),
+                      la description et le choix site: public ou ferme, écrits dans l'appli ;
+                      avec la brique comptes, l'entrée (entree, role_par_defaut, methodes)
   --fiche <fichier>   la fiche projet, copiée telle quelle en PROJET.md à la racine
                       (défaut : pas de PROJET.md)
   --dependabot        garder .github/dependabot.yml, à demander quand quelqu'un entretient
@@ -1251,7 +1310,11 @@ function main(argv) {
   const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const briques = liste(options.valeurs.briques);
   // Validé avant de lire git : une faute de frappe se dit sans dépendre de l'état du dépôt.
-  planifier({ briques });
+  const profil =
+    options.valeurs.blueprint === undefined
+      ? undefined
+      : profilDeLaBlueprint(lireLaBlueprint(options.valeurs.blueprint));
+  planifier({ briques: briquesDeLAssemblage({ profil, briques }) });
   const commit = commitDeReference(source, options.drapeaux.has("tolerer"));
   const resultat = assembler({
     source,
@@ -1266,6 +1329,12 @@ function main(argv) {
   const dossier = path.resolve(options.positionnels[0]);
   const commitInitial = resultat.commitInitial.slice(0, 7);
   console.log(`Assemblé : ${resultat.fichiers.length} fichiers dans ${dossier} (catalogue au commit ${commit}).`);
+  // Ce que le profil a fait garder, dit comme le reste : qui relit la sortie
+  // doit voir les briques, pas seulement un nom de profil.
+  if (resultat.profil !== undefined) {
+    const choisies = resultat.briques.length === 0 ? "aucune" : resultat.briques.join(", ");
+    console.log(`Profil : ${resultat.profil}, briques ${choisies}.`);
+  }
   if (resultat.ajoutees.length > 0) console.log(`Ajouté d'office : ${resultat.ajoutees.join(", ")}.`);
   console.log(`Retiré : ${resultat.retires.length === 0 ? "rien" : resultat.retires.join(", ")}.`);
   console.log(

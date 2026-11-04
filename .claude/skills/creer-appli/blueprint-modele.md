@@ -2,7 +2,7 @@
 
 Chargé par `SKILL.md` à l'étape 3. Le format est décrit ici en entier : un en-tête YAML
 court, entre deux lignes `---` en tête de fichier, lu par l'assembleur pour `appli`, `commit_reference`,
-`nom_affiche`, `description`, `site`, `entree`, `role_par_defaut` et `methodes`, puis un corps Markdown : un
+`profil`, `nom_affiche`, `description`, `site`, `entree`, `role_par_defaut` et `methodes`, puis un corps Markdown : un
 titre, un paragraphe, et neuf sections numérotées dans l'ordre donné plus bas. Le ton :
 des phrases courtes, au présent, qui décrivent sans recopier ; la précision attendue :
 chaque règle a une valeur (un délai en jours, un volume, une clé), et chaque section
@@ -25,11 +25,12 @@ dans une autre section.
 ```yaml
 ---
 # Blueprint de l'appli <nom>. L'en-tête ne porte que l'essentiel, en clair :
-# l'assembleur en lit appli, nom_affiche, description, site, entree,
+# l'assembleur en lit appli, profil, nom_affiche, description, site, entree,
 # role_par_defaut, methodes et commit_reference ; tout le reste est dans le corps. Il ne recopie pas le branchement : il reste
 # dans son fichier.
 format: 1
 appli: <nom>
+profil: <vitrine | outil-interne | portail>         # ses briques passent avant --briques
 nom_affiche: <nom affiché dans l'appli, validé au cadrage>
 description: <une ou deux phrases pour les moteurs et l'aperçu, sur une ligne>
 site: <public | ferme>
@@ -38,7 +39,7 @@ role_par_defaut: <rôle de qui entre sans rôle attribué, jamais un rôle d'adm
 methodes: [<code-email, lien-email, google, microsoft>]        # « demo » reste en local, sans être listée
 statut: <écrite avant tout code, brouillon validé par <qui> le <date>>
 commit_reference: <à renseigner : l'assembleur le remplace>
-briques_assemblees: [<briques choisies, plus rgpd avec comptes>]
+briques_assemblees: [<briques du profil, puis celles de --briques, plus rgpd avec comptes>]
 entites:
   - nom: <entité>
     module: <dossier sous src/app/ que l'appli créera, sur le patron dossiers>
@@ -63,6 +64,14 @@ briques:
   brique `deploiement`, `appli` (ou `--nom`, jamais le nom du dossier) nomme aussi le service (`<nom>`) et la base (`<nom>-db`) de
   `render.yaml` : un service renommé après la création du Blueprint Render quitte le
   Blueprint, sans message.
+- `profil` : le profil de départ retenu au cadrage (`SKILL.md`, question à l'étape 1, tableau à l'étape 2 ; `PROFILS`
+  d'`outils/modules.mjs`). L'assembleur en garde les briques, puis celles de `--briques`
+  qui n'y sont pas. `vitrine` : aucune, et seules `mails`, `contact` et `deploiement`
+  peuvent s'ajouter (une autre est refusée : ce ne serait plus une vitrine) ;
+  `outil-interne` : `comptes` et `mails` ; `portail` : `comptes`, `mails` et
+  `gestion-comptes`. Un profil inconnu est refusé ; sans le champ, `--briques` seul. Le
+  manifeste de l'appli note les briques, pas le profil : le champ reste dans sa blueprint
+  comme trace du cadrage, et `briques_assemblees` dit ce qui est installé.
 - `nom_affiche`, `description`, `site` : les valeurs validées au cadrage, que l'assembleur
   écrit dans l'appli au lieu d'un premier ticket de remplissage. Une ligne chacune, sans bloc
   (`>`, `|`) ni liste, que l'assembleur refuse ; une valeur qui porte « # » se met entre
@@ -100,8 +109,9 @@ briques:
     ouverte aura le droit de faire (`src/config/acces.ts`).
 - `briques_assemblees` est la liste que l'assembleur écrit dans sa blueprint minimale :
   c'est ce qui dit, sans lire le code, ce qui a été installé. **Elle doit redire exactement
-  la liste passée à `--briques`, plus les briques ajoutées d'office (`rgpd` avec
-  `comptes`)** : le script ne le vérifie pas.
+  les briques du profil, puis celles de `--briques`, plus les briques ajoutées d'office
+  (`rgpd` avec `comptes`)** : le script ne le vérifie pas. Pour `portail` avec
+  `--briques espaces` : `[comptes, mails, gestion-comptes, espaces, rgpd]`.
 - `entites` : les entités que **l'appli écrira**, aucune ne vient de l'assemblage. `module`
   est le dossier sous `src/app/` que l'appli créera en copiant le patron `dossiers`
   (`CLAUDE.md` §3), avec sa couche données dans `src/lib/db/`. Chaque entité a son ticket
@@ -120,7 +130,7 @@ briques:
   `rattache_a` ; `journal`, `entite: dossiers` et
   `branchement: src/lib/db/dossiers.ts` (le patron), le module métier s'y branchant par
   ticket.
-- **Site vitrine** (sans brique qui lit la base) : `entites: []`.
+- **Site vitrine** (`profil: vitrine`, sans brique qui lit la base hors `contact`) : `entites: []`.
   `briques_assemblees` ne cite que `mails`, `deploiement` ou `contact`, s'ils sont gardés.
   Dans `briques`, `mails` seule porte `entite: aucune` et `branchement: à brancher` ;
   `contact` porte `entite: aucune` et `branchement: src/app/contact/page.tsx`, et `mails`

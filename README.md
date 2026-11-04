@@ -298,8 +298,9 @@ il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et remet en fo
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
 il écrit aussi `catalogue.empreintes.json`, le manifeste d'empreintes : le commit du
 catalogue, court et complet, et le champ `version` de son `package.json` (fixe tant qu'aucune version n'est
-publiée), les réglages de l'assemblage (briques choisies et ajoutées d'office, nom du
-paquet et nom donné, Dependabot, champs lus de l'en-tête de la blueprint), puis, pour
+publiée), les réglages de l'assemblage (briques choisies, celles du profil comprises, et
+ajoutées d'office, nom du paquet et nom donné, Dependabot, champs lus de l'en-tête de la
+blueprint hors `profil`), puis, pour
 chaque fichier venu du catalogue, son unité (brique, partagée ou
 `socle`) et l'empreinte sha256 du fichier tel que l'appli le reçoit, après la mise en
 forme et tel que git l'enregistre. `node outils/mettre-a-jour.mjs <appli>` le
@@ -329,6 +330,16 @@ catalogue qui a des modifications non commitées, sauf avec
 
 - Briques : aucune, une ou plusieurs, parmi celles de « Briques ».
   L'assembleur refuse un appel auquel manque une brique exigée.
+- Profils de départ (`PROFILS` d'`outils/modules.mjs`) : le champ `profil:` de
+  l'en-tête de la blueprint en donne les briques, auxquelles `--briques` ajoute.
+  `vitrine` : le socle seul, `mails`, `contact` et `deploiement` au plus (une autre
+  brique est refusée) ; `outil-interne` : `comptes` et `mails`, donc la base, et
+  `rgpd` d'office ; `portail`, ouvert à des personnes extérieures : le même, avec
+  `gestion-comptes`. Le manifeste note les briques, pas le profil.
+
+  ```
+  node outils/assembler.mjs ../mon-portail --blueprint ../mon-portail-blueprint.md --briques espaces
+  ```
 - `comptes` (avec `mails`) donne la base, le patron `dossiers`
   et les droits, avec un accueil à écrire ; `contact` (avec `mails`) donne
   la base pour la limite d'envois, sans les écrans du patron `dossiers`, qui
