@@ -74,7 +74,8 @@ export const SOURCES_COMPTES = [
   },
   {
     cle: "codes-connexion",
-    titre: "Demandes de code de connexion",
+    // Codes et liens : le lien garde ses demandes dans la même table (lien-email.ts).
+    titre: "Demandes de code ou de lien de connexion",
     tables: ["codes_connexion"],
     lire: (adresse: string) =>
       query(
@@ -84,7 +85,7 @@ export const SOURCES_COMPTES = [
           ORDER BY cree_le`,
         [empreinteDeLAdresse(secretDeSession(), adresse)]
       ),
-    note: "Retrouvées par l'empreinte à clé de l'adresse. Elles servent une heure, et sont effacées ensuite, lors d'une demande de code suivante. Les empreintes de l'adresse, du code et de l'adresse IP ne sont pas exportées : elles ne se lisent pas.",
+    note: "Retrouvées par l'empreinte à clé de l'adresse. Elles servent une heure, et sont effacées ensuite, lors d'une demande suivante. Les empreintes de l'adresse, du code ou du lien et de l'adresse IP ne sont pas exportées : elles ne se lisent pas.",
     effacement: "Supprimées.",
     effacer: async (executeur: ExecuteurSql, adresse: string) => ({
       lignes: (

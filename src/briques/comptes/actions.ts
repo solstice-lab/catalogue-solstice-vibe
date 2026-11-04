@@ -9,6 +9,7 @@ import { adresseDuVisiteur } from "@/lib/adresse-ip";
 import { adresseValide, connecterParCode, demanderUnCode, ESSAIS_MAX, type ResultatConnexion } from "./code-email";
 import { entrerEnDemo } from "./demo";
 import { normaliser } from "./entree";
+import { adresseDesLiens, CHEMIN_LIEN, connecterParLien, demanderUnLien } from "./lien-email";
 import { cheminDeRetour } from "./retour";
 import { fermerSession } from "./session";
 
@@ -73,4 +74,56 @@ export async function verifierCodeAction(etat: EtatCode, donnees: FormData): Pro
   revalidatePath("/", "layout");
   // Le retour est refiltré ici : le champ caché se réécrit dans le navigateur.
   redirect(cheminDeRetour(String(donnees.get("retour") ?? "")));
+}
+
+/*
+ * La connexion par lien. La demande a la forme de celle du code : même
+ * réponse, que l'adresse ait un compte ou non. L'envoi du bouton « Me
+ * connecter » (page /connexion/lien) est un POST : jamais l'ouverture du lien.
+ */
+export type EtatLien = {
+  // L'adresse à laquelle un lien vient d'être demandé : l'écran le dit.
+  email?: string;
+  envoyeLe?: number;
+  erreur?: string;
+};
+
+export async function demanderLienAction(etat: EtatLien, donnees: FormData): Promise<EtatLien> {
+  if (!METHODES.includes("lien-email")) return { erreur: PAS_PROPOSEE };
+  const email = normaliser(String(donnees.get("email") ?? ""));
+  if (!adresseValide(email)) return { erreur: "Adresse e-mail invalide." };
+  const enTetes = await headers();
+  const origine = adresseDesLiens(enTetes);
+  if (!origine)
+    return {
+      ...etat,
+      erreur:
+        "Connexion par lien non configurée : URL_PUBLIQUE manque (voir le README de la brique comptes). Contacter l'équipe technique.",
+    };
+  const resultat = await demanderUnLien(
+    email,
+    adresseDuVisiteur(enTetes),
+    origine,
+    String(donnees.get("retour") ?? ""),
+    (tache) => after(tache)
+  );
+  if (resultat === "limite") return { ...etat, erreur: "Trop de demandes de lien. Réessayez dans quelques minutes." };
+  return { email, envoyeLe: Date.now() };
+}
+
+export async function connecterParLienAction(donnees: FormData): Promise<void> {
+  if (!METHODES.includes("lien-email")) redirect("/connexion");
+  // Le retour est refiltré ici, comme pour le code : le champ caché se
+  // réécrit dans le navigateur.
+  const retour = cheminDeRetour(String(donnees.get("retour") ?? ""));
+  const resultat = await connecterParLien(String(donnees.get("jeton") ?? ""), adresseDuVisiteur(await headers()));
+  if (resultat !== "connecte") {
+    // La page du lien, sans jeton : elle dit pourquoi et propose d'en recevoir
+    // un nouveau, qui garde le chemin de retour.
+    const vers = new URLSearchParams({ erreur: resultat });
+    if (retour !== "/") vers.set("retour", retour);
+    redirect(`${CHEMIN_LIEN}?${vers}`);
+  }
+  revalidatePath("/", "layout");
+  redirect(retour);
 }

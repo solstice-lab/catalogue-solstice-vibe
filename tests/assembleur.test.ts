@@ -576,7 +576,9 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
     const politique = lireAssemble(assemble.dossier, "src/lib/confidentialite.ts");
     expect(politique).toContain('cle: "hebergement"');
     expect(
-      /TRAITEMENTS_COMPTES|^\s+comptes: \{|"connexion-code"|"connexion-google"|"connexion-microsoft"/m.test(politique),
+      /TRAITEMENTS_COMPTES|^\s+comptes: \{|"connexion-code"|"connexion-lien"|"connexion-google"|"connexion-microsoft"/m.test(
+        politique
+      ),
       "comptes"
     ).toBe(gardee("comptes"));
     expect(/TRAITEMENTS_MAILS|^\s+mails: \{|^\s+resend:/m.test(politique), "mails").toBe(gardee("mails"));

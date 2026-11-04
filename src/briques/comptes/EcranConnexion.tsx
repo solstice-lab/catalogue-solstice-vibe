@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Bouton, Carte, EtatVide, LienBouton } from "@/ui";
@@ -7,7 +8,9 @@ import { entrerEnDemoAction } from "./actions";
 import { DUREE_VALIDITE_MINUTES } from "./code-email";
 import { demoProposee, UTILISATEURS_DEMO } from "./demo";
 import { FormulaireCode } from "./FormulaireCode";
+import { FormulaireLien } from "./FormulaireLien";
 import { etatDeGoogle, messageDeRefusGoogle } from "./google";
+import { adresseDesLiens, DUREE_VALIDITE_LIEN_MINUTES } from "./lien-email";
 import type { MethodeDeConnexion } from "./methodes";
 import { etatDeMicrosoft, messageDeRefusMicrosoft } from "./microsoft";
 import { utilisateurCourant } from "./roles";
@@ -40,11 +43,25 @@ export async function EcranConnexion({ retour, erreur }: { retour: string; erreu
   const google = etatDeGoogle();
   const erreurMicrosoft = messageDeRefusMicrosoft(erreur);
   const microsoft = etatDeMicrosoft();
+  // En production, le lien ne part qu'avec URL_PUBLIQUE (lien-email.ts).
+  const liensConfigures = !METHODES.includes("lien-email") || adresseDesLiens(await headers()) !== null;
 
   const blocs: Record<MethodeDeConnexion, () => ReactNode> = {
     "code-email": () => (
       <Carte key="code-email" titre="Connexion">
         <FormulaireCode retour={retour} dureeMinutes={DUREE_VALIDITE_MINUTES} />
+      </Carte>
+    ),
+    "lien-email": () => (
+      // « Connexion » seule, comme le code ; à côté de lui, le titre les distingue.
+      <Carte key="lien-email" titre={METHODES.includes("code-email") ? "Lien par e-mail" : "Connexion"}>
+        {liensConfigures ? (
+          <FormulaireLien retour={retour} dureeMinutes={DUREE_VALIDITE_LIEN_MINUTES} />
+        ) : (
+          <p className="sl-erreur-formulaire" role="alert">
+            Connexion par lien non configurée : URL_PUBLIQUE manque (voir le README de la brique comptes).
+          </p>
+        )}
       </Carte>
     ),
     google: () => (

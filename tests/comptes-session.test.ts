@@ -19,6 +19,7 @@ import {
 import { cheminDeRetour } from "../src/briques/comptes/retour";
 import { DUREE_SESSION_JOURS, fermerSession, lireSessionDe, ouvrirSession } from "../src/briques/comptes/session";
 import { DUREE_VALIDITE_MINUTES } from "../src/briques/comptes/code-email";
+import { DUREE_VALIDITE_LIEN_MINUTES } from "../src/briques/comptes/lien-email";
 import { DUREE_PARCOURS_MINUTES } from "../src/briques/comptes/parcours";
 import { traitementsComptes } from "../src/briques/comptes/confidentialite";
 
@@ -507,5 +508,32 @@ describe("description des traitements de la brique comptes (politique de confide
 
   it("dit la vraie durée du cookie de parcours de Microsoft", () => {
     expect(texte(traitementsComptes(["microsoft"]))).toContain(`déposé pour ${DUREE_PARCOURS_MINUTES} minutes`);
+  });
+
+  it("ne décrit la connexion par lien que si la méthode est proposée, avec la vraie validité du lien", () => {
+    expect(traitementsComptes(["lien-email"]).map((t) => t.cle)).toEqual(["comptes", "connexion-lien"]);
+    expect(traitementsComptes(["code-email"]).map((t) => t.cle)).not.toContain("connexion-lien");
+    expect(texte(traitementsComptes(["lien-email"]))).toContain(`vaut ${DUREE_VALIDITE_LIEN_MINUTES} minutes`);
+  });
+
+  it("déclare une seule fois la conservation des demandes, que le lien partage avec le code : la purge et le registre ne les comptent pas deux fois", () => {
+    const cles = (methodes: string[]) =>
+      traitementsComptes(methodes).flatMap((traitement) => traitement.conservation.map((c) => c.cle));
+    for (const methodes of [
+      ["code-email"],
+      ["lien-email"],
+      ["code-email", "lien-email"],
+      ["lien-email", "code-email"],
+    ]) {
+      const declarees = cles(methodes);
+      expect(
+        declarees.filter((cle) => cle === "codes-connexion"),
+        methodes.join(", ")
+      ).toHaveLength(1);
+      expect(
+        declarees.filter((cle) => cle === "codes-connexion-essais"),
+        methodes.join(", ")
+      ).toHaveLength(1);
+    }
   });
 });

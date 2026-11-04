@@ -9,6 +9,10 @@ import type { AnnuairesMicrosoft, Entree, MethodeDeConnexion } from "@/briques/c
 // Les méthodes proposées sur /connexion, dans cet ordre.
 // « code-email » : un code à 6 chiffres envoyé par e-mail (brique mails). En
 // local, le mail s'affiche dans la console du serveur (MAILS_FOURNISSEUR=console).
+// « lien-email » : un lien envoyé par e-mail, pour une appli grand public
+// seulement (en entreprise, l'antivirus de la messagerie ouvre le lien avant
+// la personne : README de la brique comptes). En production, URL_PUBLIQUE est
+// l'adresse du lien ; sans elle, sa carte sur /connexion dit qu'elle manque.
 // « google » : un compte Google, une fois l'application OAuth du client créée
 // et GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET déclarés (README de la brique
 // comptes) ; sans elles, sa carte sur /connexion dit ce qui manque.

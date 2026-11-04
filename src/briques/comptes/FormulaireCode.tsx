@@ -104,8 +104,9 @@ function Etapes({
   );
 }
 
-// Les secondes avant de pouvoir redemander un code ; 0 sans demande.
-function useCompteARebours(depuis: number | undefined): number {
+// Les secondes avant de pouvoir redemander un code ; 0 sans demande. Partagé
+// avec le lien (FormulaireLien.tsx), soumis à la même minute d'attente.
+export function useCompteARebours(depuis: number | undefined): number {
   const [restant, setRestant] = useState(DELAI_RENVOI_S);
   useEffect(() => {
     if (!depuis) return;

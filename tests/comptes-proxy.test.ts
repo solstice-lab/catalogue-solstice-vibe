@@ -151,5 +151,7 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
     // jamais.
     expect(estOuverte("/connexion/google/retour")).toBe(true);
     expect(estOuverte("/connexion/microsoft/retour")).toBe(true);
+    // Le lien de connexion du mail s'ouvre sans session : c'est lui qui l'ouvre.
+    expect(estOuverte("/connexion/lien")).toBe(true);
   });
 });
