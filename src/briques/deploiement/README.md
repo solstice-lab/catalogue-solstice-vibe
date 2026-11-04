@@ -86,7 +86,9 @@ eu lieu.
    branché, geste 8, et sur un service de recette ; avec la brique mails :
    `MAILS_EXPEDITEUR`, `RESEND_API_KEY` ; avec la brique comptes :
    `COMPTES_PREMIER_ADMIN`, `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
-   (vides si `"google"` n'est pas dans `METHODES`), et retirer d'abord `"demo"`
+   (vides si `"google"` n'est pas dans `METHODES`), `MICROSOFT_CLIENT_ID`,
+   `MICROSOFT_CLIENT_SECRET` et `MICROSOFT_TENANT_ID` (vides si `"microsoft"`
+   n'est pas dans `METHODES`), et retirer d'abord `"demo"`
    de `METHODES`, qui refuse la production ; avec la brique contact : `CONTACT_DESTINATAIRE`).
    La création lance un premier déploiement de la tête de `main`, le seul qui
    ne passe pas par la CI.

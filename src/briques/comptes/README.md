@@ -17,10 +17,11 @@ lues par les robots : `/robots.txt`, `/sitemap.xml`, `/opengraph-image` et
 `src/lib/referencement.ts`) s'ajoute à `ROUTES_OUVERTES`, et à `OUVERTS` de
 `tests/gardes-acces.test.ts` avec sa raison (elle n'appelle pas `exiger`).
 
-**Les méthodes de connexion se branchent une par une.** Trois existent : le code
+**Les méthodes de connexion se branchent une par une.** Quatre existent : le code
 à 6 chiffres envoyé par e-mail, la méthode par défaut ; Google, à
-ajouter à `METHODES` une fois l'application OAuth du client créée ; et la démo.
-Les autres sont à venir : Microsoft, lien magique.
+ajouter à `METHODES` une fois l'application OAuth du client créée ; Microsoft
+(Entra ID), une fois l'application enregistrée dans le portail Azure ; et la démo.
+Le lien magique est à venir.
 **La démo refuse de démarrer en production.** Tant qu'elle est dans `METHODES`,
 le proxy répond en erreur à toute requête, `/sante` comprise : la sonde de
 l'hébergeur échoue, et le déploiement avec elle. Retirer `"demo"` de `METHODES`
@@ -86,7 +87,7 @@ ni base, ni droits, ni protection des routes : c'est un site vitrine. Son
     garde en base, pour qu'un ancien admin retiré de la configuration ne le
     redevienne pas. Avec le code par e-mail, ses limites de demandes (voir « La
     connexion par code envoyé par e-mail ») sont alors le seul frein aux
-    inscriptions ; avec Google, l'appli n'en oppose aucun. L'option exige deux
+    inscriptions ; avec Google ou Microsoft, l'appli n'en oppose aucun. L'option exige deux
     rôles au moins : avec un seul, `ROLE_PAR_DEFAUT` administre, et la brique
     refuse de démarrer ;
   - toute autre adresse est refusée.
@@ -243,11 +244,12 @@ Et dans `tests/comptes-effets.test.ts`, le registre des effets :
 | `retour.ts` | `cheminDeRetour` : le chemin où revenir après la connexion, filtré. |
 | `code-email.ts` | La méthode code par e-mail : demander un code, le vérifier, ouvrir la session ; les limites de demandes et les durées. |
 | `google.ts` | La méthode Google : le départ vers Google, le retour (state, PKCE, nonce, ID token), les règles d'entrée propres à Google, les messages de refus. |
+| `microsoft.ts` | La méthode Microsoft (Entra ID) : le départ vers Microsoft, le retour (state, PKCE, nonce, ID token, annuaire), les règles d'entrée propres à Microsoft, les messages de refus. |
 | `parcours.ts` | Le cookie de parcours d'une connexion par un fournisseur : ce que le départ tire au hasard et que le retour doit retrouver. Il est signé, à usage unique, et vaut 10 minutes. |
 | `demo.ts` | La méthode démo : un compte par rôle, refusée en production. |
 | `methodes.ts` | Les types de la configuration (`MethodeDeConnexion`, `Entree`) et `ErreurComptes`. |
 | `actions.ts` | Les server actions : demander un code, le vérifier, entrer en démo, se déconnecter. Sans garde, puisque ce sont elles qui décident de qui l'on est. |
-| `EcranConnexion.tsx` | Le contenu de `/connexion` : un bloc par méthode, dans l'ordre de `METHODES`, et le message d'un refus de Google. |
+| `EcranConnexion.tsx` | Le contenu de `/connexion` : un bloc par méthode, dans l'ordre de `METHODES`, et le message d'un refus de Google ou de Microsoft. |
 | `FormulaireCode.tsx` | Le bloc du code par e-mail, en deux étapes : l'adresse, puis le code. |
 | `confidentialite.ts` | La description des traitements de la brique, pour la politique de confidentialité. N'importe que `src/config/comptes.ts` : la page publique ne doit pas atteindre la base. |
 | `donnees-personnelles.ts` | Ce que la brique garde sur une adresse, pour l'export et l'effacement des données d'une personne de la brique rgpd, que l'assembleur garde d'office avec comptes. |
@@ -257,7 +259,8 @@ Hors de la brique, mais partis avec elle quand une copie ne la garde pas :
 - `src/config/acces.ts`, `src/config/comptes.ts` et `src/config/effets-comptes.ts`,
   les fichiers que l'appli remplit, qui importent les types de la brique ;
 - `src/app/connexion/`, avec les deux routes de Google (`google/route.ts` et
-  `google/retour/route.ts`) ;
+  `google/retour/route.ts`) et les deux de Microsoft (`microsoft/route.ts` et
+  `microsoft/retour/route.ts`) ;
 - `tests/roles.test.ts` ;
 - `tests/gardes-acces.test.ts`, qui vérifie que chaque page, action et route de
   `src/app` commence par son garde ;
@@ -267,6 +270,7 @@ Hors de la brique, mais partis avec elle quand une copie ne la garde pas :
 - `tests/comptes-administration.test.ts`, le niveau 3 ;
 - `tests/comptes-effets.test.ts`, le registre des effets et son verrou ;
 - `tests/comptes-google.test.ts`, la connexion avec Google ;
+- `tests/comptes-microsoft.test.ts`, la connexion avec Microsoft ;
 - `tests/comptes-isolement.test.ts`, `tests/aide-session.ts` et `tests/aide-comptes.ts`
   (la suppression de tous les comptes, avec ce qui les désigne).
 
@@ -290,7 +294,8 @@ La brique n'importe que :
   `@/config/effets-comptes`, par où les autres unités réagissent à un compte
   désactivé ou effacé sans que la brique les importe elle-même) ;
 - l'envoi de la brique mails (`@/briques/mails/envoi`), qu'elle exige ;
-- `oauth4webapi`, pour le protocole OpenID Connect de la connexion avec Google.
+- `oauth4webapi`, pour le protocole OpenID Connect de la connexion avec Google et
+  avec Microsoft.
 
 Elle n'a pas d'autre paquet : la session reste maison (voir la décision plus
 bas). Elle ne connaît aucun module : ce
@@ -361,7 +366,8 @@ Dans `tests/comptes-session.test.ts`, la politique de confidentialité est
 tenue d'accord avec le code : « dit la vraie durée du cookie de session et la
 vraie validité du code », « ne décrit la connexion par code que si la méthode
 est proposée », « ne décrit la connexion avec Google que si la méthode est
-proposée » et « dit la vraie durée du cookie de parcours de Google ».
+proposée », « dit la vraie durée du cookie de parcours de Google », et leurs
+deux pendants pour Microsoft.
 
 Pièges verrouillés dans `tests/comptes-code-email.test.ts` :
 
@@ -526,6 +532,145 @@ Pièges verrouillés dans `tests/comptes-google.test.ts` :
 | Le domaine Workspace vérifié dans l'adresse de départ seulement, ou qui remplace la liste d'accès | les deux cas « avec un domaine Workspace configuré… » |
 | Un chemin de retour vers un autre site | « revient sur l'accueil quand le chemin de retour mène hors de l'appli » |
 
+## La connexion avec Microsoft
+
+Pour les clients sous Microsoft 365 : leurs comptes sont dans un annuaire
+Microsoft Entra ID (un *tenant*). Sur `/connexion`, la carte « Microsoft » porte un
+lien « Se connecter avec Microsoft ». Le parcours est celui de Google, dans
+`microsoft.ts` : même OpenID Connect par `oauth4webapi` (PKCE S256, `state`, `nonce`),
+même cookie de parcours (`parcours.ts`, fournisseur `microsoft`), mêmes règles pour le
+chemin de retour, la signature de l'ID token (TLS, OIDC Core §3.1.3.7) et les refus
+journalisés par leur nature. Le départ (`/connexion/microsoft`) est un lien, pas un
+formulaire : rien n'est à ajouter à `form-action 'self'` de la CSP, ni à
+`tests/en-tetes-securite.test.ts`. Le retour se fait sur `/connexion/microsoft/retour`.
+
+**Un seul annuaire ou tous** (`ANNUAIRES_MICROSOFT`, `src/config/comptes.ts`) :
+
+| Réglage | Qui passe à `ENTREE` | Adresses de Microsoft |
+| --- | --- | --- |
+| `"un-seul"` (le défaut, le cas normal) | Les comptes de l'annuaire du client, `MICROSOFT_TENANT_ID` (invités compris). | `https://login.microsoftonline.com/<MICROSOFT_TENANT_ID>/oauth2/v2.0/…` |
+| `"tous"` | Les comptes de tout annuaire, et les comptes Microsoft personnels si l'enregistrement de l'application les accepte (étape 2 ci-dessous). Pour un outil ouvert à plusieurs entreprises. | `https://login.microsoftonline.com/common/oauth2/v2.0/…` |
+
+Dans les deux cas, l'ID token doit porter l'émetteur de son propre annuaire,
+`https://login.microsoftonline.com/<tid>/v2.0`, et le `tid` de cet émetteur. Avec
+`"un-seul"`, ce `tid` doit être `MICROSOFT_TENANT_ID` : un compte d'ailleurs est
+refusé (`microsoft-acces`), même listé dans `ENTREE`. `MICROSOFT_TENANT_ID` est le GUID
+de l'annuaire, pas son nom de domaine : avec le nom, chaque jeton serait refusé sur son
+émetteur, et la carte le tient donc pour absent.
+
+**Qui entre**, dans cet ordre :
+
+1. L'émetteur et le `tid`, ci-dessus.
+2. L'ID token porte une adresse (`email`) et **`xms_edov` vaut `true`** : Microsoft a
+   vérifié que le domaine de l'adresse appartient à l'annuaire du compte, ou c'est un
+   compte personnel, dont Microsoft vérifie l'adresse.
+   - Sans cette règle, l'administrateur de n'importe quel annuaire écrit dans le profil
+     d'un compte l'adresse qu'il veut, celle d'un client comprise, et entre sous son
+     nom (attaque dite « nOAuth » ; documentation Microsoft « Migrate away from using
+     email claims for user identification or authorization »).
+   - `xms_edov` est une revendication facultative : **elle se déclare dans
+     l'enregistrement de l'application** (étape 6). Sans elle, tout le monde est
+     refusé, et le journal du serveur le dit (« domaine non vérifié par Microsoft
+     (email, xms_edov) »), sans l'adresse.
+   - Un compte sans adresse dans son profil Entra (champ *Email*) est refusé :
+     `preferred_username` n'est pas une adresse garantie.
+3. `admettre(email)` décide, comme pour le code et pour Google.
+
+Comme pour Google, un compte est reconnu par son adresse, pas par son identifiant
+Microsoft (`oid`). Et comme pour Google, un compte Microsoft personnel peut avoir été
+ouvert avec l'adresse d'une entreprise : Microsoft l'a vérifiée à l'ouverture, pas
+depuis. Avec `"un-seul"`, ces comptes n'entrent pas ; avec `"tous"`, c'est le prix
+de l'ouverture aux comptes personnels, à dire au client (ou à fermer dans le portail
+en n'acceptant que les annuaires d'entreprise, étape 2).
+
+**Refus.** Les codes et leurs cas sont ceux de Google, préfixés `microsoft-`
+(`ERREURS_MICROSOFT`) : `microsoft-annule`, `microsoft-expire` (aussi : un jeton sans
+`tid` ou dont l'émetteur n'est pas celui de son `tid`), `microsoft-acces` (aussi : un
+autre annuaire avec `"un-seul"`, ou `xms_edov` absent), `microsoft-indisponible`,
+`microsoft-configuration` (dont le secret expiré : il vaut 24 mois au plus).
+
+**Sans configuration.** Si `"microsoft"` est dans `METHODES` mais que
+`MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` ou, avec `"un-seul"`,
+`MICROSOFT_TENANT_ID` manque ou n'est pas un GUID, la carte nomme les variables à
+renseigner et les deux routes renvoient vers `/connexion`. Sans `"microsoft"` dans
+`METHODES`, elles répondent 404.
+
+**Politique de confidentialité.** Avec `"microsoft"` dans `METHODES`, `/confidentialite`
+décrit le traitement « Connexion avec Microsoft » (clé `connexion-microsoft`), avec
+Microsoft destinataire de la demande et non sous-traitant, comme Google. Ses choix se
+remplissent dans `CONFIDENTIALITE.choix["connexion-microsoft"]`.
+
+**La restriction à un annuaire** ne s'essaie qu'avec un vrai client sous
+Microsoft 365 : un compte personnel n'a pas d'annuaire d'entreprise. **À vérifier par
+un humain avec la première appli d'un tel client** : un compte de son annuaire entre,
+un compte d'un autre annuaire (ou personnel) est refusé.
+
+### Enregistrer l'application dans le portail Azure
+
+Gratuit, depuis un compte de l'organisation du client, ou avec lui : l'enregistrement
+et le secret lui appartiennent. Les libellés sont ceux du portail en anglais, écrits le
+2026-11-04 sans l'avoir ouvert : le premier essai les confirme ou les corrige ici. Le centre d'administration Microsoft Entra (`entra.microsoft.com`) a les
+mêmes écrans sous *Identity → Applications → App registrations*.
+
+1. Sur `portal.azure.com`, ouvrir **Microsoft Entra ID**, puis **App registrations**,
+   puis **New registration**. Nom : celui de l'appli, suivi de l'environnement.
+2. **Supported account types** :
+   - **Accounts in this organizational directory only (Single tenant)** pour
+     `"un-seul"`, le cas normal ;
+   - **Accounts in any organizational directory (Multitenant)** pour `"tous"`, sans
+     les comptes personnels ;
+   - **… and personal Microsoft accounts** pour `"tous"` avec les comptes personnels
+     (c'est le réglage d'un essai avec un compte personnel).
+3. **Redirect URI** : plateforme **Web**, `http://localhost:3000/connexion/microsoft/retour`.
+   Les autres environnements s'ajoutent ensuite dans **Authentication**, plateforme
+   Web, une ligne chacun :
+   - `https://<domaine de production>/connexion/microsoft/retour` ;
+   - `https://<service>.onrender.com/connexion/microsoft/retour` si l'appli s'essaie
+     sur l'adresse de Render avant son domaine ;
+   - une ligne par recette.
+
+   Dans **Authentication**, ne cocher ni *Access tokens* ni *ID tokens* (flux implicite) :
+   l'appli échange un code.
+4. **Register**. La page **Overview** donne **Application (client) ID**
+   (`MICROSOFT_CLIENT_ID`) et **Directory (tenant) ID** (`MICROSOFT_TENANT_ID`, le GUID).
+5. **Certificates & secrets**, onglet **Client secrets**, **New client secret** :
+   une description, une durée (24 mois au plus). **Copier la colonne *Value*** (pas
+   *Secret ID*) tout de suite : le portail ne la montre qu'une fois. La ranger dans le
+   gestionnaire de secrets de l'équipe, jamais dans le dépôt. Noter l'échéance : un
+   secret expiré bloque la connexion (`microsoft-configuration`), et un nouveau se crée
+   au même endroit.
+6. **Token configuration**, **Add optional claim**, type **ID** : cocher **email** et
+   **xms_edov**, puis **Add**. Si le portail propose d'ajouter la permission Microsoft
+   Graph *email*, l'accepter.
+7. **API permissions** : rien à ajouter. L'appli ne demande que `openid` et `email`,
+   qui ne demandent pas, par défaut, de consentement d'administrateur. Un annuaire
+   qui interdit le consentement des utilisateurs le demande à son administrateur.
+8. Déclarer `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` et `MICROSOFT_TENANT_ID`
+   dans `.env.local` en local, et chez l'hébergeur dans le tableau de bord
+   (`sync: false` dans `render.yaml`). Avec `"tous"`, `MICROSOFT_TENANT_ID` peut rester
+   vide.
+9. Dans `src/config/comptes.ts` :
+   - ajouter `"microsoft"` à `METHODES`, en premier si c'est la méthode principale ;
+   - régler `ANNUAIRES_MICROSOFT` selon l'étape 2 ;
+   - lister les adresses ou les domaines admis dans `ENTREE`, comme pour le code.
+
+**L'adresse de retour** se calcule comme pour Google, depuis l'origine de la requête.
+**À vérifier par un humain au premier déploiement** : Microsoft doit être appelé avec
+`redirect_uri=https://<domaine>/connexion/microsoft/retour`, en https.
+
+Pièges verrouillés dans `tests/comptes-microsoft.test.ts` :
+
+| Piège | Test |
+| --- | --- |
+| Une connexion forcée par un tiers, un parcours rejoué | « refuse un state qui n'est pas celui du départ… », « refuse un retour sans cookie de parcours… », « ne connecte qu'une fois par départ… » |
+| Un code intercepté, échangé sans le verifier, ou ailleurs que chez l'annuaire configuré | « connecte une adresse admise… en échangeant le code chez l'annuaire du client avec le verifier… » |
+| Un ID token rejoué, expiré, destiné à une autre appli ou d'un autre émetteur | « refuse un ID token dont le nonce… », « refuse un ID token émis pour une autre application, expiré, ou par un autre émetteur… » |
+| Un compte d'un autre annuaire avec un seul annuaire configuré | « avec un seul annuaire, refuse le compte d'un autre annuaire ou un compte personnel… » |
+| Un émetteur qui n'est pas celui du `tid`, ou un jeton sans `tid` | « avec tous les annuaires, refuse un jeton dont l'émetteur n'est pas celui de son annuaire (tid) », « avec un seul annuaire, refuse un jeton sans tid… » |
+| Une adresse écrite par l'administrateur d'un autre annuaire (nOAuth) | « refuse une adresse dont Microsoft ne garantit pas le domaine (xms_edov)… » |
+| Une adresse hors liste | « refuse une adresse hors de la liste d'accès, même garantie par Microsoft (critère d'acceptation) » |
+| Un nom de domaine à la place de l'ID d'annuaire | « tient pour absent un ID d'annuaire qui n'est pas un GUID… » |
+
 ## Interface publique
 
 Ce qu'une appli peut importer et appeler, et ce qu'une méthode de connexion
@@ -544,10 +689,10 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `session.ts` | `ouvrirSession(compte)`, `fermerSession()` | Ouvre la session d'un compte admis et pose le cookie, après avoir fermé celle que le navigateur portait déjà (pas de fixation de session) ; la ferme en base et retire le cookie. `ouvrirSession` lève `ErreurComptes` sans `AUTH_SECRET` valable, avant toute écriture. |
 | `retour.ts` | `cheminDeRetour(valeur)` → `string` | Le chemin de l'appli où revenir après la connexion, `/` pour tout le reste. |
 | `protection.ts` | `protegerLaRoute(requete)` → `NextResponse \| null`, `ROUTES_OUVERTES`, `estOuverte(chemin)` → `boolean` | Appelé par `src/proxy.ts`. Une route ouverte de plus s'ajoute à `ROUTES_OUVERTES`, avec sa raison, sur sa propre ligne : une brique qui ouvre sa route la retire avec elle dans la liste de l'assembleur (la brique contact le fait pour `/contact`). `estOuverte` est vrai pour une route de la liste ou l'un de ses sous-chemins ; lu par `tests/referencement.test.ts`. |
-| `EcranConnexion.tsx` | `EcranConnexion({ retour, erreur? })` | Le contenu de `/connexion`, que la page entoure de `AppLayout`. `erreur` reçoit le paramètre `erreur` de l'adresse, tel quel : seul un code de refus de Google connu affiche un message. |
+| `EcranConnexion.tsx` | `EcranConnexion({ retour, erreur? })` | Le contenu de `/connexion`, que la page entoure de `AppLayout`. `erreur` reçoit le paramètre `erreur` de l'adresse, tel quel : seul un code de refus de Google ou de Microsoft connu affiche un message. |
 | `BandeauSession.tsx` | `BandeauSession` | Placé dans `src/app/layout.tsx`. |
-| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"google"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif) ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
-| `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code` et `connexion-google`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code et celle avec Google n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et la vie du cookie de parcours de Google sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
+| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`) ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
+| `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code`, `connexion-google` et `connexion-microsoft`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code, celle avec Google et celle avec Microsoft n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et la vie du cookie de parcours de Google et de Microsoft sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
 | `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse, auteur)` : le compte s'anonymise (`anonymiserLeCompte`, au nom de `auteur`, l'admin qui efface), sessions et demandes de code sont supprimées. |
 | `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine`, `ouverte` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
 | `administration.ts` | `anonymiserLeCompte(executeur, email, auteur, contexte?)` → `Promise<CompteAnonymise \| Refus \| null>`, `adresseAnonymisee(id)` → `string` | L'anonymisation du compte d'une adresse, dans la transaction de l'appelant (l'effacement de la brique rgpd), suivie des effets d'effacement du registre au nom de `auteur` (`{ email }`, l'admin qui efface) : `null` sans compte, `Refus` pour le dernier admin actif ou un compte de démo. `CompteAnonymise` : `{ id, avertissement? }`, où `avertissement` dit de retirer l'adresse de la configuration. `avertissementDeConfiguration(email, contexte?)` → `string | null` donne cet avertissement aussi pour une adresse sans compte en base. |
@@ -568,7 +713,10 @@ utilise. Les autres exports servent aux fichiers de la brique ou
   - `ENTREE`, qui entre (adresses et domaines, et `ouverte` pour un outil
     ouvert à toute adresse) ;
   - `DOMAINES_GOOGLE_WORKSPACE`, le ou les Workspace dont la connexion avec Google
-    accepte les comptes. Vide, elle accepte tout compte dont Google fait autorité.
+    accepte les comptes. Vide, elle accepte tout compte dont Google fait autorité ;
+  - `ANNUAIRES_MICROSOFT`, `"un-seul"` (l'annuaire du client, `MICROSOFT_TENANT_ID`,
+    le défaut) ou `"tous"` (tout annuaire, et les comptes personnels si
+    l'enregistrement de l'application les accepte).
 - `src/config/effets-comptes.ts` : `EFFETS_COMPTES`, une entrée par unité qui
   réagit à un compte désactivé, réactivé ou effacé (le journal d'audit et les
   espaces, si l'appli les a, y sont déjà).
@@ -577,8 +725,8 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 `lireSession`, `lireSessionDe`, `trouverUtilisateur`, `fermerLesSessionsDe`,
 `roleEffectif`, `origineDuCompte`, `seraitAdmis`, `COLONNES_ENTREE`,
 `enBaseDe`, `estAdresseDeDemo`, `domaineDe`, l'ensemble de `jeton.ts`,
-`code-email.ts`, `google.ts` et `parcours.ts`, les deux routes de Google, les
-actions (`actions.ts`) et `FormulaireCode`.
+`code-email.ts`, `google.ts`, `microsoft.ts` et `parcours.ts`, les routes de
+Google et de Microsoft, les actions (`actions.ts`) et `FormulaireCode`.
 
 **Règle d'entretien.** Tout changement d'interface publique (symbole ajouté,
 retiré ou renommé, signature modifiée) met à jour cette section. Il ajoute
@@ -620,6 +768,9 @@ redirect(cheminDeRetour(retour));
 | `AUTH_SECRET` | 32 caractères au moins, aléatoires, propres à chaque appli et à chaque environnement. **Secret** : généré par l'hébergeur (`render.yaml`), dans `.env.local` en local, jamais dans le dépôt. | Toute connexion échoue, et le proxy refuse tout cookie, en nommant la variable. |
 | `GOOGLE_CLIENT_ID` | L'ID client OAuth de l'appli, créé dans la console Google Cloud du client (voir « La connexion avec Google »). Seulement avec `"google"` dans `METHODES`. | La carte Google de `/connexion` dit qu'elle manque. Les autres méthodes restent là. |
 | `GOOGLE_CLIENT_SECRET` | Son secret. **Secret** : saisi à la main chez l'hébergeur (`sync: false`), dans `.env.local` en local, jamais dans le dépôt. | Comme pour `GOOGLE_CLIENT_ID`. |
+| `MICROSOFT_CLIENT_ID` | L'ID d'application (client) de l'enregistrement fait dans le portail Azure (voir « La connexion avec Microsoft »). Seulement avec `"microsoft"` dans `METHODES`. | La carte Microsoft de `/connexion` dit qu'elle est à renseigner. Les autres méthodes restent là. |
+| `MICROSOFT_CLIENT_SECRET` | Sa valeur de secret client. **Secret** : saisi à la main chez l'hébergeur (`sync: false`), dans `.env.local` en local, jamais dans le dépôt. Expire (24 mois au plus). | Comme pour `MICROSOFT_CLIENT_ID`. |
+| `MICROSOFT_TENANT_ID` | L'ID de l'annuaire (tenant) du client, un GUID. Seulement avec `ANNUAIRES_MICROSOFT = "un-seul"`. | Comme pour `MICROSOFT_CLIENT_ID` ; un nom de domaine compte pour absent. |
 | `COMPTES_PREMIER_ADMIN` | L'adresse du premier admin. Elle ne sert qu'au premier démarrage : une fois un admin passé, elle n'en refait pas. | Personne n'entre en `ROLE_ADMIN` sans être listé dans `src/config/comptes.ts`. |
 
 La connexion par code envoie par la brique mails : ses variables
@@ -669,5 +820,7 @@ Pourquoi pas Auth.js :
 
 ## Pas encore là
 
-- La connexion avec Microsoft et par lien magique. Microsoft
-  reprendra le cookie de parcours (`parcours.ts`) et la forme de `google.ts`.
+- La connexion par lien magique.
+- Une forme commune à `google.ts` et `microsoft.ts` : ils partagent le parcours
+  (`parcours.ts`), mais chacun garde ses petites fonctions (redirection, nature d'un
+  refus). À mettre en commun si une troisième méthode par fournisseur arrive.

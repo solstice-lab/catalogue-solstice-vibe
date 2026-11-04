@@ -82,6 +82,15 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      # Connexion avec Microsoft, saisis à la main : l'ID d'application, son
+      # secret et l'ID de l'annuaire du client, du portail Azure. Laissés
+      # vides si « microsoft » n'est pas dans METHODES.
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_TENANT_ID
+        sync: false
       # Fin de la brique comptes.
       # Brique mails (src/briques/mails/).
       - key: MAILS_FOURNISSEUR

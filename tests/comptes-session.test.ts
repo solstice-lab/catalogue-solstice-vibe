@@ -494,4 +494,18 @@ describe("description des traitements de la brique comptes (politique de confide
   it("dit la vraie durée du cookie de parcours de Google", () => {
     expect(texte(traitementsComptes(["google"]))).toContain(`déposé pour ${DUREE_PARCOURS_MINUTES} minutes`);
   });
+
+  it("ne décrit la connexion avec Microsoft que si la méthode est proposée", () => {
+    expect(traitementsComptes(["code-email", "google", "microsoft"]).map((t) => t.cle)).toEqual([
+      "comptes",
+      "connexion-code",
+      "connexion-google",
+      "connexion-microsoft",
+    ]);
+    expect(traitementsComptes(["code-email", "google"]).map((t) => t.cle)).not.toContain("connexion-microsoft");
+  });
+
+  it("dit la vraie durée du cookie de parcours de Microsoft", () => {
+    expect(texte(traitementsComptes(["microsoft"]))).toContain(`déposé pour ${DUREE_PARCOURS_MINUTES} minutes`);
+  });
 });

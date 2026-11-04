@@ -106,6 +106,8 @@ export const CONFIDENTIALITE: Confidentialite = {
     "connexion-code": { baseLegale: "", duree: "", destinataires: "" },
     // Lu seulement si "google" est dans METHODES (src/config/comptes.ts).
     "connexion-google": { baseLegale: "", duree: "", destinataires: "" },
+    // Lu seulement si "microsoft" est dans METHODES (src/config/comptes.ts).
+    "connexion-microsoft": { baseLegale: "", duree: "", destinataires: "" },
     mails: { baseLegale: "", duree: "", destinataires: "" },
     contact: { baseLegale: "", duree: "", destinataires: "" },
     // 12 mois recommandés (README de la brique journal), à valider par le client.

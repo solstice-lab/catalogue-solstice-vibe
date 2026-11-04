@@ -1,4 +1,4 @@
-import type { Entree, MethodeDeConnexion } from "@/briques/comptes/methodes";
+import type { AnnuairesMicrosoft, Entree, MethodeDeConnexion } from "@/briques/comptes/methodes";
 
 /*
  * Qui peut se connecter à cette appli, et comment : le fichier
@@ -12,6 +12,9 @@ import type { Entree, MethodeDeConnexion } from "@/briques/comptes/methodes";
 // « google » : un compte Google, une fois l'application OAuth du client créée
 // et GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET déclarés (README de la brique
 // comptes) ; sans elles, sa carte sur /connexion dit ce qui manque.
+// « microsoft » : un compte Microsoft (Entra ID), une fois l'application
+// enregistrée dans le portail Azure et MICROSOFT_CLIENT_ID,
+// MICROSOFT_CLIENT_SECRET et MICROSOFT_TENANT_ID déclarés (même README).
 // « demo » ouvre une session à qui la demande, sans rien vérifier : elle
 // refuse de démarrer en production, et se retire d'ici avant toute mise en
 // ligne.
@@ -46,3 +49,11 @@ export const ENTREE: Entree = {
 // ENTREE ; rempli, seuls les comptes de ces Workspace y passent. ENTREE
 // décide encore : le domaine s'y ajoute, il ne la remplace pas.
 export const DOMAINES_GOOGLE_WORKSPACE: readonly string[] = [];
+
+// Connexion avec Microsoft : « un-seul » (le cas normal) n'accepte que les
+// comptes de l'annuaire Entra ID du client, MICROSOFT_TENANT_ID, vérifié dans
+// le jeton (émetteur et tid). « tous » accepte tout annuaire, et les comptes
+// Microsoft personnels si l'enregistrement de l'application les accepte : pour
+// un outil ouvert à plusieurs entreprises. ENTREE décide encore dans les deux
+// cas.
+export const ANNUAIRES_MICROSOFT: AnnuairesMicrosoft = "un-seul";

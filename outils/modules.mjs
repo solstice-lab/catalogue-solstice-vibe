@@ -372,6 +372,7 @@ export const BRIQUES = {
       "tests/comptes-code-email.test.ts",
       "tests/comptes-administration.test.ts",
       "tests/comptes-google.test.ts",
+      "tests/comptes-microsoft.test.ts",
       // Le registre des effets de comptes : ce que les autres unités font d'un
       // compte désactivé, réactivé ou effacé. Chacune y retire son entrée.
       "src/config/effets-comptes.ts",
@@ -467,6 +468,14 @@ export const BRIQUES = {
       ligne("src/lib/confidentialite.ts", '    "connexion-code": { baseLegale: "", duree: "", destinataires: "" },'),
       ligne("src/lib/confidentialite.ts", '    // Lu seulement si "google" est dans METHODES (src/config/comptes.ts).'),
       ligne("src/lib/confidentialite.ts", '    "connexion-google": { baseLegale: "", duree: "", destinataires: "" },'),
+      ligne(
+        "src/lib/confidentialite.ts",
+        '    // Lu seulement si "microsoft" est dans METHODES (src/config/comptes.ts).'
+      ),
+      ligne(
+        "src/lib/confidentialite.ts",
+        '    "connexion-microsoft": { baseLegale: "", duree: "", destinataires: "" },'
+      ),
     ],
   },
   // L'export des données d'une personne, par elle-même
@@ -1076,7 +1085,7 @@ export function remplissagesDeLEnTete({ nomService, nomAffiche, description, sit
 // de src/briques/comptes/methodes.ts, que tests/assembleur.test.ts relit). « demo »
 // n'en fait pas partie : elle reste en local, que la blueprint la cite ou non,
 // et se retire à la mise en ligne.
-export const METHODES_DE_CONNEXION = ["code-email", "google"];
+export const METHODES_DE_CONNEXION = ["code-email", "google", "microsoft"];
 
 // L'entrée de l'appli, tranchée au cadrage (essai de tours-de-coloc : l'ouvrir à
 // toute adresse a pris un ticket entier). La configuration est celle de la

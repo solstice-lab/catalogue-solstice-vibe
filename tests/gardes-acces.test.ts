@@ -35,6 +35,8 @@ const OUVERTS: Record<string, string> = {
   "sante/route.ts": "la sonde de l'hébergeur, interrogée sans session",
   "connexion/google/route.ts": "le départ de la connexion avec Google : aucune session ne peut la précéder",
   "connexion/google/retour/route.ts": "le retour de Google, qui ouvre la session",
+  "connexion/microsoft/route.ts": "le départ de la connexion avec Microsoft : aucune session ne peut la précéder",
+  "connexion/microsoft/retour/route.ts": "le retour de Microsoft, qui ouvre la session",
   "contact/page.tsx": "le formulaire de contact public, protégé par ses filtres anti-spam (brique contact)",
 };
 

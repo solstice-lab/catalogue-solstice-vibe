@@ -64,8 +64,8 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   est une autre question, à faire valider avec lui : il se note dans `nom_affiche:`.
 - **L'entrée, avec la brique `comptes`** : les réponses du bloc « Les accès » de
   `solstice-nouvelle-appli` §1 (une liste d'adresses ou de domaines, ou un outil ouvert à toute
-  adresse ; le rôle de qui entre sans rôle attribué ; code par e-mail, Google ou les
-  deux) se notent dans l'en-tête de la blueprint : `entree: ferme` ou `ouverte`,
+  adresse ; le rôle de qui entre sans rôle attribué ; code par e-mail, Google,
+  Microsoft) se notent dans l'en-tête de la blueprint : `entree: ferme` ou `ouverte`,
   `role_par_defaut:` et `methodes: [code-email, google]`. L'assembleur les écrit dans
   `src/config/comptes.ts` et `src/config/acces.ts`. Le rôle par défaut n'est jamais un rôle
   qui administre, et une entrée ouverte demande donc un rôle de plus que l'administration

@@ -11,8 +11,8 @@ import { METHODES } from "@/config/comptes";
  * Les durées sont écrites en toutes lettres : session.ts et code-email.ts
  * lisent la base, que la page publique ne doit pas importer. Un test
  * (tests/comptes-session.test.ts) les compare à DUREE_SESSION_JOURS et
- * DUREE_VALIDITE_MINUTES, et la vie du cookie de parcours de Google à
- * DUREE_PARCOURS_MINUTES ; l'heure de conservation des empreintes est
+ * DUREE_VALIDITE_MINUTES, et la vie du cookie de parcours de Google et de
+ * Microsoft à DUREE_PARCOURS_MINUTES ; l'heure de conservation des empreintes est
  * CONSERVATION_S de code-email.ts.
  */
 
@@ -73,12 +73,33 @@ const CONNEXION_GOOGLE = {
   ],
 };
 
+// Microsoft, comme Google, est destinataire de la demande et non
+// sous-traitant : la personne s'identifie chez lui avec son compte,
+// professionnel ou personnel. Avec un compte professionnel, l'organisation de
+// la personne a aussi la trace de la connexion dans son propre annuaire.
+const CONNEXION_MICROSOFT = {
+  cle: "connexion-microsoft",
+  titre: "Connexion avec Microsoft",
+  finalite: "Vérifier, par Microsoft, l'identité de qui se connecte avec son compte Microsoft.",
+  donnees: [
+    "Reçues de Microsoft à chaque connexion : l'adresse e-mail du compte, l'indication que Microsoft en a vérifié le domaine, et l'identifiant de l'annuaire du compte (celui de l'organisation, ou celui des comptes personnels).",
+  ],
+  personnes: "Les personnes qui se connectent avec un compte Microsoft, qu'elles aient un compte dans l'appli ou non.",
+  sousTraitants: [],
+  precisions: [
+    "Microsoft reçoit la demande de connexion : il sait que la personne se connecte à l'appli, et traite cette information selon ses propres règles de confidentialité. Pour un compte professionnel, l'organisation qui le gère en a aussi la trace.",
+    "L'appli ne garde que l'adresse e-mail, dans le compte (voir « Comptes et connexion »). L'identifiant de l'annuaire sert à vérifier l'accès et n'est pas conservé.",
+    "Un cookie, nécessaire à la connexion, est déposé pour 10 minutes le temps de l'aller-retour chez Microsoft, puis effacé au retour.",
+  ],
+};
+
 /** Les traitements selon les méthodes proposées : une méthode retirée de la configuration n'est plus décrite. */
 export function traitementsComptes(methodes: readonly string[] = METHODES) {
   return [
     COMPTES,
     ...(methodes.includes("code-email") ? [CONNEXION_CODE] : []),
     ...(methodes.includes("google") ? [CONNEXION_GOOGLE] : []),
+    ...(methodes.includes("microsoft") ? [CONNEXION_MICROSOFT] : []),
   ];
 }
 

@@ -146,8 +146,10 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
       expect(estOuverte(chemin), chemin).toBe(false);
     }
     expect(estOuverte("/connexion/code")).toBe(true);
-    // Google revient ici sans session : redirigé vers /connexion, le retour
-    // perdrait son code et la connexion n'aboutirait jamais.
+    // Google et Microsoft reviennent ici sans session : redirigé vers
+    // /connexion, le retour perdrait son code et la connexion n'aboutirait
+    // jamais.
     expect(estOuverte("/connexion/google/retour")).toBe(true);
+    expect(estOuverte("/connexion/microsoft/retour")).toBe(true);
   });
 });

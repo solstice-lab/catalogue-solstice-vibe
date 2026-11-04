@@ -249,3 +249,38 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   terminer son appartenance à une coloc, et l'effacer anonymiser son prénom.
   La seule prise était la trace de `desactiver`, et l'appli a dû retoucher
   `src/app/comptes/actions.ts`, un fichier de la brique gestion-comptes.
+
+## 2026-11-04 · Connexion avec Microsoft (Entra ID) · Rupture
+
+- **Ce qui change** :
+  - une méthode « microsoft », par OpenID Connect avec `oauth4webapi`, sur la
+    forme de Google (PKCE, state et nonce vérifiés au retour, même cookie de
+    parcours) : deux routes, `/connexion/microsoft` et
+    `/connexion/microsoft/retour`, ouvertes comme sous-chemins de `/connexion` ;
+  - `MethodeDeConnexion` vaut `"code-email" | "google" | "microsoft" | "demo"`,
+    et le type `AnnuairesMicrosoft` (`"un-seul" | "tous"`) s'ajoute à
+    `methodes.ts` ;
+  - `ANNUAIRES_MICROSOFT` dans `src/config/comptes.ts`, `"un-seul"` par
+    défaut : seul l'annuaire du client entre, vérifié dans le jeton (émetteur
+    et `tid`) ; `"tous"` accepte tout annuaire et les comptes personnels.
+    Dans les deux cas, l'adresse doit porter `xms_edov` à `true` ;
+  - `EcranConnexion` affiche la carte Microsoft et le message d'un refus de
+    Microsoft (codes `microsoft-…`) ;
+  - `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` et `MICROSOFT_TENANT_ID`
+    dans le bloc comptes de `.env.example` et de `render.yaml`
+    (`sync: false`) ;
+  - `traitementsComptes` décrit le traitement `connexion-microsoft` quand
+    `METHODES` propose Microsoft.
+- **Appelant** :
+  - une appli qui met la brique à jour ajoute à son `src/config/comptes.ts`
+    la ligne `export const ANNUAIRES_MICROSOFT: AnnuairesMicrosoft = "un-seul";`
+    (et `AnnuairesMicrosoft` à son import de `methodes`) : la brique l'importe,
+    et le typecheck échoue sans elle. Rien d'autre ne change sans `"microsoft"`
+    dans `METHODES` ;
+  - les deux routes s'ajoutent à `OUVERTS` de `tests/gardes-acces.test.ts`, et
+    `"connexion-microsoft"` à `CONFIDENTIALITE.choix` (`src/lib/confidentialite.ts`) ;
+  - pour proposer Microsoft : enregistrer l'application dans le portail Azure
+    (procédure dans le README, `xms_edov` compris), déclarer les variables,
+    ajouter `"microsoft"` à `METHODES`, régler `ANNUAIRES_MICROSOFT`.
+- **Pourquoi** : la cible principale du catalogue, ce sont les entreprises, et
+  beaucoup sont sous Microsoft 365.
