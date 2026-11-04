@@ -49,9 +49,12 @@ Un compte s'y désigne par « compte n°12 », jamais par son adresse.
 
 ## Ce qu'elle ne fait pas (v1)
 
-- **Les lectures.** Ni les lectures sensibles ni les exports : aucun module du
-  catalogue ne les définit, et le volume serait sans commune mesure. L'export
-  des données d'une personne tracera les siens s'il le faut.
+- **Les lectures**, sauf une : l'export des données d'une personne par l'admin
+  (brique rgpd), tracé en action `export` sur « compte n°<id> », au nom de
+  l'admin, par `tracerExport` de `SOURCES_JOURNAL`. Une adresse sans compte
+  ne laisse rien. Ni les autres lectures sensibles ni les exports de tableaux :
+  aucun module du catalogue ne les définit, et le volume serait sans commune
+  mesure. Celui que la personne fait de ses propres données ne se trace pas.
 - **Les connexions et déconnexions.** La brique comptes devrait exiger le
   journal, qui l'exige déjà : la dépendance serait circulaire.
   `utilisateurs.derniere_connexion` dit déjà la dernière entrée. Un journal de
@@ -85,16 +88,18 @@ Un compte s'y désigne par « compte n°12 », jamais par son adresse.
 - **La référence** (`libelle`) est celle de la fiche au moment du geste : le
   module la choisit, jamais un nom ni une adresse. Un compte s'y désigne par
   son numéro (« compte n°12 »).
-- **Durée de conservation : 12 mois.** La v1 ne purge rien. La purge revient à
-  la brique RGPD, par un script en dry-run par défaut, `--confirmer` tapé
-  par un humain. L'index sur `le` la sert, et celui sur `utilisateur_id` sert
-  l'export des gestes d'une personne. Une obligation légale plus longue chez un
-  client se décide avec lui.
+- **Durée de conservation : 12 mois après le geste**, déclarée dans
+  `confidentialite.ts` (clé `journal`). La purge est le script de la brique
+  rgpd (`scripts/purger-donnees.ts`), en dry-run par défaut, `--confirmer`
+  tapé par un humain ; jamais au passage d'une requête (`tests/journal.test.ts`).
+  L'index sur `le` la sert, et celui sur `utilisateur_id` sert l'export des
+  gestes d'une personne. Une obligation légale plus longue chez un client se
+  décide avec lui et s'écrit dans `CONFIDENTIALITE.durees`.
 - **La politique de confidentialité** (`/confidentialite`, socle) décrit le
-  traitement d'après `confidentialite.ts` : des faits seulement. Sa durée, sa
-  base légale et ses destinataires restent vides dans `CONFIDENTIALITE.choix`
-  (`src/lib/confidentialite.ts`), comme pour les autres briques : les 12 mois
-  ci-dessus sont une recommandation, que le client valide avant de les y écrire.
+  traitement d'après `confidentialite.ts`, durée comprise, « à valider » tant
+  que le projet ne l'a pas revue (`dureesRevues`). Sa base légale et ses
+  destinataires restent vides dans `CONFIDENTIALITE.choix`
+  (`src/lib/confidentialite.ts`), comme pour les autres briques.
 - **L'export des données d'une personne** (brique rgpd, gardée d'office avec comptes) sort
   les lignes dont elle est l'auteur, par `donnees-personnelles.ts` : la date,
   l'action, la fiche, sa référence et le nom des champs changés. Les gestes
@@ -121,7 +126,7 @@ Un compte s'y désigne par « compte n°12 », jamais par son adresse.
 
 Hors du dossier, partis avec elle quand une copie ne la garde pas : la page
 `src/app/journal/` et les tests `tests/journal*.test.ts`. L'assembleur retire
-aussi l'étape `journal_audit` de `src/lib/db/migrations.ts`, ses lignes de
+aussi les étapes `journal_audit` de `src/lib/db/migrations.ts` (la table, puis l'action `export`), ses lignes de
 `src/config/acces.ts` et de `src/lib/navigation.ts`, ses lignes de
 `src/lib/confidentialite.ts` (le traitement et ses choix) et de
 `src/config/donnees-personnelles.ts` (la source de l'export) avec son cas de
@@ -156,12 +161,12 @@ journal des changements.
 | `journal.ts` | `lireJournal({ entite?, entiteId?, limite? })` → `Promise<LigneJournal[]>` | Les lignes, de la plus récente à la plus ancienne. Sans garde : la page qui l'appelle a exigé `journal.consulter`. |
 | `journal.ts` | `historiqueSiPermis(entite, entiteId)` → `Promise<LigneJournal[] \| null>` | L'historique d'une fiche, ou `null` sans le droit `journal.consulter`. |
 | `journal.ts` | types `Auteur`, `Evenement`, `LigneJournal`, `Transaction` ; classe `ErreurJournal` ; `LIMITE_ECRAN`, `LIMITE_FICHE` | Entrées, retours et limites de ces fonctions. Le message de l'erreur commence par « Brique journal : ». |
-| `evenements.ts` (pur) | `ACTIONS_JOURNAL`, `ACTIONS_JOURNALISEES`, `libelleAction(action)`, `champsModifies(avant, apres)` ; type `ActionJournalisee` | Le droit à déclarer, les actions, leur libellé (une action inconnue se dit telle quelle), les noms des champs changés. |
+| `evenements.ts` (pur) | `ACTIONS_JOURNAL`, `ACTIONS_JOURNALISEES`, `libelleAction(action)`, `champsModifies(avant, apres)` ; type `ActionJournalisee` | Le droit à déclarer, les actions (`creation`, `modification`, `suppression`, `export`), leur libellé (une action inconnue se dit telle quelle), les noms des champs changés. |
 | `TableauJournal.tsx` | `TableauJournal({ id, lignes, avecEntite })` | Le tableau des lignes, sans export. |
 | `HistoriqueFiche.tsx` | `HistoriqueFiche({ entite, entiteId })` | À placer sous la `Carte` d'une fiche. |
-| `confidentialite.ts` | `TRAITEMENTS_JOURNAL` | Le traitement du journal (clé `journal`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe. L'assembleur retire cet import et la ligne `journal` des choix quand la brique part. |
+| `confidentialite.ts` | `TRAITEMENTS_JOURNAL` | Le traitement du journal (clé `journal`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe, avec sa `conservation` : 12 mois après le geste (clé `journal`), purgés par le script de la brique rgpd seul. L'assembleur retire cet import et la ligne `journal` des choix quand la brique part. |
 | `effets-comptes.ts` (serveur seulement) | `EFFETS_JOURNAL` | L'entrée de la brique au registre des effets de comptes (`src/config/effets-comptes.ts`) : un compte désactivé, réactivé ou effacé se trace en modification de « compte n°<id> », au nom de l'auteur du geste. L'assembleur retire cet import et la ligne du registre quand la brique part. |
-| `donnees-personnelles.ts` (serveur seulement) | `SOURCES_JOURNAL` | Pour la brique rgpd, gardée d'office avec comptes : la source `journal` de son export, que son registre rassemble. Les lignes dont la personne est l'auteur. Son `effacer` les compte sans en réécrire aucune. L'assembleur retire cet import et la ligne du registre quand la brique part. |
+| `donnees-personnelles.ts` (serveur seulement) | `SOURCES_JOURNAL` | Pour la brique rgpd, gardée d'office avec comptes : la source `journal` de son export, que son registre rassemble. Les lignes dont la personne est l'auteur. Son `effacer` les compte sans en réécrire aucune ; son `tracerExport` trace l'export de l'admin. L'assembleur retire cet import et la ligne du registre quand la brique part. |
 
 **Interne** : `estActionJournalisee`. La table `journal_audit` n'est pas une
 interface : l'appli passe par les fonctions ci-dessus, et seule la purge de la

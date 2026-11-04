@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import PageConfidentialite from "@/app/confidentialite/page";
-import { champsManquants, traitements, type Confidentialite, type Traitement } from "@/lib/confidentialite";
+import {
+  champsManquants,
+  conservations,
+  libelleDuree,
+  traitements,
+  type Confidentialite,
+  type Traitement,
+} from "@/lib/confidentialite";
 import type { MentionsLegales } from "@/lib/mentions-legales";
 
 // Comme /mentions-legales : la page sert aussi une vitrine sans base ni
@@ -63,6 +70,8 @@ const VIDE: Confidentialite = {
   autoriteDeControle: "",
   choix: {},
   lieux: {},
+  durees: {},
+  dureesRevues: false,
   traitementsDuProjet: [],
   traitementsDuProjetRevus: false,
 };
@@ -84,6 +93,25 @@ const DU_PROJET: Traitement = {
   personnes: "Personnes factices",
   sousTraitants: [{ cle: "sous-traitant-factice", nom: "Sous-traitant factice", role: "Rôle factice." }],
   precisions: [],
+  conservation: [],
+};
+
+// Un traitement du projet qui déclare la durée de sa donnée, comme les briques
+// du catalogue (le cas des tours de tours-de-coloc, purgés au passage).
+const DECLARE: Traitement = {
+  ...DU_PROJET,
+  cle: "projet-declare",
+  titre: "Traitement factice qui déclare sa durée",
+  sousTraitants: [],
+  conservation: [
+    {
+      cle: "projet-declare-lignes",
+      donnee: "Lignes factices",
+      duree: { mois: 7 },
+      depart: "après leur date factice",
+      purge: { table: "table_factice", colonne: "le", auPassage: true },
+    },
+  ],
 };
 
 // Tout rempli : chaque traitement présent (ceux des briques du catalogue
@@ -95,6 +123,8 @@ function rempli(): Confidentialite {
     autoriteDeControle: "Autorité factice",
     choix: {},
     lieux: {},
+    durees: {},
+    dureesRevues: true,
     traitementsDuProjet: [DU_PROJET],
     traitementsDuProjetRevus: true,
   };
@@ -126,21 +156,84 @@ describe("politique de confidentialité (RGPD art. 13)", () => {
     expect(html).toContain("À compléter");
   });
 
-  // Le cœur de la règle : le catalogue ne propose ni base légale, ni durée, ni
-  // destinataires, ni autorité de contrôle.
-  // Elles engagent le responsable du traitement et se font valider ; une
-  // valeur écrite d'avance passerait pour vraie.
-  it("chaque traitement réclame sa base légale, sa durée et ses destinataires tant que le projet ne les a pas écrits", () => {
+  // Le cœur de la règle : le catalogue ne propose ni base légale, ni
+  // destinataires, ni autorité de contrôle. Elles engagent le responsable du
+  // traitement et se font valider ; une valeur écrite d'avance passerait pour
+  // vraie. La durée fait exception quand une brique la déclare, parce que sa
+  // purge l'applique : elle s'affiche, mais reste réclamée, « à valider »,
+  // tant que le projet ne l'a pas revue.
+  it("chaque traitement réclame sa base légale, sa durée et ses destinataires tant que le projet ne les a pas écrits ou validés", () => {
     const libelles = champsManquants(VIDE, MENTIONS).map((champ) => champ.libelle);
     const presents = traitements(MENTIONS, VIDE);
 
     expect(presents.length).toBeGreaterThan(0);
     for (const traitement of presents) {
       expect(libelles).toContain(`${traitement.titre} : base légale`);
-      expect(libelles).toContain(`${traitement.titre} : durée de conservation`);
+      expect(libelles).toContain(
+        traitement.conservation.length > 0
+          ? `${traitement.titre} : durée de conservation à valider`
+          : `${traitement.titre} : durée de conservation`
+      );
       expect(libelles).toContain(`${traitement.titre} : destinataires`);
     }
     expect(rendre(VIDE)).not.toContain(BASE_LEGALE);
+  });
+
+  describe("durées de conservation déclarées par donnée", () => {
+    const avecDeclare = (config: Confidentialite): Confidentialite => ({
+      ...config,
+      traitementsDuProjet: [...config.traitementsDuProjet, DECLARE],
+      choix: { ...config.choix, [DECLARE.cle]: { baseLegale: BASE_LEGALE, duree: "", destinataires: DESTINATAIRES } },
+    });
+
+    it("la politique affiche la durée que la brique déclare, donnée par donnée, sans que le projet l'écrive", () => {
+      const html = rendre(avecDeclare(rempli()));
+      expect(html).toContain("Lignes factices : 7 mois après leur date factice.");
+      expect(champsManquants(avecDeclare(rempli()), MENTIONS)).toEqual([]);
+    });
+
+    it("une durée proposée reste à valider tant que le projet n'a pas revu les durées (dureesRevues)", () => {
+      const nonRevue = { ...avecDeclare(rempli()), dureesRevues: false };
+      const libelles = champsManquants(nonRevue, MENTIONS).map((champ) => champ.libelle);
+      expect(libelles).toContain(`${DECLARE.titre} : durée de conservation à valider`);
+      // Un traitement sans durée déclarée garde la sienne, écrite par le projet.
+      expect(libelles).not.toContain(`${DU_PROJET.titre} : durée de conservation à valider`);
+      expect(rendre(nonRevue)).toContain("Lignes factices : 7 mois après leur date factice.");
+    });
+
+    it("le projet surcharge une durée par sa clé : la page et la purge lisent la même valeur", () => {
+      const surchargee = { ...avecDeclare(rempli()), durees: { "projet-declare-lignes": { jours: 45 } } };
+      expect(rendre(surchargee)).toContain("Lignes factices : 45 jours après leur date factice.");
+      const lue = conservations(MENTIONS, surchargee).find(
+        (conservation) => conservation.cle === "projet-declare-lignes"
+      );
+      expect(lue).toMatchObject({ duree: { jours: 45 }, traitement: DECLARE.titre });
+    });
+
+    it("un traitement qui déclare ses durées n'exige plus le texte du projet, mais l'affiche s'il est écrit", () => {
+      const avecTexte = avecDeclare(rempli());
+      avecTexte.choix[DECLARE.cle] = { ...avecTexte.choix[DECLARE.cle], duree: "Complément factice" };
+      expect(rendre(avecTexte)).toContain("Complément factice");
+    });
+
+    it("dit chaque durée en toutes lettres, au singulier comme au pluriel", () => {
+      expect(libelleDuree({ heures: 1 })).toBe("1 heure");
+      expect(libelleDuree({ heures: 2 })).toBe("2 heures");
+      expect(libelleDuree({ jours: 1 })).toBe("1 jour");
+      expect(libelleDuree({ jours: 30 })).toBe("30 jours");
+      expect(libelleDuree({ mois: 12 })).toBe("12 mois");
+    });
+
+    it("deux conservations ne partagent jamais une clé, et chaque durée est un nombre entier positif", () => {
+      const toutes = conservations(MENTIONS, rempli());
+      expect(toutes.length).toBeGreaterThan(0);
+      const cles = toutes.map((conservation) => conservation.cle);
+      expect(new Set(cles).size).toBe(cles.length);
+      for (const { cle, duree } of toutes) {
+        const [nombre] = Object.values(duree);
+        expect(Number.isInteger(nombre) && nombre >= 1, cle).toBe(true);
+      }
+    });
   });
 
   it("la page remplie affiche les valeurs de la configuration, sans avertissement", () => {

@@ -284,3 +284,21 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
     ajouter `"microsoft"` à `METHODES`, régler `ANNUAIRES_MICROSOFT`.
 - **Pourquoi** : la cible principale du catalogue, ce sont les entreprises, et
   beaucoup sont sous Microsoft 365.
+
+## 2026-11-04 · Durées de conservation déclarées par donnée · Ajout
+
+- **Ce qui change** : chaque traitement de `confidentialite.ts` porte un
+  champ `conservation` (type `Conservation[]` de `src/lib/confidentialite.ts`) :
+  le compte 24 mois après la dernière connexion (compté par le script, effacé
+  à la main), les sessions un jour après leur expiration, les demandes et
+  saisies de code une heure. La connexion avec Google n'en déclare pas.
+  La politique de confidentialité les affiche, « à valider » tant que le
+  projet ne les a pas revues ; le script de purge de la brique rgpd les
+  applique. Clés : `comptes-inactifs`, `sessions`, `codes-connexion`, `codes-connexion-essais`.
+- **Appelant** : rien à changer pour la brique. Une appli qui a écrit son
+  propre `Traitement` (dans `traitementsDuProjet`) ajoute `conservation`,
+  vide ou rempli : le typecheck le signale. Une durée autre que celle proposée
+  s'écrit dans `CONFIDENTIALITE.durees`, par sa clé.
+- **Pourquoi** : une durée de conservation qui n'est qu'un texte de la
+  politique n'est tenue par rien ; déclarée par donnée, elle se purge et se
+  vérifie.

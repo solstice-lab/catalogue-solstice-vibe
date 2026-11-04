@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { AppLayout, Badge, Carte } from "@/ui";
 import { NAVIGATION, NOM_APP } from "@/lib/navigation";
-import { CONFIDENTIALITE, champsManquants, lieuDe, traitements, type Traitement } from "@/lib/confidentialite";
+import {
+  CONFIDENTIALITE,
+  champsManquants,
+  libelleDuree,
+  lieuDe,
+  traitements,
+  type Traitement,
+} from "@/lib/confidentialite";
 import { MENTIONS_LEGALES } from "@/lib/mentions-legales";
 import { metadonneesDePage } from "@/lib/referencement";
 
@@ -54,7 +61,24 @@ export default function PageConfidentialite() {
           <dt>Base légale</dt>
           <dd>{valeur(choix?.baseLegale)}</dd>
           <dt>Durée de conservation</dt>
-          <dd>{valeur(choix?.duree)}</dd>
+          {/* Les durées que la brique déclare, telles que la purge les
+              applique (surcharges du projet comprises) ; le texte du projet
+              suit, en complément. Sans durée déclarée, il est requis seul. */}
+          {traitement.conservation.length > 0 ? (
+            <dd>
+              <ul className="sl-liste-simple">
+                {traitement.conservation.map((conservation) => (
+                  <li key={conservation.cle}>
+                    {conservation.donnee} : {libelleDuree(config.durees[conservation.cle] ?? conservation.duree)}{" "}
+                    {conservation.depart}.
+                  </li>
+                ))}
+                {(choix?.duree ?? "").trim() !== "" && <li>{choix?.duree.trim()}</li>}
+              </ul>
+            </dd>
+          ) : (
+            <dd>{valeur(choix?.duree)}</dd>
+          )}
           <dt>Destinataires</dt>
           <dd>{valeur(choix?.destinataires)}</dd>
           {traitement.sousTraitants.length > 0 && (

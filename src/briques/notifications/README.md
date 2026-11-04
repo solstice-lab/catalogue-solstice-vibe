@@ -89,10 +89,13 @@ ne connaît pas la brique échéances : le lien entre les deux se fait côté ap
 - **Durée de conservation : 12 mois**, pour le journal comme pour les jours
   d'envoi (sans donnée personnelle), purgés par la route elle-même, à chaque
   envoi réel ou d'essai, sans tâche de plus (`conservationMois`, 12 par
-  défaut). C'est une recommandation : le client la valide avant de l'écrire
-  dans `CONFIDENTIALITE.choix` (`src/lib/confidentialite.ts`). Une durée
-  différente se règle par `conservationMois` : les deux se changent ensemble,
-  le premier est ce que la politique annonce, le second ce que la route fait.
+  défaut). Elle est déclarée dans `confidentialite.ts` (clé `notifications`),
+  que la politique affiche « à valider » tant que le client ne l'a pas revue,
+  et que le script de purge de la brique rgpd applique aussi, pour une route
+  arrêtée. Une durée différente se règle à deux endroits ensemble :
+  `CONFIDENTIALITE.durees` (`src/lib/confidentialite.ts`), ce que la
+  politique annonce et la purge applique, et `conservationMois`, ce que la
+  route fait.
 - **La politique de confidentialité** décrit le traitement d'après
   `confidentialite.ts` : des faits seulement. Le prestataire d'envoi est déjà
   déclaré par la brique mails.
@@ -148,7 +151,7 @@ de la brique ou à ses tests, et peut changer sans entrée au journal.
 | `envoi.ts` | types `Rapport`, `LigneRapport` ; classe `ErreurNotifications` | Le rapport : le mode, les comptes (`envoyes`, `echecs`, `sansDestinataire`) et, hors mode réel, une ligne par notification (destinataire, objet, résultat, erreur). L'erreur de la brique ; son message commence par « Brique notifications : ». |
 | `jour.ts` (pur) | type `JourSemaine` ; `estJourDEnvoi(aujourdhui, jours)`, `jourDeLaSemaine(date)` | `aujourdhui` en « aaaa-mm-jj », `jours` parmi `"lundi"` … `"dimanche"`. |
 | `route.ts` | `routeNotifications({ source, jours, fabriquer, conservationMois? })` → `(requete: Request) => Promise<Response>` | Le gestionnaire `POST` de la route. Lève `ErreurNotifications` dès sa création si `source` ou `conservationMois` sont invalides : le build ou le démarrage casse, au lieu d'un 400 chaque matin. `fabriquer(aujourdhui)` est la fonction de l'appli qui rend les `Notification` à envoyer à cette date. Réponses : 401 sans le bon secret (en-tête `Authorization: Bearer …`) ; 400 pour une adresse qui porte des paramètres, un corps qui n'est pas un objet JSON nommant son mode, un mode inconnu, un essai sans adresse ou une adresse d'essai refusée ; 200 avec `{ envoye: false, aujourdhui, raison }` un jour sans envoi ou déjà réservé ; 200 avec `{ envoye, aujourdhui }` et le rapport sinon (`envoye` est faux en mode à blanc). |
-| `confidentialite.ts` | `TRAITEMENTS_NOTIFICATIONS` | Le traitement (clé `notifications`), au format `Traitement` de `src/lib/confidentialite.ts`. |
+| `confidentialite.ts` | `TRAITEMENTS_NOTIFICATIONS` | Le traitement (clé `notifications`), au format `Traitement` de `src/lib/confidentialite.ts`, avec sa `conservation` : 12 mois après l'envoi (clé `notifications`). |
 | `donnees-personnelles.ts` | `SOURCES_NOTIFICATIONS` | La source de l'export et de l'effacement, au format `SourceDonnees` de la brique rgpd. Son `effacer` vide le destinataire des lignes de l'adresse et les garde. |
 
 Le mode se choisit dans le corps JSON de la requête : corps vide pour le mode

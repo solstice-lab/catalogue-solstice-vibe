@@ -181,7 +181,7 @@ tests et peut changer sans entrée au journal.
 | `effets-comptes.ts` | `EFFETS_ESPACES` | Son entrée de `src/config/effets-comptes.ts`, avant celle du journal. |
 | `departs.ts` (serveur seulement) | types `EffetsDeDepart`, `EffetDeDepart`, `DepartDEspace`, `MotifDuDepart` | La forme d'une entrée de `EFFETS_DEPARTS` dans `src/config/effets-espaces.ts` : `{ unite, depart }`, où `depart(tx, { espaceId, utilisateurId, adhesionId, motif })` écrit par `tx`. `MotifDuDepart` : `MotifDepart` et `compte-efface` (la base garde `compte-desactive` pour un compte effacé). `jouerLesEffetsDuDepart` est interne à la brique. |
 | `donnees-personnelles.ts` | `SOURCES_ESPACES` | Ses sources de `src/config/donnees-personnelles.ts` (brique rgpd). |
-| `confidentialite.ts` | `TRAITEMENTS_ESPACES` | Son traitement dans `src/lib/confidentialite.ts`, dont les choix se remplissent sous la clé `espaces`. |
+| `confidentialite.ts` | `TRAITEMENTS_ESPACES` | Son traitement dans `src/lib/confidentialite.ts`, dont les choix se remplissent sous la clé `espaces`, avec sa `conservation` (clés `espaces-adhesions-terminees` et `espaces-essais-code`). |
 | `EcranCreerOuRejoindre.tsx` | `EcranCreerOuRejoindre({ codeInitial, actions })`, type `ActionsCreerOuRejoindre` | Le contenu de `/espace/rejoindre`, que la page entoure d'`AppLayout`. |
 | `EcranMonEspace.tsx` | `EcranMonEspace({ espace, adhesion, membres, autresEspaces, lienDInvitation, actions })`, type `ActionsMonEspace` | Le contenu de `/espace`. Les server actions lui sont passées en `actions` : la brique n'importe rien de `src/app`. |
 
@@ -344,9 +344,13 @@ départ :
   code seul.
 - **Retirer un membre** ne change pas le code : avec lui, la personne peut
   revenir. La modale le dit et propose d'en créer un nouveau.
-- **Les choix du traitement** (base légale, durée, destinataires) se remplissent
+- **Les choix du traitement** (base légale, destinataires) se remplissent
   dans `CONFIDENTIALITE.choix.espaces` (`src/lib/confidentialite.ts`) avant
-  toute mise en ligne, comme ceux des autres briques.
+  toute mise en ligne, comme ceux des autres briques. Les durées de
+  conservation sont proposées par `confidentialite.ts`, à valider : une heure
+  pour les codes faux (purgés par la brique rgpd), 12 mois après le départ
+  pour une adhésion terminée, que le script de purge compte sans l'effacer
+  (les données d'un module peuvent la citer).
 
 ## Pièges retenus et leurs tests
 

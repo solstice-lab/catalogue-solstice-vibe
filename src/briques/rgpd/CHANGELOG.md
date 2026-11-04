@@ -68,3 +68,30 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   compte est effacé (tours-de-coloc), comme le journal trace le geste. Un seul
   registre pour les deux, et pour la désactivation, évite une prise par geste
   à brancher dans les actions de l'appli.
+
+## 2026-11-04 · Durées de conservation, purge, gabarits et export tracé · Ajout
+
+- **Ce qui change** :
+  - `purge.ts` : `apercevoirPurge`, `purger`, `purgerAuPassage`, les types
+    `OptionsPurge`, `BilanPurge`, `PurgeOccupee` et la classe `ErreurPurge`.
+    Elles lisent les durées que chaque brique déclare (`conservation` de son
+    `confidentialite.ts`, surcharges de `CONFIDENTIALITE.durees` comprises) ;
+  - `scripts/purger-donnees.ts` : la purge, en dry-run par défaut,
+    `--confirmer` tapé par un humain ;
+  - `export.ts` : `tracerExportDeLAdmin(adresse, { transaction, demandeur })`,
+    et `SourceDonnees.tracerExport`, facultatif ; la route de l'admin trace
+    chaque export avant d'envoyer le fichier ;
+  - `gabarits/` : registre des traitements, trame d'accord de sous-traitance,
+    checklist d'hébergement dans l'Union européenne.
+- **Appelant** : rien à changer dans la brique. Dans le socle
+  (`src/lib/confidentialite.ts`), `Traitement` exige `conservation` et
+  `Confidentialite` exige `durees` et `dureesRevues` : une appli mise à jour
+  ajoute `durees: {}` et `dureesRevues: false` à sa configuration, et
+  `conservation` à chacun de ses `traitementsDuProjet` (le typecheck le
+  signale). Une source qui veut réagir à l'export de l'admin déclare
+  `tracerExport`. Une appli sans tâche planifiée appelle
+  `purgerAuPassage` au détour d'une lecture, pour les données qu'elle marque
+  `auPassage`.
+- **Pourquoi** : le RGPD (art. 5.1.e) limite la conservation ; une durée qui
+  n'est qu'un texte de la politique n'est tenue par rien. La purge au passage
+  vient de tours-de-coloc, où elle avait pris un ticket entier.

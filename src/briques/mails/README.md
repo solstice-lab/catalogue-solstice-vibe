@@ -60,7 +60,7 @@ au journal.
 | `envoi.ts` | types `Mail`, `Bloc` | `Mail` : `a` (une adresse), `objet` (une ligne), `contenu` (des `Bloc`), `repondreA` facultatif. `Bloc` : `{ paragraphe }`, `{ code }` ou `{ lien: { libelle, url } }`, l'URL en `https:` ou `http:`. |
 | `envoi.ts` | classe `ErreurEnvoi` | L'erreur de la brique ; son message commence par « Brique mails : ». |
 | `envoi.ts` (tests seulement) | `mailsCaptures()` → `MailCompose[]`, `viderMailsCaptures()` ; type `MailCompose` | Ce qui serait parti, en test : `a`, `objet`, `html`, `texte`, `repondreA`. |
-| `confidentialite.ts` | `TRAITEMENTS_MAILS` | Le traitement (clé `mails`) et son sous-traitant (clé `resend`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe. Le lieu où Resend traite les e-mails dépend du compte du client : il se remplit dans `CONFIDENTIALITE.lieux`, jamais d'avance. L'assembleur retire l'import et les deux clés quand la brique part. |
+| `confidentialite.ts` | `TRAITEMENTS_MAILS` | Le traitement (clé `mails`) et son sous-traitant (clé `resend`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe. Le lieu où Resend traite les e-mails dépend du compte du client : il se remplit dans `CONFIDENTIALITE.lieux`, jamais d'avance. Sa `conservation` est vide : le site ne garde aucun e-mail, et la durée que garde le prestataire, fixée par son contrat, s'écrit dans `CONFIDENTIALITE.choix.mails`. L'assembleur retire l'import et les deux clés quand la brique part. |
 
 **Interne** : `composerMail`, `echapperHtml`, `creerEnvoyeurResend`,
 `envoyeurConsole`, `envoyeurCapture` et le type `Envoyeur`.

@@ -42,3 +42,20 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   sous-titre d'écran.
 - **Pourquoi** : dans un site vitrine, le formulaire avait l'allure d'un écran
   de gestion au milieu de pages publiques.
+
+## 2026-11-04 · Durées de conservation déclarées par donnée · Ajout
+
+- **Ce qui change** : chaque traitement de `confidentialite.ts` porte un
+  champ `conservation` (type `Conservation[]` de `src/lib/confidentialite.ts`) :
+  l'empreinte de l'adresse IP une heure après l'envoi, les messages 3 ans
+  après le dernier échange, hors de l'appli (rappelés par le script).
+  La politique de confidentialité les affiche, « à valider » tant que le
+  projet ne les a pas revues ; le script de purge de la brique rgpd les
+  applique. Clés : `contact-envois`, `contact-messages`.
+- **Appelant** : rien à changer pour la brique. Une appli qui a écrit son
+  propre `Traitement` (dans `traitementsDuProjet`) ajoute `conservation`,
+  vide ou rempli : le typecheck le signale. Une durée autre que celle proposée
+  s'écrit dans `CONFIDENTIALITE.durees`, par sa clé.
+- **Pourquoi** : une durée de conservation qui n'est qu'un texte de la
+  politique n'est tenue par rien ; déclarée par donnée, elle se purge et se
+  vérifie.

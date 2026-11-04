@@ -8,16 +8,18 @@
 // dit dans src/config/acces.ts (DROITS), jamais ici.
 export const ACTIONS_JOURNAL = ["journal.consulter"] as const;
 
-// Fixes en v1 : la contrainte journal_audit_action_check les liste, et un test
-// compare cette liste à la contrainte (même piège que la brique validation :
-// un code qui écrit une valeur que la base refuse).
-export const ACTIONS_JOURNALISEES = ["creation", "modification", "suppression"] as const;
+// La contrainte journal_audit_action_check les liste, et un test compare cette
+// liste à la contrainte (même piège que la brique validation : un code qui
+// écrit une valeur que la base refuse). « export » : l'export des données
+// d'une personne par l'admin (brique rgpd), seule lecture tracée.
+export const ACTIONS_JOURNALISEES = ["creation", "modification", "suppression", "export"] as const;
 export type ActionJournalisee = (typeof ACTIONS_JOURNALISEES)[number];
 
 const LIBELLES: Record<ActionJournalisee, string> = {
   creation: "Création",
   modification: "Modification",
   suppression: "Suppression",
+  export: "Export des données",
 };
 
 export function estActionJournalisee(valeur: unknown): valeur is ActionJournalisee {

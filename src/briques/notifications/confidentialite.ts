@@ -1,10 +1,10 @@
 /*
  * Le traitement de la brique notifications, pour la politique de
  * confidentialité (src/lib/confidentialite.ts) : des faits que le code établit,
- * jamais une base légale ni une durée de conservation, que le projet choisit.
- * La durée recommandée par la brique (12 mois, README) se valide avec le
- * client et s'écrit dans CONFIDENTIALITE.choix.notifications ; la route efface
- * le journal au-delà de conservationMois, à régler pareil.
+ * jamais une base légale, que le projet choisit. La durée de conservation
+ * (`conservation`, 12 mois, README) est une valeur par défaut, à valider avec
+ * le client, qui la surcharge par sa clé (CONFIDENTIALITE.durees) ; la route
+ * efface le journal au-delà de conservationMois, à régler pareil.
  *
  * Le prestataire d'envoi est celui de la brique mails, déjà décrit par elle.
  * Forme : `Traitement` de src/lib/confidentialite.ts, vérifiée là où le socle
@@ -25,6 +25,17 @@ export const TRAITEMENTS_NOTIFICATIONS = [
     precisions: [
       "Les e-mails partent par le prestataire d'envoi décrit à « Envoi des e-mails ».",
       "Les lignes plus anciennes que la durée de conservation s'effacent d'elles-mêmes, à chaque envoi.",
+    ],
+    conservation: [
+      {
+        // CONSERVATION_MOIS_PAR_DEFAUT d'envoi.ts : la route purge à chaque
+        // envoi, la purge de la brique rgpd rattrape une route arrêtée.
+        cle: "notifications",
+        donnee: "Trace de chaque notification",
+        duree: { mois: 12 },
+        depart: "après l'envoi",
+        purge: { table: "notifications_envois", colonne: "envoye_le" },
+      },
     ],
   },
 ];

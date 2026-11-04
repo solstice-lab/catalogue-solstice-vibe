@@ -20,5 +20,9 @@ export const TRAITEMENTS_MAILS = [
     personnes: "Les destinataires des e-mails du site.",
     sousTraitants: [{ cle: "resend", nom: "Resend", role: "Envoi des e-mails." }],
     precisions: [],
+    // Le site ne garde aucun e-mail : seul le prestataire en garde une trace,
+    // pour une durée que fixe son contrat avec le client, pas le code. Le
+    // projet l'écrit dans ses choix (CONFIDENTIALITE.choix.mails).
+    conservation: [],
   },
 ];

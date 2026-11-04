@@ -9,6 +9,8 @@ import {
   lireJournal,
 } from "../src/briques/journal/journal";
 import { SOURCES_JOURNAL } from "../src/briques/journal/donnees-personnelles";
+import { purger } from "../src/briques/rgpd/purge";
+import { conservations } from "../src/lib/confidentialite";
 import { UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
 import { peut } from "../src/briques/comptes/roles";
 import { jouer } from "./aide-session";
@@ -217,5 +219,72 @@ describe("effacement des données d'une personne", () => {
 
     expect(issue).toEqual({ lignes: 1 });
     expect(await query(`SELECT * FROM journal_audit WHERE entite = $1 ORDER BY id`, [ENTITE])).toEqual(avant);
+  });
+});
+
+// L'export des données d'une personne par l'admin (brique rgpd) se trace :
+// une lecture, mais celle de toutes les données d'une personne, faite pour
+// une autre. Comme l'effacement, il désigne le compte par son numéro, jamais
+// par l'adresse ; une adresse sans compte ne laisse donc rien.
+describe("export des données d'une personne par l'admin", () => {
+  const ELLE = { email: "journal.exportee@exemple.test" };
+
+  afterEach(async () => {
+    await query(
+      `DELETE FROM journal_audit WHERE entite = 'compte'
+          AND entite_id IN (SELECT id::text FROM utilisateurs WHERE email = $1)`,
+      [ELLE.email]
+    );
+    await query("DELETE FROM utilisateurs WHERE email = $1", [ELLE.email]);
+  });
+
+  it("trace l'export au nom de l'admin, sur « compte n°<id> », sans l'adresse exportée", async () => {
+    const [{ id }] = await query<{ id: number }>(
+      "INSERT INTO utilisateurs (email, role) VALUES ($1, 'membre') RETURNING id",
+      [ELLE.email]
+    );
+
+    await transaction((tx) => SOURCES_JOURNAL[0].tracerExport(tx, ELLE.email, ADMIN));
+
+    const lignes = await lireJournal({ entite: "compte", entiteId: id });
+    expect(lignes).toEqual([
+      expect.objectContaining({ auteur: ADMIN.email, action: "export", libelle: `compte n°${id}`, champs: [] }),
+    ]);
+    expect(JSON.stringify(lignes)).not.toContain(ELLE.email);
+  });
+
+  it("ne trace rien pour une adresse sans compte : le journal ne garde aucune adresse", async () => {
+    const avant = await query("SELECT count(*) AS n FROM journal_audit");
+    await transaction((tx) => SOURCES_JOURNAL[0].tracerExport(tx, ELLE.email, ADMIN));
+    expect(await query("SELECT count(*) AS n FROM journal_audit")).toEqual(avant);
+  });
+});
+
+// La base garde le DELETE du journal pour cette purge seule : 12 mois après
+// le geste, par le script de la brique rgpd, que lance un humain.
+describe("purge du journal au terme de sa conservation (brique rgpd)", () => {
+  const DU_JOURNAL = conservations().filter(({ purge }) => "table" in purge && purge.table === "journal_audit");
+
+  it("le journal déclare 12 mois après le geste, purgés par le script seul, jamais au passage", () => {
+    expect(DU_JOURNAL).toEqual([
+      expect.objectContaining({ duree: { mois: 12 }, purge: { table: "journal_audit", colonne: "le" } }),
+    ]);
+  });
+
+  it("efface les lignes de plus de 12 mois et garde les plus récentes", async () => {
+    for (const [libelle, mois] of [
+      ["ancienne", 13],
+      ["recente", 11],
+    ] as const) {
+      await query(
+        `INSERT INTO journal_audit (le, utilisateur_id, action, entite, entite_id, libelle)
+         SELECT now() - make_interval(months => $2), id, 'creation', $3, '1', $1 FROM utilisateurs WHERE email = $4`,
+        [libelle, mois, ENTITE, ADMIN.email]
+      );
+    }
+
+    await purger({ transaction, conservations: DU_JOURNAL });
+
+    expect((await lireJournal({ entite: ENTITE })).map((ligne) => ligne.libelle)).toEqual(["recente"]);
   });
 });

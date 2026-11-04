@@ -99,6 +99,36 @@ describe("export par l'admin pour une adresse donnée", () => {
   it("n'a pas de GET", () => {
     expect("GET" in routeAdmin).toBe(false);
   });
+
+  // Brique journal : l'export de l'admin se trace, au nom de l'admin, sur le
+  // compte exporté désigné par son numéro, jamais par son adresse.
+  it("trace l'export au journal, au nom de l'admin : « compte n°<id> »", async () => {
+    jouer("admin");
+    const admin = UTILISATEURS_DEMO.admin;
+    const EXPORTEE = "personne.exportee@exemple.test";
+    await query(`INSERT INTO utilisateurs (email, role) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING`, [
+      admin.email,
+      admin.role,
+    ]);
+    const [{ id }] = await query<{ id: number }>(
+      `INSERT INTO utilisateurs (email, role) VALUES ($1, 'membre') RETURNING id`,
+      [EXPORTEE]
+    );
+    try {
+      expect((await postAdmin(EXPORTEE)).status).toBe(200);
+      expect(
+        await query(
+          `SELECT u.email AS auteur, j.action, j.libelle FROM journal_audit j JOIN utilisateurs u ON u.id = j.utilisateur_id
+            WHERE j.entite = 'compte' AND j.entite_id = $1`,
+          [String(id)]
+        )
+      ).toEqual([{ auteur: admin.email, action: "export", libelle: `compte n°${id}` }]);
+    } finally {
+      await query(`DELETE FROM journal_audit WHERE entite = 'compte' AND entite_id = $1`, [String(id)]);
+      await query(`DELETE FROM utilisateurs WHERE id = $1`, [id]);
+    }
+  });
+  // Fin de la brique journal.
 });
 
 /*

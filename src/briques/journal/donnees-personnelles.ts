@@ -1,4 +1,5 @@
 import { query, type ExecuteurSql } from "@/lib/db/client";
+import { journaliser, type Auteur } from "./journal";
 
 /*
  * Ce que la brique journal garde sur une adresse, pour l'export et
@@ -14,6 +15,11 @@ import { query, type ExecuteurSql } from "@/lib/db/client";
  * L'effacement ne réécrit rien : la base refuse tout UPDATE du journal, et
  * l'anonymisation du compte (brique comptes) le détache de l'adresse. Il
  * compte les lignes, AVANT elle : le registre se parcourt à l'envers.
+ *
+ * L'export par l'admin se trace ici (tracerExport), sur le compte exporté
+ * désigné par son numéro : sans la brique journal, la source part avec elle
+ * et rien ne se trace. Une adresse sans compte ne laisse rien, le journal ne
+ * gardant aucune adresse.
  */
 
 const DE_L_ADRESSE = `FROM journal_audit j
@@ -29,11 +35,21 @@ export const SOURCES_JOURNAL = [
       query(`SELECT j.le, j.action, j.entite, j.entite_id, j.libelle, j.champs ${DE_L_ADRESSE} ORDER BY j.le, j.id`, [
         adresse,
       ]),
-    note: "Les créations, modifications et suppressions de fiches faites par la personne : la fiche, sa référence et, pour une modification, le nom des champs changés, jamais leurs valeurs. Le journal se retrouve par son auteur : les gestes d'autres personnes sur une fiche qui la concerne, ou sur son compte, n'y sont pas.",
+    note: "Les créations, modifications et suppressions de fiches faites par la personne, et, pour un administrateur, les exports des données d'autres personnes : la fiche ou le compte, sa référence et, pour une modification, le nom des champs changés, jamais leurs valeurs. Le journal se retrouve par son auteur : les gestes d'autres personnes sur une fiche qui la concerne, ou sur son compte, n'y sont pas.",
     effacement:
       "Rien n'est réécrit : le journal désigne l'auteur par son numéro de compte, que l'anonymisation du compte détache de l'adresse. Elles s'effacent au terme de leur durée de conservation (12 mois recommandés), par l'équipe technique.",
     effacer: async (executeur: ExecuteurSql, adresse: string) => ({
       lignes: (await executeur.query(`SELECT 1 ${DE_L_ADRESSE}`, [adresse])).length,
     }),
+    tracerExport: async (executeur: ExecuteurSql, adresse: string, auteur: Auteur) => {
+      const [compte] = await executeur.query<{ id: number }>(`SELECT id FROM utilisateurs WHERE email = $1`, [adresse]);
+      if (!compte) return;
+      await journaliser(executeur, auteur, {
+        action: "export",
+        entite: "compte",
+        entiteId: compte.id,
+        libelle: `compte n°${compte.id}`,
+      });
+    },
   },
 ];

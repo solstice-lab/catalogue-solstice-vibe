@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { query, transaction } from "../src/lib/db/client";
 import { mailsCaptures, viderMailsCaptures } from "@/briques/mails/envoi";
-import { envoyerNotifications, ErreurNotifications, type Notification } from "@/briques/notifications/envoi";
+import {
+  CONSERVATION_MOIS_PAR_DEFAUT,
+  envoyerNotifications,
+  ErreurNotifications,
+  type Notification,
+} from "@/briques/notifications/envoi";
 import { SOURCES_NOTIFICATIONS } from "@/briques/notifications/donnees-personnelles";
 import { TRAITEMENTS_NOTIFICATIONS } from "@/briques/notifications/confidentialite";
 
@@ -286,8 +291,13 @@ describe("brique notifications : conservation et données personnelles", () => {
     ).rejects.toThrow(/notifications_envois_(mode|resultat|destinataire)_check/);
   });
 
-  it("décrit son traitement pour la politique de confidentialité, sans durée ni base légale (choix du client)", () => {
+  // La durée déclarée est celle que la route applique par défaut : la
+  // politique annonce ce que le code fait. La base légale reste au client.
+  it("décrit son traitement pour la politique de confidentialité, avec la durée que la route applique, sans base légale (choix du client)", () => {
     expect(TRAITEMENTS_NOTIFICATIONS.map((traitement) => traitement.cle)).toEqual(["notifications"]);
-    expect(JSON.stringify(TRAITEMENTS_NOTIFICATIONS)).not.toMatch(/baseLegale|duree/);
+    expect(JSON.stringify(TRAITEMENTS_NOTIFICATIONS)).not.toMatch(/baseLegale/);
+    expect(TRAITEMENTS_NOTIFICATIONS[0].conservation).toEqual([
+      expect.objectContaining({ duree: { mois: CONSERVATION_MOIS_PAR_DEFAUT } }),
+    ]);
   });
 });
