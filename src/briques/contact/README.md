@@ -13,6 +13,11 @@ Elle n'exige pas la connexion : elle s'assemble dans une vitrine sans module mé
 - **La page `/contact`**, publique : elle ne lit pas la session, n'a pas de
   garde, et le menu n'y montre que les entrées sans garde, comme
   `/mentions-legales`.
+- **Son squelette suit l'appli.** Sans la brique comptes, l'appli est un site
+  public : la page prend `PageVitrine` (en-tête de site, `Contact` en titre de la
+  page, les entrées publiques du menu à droite). Avec la brique comptes, elle
+  prend `AppLayout`, l'écran d'un outil, comme les autres pages d'un outil. Voir
+  « Le squelette de la page » plus bas.
 - **Un envoi par la brique mails** vers `CONTACT_DESTINATAIRE`, avec l'adresse
   du visiteur en « Répondre à ». L'objet est fixe : rien de ce que tape le
   visiteur n'entre dans un en-tête, hors l'adresse de réponse, que la brique
@@ -69,6 +74,24 @@ contact »).
 La brique n'importe que ses fichiers, le kit, `@/lib/db/client`, `@/lib/adresse-ip`,
 `@/lib/format` et `@/briques/mails/envoi`. `tests/contact-isolement.test.ts`
 refuse tout autre import, en particulier la session ou un module.
+
+## Le squelette de la page
+
+La règle : **`PageVitrine` quand l'appli n'a pas la brique comptes, `AppLayout`
+sinon.** Sans comptes, aucun écran d'outil ne peut exister (chaque page de
+gestion appelle `exiger`), donc l'appli est un site public ; un formulaire
+au sous-titre d'écran et au menu d'outil y avait l'allure d'un écran de gestion
+au milieu de pages publiques.
+
+La page lit ce fait dans `NAVIGATION` (`src/lib/navigation.ts`) : une entrée de
+menu n'y porte un garde que par la brique comptes. Elle n'importe donc pas
+cette brique, qu'une appli assemblée sans elle n'a plus : l'import ne
+compilerait plus (le typecheck de `npm run test:assembleur` le verrouille), et aucun réglage n'est à poser : la règle suffit, il n'y a
+pas de variable ni de constante de la brique à régler.
+
+Dans les deux cas, la page reste publique (aucune lecture de session) et le
+menu n'y montre que les entrées sans garde. Sous `PageVitrine`, l'entrée vers
+l'accueil n'est pas répétée : la marque de l'en-tête y mène déjà.
 
 ## Interface publique
 
@@ -151,6 +174,7 @@ Tests dans `tests/contact.test.ts`, `tests/contact-page.test.ts`.
 | Un message parti nulle part, en passant pour reçu | « refuse de démarrer sans destinataire configuré » |
 | Le message d'un visiteur dans les journaux | « dit au visiteur que son message n'est pas parti quand l'envoi échoue, sans le contenu dans le journal » |
 | La page qui lit la session (une vitrine n'en a pas) | « s'affiche sans session » |
+| Un formulaire de site vitrine à l'allure d'un écran de gestion | « prend le squelette d'une page publique quand l'appli n'a pas de menu à gardes » et « garde le squelette d'un écran d'outil quand l'appli a un menu à gardes » |
 | Une politique de confidentialité qui dirait une autre durée que la purge | « dit la vraie durée de conservation de l'empreinte de l'adresse IP » |
 
 ## Données personnelles
