@@ -592,7 +592,11 @@ chez l'hébergeur. Si le client veut se connecter avec Google (Workspace ou Gmai
 créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`,
 ajouter `"google"` à `METHODES` (déjà fait si la blueprint le déclare) et, pour un client Workspace, ses domaines à
 `DOMAINES_GOOGLE_WORKSPACE` (section « La connexion avec Google » du README de la
-brique). Et ce que l'assembleur n'a **pas** fait :
+brique). Si le client veut se connecter avec Microsoft 365 : enregistrer l'application
+dans le portail Azure, déclarer `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` et
+`MICROSOFT_TENANT_ID`, ajouter `"microsoft"` à `METHODES` (déjà fait si la blueprint le
+déclare) et régler `ANNUAIRES_MICROSOFT` (section « La connexion avec Microsoft » du
+README de la brique). Et ce que l'assembleur n'a **pas** fait :
 `src/lib/format.ts` garde le fuseau du
 catalogue, le thème est le thème de repli du catalogue (la charte Solstice Lab), la
 signature Solstice Lab est en place (à retirer par ticket si la fiche le dit, étape 1),

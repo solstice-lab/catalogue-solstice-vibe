@@ -156,13 +156,15 @@ function signalerLeRefus(erreur: unknown): void {
   const nature =
     erreur instanceof oauth.ResponseBodyError
       ? `${erreur.code} ${erreur.error}`
-      : erreur instanceof oauth.OperationProcessingError
-        ? erreur.code
-        : erreur instanceof Error
-          ? erreur.name
-          : typeof erreur === "string"
-            ? erreur
-            : "inconnue";
+      : erreur instanceof oauth.AuthorizationResponseError
+        ? `${erreur.code} ${erreur.error}`
+        : erreur instanceof oauth.OperationProcessingError
+          ? erreur.code
+          : erreur instanceof Error
+            ? erreur.name
+            : typeof erreur === "string"
+              ? erreur
+              : "inconnue";
   console.warn(`[comptes] connexion avec Microsoft refusée : ${nature}`);
 }
 
@@ -181,6 +183,19 @@ function natureDuRefus(erreur: unknown): ErreurMicrosoft {
     return "microsoft-expire";
   }
   return "microsoft-indisponible";
+}
+
+// Une erreur que Microsoft renvoie au retour, avant tout échange : son
+// enregistrement ou ses permissions refusées ne se corrigent pas en
+// recommençant (unauthorized_client, invalid_client, invalid_scope), un
+// consentement d'administrateur exigé non plus (consent_required). Le reste,
+// dont un state faux : à recommencer.
+function refusAuRetour(erreur: unknown): ErreurMicrosoft {
+  if (!(erreur instanceof oauth.AuthorizationResponseError)) return "microsoft-expire";
+  if (["unauthorized_client", "invalid_client", "invalid_scope"].includes(erreur.error))
+    return "microsoft-configuration";
+  if (erreur.error === "consent_required") return "microsoft-acces";
+  return "microsoft-expire";
 }
 
 // L'annuaire que le jeton dit être le sien (tid), lu avant sa vérification
@@ -214,6 +229,10 @@ export async function terminerAvecMicrosoft(
   if (!parcours) return versConnexion(requete, "microsoft-expire");
   const client: oauth.Client = { client_id: etat.idClient };
 
+  // L'émetteur passé ici ne sert que si la réponse porte un paramètre iss
+  // (RFC 9207), que Microsoft n'envoie pas : s'il venait à l'envoyer, le
+  // réglage « tous » (émetteur « common ») refuserait tout, et ce serait à
+  // revoir ici.
   let parametres: URLSearchParams;
   try {
     parametres = oauth.validateAuthResponse(
@@ -226,7 +245,7 @@ export async function terminerAvecMicrosoft(
     if (erreur instanceof oauth.AuthorizationResponseError && erreur.error === "access_denied")
       return versConnexion(requete, "microsoft-annule");
     signalerLeRefus(erreur);
-    return versConnexion(requete, "microsoft-expire");
+    return versConnexion(requete, refusAuRetour(erreur));
   }
 
   let annuaire: string | null;

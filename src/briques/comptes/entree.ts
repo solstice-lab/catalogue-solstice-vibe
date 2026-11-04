@@ -90,7 +90,7 @@ function parDomaine(email: string, contexte: ContexteEntree): boolean {
 
 // L'entrée ouverte : une adresse bien formée suffit (un seul « @ », un domaine
 // avec un point). La méthode a déjà vérifié que la personne la détient (le
-// code reçu, le compte Google), mais admettre() est exportée : elle ne se fie
+// code reçu, le compte Google ou Microsoft), mais admettre() est exportée : elle ne se fie
 // pas à son appelant. Jamais une adresse de démo : sans la démo (en
 // production), un compte de démo resté en base n'entre plus, et l'entrée
 // ouverte ne doit pas le faire revenir.

@@ -247,7 +247,7 @@ Et dans `tests/comptes-effets.test.ts`, le registre des effets :
 | `microsoft.ts` | La méthode Microsoft (Entra ID) : le départ vers Microsoft, le retour (state, PKCE, nonce, ID token, annuaire), les règles d'entrée propres à Microsoft, les messages de refus. |
 | `parcours.ts` | Le cookie de parcours d'une connexion par un fournisseur : ce que le départ tire au hasard et que le retour doit retrouver. Il est signé, à usage unique, et vaut 10 minutes. |
 | `demo.ts` | La méthode démo : un compte par rôle, refusée en production. |
-| `methodes.ts` | Les types de la configuration (`MethodeDeConnexion`, `Entree`) et `ErreurComptes`. |
+| `methodes.ts` | Les types de la configuration (`MethodeDeConnexion`, `Entree`, `AnnuairesMicrosoft`) et `ErreurComptes`. |
 | `actions.ts` | Les server actions : demander un code, le vérifier, entrer en démo, se déconnecter. Sans garde, puisque ce sont elles qui décident de qui l'on est. |
 | `EcranConnexion.tsx` | Le contenu de `/connexion` : un bloc par méthode, dans l'ordre de `METHODES`, et le message d'un refus de Google ou de Microsoft. |
 | `FormulaireCode.tsx` | Le bloc du code par e-mail, en deux étapes : l'adresse, puis le code. |
@@ -548,7 +548,7 @@ formulaire : rien n'est à ajouter à `form-action 'self'` de la CSP, ni à
 
 | Réglage | Qui passe à `ENTREE` | Adresses de Microsoft |
 | --- | --- | --- |
-| `"un-seul"` (le défaut, le cas normal) | Les comptes de l'annuaire du client, `MICROSOFT_TENANT_ID` (invités compris). | `https://login.microsoftonline.com/<MICROSOFT_TENANT_ID>/oauth2/v2.0/…` |
+| `"un-seul"` (le défaut, le cas normal) | Les comptes de l'annuaire du client, `MICROSOFT_TENANT_ID`. Un invité d'un autre annuaire y a un jeton de cet annuaire, mais le domaine de son adresse n'appartient pas au client : `xms_edov` le refusera sans doute (non essayé). | `https://login.microsoftonline.com/<MICROSOFT_TENANT_ID>/oauth2/v2.0/…` |
 | `"tous"` | Les comptes de tout annuaire, et les comptes Microsoft personnels si l'enregistrement de l'application les accepte (étape 2 ci-dessous). Pour un outil ouvert à plusieurs entreprises. | `https://login.microsoftonline.com/common/oauth2/v2.0/…` |
 
 Dans les deux cas, l'ID token doit porter l'émetteur de son propre annuaire,
@@ -556,14 +556,18 @@ Dans les deux cas, l'ID token doit porter l'émetteur de son propre annuaire,
 `"un-seul"`, ce `tid` doit être `MICROSOFT_TENANT_ID` : un compte d'ailleurs est
 refusé (`microsoft-acces`), même listé dans `ENTREE`. `MICROSOFT_TENANT_ID` est le GUID
 de l'annuaire, pas son nom de domaine : avec le nom, chaque jeton serait refusé sur son
-émetteur, et la carte le tient donc pour absent.
+émetteur, et la carte le tient donc pour absent. Avec `"tous"`, l'émetteur ne dit
+que l'annuaire du compte, quel qu'il soit : la confiance tient alors à TLS, au
+destinataire du jeton (`aud`), à `xms_edov` et à `ENTREE`.
 
 **Qui entre**, dans cet ordre :
 
 1. L'émetteur et le `tid`, ci-dessus.
 2. L'ID token porte une adresse (`email`) et **`xms_edov` vaut `true`** : Microsoft a
-   vérifié que le domaine de l'adresse appartient à l'annuaire du compte, ou c'est un
-   compte personnel, dont Microsoft vérifie l'adresse.
+   vérifié que le domaine de l'adresse appartient à l'annuaire du compte. La
+   documentation Microsoft des revendications facultatives compte aussi pour vérifiées
+   les adresses des comptes personnels : **à confirmer par le premier essai** avec un
+   compte personnel (refusé sinon, avec la ligne du journal ci-dessous).
    - Sans cette règle, l'administrateur de n'importe quel annuaire écrit dans le profil
      d'un compte l'adresse qu'il veut, celle d'un client comprise, et entre sous son
      nom (attaque dite « nOAuth » ; documentation Microsoft « Migrate away from using
@@ -587,7 +591,12 @@ en n'acceptant que les annuaires d'entreprise, étape 2).
 (`ERREURS_MICROSOFT`) : `microsoft-annule`, `microsoft-expire` (aussi : un jeton sans
 `tid` ou dont l'émetteur n'est pas celui de son `tid`), `microsoft-acces` (aussi : un
 autre annuaire avec `"un-seul"`, ou `xms_edov` absent), `microsoft-indisponible`,
-`microsoft-configuration` (dont le secret expiré : il vaut 24 mois au plus).
+`microsoft-configuration` (dont le secret expiré : il vaut 24 mois au plus). Une
+erreur que Microsoft renvoie dès le retour, avant tout échange, se lit aussi :
+`unauthorized_client`, `invalid_client` ou `invalid_scope` donnent
+`microsoft-configuration`, `consent_required` (un consentement d'administrateur
+exigé) donne `microsoft-acces`, le reste `microsoft-expire`. Le journal en garde le
+code, jamais la description (`error_description`).
 
 **Sans configuration.** Si `"microsoft"` est dans `METHODES` mais que
 `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` ou, avec `"un-seul"`,

@@ -321,6 +321,26 @@ describe("connexion avec Microsoft : le retour, PKCE, state et nonce", () => {
     expect(echanges).toEqual([]);
   });
 
+  it("dit, quand Microsoft refuse dès le retour, si c'est la configuration ou un consentement qui manque, plutôt que « recommencer », sans échanger de code", async () => {
+    const journal = vi.spyOn(console, "warn").mockImplementation(() => {});
+    for (const [erreur, attendu] of [
+      ["unauthorized_client", "microsoft-configuration"],
+      ["invalid_scope", "microsoft-configuration"],
+      ["consent_required", "microsoft-acces"],
+      ["server_error", "microsoft-expire"],
+    ]) {
+      const aller = await partir();
+      await aucuneConnexion(
+        await revenir({ error: erreur, error_description: "AADSTS65001 détail", state: aller.state }),
+        attendu
+      );
+    }
+    expect(echanges).toEqual([]);
+    const ecrit = journal.mock.calls.flat().map(String).join(" ");
+    expect(ecrit).toContain("consent_required");
+    expect(ecrit).not.toContain("AADSTS65001");
+  });
+
   it("dit que Microsoft n'a pas répondu quand l'échange échoue, sans écrire au journal ni le code ni le secret", async () => {
     const journal = vi.spyOn(console, "warn").mockImplementation(() => {});
     const aller = await partir();

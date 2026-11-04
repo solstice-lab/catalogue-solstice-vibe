@@ -352,7 +352,7 @@ export const BRIQUES = {
     // la règle sans que la brique soit gardée est refusée.
     connexion: true,
     // mails : la connexion par code, méthode par défaut, envoie son code par
-    // e-mail. Sans elle, seule Google vaudrait en production.
+    // e-mail. Sans elle, seuls Google ou Microsoft vaudraient en production.
     exige: ["donnees", "mails"],
     // rgpd : une appli qui a des comptes garde des données personnelles, et
     // doit pouvoir répondre à une demande d'accès ou d'effacement (RGPD
