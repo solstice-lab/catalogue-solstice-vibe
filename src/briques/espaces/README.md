@@ -74,6 +74,14 @@ les effets d'un compte désactivé ou effacé) et **mails** (les invitations).
     dans toutes ses adhésions, terminées comprises ;
   - **réactivation** : rien. Une adhésion terminée ne revit pas ; la personne
     rejoint de nouveau par le code.
+- **Les effets d'un départ**, au registre `src/config/effets-espaces.ts`, que
+  chaque module de l'appli complète : quand une adhésion se termine (la
+  personne quitte l'espace, un gestionnaire la retire, son compte est
+  désactivé ou effacé), la brique joue les effets déclarés dans la
+  transaction du geste, sous le verrou de l'espace, une fois l'adhésion
+  terminée. Chaque effet reçoit l'exécuteur de la transaction, l'espace, le
+  compte, l'adhésion et le motif (`parti`, `retire`, `compte-desactive`,
+  `compte-efface`). Un effet qui lève annule le geste. Voir « La brancher ».
 - **Deux écrans** sur le kit `src/ui/`, pour le téléphone comme pour
   l'ordinateur :
   - **« Créer ou rejoindre »** (`/espace/rejoindre`) : deux `Carte`s, l'une
@@ -129,17 +137,19 @@ les effets d'un compte désactivé ou effacé) et **mails** (les invitations).
 | `invitations.ts` | L'invitation par e-mail : plafonds comptés en base, puis envoi par la brique mails. Serveur seulement. |
 | `acces.ts` | L'accès unique : `monEspace`, `exigerMonEspace`, le type `BaseEspace`, et `choisirEspace` (plusieurs espaces par compte). Serveur seulement. |
 | `effets-comptes.ts` | `EFFETS_ESPACES`, l'entrée de la brique au registre des effets de comptes. Serveur seulement. |
+| `departs.ts` | Les types du registre des effets d'un départ (`EffetsDeDepart`, `DepartDEspace`) et `jouerLesEffetsDuDepart`, que les gestes appellent. Serveur seulement. |
 | `donnees-personnelles.ts` | `SOURCES_ESPACES`, pour l'export et l'effacement (brique rgpd). Serveur seulement. |
 | `confidentialite.ts` | `TRAITEMENTS_ESPACES`, pour la politique de confidentialité. N'importe pas la base. |
 | `EcranCreerOuRejoindre.tsx`, `EcranMonEspace.tsx` | Les deux écrans, composants client. |
 
 Hors du dossier, partis avec elle quand une copie ne la garde pas :
-`src/config/espaces.ts` (les réglages), `src/app/espace/` (les deux pages et
-leurs server actions), `tests/aide-espaces.ts` et les tests
-`tests/espaces*.test.ts`.
+`src/config/espaces.ts` (les réglages), `src/config/effets-espaces.ts` (le
+registre des effets d'un départ), `src/app/espace/` (les deux pages et leurs
+server actions), `tests/aide-espaces.ts` et les tests `tests/espaces*.test.ts`.
 
 La brique n'importe que le socle (`@/ui`, `@/lib/format`, `@/lib/db/client`,
-React, Next, `node:crypto`), ses réglages (`@/config/espaces`), la brique
+React, Next, `node:crypto`), ses réglages (`@/config/espaces`), son registre
+des effets d'un départ (`@/config/effets-espaces`), la brique
 comptes (`roles.ts` pour `utilisateurCourant`, `effets.ts` pour ses types) et
 la brique mails (`envoi.ts`). `tests/espaces-isolement.test.ts` le verrouille
 par une liste blanche, prouvée par un cas fautif.
@@ -166,9 +176,10 @@ tests et peut changer sans entrée au journal.
 | `reglages.ts` | type `ReglagesEspaces` ; `majuscule(texte)` | La forme de `ESPACES` dans `src/config/espaces.ts` ; l'entrée de menu dit `majuscule(ESPACES.vocabulaire.mon)`. |
 | `code.ts` | `lienPourRejoindre(site, code)` | Le lien qui ouvre « Créer ou rejoindre » avec le code prérempli. |
 | `acces.ts` (serveur seulement) | `exigerMonEspace()` → `MonEspace` ; `monEspace()` → `MonEspace \| null` ; `choisirEspace(personne, espaceId)` ; types `MonEspace`, `BaseEspace` | L'accès unique d'un module rattaché à un espace, appelé juste après `exiger(action)`. `exigerMonEspace` renvoie vers `/espace/rejoindre` une personne sans espace. `MonEspace` : `{ utilisateur, espace, adhesion, base }`. `base` a `query`, `queryOne`, `transaction`, qui passent l'identifiant de l'espace en `$1` (les paramètres de l'appelant suivent en `$2`…) et refusent une requête qui ne nomme pas `espace_id` et `$1`. |
-| `espaces.ts` (serveur seulement) | `creerEspace`, `rejoindre`, `quitter`, `retirerMembre`, `nommerGestionnaire`, `retirerGestionnaire`, `regenererCode` → `Refus` ou le résultat du geste ; `lireMembres(espaceId)`, `lireMesEspaces(personne)` | Le corps des server actions de `src/app/espace/actions.ts`, appelé après `exiger`, avec la personne qu'il rend. |
+| `espaces.ts` (serveur seulement) | `creerEspace`, `rejoindre`, `quitter`, `retirerMembre`, `nommerGestionnaire`, `retirerGestionnaire`, `regenererCode` → `Refus` ou le résultat du geste (`quitter` et `retirerMembre` lèvent si un effet de départ lève : le geste est annulé) ; `lireMembres(espaceId)`, `lireMesEspaces(personne)` | Le corps des server actions de `src/app/espace/actions.ts`, appelé après `exiger`, avec la personne qu'il rend. |
 | `invitations.ts` (serveur seulement) | `inviterParEmail(personne, espaceId, adresse, contexte)` → `RetourEspace` ; type `ContexteInvitation` | Idem, pour l'invitation. `contexte` : le nom de l'appli et son adresse publique (`null` : le mail part sans lien). |
 | `effets-comptes.ts` | `EFFETS_ESPACES` | Son entrée de `src/config/effets-comptes.ts`, avant celle du journal. |
+| `departs.ts` (serveur seulement) | types `EffetsDeDepart`, `EffetDeDepart`, `DepartDEspace`, `MotifDuDepart` | La forme d'une entrée de `EFFETS_DEPARTS` dans `src/config/effets-espaces.ts` : `{ unite, depart }`, où `depart(tx, { espaceId, utilisateurId, adhesionId, motif })` écrit par `tx`. `MotifDuDepart` : `MotifDepart` et `compte-efface` (la base garde `compte-desactive` pour un compte effacé). `jouerLesEffetsDuDepart` est interne à la brique. |
 | `donnees-personnelles.ts` | `SOURCES_ESPACES` | Ses sources de `src/config/donnees-personnelles.ts` (brique rgpd). |
 | `confidentialite.ts` | `TRAITEMENTS_ESPACES` | Son traitement dans `src/lib/confidentialite.ts`, dont les choix se remplissent sous la clé `espaces`. |
 | `EcranCreerOuRejoindre.tsx` | `EcranCreerOuRejoindre({ codeInitial, actions })`, type `ActionsCreerOuRejoindre` | Le contenu de `/espace/rejoindre`, que la page entoure d'`AppLayout`. |
@@ -183,7 +194,8 @@ raison.
 
 L'assembleur branche la brique (pages, droit, menu, registres). Ce qui reste à
 l'appli, c'est chaque module métier dont les fiches appartiennent à un espace.
-Il copie le patron `dossiers` (`CLAUDE.md` §3), avec trois différences :
+Il copie le patron `dossiers` (`CLAUDE.md` §3), avec trois différences, et
+une quatrième s'il garde des données par membre :
 
 1. **Sa table** a `espace_id INTEGER NOT NULL REFERENCES espaces (id)` et un
    index qui commence par `espace_id`. Une référence unique l'est par espace
@@ -215,6 +227,34 @@ Il copie le patron `dossiers` (`CLAUDE.md` §3), avec trois différences :
 
 Une fiche se retrouve par `espace_id = $1 AND id = $2` : un identifiant d'un
 autre espace donne « introuvable », comme un identifiant qui n'existe pas.
+
+4. **S'il garde des données par membre** (un ordre de passage, des tâches
+   attribuées, des demandes en attente entre deux membres), il déclare son
+   effet de départ dans `src/config/effets-espaces.ts` plutôt que de sauter
+   les adhésions terminées à chaque lecture. L'effet vit dans un fichier du
+   module, écrit par la transaction reçue, et n'importe ni `query`, ni
+   `queryOne`, ni `transaction` (`tests/espaces-departs.test.ts` le refuse) :
+
+   ```ts
+   import type { EffetsDeDepart } from "@/briques/espaces/departs";
+
+   export const DEPART_TACHES: EffetsDeDepart = {
+     unite: "taches",
+     depart: async (tx, { espaceId, adhesionId }) => {
+       await tx.query("DELETE FROM taches_ordre WHERE espace_id = $1 AND adhesion_id = $2", [espaceId, adhesionId]);
+     },
+   };
+   ```
+
+   L'effet voit le geste fait : l'adhésion terminée, le successeur nommé à
+   la désactivation, le prénom « Ancien membre » à l'effacement. Il se joue
+   sous le verrou de l'espace : aucune arrivée ni aucun autre départ du même
+   espace ne passe entre le geste et lui. Un compte effacé après sa
+   désactivation n'a plus d'adhésion en cours : son départ a été joué à la
+   désactivation, il ne l'est pas une seconde fois. Ce que le module garde
+   de personnel sur un membre s'efface donc par sa source de la brique rgpd
+   (`src/config/donnees-personnelles.ts`), comme toute table, pas par l'effet
+   de départ.
 
 ## Ce qu'on configure (`src/config/espaces.ts`)
 
@@ -274,6 +314,24 @@ Et de conception :
 - **Au plafond des codes faux, même le bon code est refusé** : sinon le plafond
   ne dirait rien au compte qui parcourt les codes.
 
+Le 2026-11-03 aussi, au réassemblage de tours-de-coloc, pour les effets d'un
+départ :
+
+- **Le registre reçoit le motif** (`parti`, `retire`, `compte-desactive`,
+  `compte-efface`), décidé par la responsable du projet : un module peut
+  traiter un départ volontaire autrement qu'un retrait. L'effacement a son
+  motif dans le registre, pas en base, qui garde `compte-desactive` : sa
+  contrainte n'a pas eu à changer.
+- **Un seul point d'entrée pour tout départ** : la désactivation et
+  l'effacement d'un compte jouent aussi le registre des départs, après leur
+  propre travail, plutôt que de laisser le module déclarer en plus un effet
+  de compte qui retrouverait les adhésions.
+- **Écarté : un événement ou une file traitée hors de la transaction.** Le
+  module verrait encore l'ancien membre entre le départ et le traitement, et
+  un traitement en échec laisserait le départ fait sans son effet. Dans la
+  transaction, un effet qui lève annule le départ, et le refus remonte à qui
+  faisait le geste.
+
 ## À savoir
 
 - **L'invitation ne crée pas de compte.** La personne invitée se connecte avec
@@ -313,6 +371,8 @@ Les tests sont dans `tests/espaces*.test.ts`, intitulés d'après la règle.
 | Une adhésion née pendant la désactivation ou l'effacement du compte, que l'effet n'a pas vue | « rejoindre pendant qu'une désactivation du compte est en cours attend sa fin, et n'ouvre pas d'adhésion sur un compte désactivé » (`espaces-effets`) | relevé à la relecture du code de la brique |
 | Un prénom qui survit à l'effacement | « effacer […] remplace le prénom par « Ancien membre », adhésions terminées comprises » (`espaces-effets`) | ticket |
 | Un effet qui écrit hors de la transaction du geste | couvert par le verrou du registre (`tests/comptes-effets.test.ts`), qui joue `EFFETS_ESPACES` sous un pool qui refuse toute requête | brique comptes |
+| Un module qui garde un membre parti dans ses listes (l'ordre des tours, les tours futurs, les échanges en attente) | « quitter les joue dans sa transaction, avec le motif « parti » […] », de même pour retirer, désactiver et effacer ; « annulent le geste quand l'un d'eux lève » ; « se jouent sous le verrou de l'espace » (`espaces-departs`) | tours-de-coloc, réassemblage avec la brique |
+| Un effet de départ qui écrit hors de la transaction du geste | « chaque effet du registre de l'appli écrit et lit par la transaction reçue, jamais par le pool », prouvé sur un cas fautif, et « ni le registre ni aucun fichier d'effets qu'il importe n'importe query […] », qui échoue s'il ne lit pas le registre (`espaces-departs`) | brique comptes ; `docs/cicatrices.md`, T5 |
 | Une table neuve oubliée de l'export | couvert par `tests/rgpd-export.test.ts` | brique rgpd |
 | Une page ou une action sans garde | couvert par `tests/gardes-acces.test.ts` | `docs/cicatrices.md`, A1 |
 

@@ -740,9 +740,13 @@ export const BRIQUES = {
       "src/briques/espaces/",
       "src/app/espace/",
       "src/config/espaces.ts",
+      // Le registre des effets d'un départ d'espace, que les modules de
+      // l'appli remplissent : il importe le type de la brique, il part avec elle.
+      "src/config/effets-espaces.ts",
       "tests/aide-espaces.ts",
       "tests/espaces.test.ts",
       "tests/espaces-acces.test.ts",
+      "tests/espaces-departs.test.ts",
       "tests/espaces-effets.test.ts",
       "tests/espaces-invitations.test.ts",
       "tests/espaces-isolation.test.ts",

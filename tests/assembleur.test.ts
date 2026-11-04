@@ -151,6 +151,9 @@ const TEMOINS: Record<string, string[]> = {
     "src/app/espace/page.tsx",
     "src/config/espaces.ts",
     "tests/espaces-isolation.test.ts",
+    // Le registre des effets d'un départ d'espace et son verrou.
+    "src/config/effets-espaces.ts",
+    "tests/espaces-departs.test.ts",
   ],
   // L'écran d'administration des comptes, optionnel.
   "gestion-comptes": [

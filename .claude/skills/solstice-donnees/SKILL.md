@@ -125,6 +125,14 @@ brancher ») :
   dans `src/config/effets-comptes.ts`, écrit par l'exécuteur reçu, jamais par
   `query()`. Jamais une retouche de `src/app/comptes/actions.ts`, fichier de la
   brique gestion-comptes (README de comptes, « Les effets d'un compte… »).
+  Avec la brique espaces, une appartenance à un espace n'y passe pas : voir
+  le point suivant.
+- **Un membre qui quitte un espace** (avec la brique espaces : parti, retiré,
+  compte désactivé ou effacé) et que le module garde dans ses données (un
+  ordre de passage, une demande en attente) : un effet déclaré dans
+  `src/config/effets-espaces.ts`, joué dans la transaction du départ, plutôt
+  que de sauter les adhésions terminées à chaque lecture (README d'espaces,
+  « La brancher », point 4).
 - **Les gestes de masse appartiennent aux LISTES** (sélection + actions en
   lot), pas aux fiches. Toute suppression se confirme par une `Modale`.
 - **Toutes les pages du module en `force-dynamic`** : le build n'interroge
