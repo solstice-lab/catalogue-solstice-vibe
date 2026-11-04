@@ -1,9 +1,9 @@
 # Ajouter une brique à une appli assemblée, et la tenir à jour
 
 Note de conception, écrite avant tout code le 2026-11-03 ; ses questions ont été tranchées
-le même jour (« Décisions prises »). Seule la première tranche est outillée, en lecture
-seule (« Ce qui est outillé »). Elle vit dans `outils/`, que l'assembleur ne copie pas : une
-appli assemblée n'a ni l'outil ni ce qui le décrit.
+le même jour (« Décisions prises »). Les deux premières tranches sont outillées : la mise à
+jour d'une appli, hors migrations (« Ce qui est outillé »). Elle vit dans `outils/`, que
+l'assembleur ne copie pas : une appli assemblée n'a ni l'outil ni ce qui le décrit.
 
 ## Le besoin
 
@@ -15,9 +15,9 @@ l'assemblage (`outils/assembler.mjs`). Deux manques en découlent :
    la base, qu'une appli « n'en recevra pas après coup »). La parade actuelle : prendre
    d'avance les briques probables, avec leur code, leurs tables et leurs traitements
    déclarés, sans usage.
-2. **Les corrections et évolutions d'une brique** n'arrivent dans l'appli que si quelqu'un
-   lit les `CHANGELOG.md` et les reporte à la main (« Hors v1 » de `creer-appli`). Une
-   correction de sécurité peut ne jamais arriver.
+2. **Les corrections et évolutions d'une brique** n'arrivaient dans l'appli, avant la
+   tranche 2, que si quelqu'un lisait les `CHANGELOG.md` et les reportait à la main. Une
+   correction de sécurité pouvait ne jamais arriver.
 
 Le cas : le 2026-11-03, au cadrage d'une appli de répartition des tâches en colocation, la
 personne qui utilise le catalogue a demandé de pouvoir « piquer des briques au fur et à
@@ -83,13 +83,14 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 
 Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 
-- le catalogue a des modifications non commitées, ou son `HEAD` n'est pas `origin/main`
-  (même vérification que l'étape 0 de `creer-appli`) ;
+- visant son `HEAD`, le catalogue a des modifications non commitées, ou son `HEAD` n'est
+  pas `origin/main` (même vérification que l'étape 0 de `creer-appli`) ; un `--vers` hors
+  d'`origin/main` ;
 - l'appli n'a pas de manifeste, ou son commit porte `+arbre-modifie` : l'origine ne se
   rejoue pas ;
 - le commit A est absent du catalogue (appli assemblée avant le dépôt public) ;
-- l'arbre de l'appli n'est pas propre, ou son `HEAD` n'est pas son `origin/main` à jour
-  (`solstice-livrer` §1 : une branche part de là) ;
+- l'arbre de l'appli n'est pas propre, ou, sauf à blanc, son `HEAD` n'est pas son
+  `origin/main` à jour (`solstice-livrer` §1 : une branche part de là) ;
 - une brique de B est inconnue au commit A' (renommée ou retirée du catalogue) ;
 - le Prettier du commit A ne s'installe pas dans le worktree ;
 - l'origine rejouée ne redonne pas les empreintes du manifeste ;
@@ -278,16 +279,19 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    worktree de l'appli dont le `HEAD` est son `origin/main` à jour :
 
    ```
-   node outils/mettre-a-jour.mjs <dossier-de-l-appli> --branche <type>/<slug> [--ajouter <briques>] [--vers <commit>] [--a-blanc]
+   node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--branche <type>/<slug>] [--ajouter <briques>] [--vers <commit>] [--a-blanc]
    ```
 
-   Seul `--a-blanc`, sans les autres options, est outillé à ce jour (« Ce qui est outillé »).
-   Sans `--ajouter`, l'outil met à jour vers `--vers`, par défaut le `HEAD` du catalogue.
-   Avec `--ajouter`, il ajoute au commit de l'appli (A' = A) : une opération à la fois
-   (« Options écartées »). Une brique qui n'existe pas au commit A se refuse : mettre à
-   jour d'abord. `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée la
-   branche nommée, y écrit, **ne commite pas** et imprime le rapport en Markdown, pour le
-   corps de la PR. Il ne touche ni `main`, ni le remote, ni aucune base, ni aucun `.env*`.
+   `--ajouter` n'est pas encore outillé, ni le report des migrations (« Ce qui est
+   outillé »). Sans `--ajouter`, l'outil met à jour vers `--vers`, par défaut le `HEAD` du
+   catalogue. Avec `--ajouter`, il ajoute au commit de l'appli (A' = A) : une opération à
+   la fois (« Options écartées »). Une brique qui n'existe pas au commit A se refuse :
+   mettre à jour d'abord. `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée
+   la branche nommée (par défaut `feature/reporter-catalogue-<A'>`), y écrit, **ne commite
+   pas** et imprime le rapport en Markdown, pour le corps de la PR ; il l'écrit aussi dans
+   le dossier git du worktree (`git rev-parse --git-path catalogue-mise-a-jour.md`), hors
+   de l'arbre suivi : il ne part pas au prochain `git add`. Il ne touche ni `main`, ni le
+   remote, ni aucune base, ni aucun `.env*`.
 3. **Dans une session ouverte dans ce worktree de l'appli**, avec `solstice-livrer` : la
    résolution des conflits listés, `npm install` si le verrou est à régénérer, les
    vérifications du `CLAUDE.md` de l'appli (§6), la relecture par sous-agents
@@ -368,7 +372,8 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    (« Ce qui est outillé »). Les textes qui disent la mise à jour « hors v1 »
    (`creer-appli`, `choix.md`, README du catalogue). Fait quand un test couvre chaque ligne de la table, lecture en LF comprise,
    que `npm ci` passe dans l'appli d'essai après l'opération (après `npm install` quand le
-   rapport le demande), et que le rapport d'un cas d'essai porte chaque rubrique.
+   rapport le demande), et que le rapport d'un cas d'essai porte chaque rubrique. Outillée
+   (« Ce qui est outillé »).
 3. **Les étapes de migration en fin de liste.** À part, parce que c'est la partie qui peut
    mettre une appli à terre en production. Les étapes lues par `nom`, l'ajout en fin, les
    arrêts, `schema.sql`, et un verrou au catalogue : deux étapes n'y portent pas le même
@@ -398,8 +403,10 @@ Bloquées par : 2 par 1 ; 3 par 2 ; 4 par 3 ; 5 par 4.
 
 ## Ce qui est outillé
 
-La tranche 1, le 2026-11-03 : `node outils/mettre-a-jour.mjs <appli> --a-blanc`, depuis le
-catalogue. Sans `--a-blanc`, l'outil refuse : rien n'écrit encore dans l'appli.
+La tranche 1, le 2026-11-03 : retrouver l'origine d'une appli (la fonction `examiner` de
+l'outil, première étape de toute opération). La tranche 2, le 2026-11-04 : la mise à jour,
+`node outils/mettre-a-jour.mjs <appli> [--vers <commit>] [--branche <nom>] [--a-blanc]`,
+depuis le catalogue (« Le circuit »).
 
 - **Le manifeste au format 2** (décision 4), écrit par l'assembleur :
   `catalogue.commitComplet` à côté du commit court, et `assemblage` : `briques` (les
@@ -432,10 +439,33 @@ catalogue. Sans `--a-blanc`, l'outil refuse : rien n'écrit encore dans l'appli.
   au format 1 une unité inconnue au commit A ou un `package.json` sans nom de paquet,
   empreintes qui ne se retrouvent pas.
   Le désaccord de `commit_reference` se signale.
-- **Les refus laissés à la tranche 2**, qui ne valent qu'avec une cible ou une écriture :
-  le catalogue propre et à `origin/main` (son `HEAD` devient le commit A'), l'appli à son
-  `origin/main` à jour (la branche part de là), une brique inconnue au commit A', un
-  fichier neuf de la cible au chemin d'un fichier de l'appli.
+- **La cible** (tranche 2) : l'assembleur du commit A' rejoué de même, avec les réglages
+  de l'origine, puis la table « Ce qu'il fait de chaque fichier », `NOTICE` compris. Un
+  fichier est binaire, à la façon de git, s'il porte un octet nul dans ses 8 000 premiers.
+  La fusion à trois est celle de `git merge-file`, au style diff3 : un conflit montre aussi
+  l'origine, que l'appli n'a nulle part ailleurs. Le manifeste écrit est celui de la cible ;
+  l'en-tête de `blueprint.md` reçoit `commit_reference` et, si des briques arrivent,
+  `briques_assemblees`.
+- **Le rapport** : les fichiers par sort, ceux que l'appli a retouchés ou supprimés et que
+  le catalogue ne change pas, les dépendances npm, les entrées neuves des `CHANGELOG.md`
+  des briques reçues (les sections « ## » de la cible absentes de l'origine, ruptures en
+  tête : un titre dont le dernier segment commence par « Rupture »), les sujets des
+  commits de A à A' qui touchent un fichier du socle reçu, les variables nouvelles de
+  `.env.example` et `render.yaml`, les traitements ajoutés (une clé `cle` neuve dans un
+  `confidentialite.ts` de brique) ou changés, le registre RGPD, ce que la fusion
+  déclenche, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans
+  aucun fichier à reporter : il dit ce qu'elle a retouché, l'usage seul de la tranche 1.
+- **Les refus de la tranche 2**, avant toute écriture : le catalogue sans `origin/main` ;
+  visant son `HEAD`, le catalogue aux modifications non commitées ou dont le `HEAD` n'est
+  pas `origin/main` ; `--vers` introuvable ou hors d'`origin/main` ; un commit visé qui ne
+  descend pas de celui de l'appli ; sauf à blanc, l'appli déjà au commit visé, une appli
+  sans `origin/main` ou dont le `HEAD` n'est pas lui (l'outil ne fait pas de `fetch`), un
+  nom de branche que git refuse ou qui existe ; une brique de l'appli inconnue au commit
+  A' ; `migrations.ts` ou `schema.sql` qui changent de l'origine à la cible (tranche 3) ;
+  un fichier neuf de la cible au chemin d'un fichier de l'appli, à la casse près (un
+  disque Windows ou macOS ne les distingue pas), ou au chemin d'un de ses dossiers, ou
+  sous un de ses fichiers. Une écriture qui échoue en route (un fichier verrouillé) le dit,
+  avec le geste pour revenir au `main` de l'appli.
 
 ## Décisions prises
 
