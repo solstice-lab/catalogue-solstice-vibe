@@ -54,7 +54,7 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   recommander la **vitrine**, c'est-à-dire le socle sans base (étape 2). Sinon, les
   personnes qui se connectent sont-elles toutes de l'organisation du client (**outil
   interne**), ou aussi des personnes extérieures qu'un admin invite (**portail**) ? Le
-  profil retenu se note dans `profil:` de l'en-tête de la blueprint.
+  profil retenu se note dans `profil:` de l'en-tête de la blueprint. Avec la vitrine :
   - Le client obtient : des pages dont le contenu est écrit dans le code, le kit, les
     mentions légales, la politique de confidentialité, `/sante` et la CSP du socle.
   - Il n'obtient pas : de base, de connexion ni de saisie gardée en base. L'assembleur ne
@@ -238,8 +238,8 @@ Règles de l'assembleur :
   métier s'écrit dans l'appli, sur le patron `dossiers`, et on choisit ici les briques dont
   il aura besoin. Assembler sans brique qui lit la base donne une appli sans base, qui n'en
   recevra pas après coup : ce n'est la réponse que si le besoin n'a pas de données à garder.
-  Si le besoin a des données, `--briques comptes,mails` au moins (avec `rgpd`, d'office)
-  garde la base, les droits, l'export et l'effacement des données d'une personne et le
+  Si le besoin a des données, le profil `outil-interne` au moins (sans profil,
+  `--briques comptes,mails`, avec `rgpd` d'office) garde la base, les droits, l'export et l'effacement des données d'une personne et le
   patron `dossiers` à copier. Un doute sur ce que le besoin garde : le dire, et laisser la
   personne responsable du projet trancher (retirer ensuite des écrans à la main est un
   changement structurel, `CLAUDE.md` §5).

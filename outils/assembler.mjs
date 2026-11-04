@@ -174,7 +174,10 @@ export function briquesDeLAssemblage({ profil, briques }, catalogue = { PROFILS 
   return [...new Set([...definition.briques, ...enPlus])];
 }
 
-// Le profil que déclare l'en-tête de la blueprint, s'il y en a un.
+// Le profil que déclare l'en-tête de la blueprint, s'il y en a un. L'en-tête
+// seul, sans option --profil : le cadrage y écrit déjà tous ses choix, et deux
+// sources pour un même choix pourraient se contredire. Les fins de ligne sont
+// ramenées à « \n » ici parce que main() le lit avant noterLeCommit.
 const profilDeLaBlueprint = (markdown) => champDeLEntete(markdown.replace(/\r\n/g, "\n"), "profil");
 
 // Qui est gardé, qui est retiré. La base n'est pas au choix : elle suit les
@@ -921,7 +924,9 @@ const FORMAT_DU_MANIFESTE = 2;
 
 // Les champs de l'en-tête de la blueprint qui changent les fichiers de l'appli,
 // recopiés tels quels (guillemets et commentaire compris) : rejoués dans une
-// blueprint qui n'a qu'eux, ils redonnent les mêmes valeurs.
+// blueprint qui n'a qu'eux, ils redonnent les mêmes valeurs. Hors `profil` :
+// ses briques sont dans `assemblage.briques`, et le rejouer les redonnerait
+// selon le profil du jour, pas celui de l'assemblage.
 const CHAMPS_DE_L_ENTETE_LUS = ["appli", "nom_affiche", "description", "site", "entree", "role_par_defaut", "methodes"];
 
 function enteteLue(markdown) {
@@ -984,9 +989,9 @@ function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
     "# Blueprint de l'appli, créée par outils/assembler.mjs. L'en-tête ne porte que",
-    "# l'essentiel, en clair : l'assembleur en lit appli, nom_affiche, description, site,",
-    "# entree, role_par_defaut, methodes et commit_reference ; tout le reste est dans le",
-    "# corps, à écrire.",
+    "# l'essentiel, en clair : l'assembleur en lit appli, profil, nom_affiche, description,",
+    "# site, entree, role_par_defaut, methodes et commit_reference ; tout le reste est dans",
+    "# le corps, à écrire.",
     "format: 1",
     `appli: ${nom}`,
     "statut: assemblée depuis le catalogue, à décrire",
@@ -1015,8 +1020,9 @@ function blueprintParDefaut({ nom, commit, briques }) {
  */
 /**
  * @param {{ source: string, sortie: string, briques: string[], commit: string, nom?: string, blueprint?: string, fiche?: string, dependabot?: boolean }} options
- * @returns {{ fichiers: string[], retires: string[], ajoutees: string[], commitInitial: string }}
- *   `ajoutees` : les briques gardées sans être choisies, « rgpd (avec comptes) ».
+ * @returns {{ fichiers: string[], retires: string[], ajoutees: string[], commitInitial: string, profil?: string, briques: string[] }}
+ *   `ajoutees` : les briques gardées sans être choisies, « rgpd (avec comptes) » ;
+ *   `briques` : les choisies, celles du profil d'abord, telles que notées au manifeste.
  */
 export function assembler({ source, sortie, briques, commit, nom, blueprint, fiche, dependabot = false }) {
   const racine = path.resolve(source);
@@ -1221,7 +1227,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
     formater: (fichiers) => mettreEnForme(prettier, destination, fichiers),
   });
 
-  return { fichiers: ecrits, retires: retirees, ajoutees, commitInitial };
+  return { fichiers: ecrits, retires: retirees, ajoutees, commitInitial, profil, briques: choisies };
 }
 
 // ---------------------------------------------------------------- ligne de commande
@@ -1230,7 +1236,7 @@ const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste
 
   --briques <liste>   briques à garder, séparées par des virgules : ${Object.keys(BRIQUES).join(", ")}
                       (en plus de celles du profil de la blueprint, s'il y en a un ;
-                      aucune : un site sans base de données ;
+                      aucune, sans profil : un site sans base de données ;
                       une brique exige les siennes : voir le message d'erreur ;
                       la base, « donnees », vient d'office avec une brique qui la lit ;
                       rgpd vient d'office avec comptes, et la sortie le dit)
@@ -1325,9 +1331,9 @@ function main(argv) {
   console.log(`Assemblé : ${resultat.fichiers.length} fichiers dans ${dossier} (catalogue au commit ${commit}).`);
   // Ce que le profil a fait garder, dit comme le reste : qui relit la sortie
   // doit voir les briques, pas seulement un nom de profil.
-  if (profil !== undefined) {
-    const deLAssemblage = briquesDeLAssemblage({ profil, briques });
-    console.log(`Profil : ${profil}, briques ${deLAssemblage.length === 0 ? "aucune" : deLAssemblage.join(", ")}.`);
+  if (resultat.profil !== undefined) {
+    const choisies = resultat.briques.length === 0 ? "aucune" : resultat.briques.join(", ");
+    console.log(`Profil : ${resultat.profil}, briques ${choisies}.`);
   }
   if (resultat.ajoutees.length > 0) console.log(`Ajouté d'office : ${resultat.ajoutees.join(", ")}.`);
   console.log(`Retiré : ${resultat.retires.length === 0 ? "rien" : resultat.retires.join(", ")}.`);

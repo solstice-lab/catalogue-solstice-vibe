@@ -274,6 +274,23 @@ describe("mettre-a-jour, examen : l'origine d'une appli rejouée au commit de so
     }
   );
 
+  // Au format 1, l'outil redonne la blueprint de l'appli : un `profil:` ajouté à
+  // son en-tête après coup y aurait fait garder en silence les briques du profil.
+  it(
+    "ignore, au format 1, un profil ajouté à l'en-tête de la blueprint de l'appli : les briques sont celles des unités",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliRetouchee((d) => {
+        enFormat1(d);
+        const fichier = path.join(d, "blueprint.md");
+        fs.writeFileSync(fichier, fs.readFileSync(fichier, "utf-8").replace("---\n", "---\nprofil: portail\n"));
+      });
+      const resultat = examiner({ catalogue, appli: dossier });
+      expect([...resultat.briques].sort()).toEqual(["comptes", "mails", "rgpd"]);
+      expect(resultat).toMatchObject({ format: 1, retouches: [], supprimes: [] });
+    }
+  );
+
   it(
     "refuse un manifeste faussé, en nommant les fichiers dont l'empreinte ne se retrouve pas",
     { timeout: REJEU },

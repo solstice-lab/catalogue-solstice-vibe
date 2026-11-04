@@ -64,7 +64,7 @@ briques:
   brique `deploiement`, `appli` (ou `--nom`, jamais le nom du dossier) nomme aussi le service (`<nom>`) et la base (`<nom>-db`) de
   `render.yaml` : un service renommé après la création du Blueprint Render quitte le
   Blueprint, sans message.
-- `profil` : le profil de départ retenu au cadrage (`SKILL.md`, étape 2 ; `PROFILS`
+- `profil` : le profil de départ retenu au cadrage (`SKILL.md`, question à l'étape 1, tableau à l'étape 2 ; `PROFILS`
   d'`outils/modules.mjs`). L'assembleur en garde les briques, puis celles de `--briques`
   qui n'y sont pas. `vitrine` : aucune, et seules `mails`, `contact` et `deploiement`
   peuvent s'ajouter (une autre est refusée : ce ne serait plus une vitrine) ;

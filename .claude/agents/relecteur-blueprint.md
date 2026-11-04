@@ -28,7 +28,8 @@ l'aura, avec un ticket pour chaque chose que l'assembleur ne donne pas.
 ## Ce qu'on te donne
 
 Le chemin de la blueprint, et si possible la valeur prévue de `--briques`. Sans elle, prends
-celle de l'en-tête (`briques_assemblees`) et dis que tu n'as pu la comparer à rien. Tu
+celle de l'en-tête (`briques_assemblees`, moins les briques du profil et `rgpd`) et dis
+que tu n'as pu la comparer à rien. Tu
 travailles depuis la racine du catalogue.
 
 Tu ne commentes pas l'état de l'arbre git du catalogue (modifications non commitées,
@@ -77,6 +78,9 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
 
 **Le script ne vérifie rien de ce qui suit**, la blueprint doit donc être juste d'elle-même :
 
+- `profil` est présent si la fiche ou le cadrage en retient un ; absent, `--briques` doit
+  nommer toutes les briques (un outil interne sans `profil:` ni `comptes` dans
+  `--briques` s'assemble sans connexion, et rien ne le refuse).
 - `format`, `appli`, `statut`, `commit_reference`, `briques_assemblees`, `entites`,
   `briques` sont présents dans l'en-tête, ainsi que `nom_affiche`, `description` et `site`
   (`public` ou `ferme`) : un champ absent laisse sa valeur de remplacement (`NOM_APP`,

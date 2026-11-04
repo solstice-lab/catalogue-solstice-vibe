@@ -298,8 +298,9 @@ il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et remet en fo
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
 il écrit aussi `catalogue.empreintes.json`, le manifeste d'empreintes : le commit du
 catalogue, court et complet, et le champ `version` de son `package.json` (fixe tant qu'aucune version n'est
-publiée), les réglages de l'assemblage (briques choisies et ajoutées d'office, nom du
-paquet et nom donné, Dependabot, champs lus de l'en-tête de la blueprint), puis, pour
+publiée), les réglages de l'assemblage (briques choisies, celles du profil comprises, et
+ajoutées d'office, nom du paquet et nom donné, Dependabot, champs lus de l'en-tête de la
+blueprint hors `profil`), puis, pour
 chaque fichier venu du catalogue, son unité (brique, partagée ou
 `socle`) et l'empreinte sha256 du fichier tel que l'appli le reçoit, après la mise en
 forme et tel que git l'enregistre. `node outils/mettre-a-jour.mjs <appli>` le

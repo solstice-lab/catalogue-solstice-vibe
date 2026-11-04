@@ -242,7 +242,8 @@ function reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit }) {
       "package.json de l'appli est absent, sans nom ou d'un nom que l'assembleur n'écrit pas : au format 1 du manifeste, c'est lui qui donne le nom de l'appli."
     );
   }
-  const blueprint = contenus.get("blueprint.md")?.toString("utf-8");
+  const lue = contenus.get("blueprint.md")?.toString("utf-8");
+  const blueprint = lue === undefined ? undefined : sansLeProfil(lue);
   const donnee = blueprint !== undefined && !blueprint.includes(DEBUT_DE_LA_BLUEPRINT_MINIMALE);
   return {
     briques: briquesDuCommit.filter((nom) => unites.includes(nom)),
@@ -261,6 +262,16 @@ const PAQUET = /^[a-z][a-z0-9-]*$/;
 // La première ligne de la blueprint minimale de l'assembleur (blueprintParDefaut),
 // la même depuis l'arrivée du manifeste.
 const DEBUT_DE_LA_BLUEPRINT_MINIMALE = "# Blueprint de l'appli, créée par outils/assembler.mjs.";
+
+// La blueprint de l'appli sans le profil de son en-tête : l'assembleur en
+// ajouterait les briques à celles des unités, qui sont déjà toutes les briques
+// reçues. Un profil ajouté à l'en-tête après coup les aurait fait garder en
+// silence au rejeu. Le corps n'est pas touché.
+function sansLeProfil(markdown) {
+  const entete = /^---\r?\n[\s\S]*?\r?\n---/.exec(markdown)?.[0];
+  if (entete === undefined) return markdown;
+  return entete.replace(/^profil:.*\r?\n/m, "") + markdown.slice(entete.length);
+}
 
 // Une blueprint qui n'a que les champs lus à l'assemblage, recopiés tels quels.
 function blueprintDeLEntete(entete) {
