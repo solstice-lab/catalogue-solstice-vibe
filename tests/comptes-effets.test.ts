@@ -234,7 +234,10 @@ describe("verrou : un effet du registre se joue dans la transaction du geste (to
       `  transaction as ouvrir,`,
       `} from "../../lib/db/client";`,
       `import type { transaction } from "@/lib/db/client";`,
-      `import { journaliser } from "./journal";`,
+      // Un import étranger au pool, à laisser passer. Pas une fonction de la
+      // brique journal : ce fichier part avec la brique comptes, et le test
+      // d'assemblage refuse toute mention d'une brique retirée de la copie.
+      `import { envoyer } from "./courrier";`,
     ].join("\n");
     expect(importsDuPool(source)).toEqual(["query", "queryOne", "transaction"]);
   });
