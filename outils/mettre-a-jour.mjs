@@ -1447,21 +1447,41 @@ function controlerLAjout({ ajouter, presentes, definitions, commit }) {
 }
 
 /*
- * Les briques reçues « à brancher » : celles dont le README dit qu'un module
- * métier de l'appli les branche. Sa section « La brancher » part du patron
- * `dossiers`, d'où tout module métier est copié (echeances, notifications,
- * journal…), quand celle d'une brique branchée d'office n'en dit rien (mails,
- * contact, rgpd). Lu dans la cible : c'est le README que l'appli reçoit.
+ * Ce que le README d'une brique reçue dit qu'un module métier de l'appli doit
+ * faire, lu dans sa section « La brancher » de la cible (le README que l'appli
+ * reçoit), deux cas :
+ *   - à brancher : la section commence par « Tout se déclare côté appli »
+ *     (echeances, calendrier, validation, import-lot, notifications) : la
+ *     brique arrive sans appelant, le vocabulaire de creer-appli et de
+ *     relecteur-blueprint ;
+ *   - à rattacher : elle arrive branchée sur le catalogue, et sa section part
+ *     du patron `dossiers` pour les modules que l'appli a écrits (journal, qui
+ *     ne trace que src/lib/db/dossiers.ts ; espaces).
+ * mails, contact ou rgpd n'en disent rien : rien à faire.
  */
 function briquesABrancher(cible, briques) {
   const aBrancher = [];
+  const aRattacher = [];
   for (const brique of briques) {
     const readme = `src/briques/${brique}/README.md`;
     const texte = texteDe(cible.get(readme));
     const section = /^## (La brancher[^\n]*)\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(texte);
-    if (section && /\bdossiers\b/.test(section[2])) aBrancher.push({ brique, readme, section: section[1] });
+    if (!section) continue;
+    if (/^\s*Tout se déclare côté appli/.test(section[2])) aBrancher.push({ brique, readme, section: section[1] });
+    else if (/\bdossiers\b/.test(section[2])) aRattacher.push({ brique, readme, section: section[1] });
   }
-  return aBrancher;
+  return { aBrancher, aRattacher };
+}
+
+// Les fichiers ouverts sans garde que tests/gardes-acces.test.ts de la cible
+// déclare, et que l'appli a supprimés (le kit d'une vitrine) : le verrou
+// refuse une entrée dont le fichier manque.
+function ouvertsSupprimes({ origine, cible, appli }) {
+  const verrou = /const OUVERTS[^=]*= \{([\s\S]*?)\n\};/.exec(texteDe(cible.get("tests/gardes-acces.test.ts")))?.[1];
+  return [...(verrou ?? "").matchAll(/^\s+"([^"]+)":/gm)]
+    .map(([, fichier]) => `src/app/${fichier}`)
+    .filter((chemin) => origine.has(chemin) && !appli.has(chemin))
+    .sort();
 }
 
 /*
@@ -1660,7 +1680,11 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
       ajoutees,
       // Les briques demandées par --ajouter, celles venues d'office avec elles à part.
       ajout: ajout ? ajouter : null,
-      ajouteesDOffice: (manifesteCible.assemblage?.ajouteesDOffice ?? []).filter(({ nom }) => ajoutees.includes(nom)),
+      // Au format 1, le manifeste ne dit pas par qui : celles qui arrivent sans avoir été demandées.
+      ajouteesDOffice:
+        manifesteCible.format === 2
+          ? manifesteCible.assemblage.ajouteesDOffice.filter(({ nom }) => ajoutees.includes(nom))
+          : ajoutees.filter((nom) => !reglagesCible.briques.includes(nom)).map((nom) => ({ nom, par: null })),
       commitOrigine,
       commitCible,
       branche: nomDeBranche,
@@ -1683,8 +1707,9 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
         base: !origine.has(FICHIER_MIGRATIONS) && cible.has(FICHIER_MIGRATIONS),
         comptes: ajoutees.includes("comptes"),
         pages: ajoutees.includes("comptes") ? pagesATrancher({ origine, cible, appli: contenus }) : [],
+        ouvertsSupprimes: ajoutees.includes("comptes") ? ouvertsSupprimes({ origine, cible, appli: contenus }) : [],
       },
-      aBrancher: briquesABrancher(cible, ajoutees),
+      ...briquesABrancher(cible, ajoutees),
       variables: variablesNouvelles(origine, cible),
       traitements: traitementsChanges(origine, cible),
       registre: !cible.has(REGISTRE)
@@ -1971,6 +1996,14 @@ function rubriqueDesAjoutsLourds(resultat) {
         : `- ${code("tests/gardes-acces.test.ts")} ne trouve aucune page de l'appli à trancher.`,
       ...pages.map((chemin) => `- ${code(chemin)}`),
       ...(pages.length > 0 ? [""] : []),
+      ...(resultat.lourds.ouvertsSupprimes.length > 0
+        ? [
+            `- Le même test refuse une entrée de ses ${code("OUVERTS")} dont le fichier manque : l'appli a supprimé ceux-ci, leur entrée est à retirer du test (${resultat.lourds.ouvertsSupprimes.length}) :`,
+            ...resultat.lourds.ouvertsSupprimes.map((chemin) => `- ${code(chemin)}`),
+            "",
+          ]
+        : []),
+      `- L'entrée et les méthodes de connexion sont celles du catalogue par défaut : l'en-tête de la blueprint ne pouvait pas les régler sans la brique. Les décider (qui entre, avec quel rôle, par quelle méthode), puis les régler dans ${code("src/config/comptes.ts")}.`,
       `- Les pages publiques du référencement (${code("src/lib/referencement.ts")}) se reprennent : l'accueil passe derrière la connexion.`,
       `- Les écrans du patron ${code("dossiers")} arrivent (${code("src/app/dossiers/")}) : le premier module de l'appli s'écrit en les copiant, ou l'appli les supprime.`,
       ...(rgpd
@@ -1986,16 +2019,28 @@ function rubriqueDesAjoutsLourds(resultat) {
 }
 
 function rubriqueDesBriquesABrancher(resultat) {
-  if (resultat.aBrancher.length === 0) return [];
-  return [
-    "## Briques à brancher",
-    "",
-    "Arrivées sans appelant : le module métier de l'appli les branche, comme le dit la section de leur README. " +
-      `Chacune est un ticket de l'appli, à noter en section 3 de ${code("blueprint.md")} avec ce ticket, repris en section 9.`,
-    "",
-    ...resultat.aBrancher.map(({ brique, readme, section }) => `- ${code(brique)} : ${code(readme)}, « ${section} ».`),
-    "",
-  ];
+  const { aBrancher, aRattacher } = resultat;
+  if (aBrancher.length === 0 && aRattacher.length === 0) return [];
+  const ligne = ({ brique, readme, section }) => `- ${code(brique)} : ${code(readme)}, « ${section} ».`;
+  const lignes = ["## Briques à brancher", ""];
+  if (aBrancher.length > 0) {
+    lignes.push(
+      "Arrivées sans appelant : le module métier de l'appli les branche, comme le dit la section de leur README. " +
+        `Chacune est un ticket de l'appli, à noter dans ${code("blueprint.md")} : sa ligne dans ${code("briques:")} de l'en-tête (${code("branchement: à brancher")}), la section 3 avec ce ticket, repris en section 9.`,
+      "",
+      ...aBrancher.map(ligne),
+      ""
+    );
+  }
+  if (aRattacher.length > 0) {
+    lignes.push(
+      `Arrivées branchées sur le catalogue (le patron ${code("dossiers")}), pas sur les modules que l'appli a écrits en le copiant : les y rattacher, comme le dit la section de leur README, est un ticket de l'appli.`,
+      "",
+      ...aRattacher.map(ligne),
+      ""
+    );
+  }
+  return lignes;
 }
 
 function rubriqueDeLaFusion(resultat) {
@@ -2068,7 +2113,7 @@ function rubriqueDeLaSuite(resultat) {
       : []),
     ...(resultat.aBrancher.length > 0
       ? [
-          `- Noter les briques à brancher en section 3 de ${code("blueprint.md")}, avec le ticket de l'appli qui branche chacune.`,
+          `- Noter les briques à brancher dans ${code("blueprint.md")} : leur ligne dans ${code("briques:")} de l'en-tête, et la section 3, avec le ticket de l'appli qui branche chacune.`,
         ]
       : []),
     `- Les vérifications du ${code("CLAUDE.md")} de l'appli (§6), la relecture par sous-agents, le commit, puis la PR avec ce rapport (skill ${code("solstice-livrer")}).`,
@@ -2101,7 +2146,7 @@ export function rapport(resultat) {
     `Appli ${code(resultat.paquet)}, briques : ${resultat.briques.length === 0 ? "aucune" : resultat.briques.join(", ")}.`,
     ...(ajout && resultat.ajouteesDOffice.length > 0
       ? [
-          `Ajoutées d'office avec elles : ${resultat.ajouteesDOffice.map(({ nom, par }) => `${nom} (avec ${par})`).join(", ")}.`,
+          `Ajoutées d'office avec elles : ${resultat.ajouteesDOffice.map(({ nom, par }) => (par === null ? nom : `${nom} (avec ${par})`)).join(", ")}.`,
         ]
       : []),
     resultat.aBlanc
@@ -2164,7 +2209,8 @@ blanc, une appli déjà au commit visé reçoit le rapport de ce qu'elle a
 retouché. Les étapes de migration neuves s'ajoutent en fin de la liste de
 l'appli ; l'outil s'arrête avant toute écriture si une étape reçue change au
 catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe déjà,
-ou si schema.sql change entre l'origine et la cible. Le catalogue doit
+ou si schema.sql, déjà dans l'appli, change entre l'origine et la cible (un
+schema.sql qui arrive avec la base est ajouté). Le catalogue doit
 avoir le commit de l'appli (git fetch origin dans le catalogue). Seul appel
 au réseau : npm ci dans un worktree temporaire du catalogue, quand le Prettier
 d'un commit n'est pas celui qu'a installé le catalogue. La base dans une

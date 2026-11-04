@@ -120,7 +120,9 @@ Une brique livrée contient, dans `src/briques/<nom>/` :
 
 - son code (une brique peut n'être que de la méthode, comme `deploiement`) et un
   `README.md` avec une section « Interface publique » (ce qu'une appli peut
-  importer) ;
+  importer) ; si un module métier de l'appli doit la brancher, une section
+  « La brancher » qui commence par « Tout se déclare côté appli » : l'outil de
+  mise à jour l'annonce ainsi « à brancher » quand elle s'ajoute à une appli ;
 - un `CHANGELOG.md` : tout changement d'interface publique y ajoute une entrée en
   fin, dans la PR qui le fait ;
 - ses tests, quand elle porte du code ; ceux des briques existantes comptent un

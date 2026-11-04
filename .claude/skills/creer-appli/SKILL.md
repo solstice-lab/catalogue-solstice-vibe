@@ -68,7 +68,8 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
     client chez l'hébergeur, ses variables et les bases locales ; avec `comptes`, toutes
     les pages déjà écrites passent derrière la connexion, et chacune est à trancher une
     à une, publique ou derrière un droit. Le dire au client avec ce coût, et noter sa
-    réponse dans la blueprint.
+    réponse dans la blueprint : en section 7 (« Hors périmètre ») s'il y renonce, avec ce
+    coût pour raison.
   - Ses pages sont rendues à chaque requête (compromis de la CSP, étape 2).
   - Les blocs « Les données » et « Les accès » de `solstice-nouvelle-appli` §1 sautent.
     « Le besoin », « Les écrans » et « La mise en ligne » restent.

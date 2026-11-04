@@ -906,7 +906,7 @@ const MANIFESTE = "catalogue.empreintes.json";
 // se présente lui-même à qui l'ouvre dans l'appli.
 const NOTE_DU_MANIFESTE =
   "Écrit par l'assembleur du catalogue Solstice-vibe au premier commit de l'appli, réécrit par son outil " +
-  "de mise à jour à chaque report : les réglages de " +
+  "de mise à jour à chaque report ou ajout de brique : les réglages de " +
   "l'assemblage et, pour chaque fichier venu du catalogue, son unité et l'empreinte sha256 du fichier tel " +
   "que le catalogue le donne au commit noté. Ne pas le retoucher ni le régénérer à la main : il sert à retrouver ce que " +
   "l'appli a changé depuis.";

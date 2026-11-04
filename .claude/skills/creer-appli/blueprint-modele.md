@@ -59,8 +59,9 @@ briques:
   `---` en tête de fichier, il refuse la blueprint. L'outil de mise à jour
   (`outils/mettre-a-jour.mjs`) remplace aussi cette ligne à chaque report, et ajoute à
   `briques_assemblees` les briques arrivées, par un report ou par `--ajouter` ; le reste de
-  la blueprint ne change pas. Une brique ajoutée « à brancher » se note ensuite en
-  section 3, avec le ticket qui la branche, repris en section 9.
+  la blueprint ne change pas. Une brique ajoutée « à brancher » se note ensuite à la main :
+  sa ligne dans `briques` (ci-dessous, `branchement: à brancher`), et la section 3, avec
+  le ticket qui la branche, repris en section 9.
 - `appli` : l'assembleur en tire le nom du paquet de l'appli (`package.json`, d'où ses bases
   locales), en minuscules sans accent, en tirets. Il refuse un nom qui ne commence pas par
   une lettre, trop long (plus de 58 caractères une fois ramené) ou qui est celui du
@@ -115,7 +116,8 @@ briques:
   c'est ce qui dit, sans lire le code, ce qui a été installé. **Elle doit redire exactement
   les briques du profil, puis celles de `--briques`, plus les briques ajoutées d'office
   (`rgpd` avec `comptes`)** : le script ne le vérifie pas. Pour `portail` avec
-  `--briques espaces` : `[comptes, mails, gestion-comptes, espaces, rgpd]`.
+  `--briques espaces` : `[comptes, mails, gestion-comptes, espaces, rgpd]`. Les briques
+  ajoutées ensuite (`outils/mettre-a-jour.mjs --ajouter`) s'y ajoutent, écrites par l'outil.
 - `entites` : les entités que **l'appli écrira**, aucune ne vient de l'assemblage. `module`
   est le dossier sous `src/app/` que l'appli créera en copiant le patron `dossiers`
   (`CLAUDE.md` §3), avec sa couche données dans `src/lib/db/`. Chaque entité a son ticket

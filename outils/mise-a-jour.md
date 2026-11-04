@@ -238,9 +238,10 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
   la cible, y compris ceux que l'appli a retouchés ou supprimés). Il dit toujours ce que
   l'appli a reçu du catalogue, et l'opération suivante le reproduira à l'identique.
 - `blueprint.md` : `commit_reference` devient A', comme l'écrit l'assembleur, et
-  `briques_assemblees` reçoit les briques ajoutées (décision 5). Le corps reste à l'appli :
-  une brique ajoutée « à brancher » s'y note en section 3 avec le ticket qui la branche,
-  repris en section 9 (`blueprint-modele.md` de `creer-appli`), dans la session de l'appli.
+  `briques_assemblees` reçoit les briques ajoutées (décision 5). Le reste est à l'appli :
+  une brique ajoutée « à brancher » s'y note, dans la session de l'appli, par sa ligne dans
+  `briques` de l'en-tête et en section 3 avec le ticket qui la branche, repris en section 9
+  (`blueprint-modele.md` de `creer-appli`).
 
 ## Les ajouts lourds : la base et `comptes`
 
@@ -530,12 +531,17 @@ lourds »).
   bases locales ; `comptes` arrivée, avec les fichiers de l'appli que
   `tests/gardes-acces.test.ts` refusera, nommés un à un (les pages, routes et fichiers « use
   server » de `src/app/` que l'appli a écrits, absents de l'origine comme de la cible), les
-  pages publiques du référencement, les écrans du patron `dossiers`, `rgpd` d'office, le
-  premier admin et `AUTH_SECRET`. Puis les **briques à brancher** : celles dont la section
-  « La brancher » du README, lu dans la cible, part du patron `dossiers`, d'où se copie
-  tout module métier (`echeances`, `calendrier`, `validation`, `import-lot`,
-  `notifications`, `journal`, `espaces` au catalogue du jour), avec cette section à suivre
-  et leur note en section 3 de la blueprint. Au même commit, le rapport ne recopie ni les
+  pages publiques du référencement, les entrées de `OUVERTS` du verrou dont l'appli a
+  supprimé le fichier (le kit d'une vitrine), l'entrée et les méthodes de connexion prises
+  par défaut (l'en-tête de la blueprint ne pouvait pas les régler sans la brique), les
+  écrans du patron `dossiers`, `rgpd` d'office, le premier admin et `AUTH_SECRET`. Puis
+  les **briques à brancher**, lues dans la section « La brancher » du README de la cible :
+  celles dont elle commence par « Tout se déclare côté appli » arrivent sans appelant
+  (`echeances`, `calendrier`, `validation`, `import-lot`, `notifications`, le vocabulaire
+  de `creer-appli`), à noter dans l'en-tête et en section 3 de la blueprint avec leur
+  ticket ; celles dont elle part seulement du patron `dossiers` arrivent branchées sur le
+  catalogue, à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Au
+  même commit, le rapport ne recopie ni les
   journaux des briques ni les commits du socle. Les deux cas d'essai de la tranche sont
   dans `tests/mettre-a-jour.test.ts`, avec un assemblage direct au commit A pour comparer,
   le typecheck, les tests de l'appli sur une base de test neuve, et le rejeu des étapes

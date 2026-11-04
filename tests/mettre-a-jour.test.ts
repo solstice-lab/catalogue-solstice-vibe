@@ -1207,7 +1207,9 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
         commitCible: commitA,
         branche: "feature/ajouter-journal",
         ajoutees: ["journal"],
-        aBrancher: [expect.objectContaining({ brique: "journal", readme: "src/briques/journal/README.md" })],
+        // journal arrive branchée sur le patron dossiers : à rattacher aux modules de l'appli, pas à brancher.
+        aBrancher: [],
+        aRattacher: [expect.objectContaining({ brique: "journal", readme: "src/briques/journal/README.md" })],
         lourds: { base: false, comptes: false, pages: [] },
       });
       // Les retouches de l'appli sont loin des lignes que la brique remet : rien en conflit.
@@ -1218,7 +1220,9 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
       expect(journal.migrations.ajoutees.length).toBeGreaterThan(0);
       const texte = rapport(journal);
       expect(texte).toMatch(new RegExp(`^# Ajouter journal à l'appli, au catalogue ${commitA}$`, "m"));
-      expect(rubriqueDe(texte, "Briques à brancher")).toMatch(/`journal`[^\n]*`src\/briques\/journal\/README\.md`/);
+      expect(rubriqueDe(texte, "Briques à brancher")).toMatch(
+        /Arrivées branchées sur le catalogue[^\n]*\n\n- `journal` : `src\/briques\/journal\/README\.md`/
+      );
       expect(texte).not.toContain("## Ajouts lourds");
       // A' = A : ni journal des briques ni sujets du socle à recopier.
       expect(texte).not.toContain("## Journal des briques");
@@ -1229,8 +1233,12 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
       const notifications = mettreAJour({ catalogue, appli: coloc, ajouter: ["notifications"] });
       expect(notifications).toMatchObject({
         ajoutees: ["notifications"],
-        aBrancher: [expect.objectContaining({ brique: "notifications" })],
+        aBrancher: [expect.objectContaining({ brique: "notifications", section: "La brancher" })],
+        aRattacher: [],
       });
+      expect(rubriqueDe(rapport(notifications), "Briques à brancher")).toMatch(
+        /Arrivées sans appelant[^\n]*`briques:`[^\n]*\n\n- `notifications` : /
+      );
       expect(notifications.fichiers.enConflit).toEqual([]);
       commiterEtPublier(coloc, "Ajouter la brique notifications");
       const enTete = fs.readFileSync(path.join(coloc, "blueprint.md"), "utf-8");
@@ -1288,7 +1296,7 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
   );
 
   it(
-    "ajoute mails,contact puis comptes à une vitrine sans base : ajouts lourds annoncés, typecheck et rejeu des migrations passent, et tests/gardes-acces.test.ts échoue sur la seule page de l'appli, nommée au rapport",
+    "ajoute mails,contact puis comptes à une vitrine sans base : ajouts lourds annoncés, typecheck et rejeu des migrations passent, et tests/gardes-acces.test.ts échoue sur la seule page de l'appli (et l'entrée du kit qu'elle a supprimé), nommées au rapport",
     { timeout: 1_800_000 },
     async () => {
       const assemblee = path.join(dossierTemporaire("appli-"), "vitrine-essai");
@@ -1299,6 +1307,9 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
           path.join(d, "src/app/a-propos/page.tsx"),
           "export default function PageAPropos() {\n  return <p>Qui nous sommes.</p>;\n}\n"
         );
+        // Une page du kit que la vitrine n'expose pas : le verrou des gardes la nomme dans ses fichiers ouverts.
+        fs.rmSync(path.join(d, "src/app/kit/site-vitrine"), { recursive: true });
+        ecrire(d, "src/app/kit/Vitrine.tsx", remplacer('href="/kit/site-vitrine"', 'href="/kit"'));
       }, assemblee);
       publier(vitrine);
       const head = git(vitrine, "rev-parse", "HEAD");
@@ -1315,6 +1326,7 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
         branche: "feature/ajouter-mails-contact",
         ajoutees: ["mails", "contact"],
         aBrancher: [],
+        aRattacher: [],
         lourds: { base: true, comptes: false, pages: [] },
         migrations: { avecLaBase: true },
       });
@@ -1331,12 +1343,19 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
       const comptes = mettreAJour({ catalogue, appli: vitrine, ajouter: ["comptes"] });
       expect(comptes).toMatchObject({
         ajoutees: ["comptes", "rgpd"],
-        lourds: { base: false, comptes: true, pages: ["src/app/a-propos/page.tsx"] },
+        lourds: {
+          base: false,
+          comptes: true,
+          pages: ["src/app/a-propos/page.tsx"],
+          ouvertsSupprimes: ["src/app/kit/site-vitrine/page.tsx"],
+        },
       });
       const texteComptes = rapport(comptes);
       const lourdComptes = rubriqueDe(texteComptes, "Ajouts lourds") ?? "";
       expect(lourdComptes).toMatch(/### La brique comptes/);
       expect(lourdComptes).toMatch(/`tests\/gardes-acces\.test\.ts`[\s\S]*\n- `src\/app\/a-propos\/page\.tsx`\n/);
+      expect(lourdComptes).toMatch(/`OUVERTS`[^\n]*\n- `src\/app\/kit\/site-vitrine\/page\.tsx`\n/);
+      expect(lourdComptes).toContain("`src/config/comptes.ts`");
       expect(lourdComptes).toContain("rgpd");
       expect(texteComptes).toMatch(/^# Ajouter comptes à l'appli/m);
       commiterEtPublier(vitrine, "Ajouter la brique comptes");
@@ -1353,6 +1372,8 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
       );
       expect(fautes, sansCouleurs(gardes.sortie).slice(-4000)).toContain("a-propos/page.tsx : PageAPropos");
       expect([...new Set(fautes.map((faute) => faute.split(" : ")[0]))]).toEqual(["a-propos/page.tsx"]);
+      // Et l'entrée ouverte dont la vitrine a supprimé le fichier, nommée au rapport elle aussi.
+      expect(sansCouleurs(gardes.sortie)).toMatch(/kit\/site-vitrine\/page\.tsx: expected false to be true/);
     }
   );
 
@@ -1367,6 +1388,9 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
       expect(
         refusDe(() => mettreAJour({ catalogue, appli: publiee, ajouter: ["journal"], vers: commitA })).message
       ).toMatch(/une opération à la fois/);
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: publiee, ajouter: ["journal", "journal"] })).message
+      ).toMatch(/nomme deux fois « journal »/);
       rienNEstTouche(publiee, git(publiee, "rev-parse", "HEAD"));
     });
 

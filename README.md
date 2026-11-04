@@ -311,9 +311,9 @@ retouchés ; `--a-blanc` donne le rapport sans rien écrire. Les étapes de migr
 s'ajoutent en fin de la liste de l'appli, après les siennes ; il s'arrête si une étape
 reçue change au catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe
 déjà, ou si `schema.sql` change entre les deux commits (note `outils/mise-a-jour.md`).
-Avec `--ajouter <briques>`, il ajoute de même des briques à l'appli, au commit qu'elle a :
-la base et `comptes` comprises, que le rapport annonce en tête avec ce qu'elles coûtent ;
-`--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
+Avec `--ajouter <briques>`, il ajoute de même des briques à l'appli, au commit qu'elle a,
+y compris une brique qui apporte la base, et `comptes`, que le rapport annonce en tête
+avec ce qu'elles coûtent. Côté assembleur, `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
 personne n'entretient en recevait une PR de mise à jour par semaine, jamais fusionnée
 (le catalogue garde le sien). Il fait
 ensuite du dossier un dépôt git local d'un seul commit, sur la branche `main`
