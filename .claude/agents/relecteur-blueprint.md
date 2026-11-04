@@ -79,7 +79,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   dit décidés. `nom_affiche`, `description` et le choix `site` redisent la fiche et la
   section 5 ; `appli` n'est pas le nom affiché. Avec `comptes`, `entree`, `role_par_defaut`
   et `methodes` redisent ce que la section 5 et la fiche tranchent (liste d'adresses ou
-  outil ouvert à toute adresse, rôles, code par e-mail ou Google) : une entrée `ouverte`
+  outil ouvert à toute adresse, rôles, code par e-mail, Google ou Microsoft) : une entrée `ouverte`
   avec des droits que la section 5 réserve à des personnes listées est un constat. Un champ
   absent laisse le défaut (entrée fermée, rôle `membre`, méthode `code-email`) : constat si
   la section 5 ou la fiche dit autre chose. Avec `espaces` et une entrée fermée, la

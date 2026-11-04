@@ -9,6 +9,7 @@ import { demoProposee, UTILISATEURS_DEMO } from "./demo";
 import { FormulaireCode } from "./FormulaireCode";
 import { etatDeGoogle, messageDeRefusGoogle } from "./google";
 import type { MethodeDeConnexion } from "./methodes";
+import { etatDeMicrosoft, messageDeRefusMicrosoft } from "./microsoft";
 import { utilisateurCourant } from "./roles";
 
 /*
@@ -37,6 +38,8 @@ export async function EcranConnexion({ retour, erreur }: { retour: string; erreu
 
   const erreurGoogle = messageDeRefusGoogle(erreur);
   const google = etatDeGoogle();
+  const erreurMicrosoft = messageDeRefusMicrosoft(erreur);
+  const microsoft = etatDeMicrosoft();
 
   const blocs: Record<MethodeDeConnexion, () => ReactNode> = {
     "code-email": () => (
@@ -69,6 +72,36 @@ export async function EcranConnexion({ retour, erreur }: { retour: string; erreu
             <p className="sl-erreur-formulaire" role="alert">
               Connexion avec Google non configurée : {google.manquantes.join(" et ")}{" "}
               {google.manquantes.length > 1 ? "manquent" : "manque"} (voir le README de la brique comptes).
+            </p>
+          )}
+        </div>
+      </Carte>
+    ),
+    microsoft: () => (
+      <Carte key="microsoft" titre="Microsoft">
+        <div className="sl-formulaire">
+          {erreurMicrosoft && (
+            <p className="sl-erreur-formulaire" role="alert">
+              {erreurMicrosoft}
+            </p>
+          )}
+          {microsoft.configure ? (
+            <div className="sl-rangee-actions">
+              {/* Un lien natif, comme pour Google : la CSP (form-action
+                  'self') bloquerait la redirection qui suit un envoi, et
+                  rien ne se précharge. */}
+              <LienBouton
+                natif
+                variante={METHODES[0] === "microsoft" ? "primaire" : "secondaire"}
+                href={`/connexion/microsoft?retour=${encodeURIComponent(retour)}`}
+              >
+                Se connecter avec Microsoft
+              </LienBouton>
+            </div>
+          ) : (
+            <p className="sl-erreur-formulaire" role="alert">
+              Connexion avec Microsoft non configurée : {microsoft.manquantes.join(", ")} à renseigner (voir le README
+              de la brique comptes).
             </p>
           )}
         </div>

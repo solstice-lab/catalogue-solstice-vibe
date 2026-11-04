@@ -35,7 +35,7 @@ description: <une ou deux phrases pour les moteurs et l'aperçu, sur une ligne>
 site: <public | ferme>
 entree: <ferme | ouverte>                          # avec la brique comptes seulement
 role_par_defaut: <rôle de qui entre sans rôle attribué, jamais un rôle d'administration>
-methodes: [<code-email, google>]                    # « demo » reste en local, sans être listée
+methodes: [<code-email, google, microsoft>]        # « demo » reste en local, sans être listée
 statut: <écrite avant tout code, brouillon validé par <qui> le <date>>
 commit_reference: <à renseigner : l'assembleur le remplace>
 briques_assemblees: [<briques choisies, plus rgpd avec comptes>]
@@ -89,10 +89,12 @@ briques:
     `membre` si le champ manque. Un rôle de l'appli (`src/config/acces.ts`) et **jamais un
     rôle qui administre**, pour aucune entrée : l'assembleur le refuse. Un rôle de plus
     s'ajoute par ticket après l'assemblage.
-  - `methodes` : une liste sur une ligne parmi `code-email` et `google`, écrite dans
-    `METHODES` ; sans le champ, `code-email`. `"demo"` est toujours gardée en dernier, pour
-    le local, et se retire à la mise en ligne (elle refuse la production). `google` ne dit
-    pas que son application OAuth existe : ses variables restent à déclarer.
+  - `methodes` : une liste sur une ligne parmi `code-email`, `google` et `microsoft`, écrite
+    dans `METHODES` ; sans le champ, `code-email`. `"demo"` est toujours gardée en dernier,
+    pour le local, et se retire à la mise en ligne (elle refuse la production). `google` et
+    `microsoft` ne disent pas que leur application existe chez Google ou dans le portail
+    Azure : leurs variables restent à déclarer. `microsoft` accepte un seul annuaire
+    (`ANNUAIRES_MICROSOFT`), à changer par ticket pour un outil ouvert à plusieurs entreprises.
   - Reste à faire par ticket : les actions du module métier qu'un visiteur de l'entrée
     ouverte aura le droit de faire (`src/config/acces.ts`).
 - `briques_assemblees` est la liste que l'assembleur écrit dans sa blueprint minimale :

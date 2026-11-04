@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { secretDeSession } from "./jeton";
 
 /*
- * Le cookie de parcours d'une connexion par un fournisseur (Google, puis
- * Microsoft, à venir) : ce que le départ tire au hasard (PKCE, state, nonce) et
+ * Le cookie de parcours d'une connexion par un fournisseur (Google,
+ * Microsoft) : ce que le départ tire au hasard (PKCE, state, nonce) et
  * que le retour doit retrouver, dans le même navigateur. Aucune table : le
  * parcours dure quelques minutes et n'appartient qu'à ce navigateur.
  *

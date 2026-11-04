@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
  * ou effacé sans que la brique les importe elle-même),
  * l'adresse IP du visiteur (src/lib/adresse-ip.ts, partagée avec contact) et l'envoi de la
  * brique mails pour la connexion par code. Un seul paquet, oauth4webapi,
- * pour le protocole de la connexion avec Google : la session, elle,
+ * pour le protocole de la connexion avec Google et avec Microsoft : la session, elle,
  * reste maison (décision du 2026-10-22, voir son README), sans paquet
  * d'authentification. Elle ne connaît aucun module : ce sont eux qui
  * l'appellent (exiger en première ligne de chaque page), jamais l'inverse. Une
@@ -32,7 +32,7 @@ const IMPORTS_PERMIS = [
   /^next\/(headers|navigation|cache|server)$/,
   /^react$/,
   /^node:crypto$/,
-  // OpenID Connect pour Google : sans dépendance, certifiée OpenID.
+  // OpenID Connect pour Google et Microsoft : sans dépendance, certifiée OpenID.
   /^oauth4webapi$/,
 ];
 

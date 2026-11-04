@@ -35,6 +35,8 @@ demander ce que le code ou le `CLAUDE.md` tranchent déjà.
 - Une liste d'adresses ou de domaines, ou un outil public ouvert à toute adresse
   (`ouverte` de `ENTREE`, brique `comptes`) ? L'inscription ouverte exige deux rôles
   au moins.
+- Comment se connecter : code par e-mail, Google, Microsoft 365 ? Avec Microsoft,
+  l'annuaire du client seul (le cas normal) ou tous les annuaires ?
 - Un partage avec une personne extérieure, sans compte ? Ça se prévoit dès maintenant.
 
 **Les écrans**

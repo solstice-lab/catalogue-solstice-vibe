@@ -68,8 +68,8 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   est une autre question, à faire valider avec lui : il se note dans `nom_affiche:`.
 - **L'entrée, avec la brique `comptes`** : les réponses du bloc « Les accès » de
   `solstice-nouvelle-appli` §1 (une liste d'adresses ou de domaines, ou un outil ouvert à toute
-  adresse ; le rôle de qui entre sans rôle attribué ; code par e-mail, Google ou les
-  deux) se notent dans l'en-tête de la blueprint : `entree: ferme` ou `ouverte`,
+  adresse ; le rôle de qui entre sans rôle attribué ; code par e-mail, Google,
+  Microsoft) se notent dans l'en-tête de la blueprint : `entree: ferme` ou `ouverte`,
   `role_par_defaut:` et `methodes: [code-email, google]`. L'assembleur les écrit dans
   `src/config/comptes.ts` et `src/config/acces.ts`. Le rôle par défaut n'est jamais un rôle
   qui administre, et une entrée ouverte demande donc un rôle de plus que l'administration
@@ -596,7 +596,11 @@ chez l'hébergeur. Si le client veut se connecter avec Google (Workspace ou Gmai
 créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`,
 ajouter `"google"` à `METHODES` (déjà fait si la blueprint le déclare) et, pour un client Workspace, ses domaines à
 `DOMAINES_GOOGLE_WORKSPACE` (section « La connexion avec Google » du README de la
-brique). Et ce que l'assembleur n'a **pas** fait :
+brique). Si le client veut se connecter avec Microsoft 365 : enregistrer l'application
+dans le portail Azure, déclarer `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` et
+`MICROSOFT_TENANT_ID`, ajouter `"microsoft"` à `METHODES` (déjà fait si la blueprint le
+déclare) et régler `ANNUAIRES_MICROSOFT` (section « La connexion avec Microsoft » du
+README de la brique). Et ce que l'assembleur n'a **pas** fait :
 `src/lib/format.ts` garde le fuseau du
 catalogue, le thème est le thème de repli du catalogue (la charte Solstice Lab), la
 signature Solstice Lab est en place (à retirer par ticket si la fiche le dit, étape 1),
