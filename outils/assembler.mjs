@@ -861,9 +861,10 @@ const MANIFESTE = "catalogue.empreintes.json";
 // L'appli ne reçoit ni le README ni la skill qui décrivent le manifeste : il
 // se présente lui-même à qui l'ouvre dans l'appli.
 const NOTE_DU_MANIFESTE =
-  "Écrit par l'assembleur du catalogue Solstice-vibe au premier commit de l'appli : les réglages de " +
+  "Écrit par l'assembleur du catalogue Solstice-vibe au premier commit de l'appli, réécrit par son outil " +
+  "de mise à jour à chaque report : les réglages de " +
   "l'assemblage et, pour chaque fichier venu du catalogue, son unité et l'empreinte sha256 du fichier tel " +
-  "que l'appli l'a reçu. Ne pas le retoucher ni le régénérer à la main : il sert à retrouver ce que " +
+  "que le catalogue le donne au commit noté. Ne pas le retoucher ni le régénérer à la main : il sert à retrouver ce que " +
   "l'appli a changé depuis.";
 
 /*
@@ -954,8 +955,9 @@ function blueprintParDefaut({ nom, commit, briques }) {
     "",
     `# Blueprint : ${nom}`,
     "",
-    "Appli assemblée depuis le catalogue Solstice-vibe au commit de l'en-tête. Ce que",
-    "chaque brique a changé depuis ce commit est dans son `CHANGELOG.md`, dans",
+    "Appli assemblée depuis le catalogue Solstice-vibe. L'en-tête note le commit du",
+    "catalogue qu'elle a reçu en dernier (assemblage, ou report par outils/mettre-a-jour.mjs).",
+    "Ce que chaque brique a changé depuis ce commit est dans son `CHANGELOG.md`, dans",
     "`src/briques/<brique>/` du catalogue.",
     "",
   ].join("\n");

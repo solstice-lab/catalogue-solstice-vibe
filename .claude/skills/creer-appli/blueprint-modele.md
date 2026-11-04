@@ -53,7 +53,9 @@ briques:
 
 - `commit_reference` : l'assembleur **remplace la ligne** par le commit du catalogue au
   moment de la commande (ou l'ajoute si elle manque). Sans en-tête entre deux lignes
-  `---` en tête de fichier, il refuse la blueprint.
+  `---` en tête de fichier, il refuse la blueprint. L'outil de mise à jour
+  (`outils/mettre-a-jour.mjs`) remplace aussi cette ligne à chaque report, et ajoute à
+  `briques_assemblees` les briques arrivées ; le reste de la blueprint ne change pas.
 - `appli` : l'assembleur en tire le nom du paquet de l'appli (`package.json`, d'où ses bases
   locales), en minuscules sans accent, en tirets. Il refuse un nom qui ne commence pas par
   une lettre, trop long (plus de 58 caractères une fois ramené) ou qui est celui du

@@ -69,11 +69,15 @@ les appelle pas.
   module métier de l'appli : le README de la brique, section « La brancher », dit comment.
   Ne l'ajouter que si le besoin du client la demande, et la noter dans la blueprint comme
   **à brancher** (section 3 du modèle), avec l'entité qu'elle attend et son ticket.
-- Les mises à jour d'une brique après coup sont hors v1. Ce que chaque brique a changé
-  depuis un commit est dans son `CHANGELOG.md` : la blueprint note le commit de référence
-  pour permettre cette lecture, et `catalogue.empreintes.json` l'empreinte de chaque
-  fichier reçu, pour voir ce que l'appli a retouché depuis (`node
-  outils/mettre-a-jour.mjs <appli> --a-blanc`, depuis le catalogue, le liste).
+- Les évolutions des briques gardées arrivent après coup : `node outils/mettre-a-jour.mjs
+  <appli>`, depuis le catalogue, reporte dans l'appli le catalogue d'un commit plus récent,
+  sur une branche, en fusionnant avec ce qu'elle a retouché, et recopie à son rapport les
+  entrées des `CHANGELOG.md` depuis le commit noté au manifeste de l'appli
+  (`outils/mise-a-jour.md`). Hors migrations à ce jour : il s'arrête si `migrations.ts`
+  ou `schema.sql` changent. `catalogue.empreintes.json` donne l'empreinte de chaque
+  fichier reçu : le rapport de `--a-blanc` liste ce que l'appli a retouché ou supprimé.
+  Ajouter ensuite une brique non choisie n'est pas encore outillé : le choix fait ici
+  reste celui de l'appli.
 
 ## Ce qui ne dépend pas du choix
 

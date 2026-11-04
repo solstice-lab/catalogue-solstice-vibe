@@ -18,7 +18,11 @@ blueprint (étape 6). Ce qu'elle ne fait jamais : écrire dans une
 base distante, taper un `--confirmer`, écrire un `.env*`, fusionner, déployer. Elle dit quoi
 taper (`CLAUDE.md` §3 et §8).
 
-**Hors v1** : mettre à jour une brique déjà installée dans une appli assemblée, déployer,
+Reporter dans une appli assemblée un catalogue plus récent ne passe pas par cette skill :
+`node outils/mettre-a-jour.mjs <appli>`, depuis le catalogue (note `outils/mise-a-jour.md`),
+hors migrations à ce jour : l'outil s'arrête si `migrations.ts` ou `schema.sql` changent.
+
+**Hors v1** : ajouter une brique à une appli déjà assemblée, déployer,
 faire lire la blueprint par le script (il n'en lit que `appli`, `nom_affiche`, `description`,
 `site`, `entree`, `role_par_defaut` et `methodes` ; le reste de son en-tête reste informatif), plugin sur
 marketplace. Le module métier d'une appli (ses entités, sur le patron `dossiers`) ne

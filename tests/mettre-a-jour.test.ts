@@ -1,19 +1,21 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { assembler } from "../outils/assembler.mjs";
-import { ErreurMiseAJour, examiner, rapport } from "../outils/mettre-a-jour.mjs";
+import { ErreurMiseAJour, examiner, mettreAJour, rapport } from "../outils/mettre-a-jour.mjs";
 
 /*
- * Test-verrou de outils/mettre-a-jour.mjs, première tranche (--a-blanc) :
- * retrouver ce qu'une appli a reçu du catalogue en rejouant l'assembleur de
- * son commit, et dire ce qu'elle en a retouché (outils/mise-a-jour.md).
+ * Test-verrou de outils/mettre-a-jour.mjs (outils/mise-a-jour.md) : retrouver
+ * ce qu'une appli a reçu du catalogue en rejouant l'assembleur de son commit,
+ * dire ce qu'elle en a retouché (tranche 1), puis y reporter le catalogue d'un
+ * commit plus récent (tranche 2).
  *
  * La CI ne clone pas l'historique du catalogue : le test construit le sien,
- * une copie du catalogue de travail en un commit A, puis un commit qui monte
- * Prettier. Les applis d'essai sont assemblées à A.
+ * une copie du catalogue de travail en un commit A, puis les commits de la
+ * tranche 2 et, en dernier, un commit qui monte Prettier. Les applis d'essai
+ * sont assemblées à A.
  *
  * Il rejoue plusieurs assemblages et lance un vrai npm ci : sorti de npm test
  * comme celui de l'assembleur, il tourne avec lui (npm run test:assembleur, job
@@ -160,7 +162,7 @@ const enFormat1 = (dossier: string) =>
     fichiers,
   }));
 
-describe("mettre-a-jour --a-blanc : l'origine d'une appli rejouée au commit de son manifeste", () => {
+describe("mettre-a-jour, examen : l'origine d'une appli rejouée au commit de son manifeste", () => {
   it("reproduit sans écart l'origine d'une appli fraîchement assemblée, et ne liste rien", { timeout: REJEU }, () => {
     const head = git(appli, "rev-parse", "HEAD");
     const resultat = examiner({ catalogue, appli });
@@ -179,7 +181,6 @@ describe("mettre-a-jour --a-blanc : l'origine d'une appli rejouée au commit de 
     expect(resultat.fichiers).toBe(
       Object.keys(JSON.parse(fs.readFileSync(path.join(appli, MANIFESTE), "utf-8")).fichiers).length
     );
-    expect(rapport(resultat)).toMatch(/^Rien n'est retouché ni supprimé/m);
     rienNEstEcrit(appli, head);
   });
 
@@ -198,10 +199,6 @@ describe("mettre-a-jour --a-blanc : l'origine d'une appli rejouée au commit de 
       const resultat = examiner({ catalogue, appli: dossier });
       expect(resultat.retouches).toEqual(["NOTICE", "src/lib/navigation.ts"]);
       expect(resultat.supprimes).toEqual(["src/briques/mails/README.md"]);
-      const texte = rapport(resultat);
-      expect(texte).toMatch(/^Retouchés par l'appli \(2\) :\n- NOTICE\n- src\/lib\/navigation\.ts$/m);
-      expect(texte).toMatch(/^Supprimés par l'appli \(1\) :\n- src\/briques\/mails\/README\.md$/m);
-      expect(texte).not.toContain("src/app/coloc");
       rienNEstEcrit(dossier, head);
     }
   );
@@ -273,7 +270,7 @@ describe("mettre-a-jour --a-blanc : l'origine d'une appli rejouée au commit de 
   );
 });
 
-describe("mettre-a-jour --a-blanc : refus en clair, avant tout rejeu", () => {
+describe("mettre-a-jour, examen : refus en clair, avant tout rejeu", () => {
   it("refuse un dossier qui n'est pas un dépôt git", () => {
     expect(() => examiner({ catalogue, appli: dossierTemporaire("pas-un-depot-") })).toThrow(
       // Un dossier temporaire peut relever d'un dépôt parent (le dossier de profil d'un poste).
@@ -337,18 +334,516 @@ describe("mettre-a-jour --a-blanc : refus en clair, avant tout rejeu", () => {
     expect(() => examiner({ catalogue, appli: dossier })).toThrow(/format 3/);
   });
 
-  it("n'écrit rien sans --a-blanc : la ligne de commande le refuse, l'écriture n'est pas encore outillée", () => {
-    const resultat = spawnSync(process.execPath, [path.join(SOURCE, "outils/mettre-a-jour.mjs"), appli], {
+  it("refuse --ajouter : l'ajout d'une brique n'est pas encore outillé", () => {
+    const resultat = spawnSync(
+      process.execPath,
+      [path.join(SOURCE, "outils/mettre-a-jour.mjs"), appli, "--ajouter", "journal"],
+      { encoding: "utf-8" }
+    );
+    expect(resultat.status).toBe(1);
+    expect(resultat.stderr).toMatch(/^Mise à jour refusée : .*--ajouter/m);
+  });
+});
+
+// ---------------------------------------------------------------- tranche 2 : écrire dans l'appli
+
+/*
+ * Le catalogue d'essai reçoit, après A, deux commits qui donnent chaque ligne
+ * de la table « Ce qu'il fait de chaque fichier » (outils/mise-a-jour.md) : un
+ * commit de briques seules, puis un commit du socle, le commit visé A'. Un
+ * dernier commit change migrations.ts, ce que la tranche 2 refuse.
+ */
+const BRANCHE = "feature/reporter-catalogue-essai";
+// Un refus ne rejoue rien, mais lit tout le HEAD de l'appli : plus de 5 s sur un poste chargé.
+const REFUS = 60_000;
+const POLICE = "src/ui/theme/polices/IBMPlexMono-Medium-Latin1.woff2";
+let commitVise: string;
+let commitMigration: string;
+
+function ecrire(dossier: string, chemin: string, changer: (texte: string) => string) {
+  const fichier = path.join(dossier, chemin);
+  fs.writeFileSync(fichier, changer(fs.readFileSync(fichier, "utf-8")));
+}
+
+const remplacer = (avant: string, apres: string) => (texte: string) => {
+  if (!texte.includes(avant)) throw new Error(`« ${avant} » introuvable : le test est à reprendre.`);
+  return texte.replace(avant, apres);
+};
+
+// La première ligne seule : l'appli et le catalogue la réécrivent chacun, d'où le conflit.
+const premiereLigne = (ligne: string) => (texte: string) => `${ligne}${texte.slice(texte.indexOf("\n"))}`;
+
+// L'appli publiée : son HEAD est son origin/main, d'où part la branche.
+function publier(dossier: string) {
+  git(dossier, "update-ref", "refs/remotes/origin/main", "HEAD");
+}
+
+const contenuDuCommit = (depot: string, commit: string, chemin: string) =>
+  execFileSync("git", ["-C", depot, "show", `${commit}:${chemin}`]);
+
+function refusDe(action: () => unknown): Error {
+  try {
+    action();
+  } catch (erreur) {
+    expect(erreur).toBeInstanceOf(ErreurMiseAJour);
+    return erreur as Error;
+  }
+  throw new Error("aucun refus");
+}
+
+// Ce qu'un refus laisse dans l'appli : ni branche, ni fichier écrit.
+function rienNEstTouche(dossier: string, head: string) {
+  expect(git(dossier, "status", "--porcelain")).toBe("");
+  expect(git(dossier, "rev-parse", "HEAD")).toBe(head);
+  expect(git(dossier, "branch", "--list", BRANCHE)).toBe("");
+  expect(git(catalogue, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+}
+
+describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', hors migrations", () => {
+  beforeAll(() => {
+    // Le lien vers node_modules n'est pas une modification du catalogue : le motif
+    // « node_modules/ » de .gitignore ne vise pas un lien.
+    fs.mkdirSync(path.join(catalogue, ".git", "info"), { recursive: true });
+    fs.appendFileSync(path.join(catalogue, ".git", "info", "exclude"), "node_modules\n");
+
+    ecrire(
+      catalogue,
+      "src/briques/comptes/CHANGELOG.md",
+      (t) =>
+        `${t}\n## 2026-11-04 · Essai d'une rupture · Rupture\n\n- **Ce qui change** : un appel de la brique.\n- **Appelant** : à reprendre.\n`
+    );
+    ecrire(
+      catalogue,
+      "src/briques/mails/CHANGELOG.md",
+      (t) => `${t}\n## 2026-11-04 · Essai d'un ajout · Ajout\n\n- **Ce qui change** : rien pour l'appelant.\n`
+    );
+    ecrire(
+      catalogue,
+      "src/briques/comptes/confidentialite.ts",
+      remplacer(
+        "Permettre aux personnes autorisées de se connecter",
+        "Permettre aux seules personnes autorisées de se connecter"
+      )
+    );
+    ecrire(
+      catalogue,
+      "src/briques/mails/confidentialite.ts",
+      remplacer(
+        "\n];",
+        '\n  {\n    cle: "mails-essai",\n    titre: "Essai",\n    finalite: "Essai.",\n    donnees: [],\n    personnes: "Personne.",\n    sousTraitants: [],\n    precisions: [],\n  },\n];'
+      )
+    );
+    ecrire(catalogue, "src/briques/mails/README.md", (t) => `${t}\nUne phrase du catalogue.\n`);
+    git(catalogue, "add", "-A");
+    git(catalogue, "commit", "-q", "-m", "Mails : essai d'une évolution des briques");
+
+    ecrire(catalogue, "src/lib/date-iso.ts", (t) => `${t}// Évolution du catalogue.\n`);
+    ecrire(catalogue, "src/lib/navigation.ts", (t) => `// Évolution du catalogue, en tête.\n${t}`);
+    ecrire(catalogue, "src/lib/image-partage.ts", premiereLigne("/* Le catalogue réécrit cette ligne."));
+    ecrire(catalogue, "src/config/donnees-personnelles.ts", (t) => `${t}// Évolution du registre.\n`);
+    ecrire(catalogue, ".env.example", (t) => `${t}\n# Essai d'une variable nouvelle.\nESSAI_NOUVELLE_VARIABLE=\n`);
+    ecrire(catalogue, "LICENSE", remplacer("SOFTWARE.", "SOFTWARE. (Évolution de la licence.)"));
+    fs.writeFileSync(path.join(catalogue, "src/lib/nouveau-du-catalogue.ts"), "export const NOUVEAU = true;\n");
+    fs.rmSync(path.join(catalogue, "docs/cicatrices.md"));
+    fs.rmSync(path.join(catalogue, "src/ui/theme/polices/LISEZMOI.md"));
+    fs.appendFileSync(path.join(catalogue, POLICE), Buffer.from([0, 1, 2]));
+    // Une dépendance de plus, déjà dans l'arbre du verrou : npm ci n'a rien à télécharger de neuf.
+    const paquet = JSON.parse(fs.readFileSync(path.join(catalogue, "package.json"), "utf-8"));
+    const verrou = JSON.parse(fs.readFileSync(path.join(catalogue, "package-lock.json"), "utf-8"));
+    const version = `^${verrou.packages["node_modules/picocolors"].version}`;
+    const avecPicocolors = (dependances: Record<string, string>) =>
+      Object.fromEntries(
+        Object.entries({ ...dependances, picocolors: version }).sort(([a], [b]) => a.localeCompare(b))
+      );
+    paquet.devDependencies = avecPicocolors(paquet.devDependencies);
+    verrou.packages[""].devDependencies = avecPicocolors(verrou.packages[""].devDependencies);
+    fs.writeFileSync(path.join(catalogue, "package.json"), `${JSON.stringify(paquet, null, 2)}\n`);
+    fs.writeFileSync(path.join(catalogue, "package-lock.json"), `${JSON.stringify(verrou, null, 2)}\n`);
+    git(catalogue, "add", "-A");
+    git(catalogue, "commit", "-q", "-m", "Socle : essai d'une évolution du socle");
+    commitVise = git(catalogue, "rev-parse", "--short", "HEAD");
+
+    ecrire(catalogue, "src/lib/db/migrations.ts", (t) => `${t}// Évolution des migrations.\n`);
+    git(catalogue, "add", "-A");
+    git(catalogue, "commit", "-q", "-m", "Base : essai d'une évolution des migrations");
+    commitMigration = git(catalogue, "rev-parse", "--short", "HEAD");
+    git(catalogue, "update-ref", "refs/remotes/origin/main", "HEAD");
+  }, REJEU);
+
+  // Une appli qui touche à chaque ligne de la table, plus un fichier à elle.
+  function appliDeLaTable(): string {
+    const dossier = appliRetouchee((d) => {
+      ecrire(d, "src/lib/format.ts", (t) => `${t}// Retouche de l'appli, le catalogue n'y touche pas.\n`);
+      ecrire(d, "src/lib/navigation.ts", (t) => `${t}// Retouche de l'appli, en fin.\n`);
+      ecrire(d, "src/lib/image-partage.ts", premiereLigne("/* L'appli réécrit cette ligne."));
+      fs.rmSync(path.join(d, "src/briques/mails/README.md"));
+      ecrire(d, "src/ui/theme/polices/LISEZMOI.md", (t) => `${t}\nRetouche de l'appli.\n`);
+      fs.appendFileSync(path.join(d, POLICE), Buffer.from([9, 9, 9]));
+      ecrire(d, "NOTICE", (t) => `${t}\nAvis de l'appli.\n`);
+      ecrire(d, "package.json", remplacer('"scripts": {\n', '"scripts": {\n    "coloc": "echo coloc",\n'));
+      fs.mkdirSync(path.join(d, "src/app/coloc"), { recursive: true });
+      fs.writeFileSync(path.join(d, "src/app/coloc/page.tsx"), "export default function Page() {}\n");
+    });
+    publier(dossier);
+    return dossier;
+  }
+
+  it(
+    "traite chaque fichier selon la table, lit les commits en LF et non le disque, réécrit manifeste et en-tête de la blueprint, sans commit",
+    { timeout: 900_000 },
+    () => {
+      const dossier = appliDeLaTable();
+      const head = git(dossier, "rev-parse", "HEAD");
+      const avant = (chemin: string) => contenuDuCommit(dossier, head, chemin);
+      expect(Object.keys(JSON.parse(avant(MANIFESTE).toString()).fichiers)).toContain("docs/cicatrices.md");
+      // Le cas Windows : un poste dont git écrit des CRLF sur le disque (ici un
+      // attribut local), l'arbre restant propre. Lu sur le disque, chaque ligne
+      // serait en conflit.
+      fs.mkdirSync(path.join(dossier, ".git", "info"), { recursive: true });
+      fs.appendFileSync(path.join(dossier, ".git", "info", "attributes"), "src/lib/navigation.ts eol=crlf\n");
+      const navigation = path.join(dossier, "src/lib/navigation.ts");
+      fs.rmSync(navigation);
+      git(dossier, "checkout", "--", "src/lib/navigation.ts");
+      expect(fs.readFileSync(navigation, "utf-8")).toContain("\r\n");
+      expect(git(dossier, "status", "--porcelain")).toBe("");
+
+      const resultat = mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: BRANCHE });
+      const lu = (chemin: string) => fs.readFileSync(path.join(dossier, chemin));
+      const cible = (chemin: string) => contenuDuCommit(catalogue, commitVise, chemin);
+
+      // La branche neuve, depuis le HEAD publié, sans commit ; le catalogue sans trace.
+      expect(git(dossier, "branch", "--show-current")).toBe(BRANCHE);
+      expect(git(dossier, "rev-parse", "HEAD")).toBe(head);
+      expect(git(dossier, "rev-parse", "refs/remotes/origin/main")).toBe(head);
+      expect(git(catalogue, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+
+      // identique au catalogue : rien, quelle que soit la version de l'appli.
+      expect(lu("src/lib/format.ts")).toEqual(avant("src/lib/format.ts"));
+      // changé, intact : remplacé par la cible.
+      expect(lu("src/lib/date-iso.ts")).toEqual(cible("src/lib/date-iso.ts"));
+      // changé, retouché : fusion à trois sans conflit, en LF.
+      const fusionne = lu("src/lib/navigation.ts").toString();
+      expect(fusionne).toMatch(/^\/\/ Évolution du catalogue, en tête\.\n/);
+      expect(fusionne).toMatch(/\n\/\/ Retouche de l'appli, en fin\.\n$/);
+      expect(fusionne).not.toMatch(/\r|<<<<<<<|>>>>>>>/);
+      // changé, retouché des deux côtés aux mêmes lignes : écrit avec les marqueurs.
+      const conflit = lu("src/lib/image-partage.ts").toString();
+      expect(conflit).toMatch(/^<{7} appli\n\/\* L'appli réécrit cette ligne\.\n/);
+      expect(conflit).toMatch(/\n={7}\n\/\* Le catalogue réécrit cette ligne\.\n>{7} cible/);
+      // changé, supprimé par l'appli : laissé absent.
+      expect(fs.existsSync(path.join(dossier, "src/briques/mails/README.md"))).toBe(false);
+      // absent, puis présent, absent de l'appli : ajouté.
+      expect(lu("src/lib/nouveau-du-catalogue.ts")).toEqual(cible("src/lib/nouveau-du-catalogue.ts"));
+      // présent, puis absent, intact : supprimé.
+      expect(fs.existsSync(path.join(dossier, "docs/cicatrices.md"))).toBe(false);
+      // présent, puis absent, retouché : gardé.
+      expect(lu("src/ui/theme/polices/LISEZMOI.md")).toEqual(avant("src/ui/theme/polices/LISEZMOI.md"));
+      // binaire changé, retouché : gardé.
+      expect(lu(POLICE)).toEqual(avant(POLICE));
+      // NOTICE suit la table : retouché par l'appli, changé avec la licence, fusionné.
+      expect(lu("NOTICE").toString()).toMatch(/SOFTWARE\. \(Évolution de la licence\.\)[\s\S]*Avis de l'appli\.\n$/);
+      // package.json fusionné, verrou intact remplacé.
+      const paquet = JSON.parse(lu("package.json").toString());
+      expect(paquet.scripts.coloc).toBe("echo coloc");
+      expect(paquet.devDependencies.picocolors).toMatch(/^\^/);
+      const verrou = JSON.parse(lu("package-lock.json").toString());
+      expect(verrou.name).toBe("essai-de-coloc");
+      expect(verrou.packages[""].devDependencies.picocolors).toBe(paquet.devDependencies.picocolors);
+      // Le fichier de l'appli n'est ni lu ni touché.
+      expect(lu("src/app/coloc/page.tsx").toString()).toBe("export default function Page() {}\n");
+
+      // L'en-tête de la blueprint : commit_reference seul change, le corps reste.
+      const blueprintAvant = avant("blueprint.md").toString();
+      expect(lu("blueprint.md").toString()).toBe(
+        blueprintAvant.replace(/^commit_reference: .*$/m, `commit_reference: ${commitVise}`)
+      );
+
+      expect(resultat).toMatchObject({
+        commitOrigine: commitA,
+        commitCible: commitVise,
+        branche: BRANCHE,
+        aBlanc: false,
+        fichiers: {
+          remplaces: expect.arrayContaining([
+            "package-lock.json",
+            "src/config/donnees-personnelles.ts",
+            "src/lib/date-iso.ts",
+          ]),
+          ajoutes: ["src/lib/nouveau-du-catalogue.ts"],
+          supprimes: expect.arrayContaining(["docs/cicatrices.md"]),
+          fusionnes: ["NOTICE", "package.json", "src/lib/navigation.ts"],
+          enConflit: ["src/lib/image-partage.ts"],
+          supprimesParLAppli: ["src/briques/mails/README.md"],
+          retouchesRetires: ["src/ui/theme/polices/LISEZMOI.md"],
+          binairesRetouches: [POLICE],
+        },
+        verrou: "remplacé",
+      });
+      for (const liste of Object.values(resultat.fichiers) as string[][]) {
+        expect(liste).not.toContain("src/lib/format.ts");
+        expect(liste).not.toContain("src/app/coloc/page.tsx");
+      }
+
+      // Le rapport, écrit hors de l'arbre suivi : git status ne le montre pas.
+      expect(fs.readFileSync(resultat.fichierDuRapport, "utf-8")).toBe(rapport(resultat));
+      expect(git(dossier, "status", "--porcelain", "--untracked-files=all")).not.toMatch(/mise-a-jour/);
+
+      // Le manifeste réécrit est celui de la cible : committée, l'appli se rejoue au
+      // commit A', et ses retouches se retrouvent.
+      git(dossier, "add", "-A");
+      git(dossier, "commit", "-q", "-m", "Reporter le catalogue");
+      const apres = examiner({ catalogue, appli: dossier });
+      expect(apres).toMatchObject({ commit: commitVise, format: 2 });
+      expect(apres.retouches).toEqual(
+        expect.arrayContaining([
+          "NOTICE",
+          "package.json",
+          POLICE,
+          "src/lib/format.ts",
+          "src/lib/image-partage.ts",
+          "src/lib/navigation.ts",
+        ])
+      );
+      expect(apres.retouches).not.toContain("src/lib/date-iso.ts");
+      expect(apres.supprimes).toEqual(["src/briques/mails/README.md"]);
+
+      // Le verrou remplacé tient avec package.json fusionné : npm ci passe dans l'appli.
+      // Sans les scripts d'installation, que ce test ne vérifie pas.
+      execSync("npm ci --ignore-scripts --no-audit --no-fund", { cwd: dossier, stdio: ["ignore", "pipe", "pipe"] });
+    }
+  );
+
+  it(
+    "porte au rapport chaque rubrique : fichiers, ruptures en tête, journaux des briques, socle, variables, confidentialité, registre, fusion",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliDeLaTable();
+      const texte = rapport(mettreAJour({ catalogue, appli: dossier, vers: commitVise, aBlanc: true }));
+      const rubrique = (titre: string) => {
+        const debut = texte.indexOf(`\n## ${titre}\n`);
+        expect(debut, `rubrique « ${titre} »`).toBeGreaterThan(-1);
+        const fin = texte.indexOf("\n## ", debut + 1);
+        return texte.slice(debut, fin === -1 ? undefined : fin);
+      };
+      expect(texte).toMatch(new RegExp(`^# Reporter le catalogue de ${commitA} à ${commitVise}$`, "m"));
+      expect(rubrique("Fichiers")).toMatch(/En conflit[^\n]*\n- `src\/lib\/image-partage\.ts`/);
+      expect(rubrique("Fichiers")).toMatch(/Fusionnés, à relire[^\n]*\n- `NOTICE`/);
+      expect(rubrique("Fichiers")).toContain("`src/briques/mails/README.md`");
+      expect(rubrique("Dépendances npm")).toMatch(/package-lock\.json.*remplacé/);
+      // Les ruptures d'abord, quel que soit l'ordre des briques.
+      const journal = rubrique("Journal des briques");
+      expect(journal.indexOf("Essai d'une rupture · Rupture")).toBeGreaterThan(-1);
+      expect(journal.indexOf("Essai d'une rupture")).toBeLessThan(journal.indexOf("Essai d'un ajout"));
+      expect(journal).toContain("**Appelant** : à reprendre.");
+      const socle = rubrique("Socle");
+      expect(socle).toContain("Socle : essai d'une évolution du socle");
+      expect(socle).not.toContain("Mails : essai");
+      expect(rubrique("Variables d'environnement")).toContain("`ESSAI_NOUVELLE_VARIABLE`");
+      const confidentialite = rubrique("Confidentialité");
+      expect(confidentialite).toMatch(/ajouté[^\n]*`mails-essai`/);
+      expect(confidentialite).toMatch(/changé[^\n]*`src\/briques\/comptes\/confidentialite\.ts`/);
+      expect(confidentialite).toContain("miseAJour");
+      expect(rubrique("Registre RGPD")).toContain("`src/config/donnees-personnelles.ts`");
+      const fusion = rubrique("Ce que la fusion déclenche");
+      expect(fusion).toMatch(/[Dd]éploiement/);
+      expect(fusion).toMatch(/migration/);
+      expect(texte).toMatch(/À blanc : rien n'est écrit dans l'appli\./);
+      // À blanc : ni branche, ni fichier.
+      rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
+    }
+  );
+
+  it(
+    "laisse un verrou retouché par l'appli et demande npm install au rapport, après quoi npm ci passe",
+    { timeout: 900_000 },
+    () => {
+      const dossier = appliRetouchee((d) =>
+        ecrire(d, "package-lock.json", remplacer('"license": "ISC"', '"license": "ISC "'))
+      );
+      publier(dossier);
+      const verrou = fs.readFileSync(path.join(dossier, "package-lock.json"));
+      const resultat = mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: BRANCHE });
+      expect(resultat.verrou).toBe("à régénérer");
+      expect(fs.readFileSync(path.join(dossier, "package-lock.json"))).toEqual(verrou);
+      expect(rapport(resultat)).toMatch(/npm install/);
+      // Le geste que le rapport demande : le verrou régénéré tient avec package.json fusionné.
+      const npm = (commande: string) =>
+        execSync(`npm ${commande} --ignore-scripts --no-audit --no-fund`, {
+          cwd: dossier,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      npm("install");
+      const regenere = JSON.parse(fs.readFileSync(path.join(dossier, "package-lock.json"), "utf-8"));
+      expect(regenere.packages[""].devDependencies.picocolors).toMatch(/^\^/);
+      npm("ci");
+    }
+  );
+
+  it(
+    "donne à blanc, pour une appli déjà au commit visé, le rapport de ce qu'elle a retouché ou supprimé",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliDeLaTable();
+      const texte = rapport(mettreAJour({ catalogue, appli: dossier, vers: commitA, aBlanc: true }));
+      expect(texte).toContain("Aucun fichier venu du catalogue ne change.");
+      expect(texte).toMatch(
+        /Retouchés par l'appli, que le catalogue ne change pas[^\n]*\n(- `[^`]+`\n)*- `src\/lib\/navigation\.ts`/
+      );
+      expect(texte).toMatch(
+        /Supprimés par l'appli, que le catalogue ne change pas[^\n]*\n- `src\/briques\/mails\/README\.md`/
+      );
+      expect(texte).not.toContain("src/app/coloc");
+      rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
+    }
+  );
+
+  it(
+    "refuse un fichier neuf de la cible au chemin d'un fichier de l'appli, à la casse près, avant toute écriture",
+    { timeout: 2 * REJEU },
+    () => {
+      const dossier = appliRetouchee((d) =>
+        fs.writeFileSync(path.join(d, "src/lib/nouveau-du-catalogue.ts"), "export const A_MOI = true;\n")
+      );
+      publier(dossier);
+      const head = git(dossier, "rev-parse", "HEAD");
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: BRANCHE })).message
+      ).toMatch(/src\/lib\/nouveau-du-catalogue\.ts.*renommer/s);
+      rienNEstTouche(dossier, head);
+      // Un disque Windows ou macOS ne distingue pas la casse : l'un écraserait l'autre.
+      const casse = appliRetouchee((d) =>
+        fs.writeFileSync(path.join(d, "src/lib/Nouveau-du-catalogue.ts"), "export const A_MOI = true;\n")
+      );
+      publier(casse);
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: casse, vers: commitVise, branche: BRANCHE })).message
+      ).toMatch(/src\/lib\/nouveau-du-catalogue\.ts \(heurte src\/lib\/Nouveau-du-catalogue\.ts\)/);
+      rienNEstTouche(casse, git(casse, "rev-parse", "HEAD"));
+    }
+  );
+
+  it(
+    "refuse, avant toute écriture, migrations.ts ou schema.sql changés entre l'origine et la cible (ticket suivant)",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      const head = git(dossier, "rev-parse", "HEAD");
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitMigration, branche: BRANCHE })).message
+      ).toMatch(/src\/lib\/db\/migrations\.ts/);
+      rienNEstTouche(dossier, head);
+    }
+  );
+
+  it("vise par défaut le HEAD du catalogue, par la ligne de commande", { timeout: REJEU }, () => {
+    const dossier = appliRetouchee(() => {});
+    publier(dossier);
+    // L'outil de la copie : il prend pour catalogue le dépôt où il se trouve.
+    const resultat = spawnSync(process.execPath, [path.join(catalogue, "outils/mettre-a-jour.mjs"), dossier], {
       encoding: "utf-8",
     });
-    expect(resultat.status).toBe(1);
-    expect(resultat.stderr).toMatch(/^Mise à jour refusée : .*--a-blanc/m);
+    // Le HEAD du catalogue d'essai change migrations.ts : l'arrêt prouve qu'il est visé.
+    expect(resultat.status, resultat.stderr).toBe(1);
+    expect(resultat.stderr).toMatch(new RegExp(`^Mise à jour refusée : .*${commitMigration}.*migrations\\.ts`, "m"));
+  });
+
+  it(
+    "refuse une brique de l'appli inconnue au commit visé (renommée ou retirée du catalogue)",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      const sommet = git(catalogue, "rev-parse", "HEAD");
+      git(catalogue, "switch", "-q", "-c", "essai-brique-retiree");
+      try {
+        ecrire(catalogue, "outils/modules.mjs", remplacer("\n  mails: {", "\n  courriels: {"));
+        git(catalogue, "commit", "-q", "-am", "Outils : essai d'une brique renommée");
+        git(catalogue, "update-ref", "refs/remotes/origin/main", "HEAD");
+        const vers = git(catalogue, "rev-parse", "--short", "HEAD");
+        expect(refusDe(() => mettreAJour({ catalogue, appli: dossier, vers, branche: BRANCHE })).message).toMatch(
+          /brique « mails ».*inconnue/
+        );
+      } finally {
+        git(catalogue, "switch", "-q", "main");
+        git(catalogue, "branch", "-q", "-D", "essai-brique-retiree");
+        git(catalogue, "update-ref", "refs/remotes/origin/main", sommet);
+      }
+    }
+  );
+
+  describe("refus en clair, avant tout rejeu", () => {
+    it("refuse un catalogue aux modifications non commitées, quand il vise son HEAD", { timeout: REFUS }, () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      const brouillon = path.join(catalogue, "brouillon.txt");
+      fs.writeFileSync(brouillon, "en cours\n");
+      try {
+        expect(refusDe(() => mettreAJour({ catalogue, appli: dossier, branche: BRANCHE })).message).toMatch(
+          /catalogue a des modifications non commitées/
+        );
+      } finally {
+        fs.rmSync(brouillon);
+      }
+    });
+
+    it("refuse un catalogue dont le HEAD n'est pas origin/main, quand il vise son HEAD", { timeout: REFUS }, () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      const sommet = git(catalogue, "rev-parse", "HEAD");
+      git(catalogue, "update-ref", "refs/remotes/origin/main", `${sommet}~1`);
+      try {
+        expect(refusDe(() => mettreAJour({ catalogue, appli: dossier, branche: BRANCHE })).message).toMatch(
+          /HEAD du catalogue n'est pas origin\/main/
+        );
+      } finally {
+        git(catalogue, "update-ref", "refs/remotes/origin/main", sommet);
+      }
+    });
+
+    it("refuse un commit visé qui n'est pas publié sur origin/main", { timeout: REFUS }, () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      const hors = git(catalogue, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "hors de main");
+      expect(refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: hors, branche: BRANCHE })).message).toMatch(
+        /n'est pas sur origin\/main/
+      );
+    });
+
+    it("ne reporte rien quand l'appli est déjà au commit visé", { timeout: REFUS }, () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitA, branche: BRANCHE })).message
+      ).toMatch(/déjà au commit/);
+    });
+
+    it("refuse une appli dont le HEAD n'est pas son origin/main : la branche part de là", { timeout: REFUS }, () => {
+      const dossier = appliRetouchee(() => {});
+      const head = git(dossier, "rev-parse", "HEAD");
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: BRANCHE })).message
+      ).toMatch(/HEAD de l'appli n'est pas son origin\/main/);
+      rienNEstTouche(dossier, head);
+    });
+
+    it("refuse une branche qui existe déjà, ou un nom que git refuse", { timeout: REFUS }, () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      git(dossier, "branch", BRANCHE);
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: BRANCHE })).message
+      ).toMatch(/existe déjà/);
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: "pas un nom" })).message
+      ).toMatch(/nom de branche/);
+    });
   });
 });
 
 // Le cas qui a fait écrire la règle : Dependabot monte Prettier au catalogue, et
 // les empreintes d'une appli dépendent de la version qui l'a mise en forme.
-describe("mettre-a-jour --a-blanc : le Prettier du commit de l'appli, pas celui du jour", () => {
+describe("mettre-a-jour, examen : le Prettier du commit de l'appli, pas celui du jour", () => {
   it(
     "reproduit encore l'origine quand le catalogue a monté Prettier depuis : npm ci dans le worktree, jamais le Prettier du catalogue",
     { timeout: 600_000 },
