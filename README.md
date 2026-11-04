@@ -329,6 +329,16 @@ catalogue qui a des modifications non commitées, sauf avec
 
 - Briques : aucune, une ou plusieurs, parmi celles de « Briques ».
   L'assembleur refuse un appel auquel manque une brique exigée.
+- Profils de départ (`PROFILS` d'`outils/modules.mjs`) : le champ `profil:` de
+  l'en-tête de la blueprint en donne les briques, auxquelles `--briques` ajoute.
+  `vitrine` : le socle seul, `mails`, `contact` et `deploiement` au plus (une autre
+  brique est refusée) ; `outil-interne` : `comptes` et `mails`, donc la base, et
+  `rgpd` d'office ; `portail`, ouvert à des personnes extérieures : le même, avec
+  `gestion-comptes`. Le manifeste note les briques, pas le profil.
+
+  ```
+  node outils/assembler.mjs ../mon-portail --blueprint ../mon-portail-blueprint.md --briques espaces
+  ```
 - `comptes` (avec `mails`) donne la base, le patron `dossiers`
   et les droits, avec un accueil à écrire ; `contact` (avec `mails`) donne
   la base pour la limite d'envois, sans les écrans du patron `dossiers`, qui

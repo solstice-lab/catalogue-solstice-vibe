@@ -248,6 +248,32 @@ describe("mettre-a-jour, examen : l'origine d'une appli rejouée au commit de so
     }
   );
 
+  // Le profil de l'en-tête (outils/modules.mjs, PROFILS) ne passe pas au
+  // manifeste : ses briques y sont notées comme choisies, et l'outil les rejoue
+  // sans rien savoir des profils.
+  it(
+    "reproduit sans écart une appli assemblée avec un profil, d'après les briques notées au manifeste",
+    { timeout: REJEU },
+    () => {
+      const portail = path.join(dossierTemporaire("appli-"), "essai-portail");
+      assembler({
+        source: catalogue,
+        sortie: portail,
+        commit: commitA,
+        briques: [],
+        blueprint: blueprint("appli: Essai de portail\nprofil: portail"),
+      });
+      expect(examiner({ catalogue, appli: portail })).toMatchObject({
+        format: 2,
+        briques: ["comptes", "mails", "gestion-comptes"],
+        deduits: false,
+        paquet: "essai-de-portail",
+        retouches: [],
+        supprimes: [],
+      });
+    }
+  );
+
   it(
     "refuse un manifeste faussé, en nommant les fichiers dont l'empreinte ne se retrouve pas",
     { timeout: REJEU },

@@ -6,6 +6,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import {
   appliquerRetrait,
   assembler,
+  briquesDeLAssemblage,
   briquesEntrainees,
   ErreurAssemblage,
   estUnSecret,
@@ -20,6 +21,7 @@ import {
   EXCLUS_DU_CATALOGUE,
   METHODES_DE_CONNEXION,
   PATRON_DOSSIERS,
+  PROFILS,
 } from "../outils/modules.mjs";
 import { nomsDesBases } from "../scripts/lib/bases-locales";
 import {
@@ -1775,6 +1777,162 @@ describe("entrée de l'appli écrite par l'assembleur depuis la blueprint", () =
       ).toThrow(/brique qui porte la connexion/);
       expect(fs.readdirSync(sortie), entete).toEqual([]);
     }
+  });
+});
+
+// Trois points de départ pour le cadrage, que la skill creer-appli propose avant
+// les briques en plus : choisir parmi toutes les briques et leurs exigences,
+// sans eux, était le gros du cadrage. La liste des profils est dans outils/modules.mjs,
+// lue par l'assembleur comme par la skill.
+describe("profils de départ", () => {
+  // Écrit en toutes lettres, pas relu de PROFILS : le test ne redit pas la
+  // liste qu'il vérifie.
+  const ATTENDUES: Record<string, { briques: string[]; ajouteesDOffice: string[] }> = {
+    vitrine: { briques: [], ajouteesDOffice: [] },
+    "outil-interne": { briques: ["comptes", "mails"], ajouteesDOffice: ["rgpd"] },
+    portail: { briques: ["comptes", "mails", "gestion-comptes"], ajouteesDOffice: ["rgpd"] },
+  };
+
+  function blueprintDe(entete: string): string {
+    const fichier = path.join(dossierTemporaireVide(), "blueprint-source.md");
+    fs.writeFileSync(fichier, `---\nformat: 1\nappli: profil-test\n${entete}\n---\n\n# Corps\n`);
+    return fichier;
+  }
+
+  const gardeesDe = (briques: string[]) =>
+    planifier({ briques })
+      .filter((unite: { gardee: boolean; genre: string }) => unite.gardee && unite.genre === "brique")
+      .map((unite: { nom: string }) => unite.nom);
+
+  it("donne à chaque profil sa liste de briques, et rien d'autre que ce qu'elles entraînent", () => {
+    expect(Object.keys(PROFILS)).toEqual(Object.keys(ATTENDUES));
+    for (const [profil, { briques, ajouteesDOffice }] of Object.entries(ATTENDUES)) {
+      expect(briquesDeLAssemblage({ profil, briques: [] }), profil).toEqual(briques);
+      expect(
+        briquesEntrainees(briques).map(({ nom }: { nom: string }) => nom),
+        profil
+      ).toEqual(ajouteesDOffice);
+    }
+    // La vitrine n'a pas de base : sa liste ne garde que le socle.
+    expect(gardeesDe(briquesDeLAssemblage({ profil: "vitrine", briques: [] }))).toEqual([]);
+    expect(gardeesDe(briquesDeLAssemblage({ profil: "portail", briques: [] }))).toEqual(
+      expect.arrayContaining(["comptes", "mails", "gestion-comptes", "rgpd", "donnees"])
+    );
+  });
+
+  it("ajoute au profil les briques de --briques, à la suite et sans doublon", () => {
+    expect(briquesDeLAssemblage({ profil: "portail", briques: ["espaces", "mails"] })).toEqual([
+      "comptes",
+      "mails",
+      "gestion-comptes",
+      "espaces",
+    ]);
+    expect(briquesDeLAssemblage({ profil: "vitrine", briques: ["mails", "contact", "deploiement"] })).toEqual([
+      "mails",
+      "contact",
+      "deploiement",
+    ]);
+    expect(briquesDeLAssemblage({ profil: "outil-interne", briques: ["echeances", "journal"] })).toEqual([
+      "comptes",
+      "mails",
+      "echeances",
+      "journal",
+    ]);
+    // Sans profil, --briques seul, tel qu'il est donné.
+    expect(briquesDeLAssemblage({ profil: undefined, briques: ["mails"] })).toEqual(["mails"]);
+  });
+
+  it("refuse un profil inconnu, en listant ceux qui existent", () => {
+    expect(() => briquesDeLAssemblage({ profil: "intranet", briques: [] })).toThrow(
+      "Profil inconnu « intranet ». Profils : vitrine, outil-interne, portail."
+    );
+  });
+
+  // Une vitrine n'a ni connexion ni données gardées : une brique qui les donne en
+  // fait une autre appli, et le profil ne doit pas le cacher.
+  it("refuse une brique que le profil n'admet pas, en disant quoi faire : une vitrine avec comptes n'est pas une vitrine", () => {
+    expect(() => briquesDeLAssemblage({ profil: "vitrine", briques: ["mails", "comptes"] })).toThrow(
+      "Le profil « vitrine » n'admet en plus que mails, contact, deploiement : « comptes » en ferait une autre appli. Choisir un autre profil (outil-interne, portail), ou retirer « comptes »."
+    );
+    expect(() => briquesDeLAssemblage({ profil: "vitrine", briques: ["echeances"] })).toThrow(/« echeances »/);
+  });
+
+  it("ne cite que des briques du catalogue, et chaque profil s'assemble seul, sans brique à ajouter", () => {
+    for (const [profil, definition] of Object.entries(PROFILS) as [
+      string,
+      { briques: string[]; permises?: string[]; proposees: string[] },
+    ][]) {
+      for (const nom of [...definition.briques, ...(definition.permises ?? []), ...definition.proposees]) {
+        expect(Object.keys(BRIQUES), `${profil} : ${nom}`).toContain(nom);
+      }
+      expect(() => planifier({ briques: definition.briques }), profil).not.toThrow();
+      // Une brique proposée doit pouvoir s'ajouter au profil.
+      for (const nom of definition.proposees) {
+        expect(() => briquesDeLAssemblage({ profil, briques: [nom] }), `${profil} + ${nom}`).not.toThrow();
+      }
+    }
+  });
+
+  // Le manifeste ne nomme pas le profil : l'outil de mise à jour rejoue les
+  // briques notées, et un profil qui change dans le catalogue ne change pas une
+  // appli déjà assemblée.
+  it.each(Object.keys(ATTENDUES))(
+    "assemble le profil « %s » lu dans l'en-tête de la blueprint, et note au manifeste la liste réelle des briques",
+    (profil) => {
+      const { briques, ajouteesDOffice } = ATTENDUES[profil];
+      const { dossier } = assemblerEnTemporaire({ briques: [] }, { blueprint: blueprintDe(`profil: ${profil}`) });
+      const { assemblage } = JSON.parse(lireAssemble(dossier, MANIFESTE));
+      expect(assemblage.briques).toEqual(briques);
+      expect(assemblage.ajouteesDOffice.map(({ nom }: { nom: string }) => nom)).toEqual(ajouteesDOffice);
+      expect(assemblage.entete).toEqual({ appli: "profil-test" });
+      for (const nom of [...briques, ...ajouteesDOffice]) {
+        expect(existeAssemble(dossier, `src/briques/${nom}/README.md`), nom).toBe(true);
+      }
+      expect(existeAssemble(dossier, "src/lib/db/client.ts")).toBe(briques.length > 0);
+      expect(existeAssemble(dossier, "src/briques/espaces/README.md")).toBe(false);
+      expect(gitDans(dossier, "log", "-1", "--format=%B")).toMatch(new RegExp(`^Profil : ${profil}\\.$`, "m"));
+      // L'en-tête copié dans l'appli garde le profil : la trace du cadrage.
+      expect(lireAssemble(dossier, "blueprint.md")).toMatch(new RegExp(`^profil: ${profil}$`, "m"));
+    },
+    ENTIER
+  );
+
+  it("ajoute au profil de l'en-tête les briques de --briques", { timeout: ENTIER }, () => {
+    const { dossier } = assemblerEnTemporaire({ briques: ["espaces"] }, { blueprint: blueprintDe("profil: portail") });
+    expect(JSON.parse(lireAssemble(dossier, MANIFESTE)).assemblage.briques).toEqual([
+      "comptes",
+      "mails",
+      "gestion-comptes",
+      "espaces",
+    ]);
+    expect(existeAssemble(dossier, "src/briques/espaces/README.md")).toBe(true);
+  });
+
+  it("refuse, sans rien écrire, un profil inconnu ou une brique que le profil n'admet pas", () => {
+    const refus: [string, string[], RegExp][] = [
+      ["profil: intranet", [], /Profil inconnu « intranet »/],
+      ["profil: vitrine", ["mails", "comptes"], /« comptes » en ferait une autre appli/],
+    ];
+    for (const [entete, briques, motif] of refus) {
+      const sortie = dossierTemporaireVide();
+      expect(
+        () => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, briques, blueprint: blueprintDe(entete) }),
+        entete
+      ).toThrow(motif);
+      expect(fs.readdirSync(sortie), entete).toEqual([]);
+    }
+  });
+
+  it("en ligne de commande, refuse un profil inconnu avant de lire l'état du catalogue", () => {
+    const sortie = path.join(dossierTemporaireVide(), "appli");
+    const resultat = spawnSync(
+      process.execPath,
+      [path.join(SOURCE, "outils", "assembler.mjs"), sortie, "--blueprint", blueprintDe("profil: intranet")],
+      { encoding: "utf-8" }
+    );
+    expect(resultat.status).toBe(1);
+    expect(resultat.stderr).toContain("Assemblage refusé : Profil inconnu « intranet »");
+    expect(fs.existsSync(sortie)).toBe(false);
   });
 });
 
