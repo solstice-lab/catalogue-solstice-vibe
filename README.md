@@ -310,7 +310,9 @@ l'appli, sur une branche neuve et sans commit, en fusionnant à trois les fichie
 retouchés ; `--a-blanc` donne le rapport sans rien écrire. Les étapes de migration neuves
 s'ajoutent en fin de la liste de l'appli, après les siennes ; il s'arrête si une étape
 reçue change au catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe
-déjà, ou si `schema.sql` change entre les deux commits (note `outils/mise-a-jour.md`) ;
+déjà, ou si `schema.sql` change entre les deux commits (note `outils/mise-a-jour.md`).
+Avec `--ajouter <briques>`, il ajoute de même des briques à l'appli, au commit qu'elle a :
+la base et `comptes` comprises, que le rapport annonce en tête avec ce qu'elles coûtent ;
 `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
 personne n'entretient en recevait une PR de mise à jour par semaine, jamais fusionnée
 (le catalogue garde le sien). Il fait
@@ -381,8 +383,8 @@ catalogue qui a des modifications non commitées, sauf avec
   autres combinaisons, lint, tests et build se lancent dans le dossier assemblé
   (`npm ci` puis les vérifications ci-dessous, sauf `npm run test:assembleur`,
   que l'appli n'a pas).
-- Ce que l'assembleur ne fait pas : mettre à jour une brique déjà installée
-  (c'est `outils/mettre-a-jour.mjs`), déployer, lire la
+- Ce que l'assembleur ne fait pas : mettre à jour une brique déjà installée, ou
+  en ajouter une à une appli assemblée (c'est `outils/mettre-a-jour.mjs`), déployer, lire la
   blueprint pour choisir ce qui s'assemble.
 
 ### Les issues de la section 9
@@ -451,7 +453,8 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
 - `outils/` — l'assembleur (`assembler.mjs`), la liste de retrait des
   briques et de la base qu'il applique (`modules.mjs`), l'outil des issues de la
   section 9 d'une blueprint (`creer-issues.mjs`), l'outil de mise à jour d'une appli
-  assemblée (`mettre-a-jour.mjs`, qui reporte un catalogue plus récent) et sa note de
+  assemblée (`mettre-a-jour.mjs`, qui reporte un catalogue plus récent ou ajoute une
+  brique) et sa note de
   conception
   (`mise-a-jour.md`), propres au catalogue : une appli assemblée ne
   les reçoit pas.

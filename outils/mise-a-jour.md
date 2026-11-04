@@ -1,19 +1,20 @@
 # Ajouter une brique à une appli assemblée, et la tenir à jour
 
 Note de conception, écrite avant tout code le 2026-11-03 ; ses questions ont été tranchées
-le même jour (« Décisions prises »). Les trois premières tranches sont outillées : la mise à
-jour d'une appli, étapes de migration comprises (« Ce qui est outillé »). Elle vit dans `outils/`, que
+le même jour (« Décisions prises »). Les quatre premières tranches sont outillées : la mise à
+jour d'une appli, étapes de migration comprises, et l'ajout d'une brique (« Ce qui est
+outillé »). Elle vit dans `outils/`, que
 l'assembleur ne copie pas : une appli assemblée n'a ni l'outil ni ce qui le décrit.
 
 ## Le besoin
 
-Une appli assemblée est une copie figée : ses briques se choisissent une seule fois, à
-l'assemblage (`outils/assembler.mjs`). Deux manques en découlent :
+Une appli assemblée était une copie figée : ses briques se choisissaient une seule fois, à
+l'assemblage (`outils/assembler.mjs`). Deux manques en découlaient :
 
-1. **Ajouter ensuite une brique non choisie** n'est pas outillé (README de la brique
-   notifications, « Ce qu'elle ne fait pas (v1) » ; étape 2 de la skill `creer-appli` pour
-   la base, qu'une appli « n'en recevra pas après coup »). La parade actuelle : prendre
-   d'avance les briques probables, avec leur code, leurs tables et leurs traitements
+1. **Ajouter ensuite une brique non choisie** n'était pas outillé avant la tranche 4 (README
+   de la brique notifications, « Ce qu'elle ne fait pas (v1) » ; étape 2 de la skill
+   `creer-appli` pour la base, qu'une appli « n'en recevra pas après coup »). La parade :
+   prendre d'avance les briques probables, avec leur code, leurs tables et leurs traitements
    déclarés, sans usage.
 2. **Les corrections et évolutions d'une brique** n'arrivaient dans l'appli, avant la
    tranche 2, que si quelqu'un lisait les `CHANGELOG.md` et les reportait à la main. Une
@@ -284,12 +285,12 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--branche <type>/<slug>] [--ajouter <briques>] [--vers <commit>] [--a-blanc]
    ```
 
-   `--ajouter` n'est pas encore outillé (« Ce qui est outillé »). Sans `--ajouter`, l'outil
-   met à jour vers `--vers`, par défaut le `HEAD` du
+   Sans `--ajouter`, l'outil met à jour vers `--vers`, par défaut le `HEAD` du
    catalogue. Avec `--ajouter`, il ajoute au commit de l'appli (A' = A) : une opération à
    la fois (« Options écartées »). Une brique qui n'existe pas au commit A se refuse :
    mettre à jour d'abord. `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée
-   la branche nommée (par défaut `feature/reporter-catalogue-<A'>`), y écrit, **ne commite
+   la branche nommée (par défaut `feature/reporter-catalogue-<A'>`, ou
+   `feature/ajouter-<briques>`), y écrit, **ne commite
    pas** et imprime le rapport en Markdown, pour le corps de la PR ; il l'écrit aussi dans
    le dossier git du worktree (`git rev-parse --git-path catalogue-mise-a-jour.md`), hors
    de l'arbre suivi : il ne part pas au prochain `git add`. Il ne touche ni `main`, ni le
@@ -400,6 +401,8 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    - une vitrine sans base, avec une page à elle, reçoit `mails,contact` puis `comptes` :
      typecheck et rejeu des migrations passent, et `tests/gardes-acces.test.ts` échoue sur
      la seule page de l'appli, nommée au rapport.
+
+   Outillée (« Ce qui est outillé »).
 5. **Essai réel** sur une appli assemblée : un ajout, puis une mise à jour. Fait quand les
    deux PR de l'appli sont fusionnées par un humain et que `/sante` répond après le
    déploiement.
@@ -412,7 +415,9 @@ La tranche 1, le 2026-11-03 : retrouver l'origine d'une appli (la fonction `exam
 l'outil, première étape de toute opération). La tranche 2, le 2026-11-04 : la mise à jour,
 `node outils/mettre-a-jour.mjs <appli> [--vers <commit>] [--branche <nom>] [--a-blanc]`,
 depuis le catalogue (« Le circuit »). La tranche 3, le 2026-11-04 : les étapes de
-migration, en fin de liste (« Les migrations »).
+migration, en fin de liste (« Les migrations »). La tranche 4, le 2026-11-04 : l'ajout
+d'une brique, `--ajouter <briques>` à la place de `--vers` (« Le principe », « Les ajouts
+lourds »).
 
 - **Le manifeste au format 2** (décision 4), écrit par l'assembleur :
   `catalogue.commitComplet` à côté du commit court, et `assemblage` : `briques` (les
@@ -509,6 +514,32 @@ migration, en fin de liste (« Les migrations »).
   aucune, et compare les noms lus à ceux du tableau chargé. Ce fichier, sans assemblage ni base, tourne avec `npm test` ;
   le rejeu des étapes reportées sur Postgres, d'abord celles d'avant la fusion puis celles
   d'après sur la même base, est dans `tests/mettre-a-jour.test.ts`.
+- **L'ajout** (tranche 4) : `--ajouter`, des briques séparées par des virgules, rejoue la
+  cible au commit A avec les briques choisies plus les ajoutées ; l'assembleur rejoué y
+  ajoute ce qu'elles entraînent (`rgpd` avec `comptes`), et le reste suit le même chemin
+  qu'une mise à jour : la table, les étapes en fin de liste, le manifeste et l'en-tête de la
+  blueprint (`briques_assemblees` reçoit les briques arrivées). Branche par défaut
+  `feature/ajouter-<briques>`. Refusés avant toute lecture de l'appli : `--ajouter` avec
+  `--vers`, une liste vide, `donnees` (la base arrive avec la brique qui l'exige) ; dans
+  le worktree du commit A, avant le Prettier et l'assemblage : une brique qui n'y existe
+  pas (mettre à jour d'abord), une brique déjà dans l'appli, une brique ajoutée (ou
+  entraînée) qui en exige une que l'appli n'a pas et qui n'est pas demandée avec elle, le
+  refus disant quoi passer à `--ajouter`. `--retirer` se refuse (« Hors v1 »). Le rapport
+  porte en tête, avant les fichiers, les **ajouts lourds** : la base arrivée (`migrations.ts`
+  absent de l'origine), avec la décision de la créer chez l'hébergeur, `DATABASE_URL` et les
+  bases locales ; `comptes` arrivée, avec les fichiers de l'appli que
+  `tests/gardes-acces.test.ts` refusera, nommés un à un (les pages, routes et fichiers « use
+  server » de `src/app/` que l'appli a écrits, absents de l'origine comme de la cible), les
+  pages publiques du référencement, les écrans du patron `dossiers`, `rgpd` d'office, le
+  premier admin et `AUTH_SECRET`. Puis les **briques à brancher** : celles dont la section
+  « La brancher » du README, lu dans la cible, part du patron `dossiers`, d'où se copie
+  tout module métier (`echeances`, `calendrier`, `validation`, `import-lot`,
+  `notifications`, `journal`, `espaces` au catalogue du jour), avec cette section à suivre
+  et leur note en section 3 de la blueprint. Au même commit, le rapport ne recopie ni les
+  journaux des briques ni les commits du socle. Les deux cas d'essai de la tranche sont
+  dans `tests/mettre-a-jour.test.ts`, avec un assemblage direct au commit A pour comparer,
+  le typecheck, les tests de l'appli sur une base de test neuve, et le rejeu des étapes
+  version après version.
 
 ## Décisions prises
 

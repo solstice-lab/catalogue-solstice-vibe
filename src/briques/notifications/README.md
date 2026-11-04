@@ -76,10 +76,11 @@ ne connaît pas la brique échéances : le lien entre les deux se fait côté ap
   la brique mails ne fait pas, celle-ci non plus.
 - **Un écran du journal.** Il se lit en base ; un envoi en échec se voit sans
   écran, par la tâche planifiée (« La brancher », étape 4).
-- **L'installation dans une copie déjà assemblée.** L'assembleur ajoute ou
-  retire la brique à l'assemblage ; l'ajouter ensuite à une appli en service
-  n'est pas outillé. La retirer d'une appli déjà déployée laisse la table
-  `notifications_envois` dans sa base : la supprimer est un geste humain.
+- **Le retrait d'une copie déjà assemblée.** L'assembleur ajoute ou retire la
+  brique à l'assemblage ; l'outil de mise à jour du catalogue l'ajoute ensuite à
+  une appli en service, mais ne la retire pas. La retirer d'une appli déjà
+  déployée laisse la table `notifications_envois` dans sa base : la supprimer
+  est un geste humain.
 
 ## Données personnelles et conservation
 
@@ -446,6 +447,6 @@ Par la personne responsable du projet, le 2026-10-28 :
 | Le mode essai accepte-t-il une adresse libre ? | Non : une liste d'adresses permises dans la configuration. Limiter aux destinataires connus ne marcherait pas : qui répète n'est souvent responsable de rien. |
 | `Echeance` porte-t-elle la ligne source ? | Non : la liaison fait sa propre requête et appelle les règles de `calcul.ts`. La brique échéances ne change pas. |
 | Branchement sur la GMAO ? | Pas avec la brique : les contrats d'abord, la GMAO quand le besoin se confirme. |
-| Installation et retrait | L'assembleur retire la brique, sa migration et ses variables. Une base déjà déployée garde sa table si on retire la brique ensuite : la supprimer est un geste humain. Ajouter la brique à une copie déjà assemblée n'est pas outillé. |
+| Installation et retrait | L'assembleur retire la brique, sa migration et ses variables. Une base déjà déployée garde sa table si on retire la brique ensuite : la supprimer est un geste humain. L'ajouter à une copie déjà assemblée passe par l'outil de mise à jour du catalogue (`--ajouter`), ses tables par une étape en fin de liste ; la retirer n'est pas outillé. |
 | Durée du journal | 12 mois, purgés par la route à chaque envoi. |
 | Domaine d'envoi et compte | Pour un client, les siens ; pour un prototype, un sous-domaine dédié de Solstice Lab. Ne bloque que la mise en ligne. |

@@ -5,13 +5,20 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { assembler } from "../outils/assembler.mjs";
 import { ErreurMiseAJour, examiner, lireLesEtapes, mettreAJour, rapport } from "../outils/mettre-a-jour.mjs";
-import { migrationsAvantPuisApres, nettoyerLesAssemblages } from "./aide-assemblage";
+import {
+  migrationsAvantPuisApres,
+  migrationsSuccessives,
+  nettoyerLesAssemblages,
+  testsSurUneBaseNeuve,
+  typecheck,
+} from "./aide-assemblage";
 
 /*
  * Test-verrou de outils/mettre-a-jour.mjs (outils/mise-a-jour.md) : retrouver
  * ce qu'une appli a reçu du catalogue en rejouant l'assembleur de son commit,
  * dire ce qu'elle en a retouché (tranche 1), puis y reporter le catalogue d'un
- * commit plus récent (tranche 2), étapes de migration comprises (tranche 3).
+ * commit plus récent (tranche 2), étapes de migration comprises (tranche 3),
+ * ou lui ajouter une brique au commit qu'elle a (tranche 4).
  *
  * La CI ne clone pas l'historique du catalogue : le test construit le sien,
  * une copie du catalogue de travail en un commit A, puis les commits des
@@ -107,22 +114,27 @@ let catalogue: string;
 let commitA: string;
 let appli: string;
 
+// Les réglages qui changent des fichiers : briques dont une ajoutée d'office
+// (rgpd avec comptes), champs de l'en-tête, Dependabot.
+const REGLAGES_DE_L_APPLI = {
+  briques: ["comptes", "mails"],
+  dependabot: true,
+  entete:
+    'appli: Essai de coloc\nnom_affiche: "Essai # de coloc"\nsite: public\nentree: ouverte\nmethodes: [code-email]',
+};
+
 beforeAll(() => {
   catalogue = copierLeCatalogue();
   commitA = git(catalogue, "rev-parse", "--short", "HEAD");
   lierNodeModules(catalogue);
-  // Les réglages qui changent des fichiers : briques dont une ajoutée d'office
-  // (rgpd avec comptes), champs de l'en-tête, Dependabot.
   appli = path.join(dossierTemporaire("appli-"), "essai-coloc");
   assembler({
     source: catalogue,
     sortie: appli,
     commit: commitA,
-    briques: ["comptes", "mails"],
-    dependabot: true,
-    blueprint: blueprint(
-      'appli: Essai de coloc\nnom_affiche: "Essai # de coloc"\nsite: public\nentree: ouverte\nmethodes: [code-email]'
-    ),
+    briques: REGLAGES_DE_L_APPLI.briques,
+    dependabot: REGLAGES_DE_L_APPLI.dependabot,
+    blueprint: blueprint(REGLAGES_DE_L_APPLI.entete),
   });
 }, REJEU);
 
@@ -383,14 +395,22 @@ describe("mettre-a-jour, examen : refus en clair, avant tout rejeu", () => {
     expect(() => examiner({ catalogue, appli: dossier })).toThrow(/format 3/);
   });
 
-  it("refuse --ajouter : l'ajout d'une brique n'est pas encore outillé", () => {
-    const resultat = spawnSync(
-      process.execPath,
-      [path.join(SOURCE, "outils/mettre-a-jour.mjs"), appli, "--ajouter", "journal"],
-      { encoding: "utf-8" }
-    );
-    expect(resultat.status).toBe(1);
-    expect(resultat.stderr).toMatch(/^Mise à jour refusée : .*--ajouter/m);
+  it("refuse, par la ligne de commande, un ajout combiné à une mise à jour, un --ajouter sans brique et un retrait", () => {
+    const lancer = (...args: string[]) =>
+      spawnSync(process.execPath, [path.join(SOURCE, "outils/mettre-a-jour.mjs"), appli, ...args], {
+        encoding: "utf-8",
+      });
+    for (const [args, motif] of [
+      [["--ajouter", "journal", "--vers", "HEAD"], /une opération à la fois/],
+      [["--ajouter"], /--ajouter attend une valeur/],
+      [["--ajouter", ","], /--ajouter attend une valeur/],
+      [["--retirer", "mails"], /[Rr]etirer une brique/],
+    ] as const) {
+      const resultat = lancer(...args);
+      expect(resultat.status, args.join(" ")).toBe(1);
+      expect(resultat.stderr, args.join(" ")).toMatch(/^Mise à jour refusée : /m);
+      expect(resultat.stderr, args.join(" ")).toMatch(motif);
+    }
   });
 });
 
@@ -1044,6 +1064,330 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
         refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: "pas un nom" })).message
       ).toMatch(/nom de branche/);
     });
+  });
+});
+
+// ---------------------------------------------------------------- tranche 4 : ajouter une brique
+
+/*
+ * Ajouter une brique (« Le principe » de la note : A' = A, B' = B plus les
+ * briques ajoutées) : la cible est l'assemblage rejoué au commit de l'appli,
+ * quel que soit le HEAD du catalogue, que la suite ci-dessus a fait avancer.
+ * Les deux cas d'essai du ticket : une appli comptes,mails retouchée reçoit
+ * journal puis notifications ; une vitrine sans base reçoit mails,contact (la
+ * base arrive), puis comptes (ajouts lourds).
+ */
+
+// Un assemblage direct au commit A, dans un worktree du catalogue à ce commit :
+// le catalogue de travail est plus loin.
+function assemblerAuCommitA(options: { sortie: string; briques: string[]; dependabot?: boolean; entete?: string }) {
+  const arbre = path.join(dossierTemporaire("catalogue-a-"), "catalogue");
+  git(catalogue, "worktree", "add", "--detach", "--quiet", arbre, commitA);
+  try {
+    lierNodeModules(arbre);
+    assembler({
+      source: arbre,
+      sortie: options.sortie,
+      commit: commitA,
+      briques: options.briques,
+      dependabot: options.dependabot ?? false,
+      blueprint: options.entete === undefined ? undefined : blueprint(options.entete),
+    });
+  } finally {
+    delierNodeModules(arbre);
+    git(catalogue, "worktree", "remove", "--force", arbre);
+  }
+}
+
+// Le contenu de chaque fichier d'un commit, par son objet git : deux fichiers
+// égaux ont le même, quelles que soient les fins de ligne du disque.
+function objetsDuCommit(depot: string): Map<string, string> {
+  return new Map(
+    git(depot, "ls-tree", "-r", "HEAD")
+      .split("\n")
+      .filter(Boolean)
+      .map((ligne) => {
+        const tabulation = ligne.indexOf("\t");
+        return [ligne.slice(tabulation + 1), ligne.slice(0, tabulation).split(" ")[2]];
+      })
+  );
+}
+
+// L'état de l'appli à un moment, tel qu'il part en production (pour rejouer ses migrations).
+function instantane(dossier: string): string {
+  const copie = path.join(dossierTemporaire("appli-instantane-"), "appli");
+  git(path.dirname(copie), "clone", "-q", dossier, copie);
+  return copie;
+}
+
+function commiterEtPublier(dossier: string, message: string) {
+  git(dossier, "add", "-A");
+  git(dossier, "commit", "-q", "-m", message);
+  publier(dossier);
+}
+
+const rubriqueDe = (texte: string, titre: string) => {
+  const debut = texte.indexOf(`\n## ${titre}\n`);
+  if (debut === -1) return undefined;
+  const fin = texte.indexOf("\n## ", debut + 1);
+  return texte.slice(debut, fin === -1 ? undefined : fin);
+};
+
+const sansCouleurs = (texte: string) => texte.replace(/\u001b\[[0-9;]*m/g, "");
+
+// Ce qu'une appli de colocation retouche de ce qu'elle a reçu : ses droits, son
+// menu, son registre, sa politique, sa propre étape de migration, et sa page.
+function retouchesDeLaColoc(d: string) {
+  ecrire(
+    d,
+    "src/config/acces.ts",
+    remplacer("  ...ACTIONS_DOSSIERS,\n", '  ...ACTIONS_DOSSIERS,\n  "taches.gerer",\n')
+  );
+  ecrire(
+    d,
+    "src/config/acces.ts",
+    remplacer(
+      '  "dossiers.acceder": ["membre", "admin"],\n',
+      '  "dossiers.acceder": ["membre", "admin"],\n  "taches.gerer": ["membre", "admin"],\n'
+    )
+  );
+  ecrire(
+    d,
+    "src/lib/navigation.ts",
+    remplacer(
+      '  { libelle: "Dossiers", href: "/dossiers", visible: visiblePour("dossiers.acceder") },\n',
+      '  { libelle: "Dossiers", href: "/dossiers", visible: visiblePour("dossiers.acceder") },\n  { libelle: "Tâches", href: "/taches", visible: visiblePour("taches.gerer") },\n'
+    )
+  );
+  ecrire(
+    d,
+    "src/config/donnees-personnelles.ts",
+    remplacer(
+      "export const TABLES_SANS_DONNEE_PERSONNELLE: Record<string, string> = {\n",
+      'export const TABLES_SANS_DONNEE_PERSONNELLE: Record<string, string> = {\n  coloc_taches: "Les tâches de la colocation, sans personne désignée (appli).",\n'
+    )
+  );
+  ecrire(
+    d,
+    "src/lib/confidentialite.ts",
+    remplacer(
+      '    hebergement: { baseLegale: "", duree: "", destinataires: "" },',
+      '    hebergement: { baseLegale: "Intérêt légitime", duree: "", destinataires: "Personne d\'autre." },'
+    )
+  );
+  ecrire(
+    d,
+    FICHIER_MIGRATIONS,
+    etapeEnFin(
+      "Étape de l'appli : sa table à elle.",
+      ETAPE_DE_L_APPLI,
+      "CREATE TABLE IF NOT EXISTS coloc_taches (id SERIAL PRIMARY KEY, titre TEXT NOT NULL);"
+    )
+  );
+  fs.mkdirSync(path.join(d, "src/app/taches"), { recursive: true });
+  fs.writeFileSync(
+    path.join(d, "src/app/taches/page.tsx"),
+    'import { exiger } from "@/briques/comptes/roles";\n\nexport const dynamic = "force-dynamic";\n\n' +
+      'export default async function PageTaches() {\n  await exiger("taches.gerer");\n  return <p>Les tâches de la colocation.</p>;\n}\n'
+  );
+}
+
+describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tranche 4)", () => {
+  it(
+    "ajoute journal puis notifications à une appli comptes,mails retouchée : les fichiers d'un assemblage direct, aux retouches de l'appli et à l'ordre des migrations près, puis typecheck, tests et rejeu des migrations passent",
+    { timeout: 2_400_000 },
+    async () => {
+      const coloc = appliRetouchee(retouchesDeLaColoc);
+      publier(coloc);
+      const avant = instantane(coloc);
+
+      const journal = mettreAJour({ catalogue, appli: coloc, ajouter: ["journal"] });
+      expect(journal).toMatchObject({
+        commitOrigine: commitA,
+        commitCible: commitA,
+        branche: "feature/ajouter-journal",
+        ajoutees: ["journal"],
+        aBrancher: [expect.objectContaining({ brique: "journal", readme: "src/briques/journal/README.md" })],
+        lourds: { base: false, comptes: false, pages: [] },
+      });
+      // Les retouches de l'appli sont loin des lignes que la brique remet : rien en conflit.
+      expect(journal.fichiers.enConflit).toEqual([]);
+      expect(journal.fichiers.fusionnes).toEqual(
+        expect.arrayContaining(["src/config/acces.ts", "src/lib/navigation.ts", "src/lib/confidentialite.ts"])
+      );
+      expect(journal.migrations.ajoutees.length).toBeGreaterThan(0);
+      const texte = rapport(journal);
+      expect(texte).toMatch(new RegExp(`^# Ajouter journal à l'appli, au catalogue ${commitA}$`, "m"));
+      expect(rubriqueDe(texte, "Briques à brancher")).toMatch(/`journal`[^\n]*`src\/briques\/journal\/README\.md`/);
+      expect(texte).not.toContain("## Ajouts lourds");
+      // A' = A : ni journal des briques ni sujets du socle à recopier.
+      expect(texte).not.toContain("## Journal des briques");
+      expect(texte).not.toContain("## Socle");
+      commiterEtPublier(coloc, "Ajouter la brique journal");
+      const apresJournal = instantane(coloc);
+
+      const notifications = mettreAJour({ catalogue, appli: coloc, ajouter: ["notifications"] });
+      expect(notifications).toMatchObject({
+        ajoutees: ["notifications"],
+        aBrancher: [expect.objectContaining({ brique: "notifications" })],
+      });
+      expect(notifications.fichiers.enConflit).toEqual([]);
+      commiterEtPublier(coloc, "Ajouter la brique notifications");
+      const enTete = fs.readFileSync(path.join(coloc, "blueprint.md"), "utf-8");
+      expect(enTete).toMatch(new RegExp(`^commit_reference: ${commitA}$`, "m"));
+      expect(enTete).toMatch(/^briques_assemblees: \[journal, notifications\]$/m);
+
+      // L'assemblage direct avec les quatre briques, puis les mêmes retouches.
+      const directe = path.join(dossierTemporaire("appli-directe-"), "essai-coloc");
+      assemblerAuCommitA({
+        sortie: directe,
+        ...REGLAGES_DE_L_APPLI,
+        briques: ["comptes", "mails", "journal", "notifications"],
+      });
+      retouchesDeLaColoc(directe);
+      git(directe, "add", "-A");
+      git(directe, "commit", "-q", "-m", "Retouches de l'appli");
+      const deLAppli = objetsDuCommit(coloc);
+      const duDirect = objetsDuCommit(directe);
+      const ecarts = [...new Set([...deLAppli.keys(), ...duDirect.keys()])]
+        .filter((chemin) => chemin !== "blueprint.md" && chemin !== FICHIER_MIGRATIONS)
+        .filter((chemin) => deLAppli.get(chemin) !== duDirect.get(chemin))
+        .sort();
+      expect(ecarts).toEqual([]);
+      // Les migrations : les mêmes étapes, au même texte. Seul l'ordre diffère : chaque
+      // opération met les siennes en fin, après celles de l'appli et de l'opération
+      // d'avant, quand l'assemblage direct glisse celle de notifications entre les deux de journal.
+      const etapes = (depot: string) =>
+        lireLesEtapes(contenuDuCommit(depot, "HEAD", FICHIER_MIGRATIONS).toString(), FICHIER_MIGRATIONS);
+      const noms = (depot: string) => etapes(depot).map(({ nom }) => nom);
+      const etapesDeLAppli = etapes(coloc);
+      const etapesDuDirect = etapes(directe);
+      const nomsDAvant = noms(avant);
+      expect(nomsDAvant.at(-1)).toBe(ETAPE_DE_L_APPLI);
+      const nomsDuJournal = noms(apresJournal).slice(nomsDAvant.length);
+      expect(noms(apresJournal)).toEqual([...nomsDAvant, ...nomsDuJournal]);
+      expect(nomsDuJournal.length).toBeGreaterThan(0);
+      expect(nomsDuJournal.every((nom) => nom.startsWith("journal_audit"))).toBe(true);
+      const nomsDesNotifications = noms(coloc).slice(nomsDAvant.length + nomsDuJournal.length);
+      expect(nomsDesNotifications.length).toBeGreaterThan(0);
+      expect(nomsDesNotifications.every((nom) => nom.startsWith("notifications"))).toBe(true);
+      expect(noms(coloc)).toEqual([...nomsDAvant, ...nomsDuJournal, ...nomsDesNotifications]);
+      expect(new Map(etapesDeLAppli.map(({ nom, texte: t }) => [nom, t]))).toEqual(
+        new Map(etapesDuDirect.map(({ nom, texte: t }) => [nom, t]))
+      );
+
+      expect(await typecheck(coloc)).toEqual({ code: 0, sortie: "" });
+      const base = await migrationsSuccessives([avant, apresJournal, coloc]);
+      expect(base.code, base.sortie).toBe(0);
+      expect(base.objets).toEqual(
+        expect.arrayContaining(["coloc_taches", "journal_audit", "notifications_envois", "utilisateurs"])
+      );
+      const tests = await testsSurUneBaseNeuve(coloc);
+      expect(tests.code, sansCouleurs(tests.sortie).slice(-6000)).toBe(0);
+    }
+  );
+
+  it(
+    "ajoute mails,contact puis comptes à une vitrine sans base : ajouts lourds annoncés, typecheck et rejeu des migrations passent, et tests/gardes-acces.test.ts échoue sur la seule page de l'appli, nommée au rapport",
+    { timeout: 1_800_000 },
+    async () => {
+      const assemblee = path.join(dossierTemporaire("appli-"), "vitrine-essai");
+      assemblerAuCommitA({ sortie: assemblee, briques: [], entete: "appli: Vitrine d'essai\nsite: public" });
+      const vitrine = appliRetouchee((d) => {
+        fs.mkdirSync(path.join(d, "src/app/a-propos"), { recursive: true });
+        fs.writeFileSync(
+          path.join(d, "src/app/a-propos/page.tsx"),
+          "export default function PageAPropos() {\n  return <p>Qui nous sommes.</p>;\n}\n"
+        );
+      }, assemblee);
+      publier(vitrine);
+      const head = git(vitrine, "rev-parse", "HEAD");
+
+      // contact exige mails, que la vitrine n'a pas : refusé, en disant quoi demander.
+      expect(refusDe(() => mettreAJour({ catalogue, appli: vitrine, ajouter: ["contact"] })).message).toMatch(
+        /« contact » exige mails.*--ajouter mails,contact/s
+      );
+      expect(git(vitrine, "rev-parse", "HEAD")).toBe(head);
+      expect(git(vitrine, "branch", "--show-current")).toBe("main");
+
+      const contact = mettreAJour({ catalogue, appli: vitrine, ajouter: ["mails", "contact"] });
+      expect(contact).toMatchObject({
+        branche: "feature/ajouter-mails-contact",
+        ajoutees: ["mails", "contact"],
+        aBrancher: [],
+        lourds: { base: true, comptes: false, pages: [] },
+        migrations: { avecLaBase: true },
+      });
+      const texteContact = rapport(contact);
+      const lourdContact = rubriqueDe(texteContact, "Ajouts lourds");
+      expect(lourdContact).toMatch(/### La base/);
+      expect(lourdContact).toContain("`DATABASE_URL`");
+      expect(lourdContact).not.toMatch(/### La brique comptes/);
+      // En tête du rapport : avant les fichiers.
+      expect(texteContact.indexOf("## Ajouts lourds")).toBeLessThan(texteContact.indexOf("## Fichiers"));
+      commiterEtPublier(vitrine, "Ajouter les briques mails et contact");
+      const apresContact = instantane(vitrine);
+
+      const comptes = mettreAJour({ catalogue, appli: vitrine, ajouter: ["comptes"] });
+      expect(comptes).toMatchObject({
+        ajoutees: ["comptes", "rgpd"],
+        lourds: { base: false, comptes: true, pages: ["src/app/a-propos/page.tsx"] },
+      });
+      const texteComptes = rapport(comptes);
+      const lourdComptes = rubriqueDe(texteComptes, "Ajouts lourds") ?? "";
+      expect(lourdComptes).toMatch(/### La brique comptes/);
+      expect(lourdComptes).toMatch(/`tests\/gardes-acces\.test\.ts`[\s\S]*\n- `src\/app\/a-propos\/page\.tsx`\n/);
+      expect(lourdComptes).toContain("rgpd");
+      expect(texteComptes).toMatch(/^# Ajouter comptes à l'appli/m);
+      commiterEtPublier(vitrine, "Ajouter la brique comptes");
+
+      expect(await typecheck(vitrine)).toEqual({ code: 0, sortie: "" });
+      const base = await migrationsSuccessives([apresContact, vitrine]);
+      expect(base.code, base.sortie).toBe(0);
+      expect(base.objets).toEqual(expect.arrayContaining(["contact_envois", "utilisateurs", "sessions"]));
+      const gardes = await testsSurUneBaseNeuve(vitrine, ["tests/gardes-acces.test.ts"]);
+      expect(gardes.code).not.toBe(0);
+      // Une faute par motif (garde absent, exiger non importé) : toutes sur la page de l'appli.
+      const fautes = [...sansCouleurs(gardes.sortie).matchAll(/^\+\s+"([^"]+ : [^"]+)",?$/gm)].map(
+        ([, faute]) => faute
+      );
+      expect(fautes, sansCouleurs(gardes.sortie).slice(-4000)).toContain("a-propos/page.tsx : PageAPropos");
+      expect([...new Set(fautes.map((faute) => faute.split(" : ")[0]))]).toEqual(["a-propos/page.tsx"]);
+    }
+  );
+
+  describe("refus en clair, avant toute écriture", () => {
+    let publiee: string;
+    beforeAll(() => {
+      publiee = appliRetouchee(() => {});
+      publier(publiee);
+    });
+
+    it("refuse un ajout combiné à une mise à jour : une opération à la fois", { timeout: REFUS }, () => {
+      expect(
+        refusDe(() => mettreAJour({ catalogue, appli: publiee, ajouter: ["journal"], vers: commitA })).message
+      ).toMatch(/une opération à la fois/);
+      rienNEstTouche(publiee, git(publiee, "rev-parse", "HEAD"));
+    });
+
+    it(
+      "refuse une brique absente du catalogue au commit de l'appli (mettre à jour d'abord), une brique déjà là, et la base nommée seule",
+      { timeout: REJEU },
+      () => {
+        const head = git(publiee, "rev-parse", "HEAD");
+        expect(refusDe(() => mettreAJour({ catalogue, appli: publiee, ajouter: ["facturation"] })).message).toMatch(
+          new RegExp(`« facturation ».*commit ${commitA}.*mettre (l'appli )?à jour d'abord`, "s")
+        );
+        // rgpd est venue d'office avec comptes : elle est déjà là.
+        expect(refusDe(() => mettreAJour({ catalogue, appli: publiee, ajouter: ["rgpd"] })).message).toMatch(
+          /« rgpd ».*déjà/
+        );
+        expect(refusDe(() => mettreAJour({ catalogue, appli: publiee, ajouter: ["donnees"] })).message).toMatch(
+          /« donnees » ne s'ajoute pas/
+        );
+        rienNEstTouche(publiee, head);
+      }
+    );
   });
 });
 

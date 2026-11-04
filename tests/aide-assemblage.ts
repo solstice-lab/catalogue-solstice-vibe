@@ -494,12 +494,49 @@ export async function migrationsAvantPuisApres(
   avant: string,
   apres: string
 ): Promise<{ code: number; objets: string[]; sortie: string }> {
+  return migrationsSuccessives([avant, apres]);
+}
+
+// La même chose sur plusieurs versions de l'appli, chacune déployée à son tour
+// sur la même base (deux opérations de mise à jour, deux PR fusionnées).
+export async function migrationsSuccessives(
+  versions: string[]
+): Promise<{ code: number; objets: string[]; sortie: string }> {
   return objetsDeLaBase(
-    await surUneBaseNeuve([
-      { assemble: avant, script: SCRIPT_DES_MIGRATIONS },
-      { assemble: apres, script: SCRIPT_DES_MIGRATIONS },
-    ])
+    await surUneBaseNeuve(versions.map((assemble) => ({ assemble, script: SCRIPT_DES_MIGRATIONS })))
   );
+}
+
+// La suite de tests d'une appli assemblée avec la base, lancée dans une copie,
+// sur une base de test NEUVE du serveur local de DATABASE_URL, supprimée
+// ensuite : son vitest.config.ts exige un nom en _test. `fichiers` : les seuls
+// fichiers de tests à lancer, tous sinon. Plus long que DELAI_PROCESSUS : une
+// suite entière, sur un poste chargé.
+export async function testsSurUneBaseNeuve(
+  assemble: string,
+  fichiers: string[] = []
+): Promise<{ code: number; sortie: string }> {
+  const nomBase = `asm_${process.pid}_${Date.now()}_${Math.floor(Math.random() * 1e6)}_test`;
+  const adresse = new URL(process.env.DATABASE_URL as string);
+  adresse.pathname = `/${nomBase}`;
+  const env = { ...environnementSansBase(), DATABASE_URL: adresse.toString(), PGSSLMODE: "disable" };
+  const dossier = copieDeTravail(assemble);
+  await query(`CREATE DATABASE ${nomBase}`);
+  try {
+    return await new Promise((resoudre) => {
+      execFile(
+        process.execPath,
+        [path.join(SOURCE, "node_modules", "vitest", "vitest.mjs"), "run", ...fichiers],
+        { cwd: dossier, encoding: "utf-8", env, timeout: 600_000, maxBuffer: 64 * 1024 * 1024 },
+        (erreur, stdout, stderr) => {
+          if (!erreur) return resoudre({ code: 0, sortie: stdout });
+          resoudre({ code: typeof erreur.code === "number" ? erreur.code : 1, sortie: `${stdout}${stderr}` });
+        }
+      );
+    });
+  } finally {
+    await query(`DROP DATABASE IF EXISTS ${nomBase} WITH (FORCE)`);
+  }
 }
 
 const SCRIPT_DE_L_ENTREE = (adresse: string) => `

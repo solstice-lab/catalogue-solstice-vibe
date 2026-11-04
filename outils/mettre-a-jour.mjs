@@ -2,9 +2,14 @@
 /*
  * Outil de mise à jour des applis assemblées (note de conception :
  * outils/mise-a-jour.md) : reporter dans une appli le catalogue d'un commit
- * plus récent, étapes de migration comprises, ajoutées en fin de liste.
+ * plus récent, étapes de migration comprises, ajoutées en fin de liste, ou lui
+ * ajouter des briques au commit qu'elle a.
  *
- *   node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--vers <commit>] [--branche <nom>] [--a-blanc]
+ *   node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--vers <commit> | --ajouter <briques>] [--branche <nom>] [--a-blanc]
+ *
+ * Les deux sont une seule opération : faire passer l'appli de l'assemblage
+ * (commit A, briques B) à l'assemblage (A', B'). Mettre à jour : A' le commit
+ * visé, B' = B. Ajouter : A' = A, B' = B plus les briques ajoutées.
  *
  * L'origine d'un fichier n'est pas le fichier du catalogue au commit A :
  * l'assembleur retouche les fichiers partagés selon les briques absentes, puis
@@ -295,9 +300,12 @@ function dansUnNodeAPart(script, donnees, env = environnementDeGit()) {
   });
 }
 
-// Les briques de outils/modules.mjs au commit rejoué.
-function briquesDuCommit(arbre) {
-  const script = "const { BRIQUES } = await import(donnees.module); console.log(JSON.stringify(Object.keys(BRIQUES)));";
+// Les briques de outils/modules.mjs au commit rejoué, avec ce que chacune exige et
+// entraîne : de quoi refuser un ajout incomplet en le disant, avant l'assemblage.
+function definitionsDuCommit(arbre) {
+  const script =
+    "const { BRIQUES } = await import(donnees.module);" +
+    "console.log(JSON.stringify(Object.fromEntries(Object.entries(BRIQUES).map(([nom, { exige, entraine }]) => [nom, { exige: exige ?? [], entraine: entraine ?? [] }]))));";
   return JSON.parse(dansUnNodeAPart(script, { module: pathToFileURL(path.join(arbre, "outils", "modules.mjs")).href }));
 }
 
@@ -455,10 +463,13 @@ function avecUnDossierTemporaire(travail) {
 /*
  * Un assemblage rejoué : le catalogue au commit `sha` dans un worktree
  * temporaire, son Prettier, son assembleur. `reglagesDe` reçoit les briques de
- * ce commit et rend les réglages à redonner. Ce qui en sort se lit dans le
- * commit que l'assembleur a fait, en LF ; le worktree est retiré dans tous les cas.
+ * ce commit et rend les réglages à redonner ; `controler`, s'il est donné,
+ * reçoit les définitions des briques de ce commit et ces réglages, et refuse
+ * avant le Prettier et l'assemblage, les deux étapes longues. Ce qui en sort se
+ * lit dans le commit que l'assembleur a fait, en LF ; le worktree est retiré
+ * dans tous les cas.
  */
-function rejouer({ catalogue, temporaire, nom, sha, commit, reglagesDe }) {
+function rejouer({ catalogue, temporaire, nom, sha, commit, reglagesDe, controler }) {
   const arbre = path.join(temporaire, `catalogue-${nom}`);
   try {
     try {
@@ -468,7 +479,9 @@ function rejouer({ catalogue, temporaire, nom, sha, commit, reglagesDe }) {
         `Le worktree temporaire du commit ${commit} n'a pas pu être créé : ${erreur.stderr?.trim() || erreur.message}`
       );
     }
-    const reglages = reglagesDe(briquesDuCommit(arbre));
+    const definitions = definitionsDuCommit(arbre);
+    const reglages = reglagesDe(Object.keys(definitions));
+    controler?.(definitions, reglages);
     const prettier = installerPrettier({ catalogue, arbre, commit: sha });
     // Nommé comme le paquet : sans nom donné, l'assembleur tire le paquet du
     // dossier de sortie (un premier jet le nommait « appli », et le paquet avec).
@@ -486,7 +499,7 @@ function rejouer({ catalogue, temporaire, nom, sha, commit, reglagesDe }) {
 }
 
 // L'origine rejouée au commit A, vérifiée contre le manifeste, et les écarts de l'appli.
-function examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha }) {
+function examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha, controler }) {
   const { contenus, manifeste } = lecture;
   const commit = manifeste.catalogue.commit;
   const {
@@ -500,6 +513,7 @@ function examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha 
     sha,
     commit,
     reglagesDe: (briques) => reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit: briques }),
+    controler,
   });
 
   const rejoue = JSON.parse(origine.get(MANIFESTE).toString("utf-8"));
@@ -1228,12 +1242,23 @@ function reecrireLEntete(brut, { commit, ajoutees }) {
   return { texte: `---\n${lignes}\n---${markdown.slice(entete[0].length)}`, aReprendre };
 }
 
-// Les briques que l'appli a reçues, d'après un manifeste au format 2, ou les réglages déduits.
+/*
+ * Les briques qu'une version de l'appli a reçues, d'après son manifeste : au
+ * format 2, ses réglages ; au format 1, les réglages qui l'ont produite, plus les
+ * unités du manifeste qui ne sont ni le socle, ni la base, ni une unité
+ * partagée (une brique venue d'office). Le cas : un ajout au commit d'une
+ * appli au format 1, dont l'assembleur écrit encore le format 1, ne voyait
+ * arriver aucune brique (essai à blanc sur une appli de colocation).
+ */
 function briquesRecues(manifeste, reglages) {
   if (manifeste.format === 2) {
     return [...manifeste.assemblage.briques, ...manifeste.assemblage.ajouteesDOffice.map(({ nom }) => nom)];
   }
-  return reglages.briques;
+  const unites = new Set(Object.values(manifeste.fichiers).map(({ unite }) => unite));
+  const venuesDOffice = [...unites].filter(
+    (unite) => !UNITES_SANS_CHOIX.includes(unite) && !reglages.briques.includes(unite)
+  );
+  return [...reglages.briques, ...venuesDOffice];
 }
 
 // ---------------------------------------------------------------- ce que le rapport recopie
@@ -1352,6 +1377,114 @@ function fichiersOccupes({ origine, cible, appli }) {
   return occupes;
 }
 
+// ---------------------------------------------------------------- ajouter une brique
+
+// La base n'est pas une brique : elle arrive avec la première qui l'exige (l'assembleur la refuse dans --briques).
+const BASE = "donnees";
+
+/*
+ * Ce qui se refuse avant de lire l'appli : une opération à la fois (« Options
+ * écartées » de la note : une PR qui mêle une brique neuve et les évolutions de
+ * toutes les autres se relit mal), une liste vide, la base nommée seule.
+ */
+function verifierLaDemandeDAjout(ajouter, vers) {
+  if (vers !== undefined) {
+    throw new ErreurMiseAJour(
+      "--ajouter et --vers : une opération à la fois. Ajouter au commit qu'a l'appli, puis mettre à jour par une seconde opération (deux PR), ou l'inverse."
+    );
+  }
+  if (!Array.isArray(ajouter) || ajouter.length === 0 || ajouter.some((nom) => typeof nom !== "string" || nom === "")) {
+    throw new ErreurMiseAJour("--ajouter attend une valeur : les briques à ajouter, séparées par des virgules.");
+  }
+  if (ajouter.includes(BASE)) {
+    throw new ErreurMiseAJour(
+      `« ${BASE} » ne s'ajoute pas seule : la base arrive avec la brique qui l'exige (contact, echeances, comptes…). Ajouter celle-là.`
+    );
+  }
+  const double = ajouter.find((nom, rang) => ajouter.indexOf(nom) !== rang);
+  if (double !== undefined) throw new ErreurMiseAJour(`--ajouter nomme deux fois « ${double} ».`);
+}
+
+/*
+ * L'ajout au commit de l'appli, contre les briques de ce commit : une brique
+ * qui n'y existe pas encore arrivera par une mise à jour d'abord ; une brique
+ * déjà là n'a rien à ajouter ; une exigence manquante se dit, comme
+ * l'assembleur la dit, jamais ajoutée en silence (planifier d'outils/assembler.mjs).
+ * Seul `entraine` ajoute d'office, et l'assembleur rejoué le fait.
+ */
+function controlerLAjout({ ajouter, presentes, definitions, commit }) {
+  for (const nom of ajouter) {
+    if (!(nom in definitions)) {
+      throw new ErreurMiseAJour(
+        `La brique « ${nom} » n'existe pas au commit ${commit} du catalogue, celui de l'appli, auquel l'outil ajoute : ` +
+          "si elle est arrivée au catalogue depuis, mettre l'appli à jour d'abord (sans --ajouter), puis l'ajouter ; sinon, vérifier son nom. " +
+          `Briques au commit ${commit} : ${Object.keys(definitions).join(", ")}.`
+      );
+    }
+    if (presentes.includes(nom)) {
+      throw new ErreurMiseAJour(`La brique « ${nom} » est déjà dans l'appli : rien à ajouter.`);
+    }
+  }
+  const toutes = [...presentes, ...ajouter];
+  for (let i = 0; i < toutes.length; i++) {
+    for (const entrainee of definitions[toutes[i]]?.entraine ?? [])
+      if (!toutes.includes(entrainee)) toutes.push(entrainee);
+  }
+  const manques = toutes
+    .filter((nom) => !presentes.includes(nom))
+    .map((nom) => ({
+      nom,
+      manquantes: definitions[nom].exige.filter((exigee) => exigee !== BASE && !toutes.includes(exigee)),
+    }))
+    .filter(({ manquantes }) => manquantes.length > 0);
+  if (manques.length > 0) {
+    const demande = [...new Set([...manques.flatMap(({ manquantes }) => manquantes), ...ajouter])].join(",");
+    throw new ErreurMiseAJour(
+      `${manques.map(({ nom, manquantes }) => `« ${nom} » exige ${manquantes.join(", ")}, que l'appli n'a pas`).join(" ; ")} : ` +
+        `les ajouter dans la même opération (--ajouter ${demande}).`
+    );
+  }
+}
+
+/*
+ * Les briques reçues « à brancher » : celles dont le README dit qu'un module
+ * métier de l'appli les branche. Sa section « La brancher » part du patron
+ * `dossiers`, d'où tout module métier est copié (echeances, notifications,
+ * journal…), quand celle d'une brique branchée d'office n'en dit rien (mails,
+ * contact, rgpd). Lu dans la cible : c'est le README que l'appli reçoit.
+ */
+function briquesABrancher(cible, briques) {
+  const aBrancher = [];
+  for (const brique of briques) {
+    const readme = `src/briques/${brique}/README.md`;
+    const texte = texteDe(cible.get(readme));
+    const section = /^## (La brancher[^\n]*)\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(texte);
+    if (section && /\bdossiers\b/.test(section[2])) aBrancher.push({ brique, readme, section: section[1] });
+  }
+  return aBrancher;
+}
+
+/*
+ * Les fichiers de l'appli que tests/gardes-acces.test.ts relit (pages, routes,
+ * fichiers « use server » de src/app/), parmi ceux qu'elle a écrits : avec la
+ * brique comptes qui arrive, chacun passe derrière la connexion et le verrou le
+ * refuse tant qu'il n'est pas tranché, public ou derrière un droit. Ceux du
+ * catalogue arrivent gardés, ou dans les fichiers ouverts du verrou.
+ */
+function pagesATrancher({ origine, cible, appli }) {
+  return [...appli.keys()]
+    .filter((chemin) => chemin.startsWith("src/app/") && !origine.has(chemin) && !cible.has(chemin))
+    .filter((chemin) => {
+      const nom = path.posix.basename(chemin);
+      return (
+        nom === "route.ts" ||
+        nom === "page.tsx" ||
+        (/\.tsx?$/.test(nom) && /["']use server["']/.test(texteDe(appli.get(chemin))))
+      );
+    })
+    .sort();
+}
+
 // ---------------------------------------------------------------- la mise à jour
 
 const RAPPORT = "catalogue-mise-a-jour.md";
@@ -1368,21 +1501,29 @@ function supprimerDansLAppli(racine, chemin) {
 
 /**
  * Reporte dans l'appli le catalogue du commit visé (le HEAD du catalogue, ou
- * `vers`), avec les mêmes briques choisies. Écrit sur la branche neuve `branche`, sans
- * commit ; `aBlanc` : rien n'est écrit, le résultat dit ce qui le serait.
- * @param {{ catalogue: string, appli: string, vers?: string, branche?: string, aBlanc?: boolean }} options
+ * `vers`), avec les mêmes briques choisies ; ou, avec `ajouter`, lui ajoute ces
+ * briques au commit qu'elle a (A' = A), une opération à la fois. Écrit sur la
+ * branche neuve `branche`, sans commit ; `aBlanc` : rien n'est écrit, le
+ * résultat dit ce qui le serait.
+ * @param {{ catalogue: string, appli: string, vers?: string, ajouter?: string[], branche?: string, aBlanc?: boolean }} options
  */
-export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false }) {
+export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc = false }) {
+  const ajout = ajouter !== undefined;
+  if (ajout) verifierLaDemandeDAjout(ajouter, vers);
   const dossierAppli = path.resolve(appli);
   const racineCatalogue = path.resolve(catalogue);
   const lecture = lireLAppli(dossierAppli);
   const { manifeste, contenus } = lecture;
   const commitOrigine = manifeste.catalogue.commit;
   const shaOrigine = commitDuCatalogue(racineCatalogue, manifeste);
-  const { sha: shaCible, court: commitCible } = commitVise(racineCatalogue, vers);
+  // Ajouter se fait au commit de l'appli, quel que soit le HEAD du catalogue :
+  // ses briques sont celles de ce commit, déjà reçues.
+  const { sha: shaCible, court: commitCible } = ajout
+    ? { sha: shaOrigine, court: commitOrigine }
+    : commitVise(racineCatalogue, vers);
   // À blanc, une appli déjà au commit visé reçoit quand même le rapport : il dit
   // ce qu'elle a retouché, l'usage de la première tranche.
-  if (shaCible === shaOrigine && !aBlanc) {
+  if (shaCible === shaOrigine && !aBlanc && !ajout) {
     throw new ErreurMiseAJour(`L'appli est déjà au commit ${commitCible} du catalogue : rien à reporter.`);
   }
   if (!reussit(racineCatalogue, "merge-base", "--is-ancestor", shaOrigine, shaCible)) {
@@ -1390,15 +1531,30 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
       `Le commit visé ${commitCible} ne descend pas du commit ${commitOrigine} de l'appli : l'outil reporte un catalogue plus récent, jamais un autre.`
     );
   }
-  const nomDeBranche = branche ?? `feature/reporter-catalogue-${commitCible}`;
+  const nomDeBranche =
+    branche ?? (ajout ? `feature/ajouter-${ajouter.join("-")}` : `feature/reporter-catalogue-${commitCible}`);
   if (!aBlanc) verifierLaBranche(dossierAppli, nomDeBranche);
 
   return avecUnDossierTemporaire((temporaire) => {
-    const examen = examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha: shaOrigine });
+    const examen = examinerDans(temporaire, {
+      racineCatalogue,
+      dossierAppli,
+      lecture,
+      sha: shaOrigine,
+      controler: ajout
+        ? (definitions, reglages) =>
+            controlerLAjout({
+              ajouter,
+              presentes: briquesRecues(manifeste, reglages),
+              definitions,
+              commit: commitOrigine,
+            })
+        : undefined,
+    });
     const { origine } = examen;
-    const { contenus: cible } =
-      shaCible === shaOrigine
-        ? { contenus: origine }
+    const { contenus: cible, reglages: reglagesCible } =
+      shaCible === shaOrigine && !ajout
+        ? { contenus: origine, reglages: examen.reglages }
         : rejouer({
             catalogue: racineCatalogue,
             temporaire,
@@ -1413,7 +1569,11 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
                     "son CHANGELOG.md dit ce qu'elle est devenue ; viser par --vers un commit où elle existe encore."
                 );
               }
-              return examen.reglages;
+              // B' : les briques choisies, plus les ajoutées ; l'assembleur rejoué
+              // ajoute ce qu'elles entraînent, et son planifier vérifie ce qu'elles exigent.
+              return ajout
+                ? { ...examen.reglages, briques: [...examen.reglages.briques, ...ajouter] }
+                : examen.reglages;
             },
           });
 
@@ -1459,7 +1619,7 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
 
     const manifesteCible = JSON.parse(cible.get(MANIFESTE).toString("utf-8"));
     const avant = briquesRecues(manifeste, examen.reglages);
-    const briques = briquesRecues(manifesteCible, examen.reglages);
+    const briques = briquesRecues(manifesteCible, reglagesCible);
     const ajoutees = briques.filter((nom) => !avant.includes(nom));
     const avertissements = [...examen.resultat.avertissements];
     let blueprint;
@@ -1498,11 +1658,14 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
       format: manifeste.format,
       briques,
       ajoutees,
+      // Les briques demandées par --ajouter, celles venues d'office avec elles à part.
+      ajout: ajout ? ajouter : null,
+      ajouteesDOffice: (manifesteCible.assemblage?.ajouteesDOffice ?? []).filter(({ nom }) => ajoutees.includes(nom)),
       commitOrigine,
       commitCible,
       branche: nomDeBranche,
       aBlanc,
-      aJour: shaCible === shaOrigine,
+      aJour: shaCible === shaOrigine && !ajout,
       retouchesAvant: examen.resultat.retouches,
       supprimesAvant: examen.resultat.supprimes,
       fichiers,
@@ -1510,8 +1673,18 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
       paquetJson: egaux(origine.get("package.json"), cible.get("package.json"))
         ? "inchangé au catalogue"
         : sortDe(fichiers, "package.json"),
-      journaux: entreesDesJournaux(origine, cible),
+      // Ajouter ne change pas de commit : le journal d'une brique ajoutée est son
+      // histoire entière, pas ce qui a changé pour l'appli.
+      journaux: ajout ? [] : entreesDesJournaux(origine, cible),
       commitsDuSocle: commitsDuSocle(racineCatalogue, shaOrigine, shaCible, socle),
+      // Les ajouts lourds (« Les ajouts lourds » de la note) : la base dans une
+      // appli qui n'en avait pas, et comptes, avec les pages de l'appli à trancher.
+      lourds: {
+        base: !origine.has(FICHIER_MIGRATIONS) && cible.has(FICHIER_MIGRATIONS),
+        comptes: ajoutees.includes("comptes"),
+        pages: ajoutees.includes("comptes") ? pagesATrancher({ origine, cible, appli: contenus }) : [],
+      },
+      aBrancher: briquesABrancher(cible, ajoutees),
       variables: variablesNouvelles(origine, cible),
       traitements: traitementsChanges(origine, cible),
       registre: !cible.has(REGISTRE)
@@ -1726,7 +1899,7 @@ function rubriqueDesMigrations(resultat) {
       "",
       ...(auMilieu.length > 0
         ? [
-            `Dont, placées au catalogue avant des étapes que l'appli a déjà (une brique ajoutée d'office ?), mises ici en fin : sur une base neuve, elles tournent après ces étapes. À relire (${auMilieu.length}) :`,
+            `Dont, placées au catalogue avant des étapes que l'appli a déjà (celles d'une brique qui arrive, ajoutée ou venue d'office), mises ici en fin : sur une base neuve, elles tournent après ces étapes. À relire (${auMilieu.length}) :`,
             ...liste(auMilieu),
             "",
           ]
@@ -1761,6 +1934,70 @@ function rubriqueDesMigrations(resultat) {
   return lignes;
 }
 
+/*
+ * En tête du rapport : ce que la base ou comptes changent pour l'appli entière.
+ * Leur coût est dans ce qui suit l'opération, pas dans les fichiers (« Les
+ * ajouts lourds » de la note).
+ */
+function rubriqueDesAjoutsLourds(resultat) {
+  const { base, comptes, pages } = resultat.lourds;
+  if (!base && !comptes) return [];
+  const lignes = [
+    "## Ajouts lourds",
+    "",
+    "Cet ajout change l'appli entière, au-delà de ses fichiers : les décisions et les gestes ci-dessous font un ticket de l'appli à part entière, pas une retouche.",
+    "",
+  ];
+  if (base) {
+    lignes.push(
+      "### La base",
+      "",
+      `L'appli n'avait pas de base : elle reçoit ${code("src/lib/db/")} (${code("schema.sql")}, les étapes de ${code("migrations.ts")}), les scripts de données, ${code("docker-compose.yml")}, la skill ${code("solstice-donnees")} et le Postgres de sa CI.`,
+      "",
+      "- Décision du client : créer la base chez l'hébergeur, un service payant, dans l'Union européenne.",
+      `- Déclarer ${code("DATABASE_URL")} chez l'hébergeur avant la fusion : sans elle, la première requête échoue.`,
+      `- En local : ${code("docker compose up -d --wait")}, puis ${code("npx tsx scripts/bases-locales.ts")}, qui crée les bases de développement et de test et donne la ligne ${code("DATABASE_URL")} de ${code(".env.local")}. Les tests de l'appli exigent désormais leur base de test (son ${code("CLAUDE.md")}, §6).`,
+      ""
+    );
+  }
+  if (comptes) {
+    const rgpd = resultat.ajoutees.includes("rgpd");
+    lignes.push(
+      "### La brique comptes",
+      "",
+      `- Dès la fusion, toutes les pages de l'appli passent derrière la connexion, sauf les routes ouvertes (${code("ROUTES_OUVERTES")} de ${code("src/briques/comptes/protection.ts")}).`,
+      pages.length > 0
+        ? `- ${code("tests/gardes-acces.test.ts")} refusera chacun de ces fichiers de l'appli tant qu'il n'est pas tranché : public (dans ${code("OUVERTS")} du test, ${code("ROUTES_OUVERTES")} et les pages publiques de ${code("src/lib/referencement.ts")}), ou derrière un droit (${code("exiger")} en première ligne, l'action déclarée dans ${code("src/config/acces.ts")}) (${pages.length}) :`
+        : `- ${code("tests/gardes-acces.test.ts")} ne trouve aucune page de l'appli à trancher.`,
+      ...pages.map((chemin) => `- ${code(chemin)}`),
+      ...(pages.length > 0 ? [""] : []),
+      `- Les pages publiques du référencement (${code("src/lib/referencement.ts")}) se reprennent : l'accueil passe derrière la connexion.`,
+      `- Les écrans du patron ${code("dossiers")} arrivent (${code("src/app/dossiers/")}) : le premier module de l'appli s'écrit en les copiant, ou l'appli les supprime.`,
+      ...(rgpd
+        ? [
+            `- La brique rgpd arrive d'office : l'export et l'effacement des données d'une personne, et le registre ${code(REGISTRE)}, où chaque table de l'appli se déclare.`,
+          ]
+        : []),
+      `- Avant la mise en ligne : ${code("AUTH_SECRET")}, l'adresse du premier admin (${code("COMPTES_PREMIER_ADMIN")}) et l'envoi des codes de connexion par la brique mails (Resend).`,
+      ""
+    );
+  }
+  return lignes;
+}
+
+function rubriqueDesBriquesABrancher(resultat) {
+  if (resultat.aBrancher.length === 0) return [];
+  return [
+    "## Briques à brancher",
+    "",
+    "Arrivées sans appelant : le module métier de l'appli les branche, comme le dit la section de leur README. " +
+      `Chacune est un ticket de l'appli, à noter en section 3 de ${code("blueprint.md")} avec ce ticket, repris en section 9.`,
+    "",
+    ...resultat.aBrancher.map(({ brique, readme, section }) => `- ${code(brique)} : ${code(readme)}, « ${section} ».`),
+    "",
+  ];
+}
+
 function rubriqueDeLaFusion(resultat) {
   const etapes = resultat.migrations.ajoutees.length;
   return [
@@ -1793,6 +2030,10 @@ function rubriqueDeLaSuite(resultat) {
   const aTrancher =
     fichiers.supprimesParLAppli.length + fichiers.retouchesRetires.length + fichiers.binairesRetouches.length;
   const humain = [
+    ...(resultat.lourds.base ? ["faire décider au client la base chez l'hébergeur, puis y déclarer DATABASE_URL"] : []),
+    ...(resultat.lourds.comptes
+      ? ["trancher chaque page de l'appli, publique ou derrière quel droit", "désigner le premier admin"]
+      : []),
     ...(aTrancher > 0 ? ["trancher les fichiers signalés, que l'outil n'a pas écrits"] : []),
     resultat.migrations.ajoutees.length > 0
       ? "fusionner la PR, en sachant qu'elle rejoue les étapes ajoutées en production"
@@ -1820,6 +2061,16 @@ function rubriqueDeLaSuite(resultat) {
           `- ${code("tests/migrations.test.ts")} sur la base de test de l'appli, et l'agent ${code("relecteur-migrations")} sur les étapes ajoutées.`,
         ]
       : []),
+    ...(resultat.lourds.comptes && resultat.lourds.pages.length > 0
+      ? [
+          `- ${code("tests/gardes-acces.test.ts")} échoue sur les pages de l'appli listées en tête : chacune se tranche avec la personne qui pilote le projet.`,
+        ]
+      : []),
+    ...(resultat.aBrancher.length > 0
+      ? [
+          `- Noter les briques à brancher en section 3 de ${code("blueprint.md")}, avec le ticket de l'appli qui branche chacune.`,
+        ]
+      : []),
     `- Les vérifications du ${code("CLAUDE.md")} de l'appli (§6), la relecture par sous-agents, le commit, puis la PR avec ce rapport (skill ${code("solstice-livrer")}).`,
     `- Restent à un humain : ${humain.join(", ")}.`,
     "",
@@ -1841,18 +2092,29 @@ export function rapport(resultat) {
     ];
     return `${lignes.join("\n").trimEnd()}\n`;
   }
+  const { ajout } = resultat;
   const lignes = [
-    `# Reporter le catalogue de ${resultat.commitOrigine} à ${resultat.commitCible}`,
+    ajout
+      ? `# Ajouter ${ajout.join(", ")} à l'appli, au catalogue ${resultat.commitCible}`
+      : `# Reporter le catalogue de ${resultat.commitOrigine} à ${resultat.commitCible}`,
     "",
     `Appli ${code(resultat.paquet)}, briques : ${resultat.briques.length === 0 ? "aucune" : resultat.briques.join(", ")}.`,
+    ...(ajout && resultat.ajouteesDOffice.length > 0
+      ? [
+          `Ajoutées d'office avec elles : ${resultat.ajouteesDOffice.map(({ nom, par }) => `${nom} (avec ${par})`).join(", ")}.`,
+        ]
+      : []),
     resultat.aBlanc
       ? "À blanc : rien n'est écrit dans l'appli."
       : `Écrit sur la branche ${code(resultat.branche)}, partie du main publié de l'appli, sans commit.`,
     "",
+    ...rubriqueDesAjoutsLourds(resultat),
+    ...rubriqueDesBriquesABrancher(resultat),
     ...rubriqueDesFichiers(resultat),
     ...rubriqueDesDependances(resultat),
-    ...rubriqueDesJournaux(resultat),
-    ...rubriqueDuSocle(resultat),
+    // Au même commit, les journaux des briques et l'histoire du socle n'ont rien de neuf pour l'appli.
+    ...(ajout ? [] : rubriqueDesJournaux(resultat)),
+    ...(ajout ? [] : rubriqueDuSocle(resultat)),
     ...rubriqueDesVariables(resultat),
     ...rubriqueDeLaConfidentialite(resultat),
     ...rubriqueDuRegistre(resultat),
@@ -1862,7 +2124,7 @@ export function rapport(resultat) {
     "",
     `- ${code(MANIFESTE)} : celui de la cible, commit ${resultat.commitCible}, une empreinte par fichier venu du catalogue, retouché ou non.`,
     resultat.blueprint === "réécrite"
-      ? `- ${code("blueprint.md")} : ${code("commit_reference")} passe à ${resultat.commitCible}${resultat.ajoutees.length > 0 ? `, ${code("briques_assemblees")} reçoit ${resultat.ajoutees.join(", ")}` : ""} ; le corps ne change pas.`
+      ? `- ${code("blueprint.md")} : ${code("commit_reference")} ${ajout ? "reste" : "passe à"} ${resultat.commitCible}${resultat.ajoutees.length > 0 ? `, ${code("briques_assemblees")} reçoit ${resultat.ajoutees.join(", ")}` : ""} ; le corps ne change pas.`
       : `- ${code("blueprint.md")} : non réécrite (voir plus bas).`,
     ...resultat.avertissements.map((texte) => `- Attention : ${texte}`),
     "",
@@ -1873,20 +2135,26 @@ export function rapport(resultat) {
 
 // ---------------------------------------------------------------- ligne de commande
 
-const AIDE = `Usage : node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--vers <commit>] [--branche <nom>] [--a-blanc]
+const AIDE = `Usage : node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--vers <commit> | --ajouter <briques>] [--branche <nom>] [--a-blanc]
 
-Reporte dans l'appli le catalogue d'un commit plus récent, avec les mêmes briques choisies
-(outils/mise-a-jour.md) : rejoue l'assemblage d'origine (commit et réglages de
-son catalogue.empreintes.json), vérifie qu'il redonne les empreintes du
-manifeste, rejoue l'assemblage au commit visé, puis traite chaque fichier venu
-du catalogue (remplacé, fusionné à trois, ajouté, supprimé, ou laissé et
+Reporte dans l'appli le catalogue d'un commit plus récent, avec les mêmes briques choisies,
+ou lui ajoute des briques au commit qu'elle a (outils/mise-a-jour.md) : rejoue
+l'assemblage d'origine (commit et réglages de son catalogue.empreintes.json),
+vérifie qu'il redonne les empreintes du manifeste, rejoue l'assemblage au
+commit visé ou avec les briques ajoutées, puis traite chaque fichier venu du
+catalogue (remplacé, fusionné à trois, ajouté, supprimé, ou laissé et
 signalé). Imprime le rapport en Markdown, le corps de la PR de l'appli.
 
-  --vers <commit>   le commit visé, sur origin/main du catalogue
-                    (défaut : le HEAD du catalogue, propre et à origin/main)
-  --branche <nom>   la branche neuve de l'appli où l'outil écrit
-                    (défaut : feature/reporter-catalogue-<commit visé>)
-  --a-blanc         le rapport seul : rien n'est écrit dans l'appli
+  --vers <commit>       le commit visé, sur origin/main du catalogue
+                        (défaut : le HEAD du catalogue, propre et à origin/main)
+  --ajouter <briques>   les briques à ajouter, séparées par des virgules, au
+                        commit de l'appli ; jamais avec --vers (une opération
+                        à la fois). Ce qu'elles exigent et que l'appli n'a pas
+                        se nomme aussi ; ce qu'elles entraînent vient d'office.
+  --branche <nom>       la branche neuve de l'appli où l'outil écrit (défaut :
+                        feature/reporter-catalogue-<commit visé>, ou
+                        feature/ajouter-<briques>)
+  --a-blanc             le rapport seul : rien n'est écrit dans l'appli
 
 Le dossier est la racine d'un worktree de l'appli à l'arbre propre et, sauf
 --a-blanc, dont le HEAD est son origin/main (git fetch origin avant). L'outil y
@@ -1899,19 +2167,21 @@ catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe déj�
 ou si schema.sql change entre l'origine et la cible. Le catalogue doit
 avoir le commit de l'appli (git fetch origin dans le catalogue). Seul appel
 au réseau : npm ci dans un worktree temporaire du catalogue, quand le Prettier
-d'un commit n'est pas celui qu'a installé le catalogue. L'ajout d'une brique
-(--ajouter) n'est pas encore outillé.`;
+d'un commit n'est pas celui qu'a installé le catalogue. La base dans une
+appli qui n'en a pas, et la brique comptes, s'ajoutent comme les autres :
+le rapport les annonce en tête, avec les décisions et les gestes qui
+restent. Retirer une brique n'est pas outillé.`;
 
 function lireOptions(argv) {
   const options = { positionnels: [], valeurs: {}, aBlanc: false };
   for (let i = 0; i < argv.length; i++) {
     const argument = argv[i];
     if (argument === "--a-blanc") options.aBlanc = true;
-    else if (argument === "--ajouter") {
+    else if (argument === "--retirer") {
       throw new ErreurMiseAJour(
-        "--ajouter : l'ajout d'une brique n'est pas encore outillé (tranche 4 de outils/mise-a-jour.md). Sans lui, l'outil met à jour vers --vers."
+        "Retirer une brique d'une appli assemblée n'est pas outillé (« Hors v1 » de outils/mise-a-jour.md) : ses tables resteraient dans la base déployée, les supprimer est un geste humain."
       );
-    } else if (argument === "--vers" || argument === "--branche") {
+    } else if (argument === "--vers" || argument === "--branche" || argument === "--ajouter") {
       const valeur = argv[++i];
       if (valeur === undefined || valeur.startsWith("--")) throw new ErreurMiseAJour(`${argument} attend une valeur.`);
       options.valeurs[argument.slice(2)] = valeur;
@@ -1933,6 +2203,11 @@ function main(argv) {
     catalogue,
     appli: options.positionnels[0],
     vers: options.valeurs.vers,
+    // « mails,contact » ou « mails, contact » : des virgules, les espaces ne comptent pas.
+    ajouter: options.valeurs.ajouter
+      ?.split(",")
+      .map((nom) => nom.trim())
+      .filter(Boolean),
     branche: options.valeurs.branche,
     aBlanc: options.aBlanc,
   });
