@@ -31,6 +31,12 @@ est décrit dans la skill `solstice-donnees`.
   seconde fois.
 - Un index sur une colonne ajoutée après coup est **dans la même étape** que la colonne,
   jamais dans `schema.sql` (application à terre le 2026-09-04).
+- Un index **UNIQUE** posé sur une table qui peut déjà contenir des doublons : l'étape les
+  cherche, n'écrit rien et les signale, sans quoi l'index fait échouer chaque démarrage.
+- Un **statut** que le code écrit : la contrainte `CHECK` de la base l'admet-elle (étape
+  `DROP CONSTRAINT IF EXISTS` puis `ADD`), et n'en admet-elle pas d'autre ? Une valeur ajoutée
+  côté code sans la contrainte est refusée en production. Une valeur retirée de la contrainte
+  alors que des lignes la portent encore fait échouer l'`ADD` à chaque démarrage.
 - Échappements : une expression régulière ou une barre oblique dans une chaîne JS arrive-t-elle
   intacte dans le SQL (`'\s+'` devenu `'s+'`, index d'unicité faux en prod) ?
 - **Pas de donnée de référence semée** (comptes, rôles, catégories, listes d'accès) : un
