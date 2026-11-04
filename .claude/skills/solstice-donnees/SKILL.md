@@ -46,11 +46,18 @@ est citée quand elle existe.
    jamais dans schema.sql : sur une base ancienne, schema.sql tourne AVANT
    les migrations, la colonne n'existe pas encore quand il s'exécute
    (incident du 2026-09-04 — toute l'application à terre).
+   **Un index UNIQUE ne se pose pas sur une table qui a déjà des doublons** :
+   sur une table de production qui en contenait, il aurait fait échouer chaque
+   démarrage. L'étape cherche les doublons, n'écrit rien (ni suppression ni
+   fusion) et les signale ; l'index se pose quand un humain les a réglés.
 5. **Pas de donnée de référence semée par migration** (comptes, listes
    d'accès, catégories) : rejouée, elle a recréé une catégorie qu'un
    administrateur avait supprimée. Ces données s'administrent depuis
    l'interface ; une migration de données rattrape l'existant, elle n'invente
-   rien.
+   rien. **Un semis gardé par « si la table est vide »** (mode démonstration,
+   jeu d'essai) ne rattrape pas une table ajoutée ensuite : la table de chiffre
+   d'affaires d'un mode démonstration, née après le premier semis, est restée
+   vide en production. Chaque table se teste elle-même.
 6. Échappements : un `'\s+'` écrit dans une chaîne TypeScript est arrivé en
    base sans sa barre oblique, et l'index d'unicité était faux en prod.
    Relire le SQL tel qu'il part, pas tel qu'il s'écrit.
@@ -60,6 +67,13 @@ est citée quand elle existe.
    sorties en `::text`, clés métier (référence) `UNIQUE` pour servir de clé
    d'import — jamais l'id technique. On désactive un compte, on ne le
    supprime pas.
+   **Les statuts que le code écrit et la contrainte `CHECK` de la base
+   restent synchrones** : une valeur ajoutée côté code sans la contrainte
+   est refusée en production. Ajouter un statut, c'est une étape de migration
+   (`DROP CONSTRAINT IF EXISTS` puis `ADD`) dans la même PR. Retirer une
+   valeur de la contrainte : seulement si plus aucune ligne ne la porte, sinon
+   l'`ADD` échoue à chaque démarrage (même piège que l'index unique) ; l'étape
+   migre ces lignes ou les signale, et la valeur reste admise en attendant.
 9. **Avec la brique rgpd, une table neuve se déclare dans
    `src/config/donnees-personnelles.ts`**, dans la même PR : comme source de l'export des
    données d'une personne, comme donnée non exportée avec sa raison, ou comme
@@ -86,6 +100,10 @@ brancher ») :
   (modifier, supprimer). Toute mutation passe par `/nouveau` ou `/modifier`.
 - **UN composant de formulaire partagé** par /nouveau et /modifier, UNE
   validation partagée dans les server actions : la parité est mécanique.
+- **Un champ dérivé ne se lit jamais depuis le formulaire** : il se recalcule
+  côté serveur après l'écriture, même s'il s'affiche en lecture seule dans le
+  formulaire. Un montant affiché sans être modifiable était quand même
+  renvoyé, et sa valeur périmée écrasait la somme des montants mensuels.
 - **Garde d'accès** : `exiger("objet.verbe")` de `briques/comptes/roles.ts` en PREMIÈRE
   ligne de chaque page ET server action (une action se poste sans passer par
   l'écran) ; `tests/gardes-acces.test.ts` le vérifie. Le module déclare ses
@@ -150,6 +168,14 @@ après, tsx le passe au script comme argument et le fichier n'est pas lu.
   exemple) : télécharger les fichiers AVANT de planifier l'import.
 - **L'import prod se fait APRÈS le déploiement de la migration** qui crée les
   colonnes — jamais avant.
+- **Un identifiant à zéros de tête reste du texte** : un export réenregistré
+  par un tableur a perdu les zéros de tête de matricules. Lire la colonne
+  comme du texte, ne jamais la convertir en nombre.
+- **Une date peut arriver en nombre de série** (le tableur convertit les dates
+  écrites en texte) : la relire comme une date, ne pas l'écrire telle quelle.
+- **Une chaîne vide dans une colonne de date est une date absente** : l'envoyer
+  à la base fait échouer l'insertion, et rejeter la ligne pour si peu en
+  perd toute la ligne.
 - **Collision de clés d'upsert : sommer ou rejeter, jamais écraser**
   (cicatrice : plusieurs centaines de milliers d'euros de chiffre d'affaires
   écrasés en silence par une collision de codes).
