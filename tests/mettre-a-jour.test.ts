@@ -1224,6 +1224,8 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
         /Arrivées branchées sur le catalogue[^\n]*\n\n- `journal` : `src\/briques\/journal\/README\.md`/
       );
       expect(texte).not.toContain("## Ajouts lourds");
+      // Toute brique arrivée se note dans la blueprint, à rattacher ou à brancher.
+      expect(texte).toMatch(/^- Noter chaque brique arrivée dans `blueprint\.md` \(journal\)/m);
       // A' = A : ni journal des briques ni sujets du socle à recopier.
       expect(texte).not.toContain("## Journal des briques");
       expect(texte).not.toContain("## Socle");

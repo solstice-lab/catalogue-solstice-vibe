@@ -1453,11 +1453,13 @@ function controlerLAjout({ ajouter, presentes, definitions, commit }) {
  *   - à brancher : la section commence par « Tout se déclare côté appli »
  *     (echeances, calendrier, validation, import-lot, notifications) : la
  *     brique arrive sans appelant, le vocabulaire de creer-appli et de
- *     relecteur-blueprint ;
+ *     relecteur-blueprint, hors mails seule, que ce repérage ne voit pas ;
  *   - à rattacher : elle arrive branchée sur le catalogue, et sa section part
  *     du patron `dossiers` pour les modules que l'appli a écrits (journal, qui
  *     ne trace que src/lib/db/dossiers.ts ; espaces).
- * mails, contact ou rgpd n'en disent rien : rien à faire.
+ * La section de mails, contact, comptes ou rgpd ne commence pas par cette phrase
+ * et ne part pas du patron : le rapport ne les annonce pas. Toute brique arrivée
+ * se note de toute façon dans la blueprint (rubrique « Manifeste et blueprint »).
  */
 function briquesABrancher(cible, briques) {
   const aBrancher = [];
@@ -2026,7 +2028,7 @@ function rubriqueDesBriquesABrancher(resultat) {
   if (aBrancher.length > 0) {
     lignes.push(
       "Arrivées sans appelant : le module métier de l'appli les branche, comme le dit la section de leur README. " +
-        `Chacune est un ticket de l'appli, à noter dans ${code("blueprint.md")} : sa ligne dans ${code("briques:")} de l'en-tête (${code("branchement: à brancher")}), la section 3 avec ce ticket, repris en section 9.`,
+        `Chacune est un ticket de l'appli, repris en section 9 de ${code("blueprint.md")} ; sa ligne dans ${code("briques:")} de l'en-tête porte ${code("branchement: à brancher")}.`,
       "",
       ...aBrancher.map(ligne),
       ""
@@ -2111,9 +2113,9 @@ function rubriqueDeLaSuite(resultat) {
           `- ${code("tests/gardes-acces.test.ts")} échoue sur les pages de l'appli listées en tête : chacune se tranche avec la personne qui pilote le projet.`,
         ]
       : []),
-    ...(resultat.aBrancher.length > 0
+    ...(resultat.ajoutees.length > 0
       ? [
-          `- Noter les briques à brancher dans ${code("blueprint.md")} : leur ligne dans ${code("briques:")} de l'en-tête, et la section 3, avec le ticket de l'appli qui branche chacune.`,
+          `- Noter chaque brique arrivée dans ${code("blueprint.md")} (${resultat.ajoutees.join(", ")}) : sa ligne dans ${code("briques:")} de l'en-tête (${code("branchement: à brancher")}, ou le fichier qui la branche) et sa ligne en section 3 ; une brique à brancher a en plus son ticket, repris en section 9.`,
         ]
       : []),
     `- Les vérifications du ${code("CLAUDE.md")} de l'appli (§6), la relecture par sous-agents, le commit, puis la PR avec ce rapport (skill ${code("solstice-livrer")}).`,

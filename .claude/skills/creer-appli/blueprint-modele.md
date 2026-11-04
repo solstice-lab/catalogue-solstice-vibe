@@ -59,9 +59,9 @@ briques:
   `---` en tête de fichier, il refuse la blueprint. L'outil de mise à jour
   (`outils/mettre-a-jour.mjs`) remplace aussi cette ligne à chaque report, et ajoute à
   `briques_assemblees` les briques arrivées, par un report ou par `--ajouter` ; le reste de
-  la blueprint ne change pas. Une brique ajoutée « à brancher » se note ensuite à la main :
-  sa ligne dans `briques` (ci-dessous, `branchement: à brancher`), et la section 3, avec
-  le ticket qui la branche, repris en section 9.
+  la blueprint ne change pas. Chaque brique arrivée se note ensuite à la main : sa ligne
+  dans `briques` (ci-dessous : `branchement: à brancher`, ou le fichier qui la branche) et
+  sa ligne en section 3 ; une brique à brancher a en plus son ticket, repris en section 9.
 - `appli` : l'assembleur en tire le nom du paquet de l'appli (`package.json`, d'où ses bases
   locales), en minuscules sans accent, en tirets. Il refuse un nom qui ne commence pas par
   une lettre, trop long (plus de 58 caractères une fois ramené) ou qui est celui du

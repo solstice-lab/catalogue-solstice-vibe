@@ -239,9 +239,9 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
   l'appli a reçu du catalogue, et l'opération suivante le reproduira à l'identique.
 - `blueprint.md` : `commit_reference` devient A', comme l'écrit l'assembleur, et
   `briques_assemblees` reçoit les briques ajoutées (décision 5). Le reste est à l'appli :
-  une brique ajoutée « à brancher » s'y note, dans la session de l'appli, par sa ligne dans
-  `briques` de l'en-tête et en section 3 avec le ticket qui la branche, repris en section 9
-  (`blueprint-modele.md` de `creer-appli`).
+  chaque brique arrivée s'y note, dans la session de l'appli, par sa ligne dans `briques`
+  de l'en-tête et sa ligne en section 3 ; une brique « à brancher » a en plus son ticket,
+  repris en section 9 (`blueprint-modele.md` de `creer-appli`).
 
 ## Les ajouts lourds : la base et `comptes`
 
@@ -538,8 +538,8 @@ lourds »).
   les **briques à brancher**, lues dans la section « La brancher » du README de la cible :
   celles dont elle commence par « Tout se déclare côté appli » arrivent sans appelant
   (`echeances`, `calendrier`, `validation`, `import-lot`, `notifications`, le vocabulaire
-  de `creer-appli`), à noter dans l'en-tête et en section 3 de la blueprint avec leur
-  ticket ; celles dont elle part seulement du patron `dossiers` arrivent branchées sur le
+  de `creer-appli`, hors `mails` seule, que ce repérage ne voit pas), chacune avec son
+  ticket de l'appli ; celles dont elle part seulement du patron `dossiers` arrivent branchées sur le
   catalogue, à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Au
   même commit, le rapport ne recopie ni les
   journaux des briques ni les commits du socle. Les deux cas d'essai de la tranche sont
