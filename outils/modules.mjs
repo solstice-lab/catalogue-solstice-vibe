@@ -354,7 +354,8 @@ export const BRIQUES = {
     // la règle sans que la brique soit gardée est refusée.
     connexion: true,
     // mails : la connexion par code, méthode par défaut, envoie son code par
-    // e-mail. Sans elle, seuls Google ou Microsoft vaudraient en production.
+    // e-mail, et celle par lien son lien. Sans elle, seuls Google ou Microsoft
+    // vaudraient en production.
     exige: ["donnees", "mails"],
     // rgpd : une appli qui a des comptes garde des données personnelles, et
     // doit pouvoir répondre à une demande d'accès ou d'effacement (RGPD
@@ -372,6 +373,7 @@ export const BRIQUES = {
       "tests/comptes-session.test.ts",
       "tests/comptes-proxy.test.ts",
       "tests/comptes-code-email.test.ts",
+      "tests/comptes-lien-email.test.ts",
       "tests/comptes-administration.test.ts",
       "tests/comptes-google.test.ts",
       "tests/comptes-microsoft.test.ts",
@@ -468,6 +470,11 @@ export const BRIQUES = {
       ligne("src/lib/confidentialite.ts", "  ...TRAITEMENTS_COMPTES,"),
       ligne("src/lib/confidentialite.ts", '    comptes: { baseLegale: "", duree: "", destinataires: "" },'),
       ligne("src/lib/confidentialite.ts", '    "connexion-code": { baseLegale: "", duree: "", destinataires: "" },'),
+      ligne(
+        "src/lib/confidentialite.ts",
+        '    // Lu seulement si "lien-email" est dans METHODES (src/config/comptes.ts).'
+      ),
+      ligne("src/lib/confidentialite.ts", '    "connexion-lien": { baseLegale: "", duree: "", destinataires: "" },'),
       ligne("src/lib/confidentialite.ts", '    // Lu seulement si "google" est dans METHODES (src/config/comptes.ts).'),
       ligne("src/lib/confidentialite.ts", '    "connexion-google": { baseLegale: "", duree: "", destinataires: "" },'),
       ligne(
@@ -1101,7 +1108,7 @@ export function remplissagesDeLEnTete({ nomService, nomAffiche, description, sit
 // de src/briques/comptes/methodes.ts, que tests/assembleur.test.ts relit). « demo »
 // n'en fait pas partie : elle reste en local, que la blueprint la cite ou non,
 // et se retire à la mise en ligne.
-export const METHODES_DE_CONNEXION = ["code-email", "google", "microsoft"];
+export const METHODES_DE_CONNEXION = ["code-email", "lien-email", "google", "microsoft"];
 
 // L'entrée de l'appli, tranchée au cadrage (essai de tours-de-coloc : l'ouvrir à
 // toute adresse a pris un ticket entier). La configuration est celle de la

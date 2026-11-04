@@ -14,7 +14,7 @@ import { METHODES } from "@/config/comptes";
  * Les durées sont écrites en toutes lettres : session.ts et code-email.ts
  * lisent la base, que la page publique ne doit pas importer. Un test
  * (tests/comptes-session.test.ts) les compare à DUREE_SESSION_JOURS et
- * DUREE_VALIDITE_MINUTES, et la vie du cookie de parcours de Google et de
+ * DUREE_VALIDITE_MINUTES (DUREE_VALIDITE_LIEN_MINUTES pour le lien), et la vie du cookie de parcours de Google et de
  * Microsoft à DUREE_PARCOURS_MINUTES ; l'heure de conservation des empreintes est
  * CONSERVATION_S de code-email.ts.
  */
@@ -102,6 +102,60 @@ const CONNEXION_CODE = {
   ],
 };
 
+// Avec le lien aussi proposé, le code déclare la conservation pour les deux
+// (voir connexionLien) : ses libellés le disent.
+const CONNEXION_CODE_ET_LIEN = {
+  ...CONNEXION_CODE,
+  conservation: [
+    { ...CONNEXION_CODE.conservation[0], donnee: "Demandes de code ou de lien (empreintes)" },
+    { ...CONNEXION_CODE.conservation[1], donnee: "Codes ou liens faux (empreinte de l'adresse IP)" },
+  ],
+};
+
+// Le lien garde ses demandes dans les tables du code (lien-email.ts), sous les
+// mêmes clés de conservation : une appli qui propose les deux méthodes ne les
+// déclare qu'une fois, dans le traitement du code, sans quoi la purge et le
+// registre les compteraient deux fois.
+function connexionLien(avecLeCode: boolean) {
+  return {
+    cle: "connexion-lien",
+    titre: "Connexion par lien envoyé par e-mail",
+    finalite: "Vérifier l'adresse e-mail de qui se connecte, et limiter les demandes de lien abusives.",
+    donnees: [
+      "Pour chaque demande de lien : empreintes de l'adresse e-mail saisie, du lien et de l'adresse IP, date de la demande.",
+      "Pour chaque lien faux ou périmé utilisé : empreinte de l'adresse IP et date.",
+    ],
+    personnes: "Les personnes qui demandent un lien de connexion, qu'elles aient un compte ou non.",
+    sousTraitants: [],
+    precisions: [
+      "Le lien part par e-mail (voir « Envoi des e-mails ») et vaut 15 minutes.",
+      "Le lien porte l'adresse e-mail chiffrée : elle ne se lit ni dans l'adresse de la page, ni dans les journaux du site.",
+      "Ce sont des empreintes à clé : l'adresse, le lien et l'adresse IP n'y figurent pas en clair. Elles ne servent qu'une heure. Passé ce délai, elles sont effacées lors d'une prochaine demande ou connexion sur le site, ou par la purge des données que l'équipe technique lance.",
+      ...(avecLeCode
+        ? ["Elles sont gardées avec celles des demandes de code (voir « Connexion par code envoyé par e-mail »)."]
+        : []),
+    ],
+    conservation: avecLeCode
+      ? []
+      : [
+          {
+            cle: "codes-connexion",
+            donnee: "Demandes de lien (empreintes)",
+            duree: { heures: 1 },
+            depart: "après la demande",
+            purge: { table: "codes_connexion", colonne: "cree_le" },
+          },
+          {
+            cle: "codes-connexion-essais",
+            donnee: "Liens faux ou périmés utilisés (empreinte de l'adresse IP)",
+            duree: { heures: 1 },
+            depart: "après l'envoi",
+            purge: { table: "codes_connexion_essais", colonne: "cree_le" },
+          },
+        ],
+  };
+}
+
 // Google n'est pas un sous-traitant de l'appli : la personne s'identifie chez
 // lui avec son propre compte, et il traite cette connexion pour son compte et
 // selon ses règles. Il est destinataire de la demande, ce que les précisions
@@ -153,7 +207,10 @@ const CONNEXION_MICROSOFT = {
 export function traitementsComptes(methodes: readonly string[] = METHODES) {
   return [
     COMPTES,
-    ...(methodes.includes("code-email") ? [CONNEXION_CODE] : []),
+    ...(methodes.includes("code-email")
+      ? [methodes.includes("lien-email") ? CONNEXION_CODE_ET_LIEN : CONNEXION_CODE]
+      : []),
+    ...(methodes.includes("lien-email") ? [connexionLien(methodes.includes("code-email"))] : []),
     ...(methodes.includes("google") ? [CONNEXION_GOOGLE] : []),
     ...(methodes.includes("microsoft") ? [CONNEXION_MICROSOFT] : []),
   ];

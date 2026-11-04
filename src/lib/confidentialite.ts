@@ -173,6 +173,8 @@ export const CONFIDENTIALITE: Confidentialite = {
     hebergement: { baseLegale: "", duree: "", destinataires: "" },
     comptes: { baseLegale: "", duree: "", destinataires: "" },
     "connexion-code": { baseLegale: "", duree: "", destinataires: "" },
+    // Lu seulement si "lien-email" est dans METHODES (src/config/comptes.ts).
+    "connexion-lien": { baseLegale: "", duree: "", destinataires: "" },
     // Lu seulement si "google" est dans METHODES (src/config/comptes.ts).
     "connexion-google": { baseLegale: "", duree: "", destinataires: "" },
     // Lu seulement si "microsoft" est dans METHODES (src/config/comptes.ts).

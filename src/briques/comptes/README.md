@@ -17,11 +17,11 @@ lues par les robots : `/robots.txt`, `/sitemap.xml`, `/opengraph-image` et
 `src/lib/referencement.ts`) s'ajoute à `ROUTES_OUVERTES`, et à `OUVERTS` de
 `tests/gardes-acces.test.ts` avec sa raison (elle n'appelle pas `exiger`).
 
-**Les méthodes de connexion se branchent une par une.** Quatre existent : le code
-à 6 chiffres envoyé par e-mail, la méthode par défaut ; Google, à
+**Les méthodes de connexion se branchent une par une.** Cinq existent : le code
+à 6 chiffres envoyé par e-mail, la méthode par défaut ; le lien envoyé par
+e-mail, pour une appli grand public seulement ; Google, à
 ajouter à `METHODES` une fois l'application OAuth du client créée ; Microsoft
 (Entra ID), une fois l'application enregistrée dans le portail Azure ; et la démo.
-Le lien magique est à venir.
 **La démo refuse de démarrer en production.** Tant qu'elle est dans `METHODES`,
 le proxy répond en erreur à toute requête, `/sante` comprise : la sonde de
 l'hébergeur échoue, et le déploiement avec elle. Retirer `"demo"` de `METHODES`
@@ -85,9 +85,9 @@ ni base, ni droits, ni protection des routes : c'est un site vitrine. Son
     entre avec
     `ROLE_PAR_DEFAUT`, et le garde à chaque requête : jamais le rôle que sa ligne
     garde en base, pour qu'un ancien admin retiré de la configuration ne le
-    redevienne pas. Avec le code par e-mail, ses limites de demandes (voir « La
-    connexion par code envoyé par e-mail ») sont alors le seul frein aux
-    inscriptions ; avec Google ou Microsoft, l'appli n'en oppose aucun. L'option exige deux
+    redevienne pas. Avec le code ou le lien par e-mail, leurs limites de
+    demandes (voir « La connexion par code envoyé par e-mail ») sont alors le
+    seul frein aux inscriptions ; avec Google ou Microsoft, l'appli n'en oppose aucun. L'option exige deux
     rôles au moins : avec un seul, `ROLE_PAR_DEFAUT` administre, et la brique
     refuse de démarrer ;
   - toute autre adresse est refusée.
@@ -242,15 +242,18 @@ Et dans `tests/comptes-effets.test.ts`, le registre des effets :
 | `jeton.ts` | Le jeton, sa signature, le secret, le nom du cookie. Sans accès à la base : le proxy l'importe. |
 | `protection.ts` | `protegerLaRoute` et la liste des routes ouvertes, pour `src/proxy.ts`. |
 | `retour.ts` | `cheminDeRetour` : le chemin où revenir après la connexion, filtré. |
-| `code-email.ts` | La méthode code par e-mail : demander un code, le vérifier, ouvrir la session ; les limites de demandes et les durées. |
+| `code-email.ts` | La méthode code par e-mail : demander un code, le vérifier, ouvrir la session ; les limites de demandes et les durées, partagées avec le lien. |
+| `lien-email.ts` | La méthode lien par e-mail : demander un lien, lire s'il vaut encore (à l'ouverture), le consommer et ouvrir la session (au bouton) ; l'adresse du lien. |
 | `google.ts` | La méthode Google : le départ vers Google, le retour (state, PKCE, nonce, ID token), les règles d'entrée propres à Google, les messages de refus. |
 | `microsoft.ts` | La méthode Microsoft (Entra ID) : le départ vers Microsoft, le retour (state, PKCE, nonce, ID token, annuaire), les règles d'entrée propres à Microsoft, les messages de refus. |
 | `parcours.ts` | Le cookie de parcours d'une connexion par un fournisseur : ce que le départ tire au hasard et que le retour doit retrouver. Il est signé, à usage unique, et vaut 10 minutes. |
 | `demo.ts` | La méthode démo : un compte par rôle, refusée en production. |
 | `methodes.ts` | Les types de la configuration (`MethodeDeConnexion`, `Entree`, `AnnuairesMicrosoft`) et `ErreurComptes`. |
-| `actions.ts` | Les server actions : demander un code, le vérifier, entrer en démo, se déconnecter. Sans garde, puisque ce sont elles qui décident de qui l'on est. |
+| `actions.ts` | Les server actions : demander un code, le vérifier, demander un lien, se connecter par le lien, entrer en démo, se déconnecter. Sans garde, puisque ce sont elles qui décident de qui l'on est. |
 | `EcranConnexion.tsx` | Le contenu de `/connexion` : un bloc par méthode, dans l'ordre de `METHODES`, et le message d'un refus de Google ou de Microsoft. |
 | `FormulaireCode.tsx` | Le bloc du code par e-mail, en deux étapes : l'adresse, puis le code. |
+| `FormulaireLien.tsx` | Le bloc du lien par e-mail : l'adresse, puis ce qu'il faut faire du mail. Sur `/connexion` et sur la page d'un lien qui ne vaut plus. |
+| `EcranLien.tsx` | Le contenu de `/connexion/lien` : le bouton « Me connecter » d'un lien qui vaut encore, ou la demande d'un nouveau. |
 | `confidentialite.ts` | La description des traitements de la brique, pour la politique de confidentialité. N'importe que `src/config/comptes.ts` : la page publique ne doit pas atteindre la base. |
 | `donnees-personnelles.ts` | Ce que la brique garde sur une adresse, pour l'export et l'effacement des données d'une personne de la brique rgpd, que l'assembleur garde d'office avec comptes. |
 | `BandeauSession.tsx` | Au-dessus de chaque page (depuis `src/app/layout.tsx`) : qui est connecté, « Se déconnecter » et, en démo, le choix du rôle. |
@@ -259,14 +262,15 @@ Hors de la brique, mais partis avec elle quand une copie ne la garde pas :
 - `src/config/acces.ts`, `src/config/comptes.ts` et `src/config/effets-comptes.ts`,
   les fichiers que l'appli remplit, qui importent les types de la brique ;
 - `src/app/connexion/`, avec les deux routes de Google (`google/route.ts` et
-  `google/retour/route.ts`) et les deux de Microsoft (`microsoft/route.ts` et
-  `microsoft/retour/route.ts`) ;
+  `google/retour/route.ts`), les deux de Microsoft (`microsoft/route.ts` et
+  `microsoft/retour/route.ts`) et la page du lien (`lien/page.tsx`) ;
 - `tests/roles.test.ts` ;
 - `tests/gardes-acces.test.ts`, qui vérifie que chaque page, action et route de
   `src/app` commence par son garde ;
 - `tests/comptes-session.test.ts` et `tests/comptes-proxy.test.ts`, ce dernier
   parcourant toutes les routes ;
 - `tests/comptes-code-email.test.ts`, la connexion par code ;
+- `tests/comptes-lien-email.test.ts`, la connexion par lien ;
 - `tests/comptes-administration.test.ts`, le niveau 3 ;
 - `tests/comptes-effets.test.ts`, le registre des effets et son verrou ;
 - `tests/comptes-google.test.ts`, la connexion avec Google ;
@@ -366,8 +370,10 @@ Dans `tests/comptes-session.test.ts`, la politique de confidentialité est
 tenue d'accord avec le code : « dit la vraie durée du cookie de session et la
 vraie validité du code », « ne décrit la connexion par code que si la méthode
 est proposée », « ne décrit la connexion avec Google que si la méthode est
-proposée », « dit la vraie durée du cookie de parcours de Google », et leurs
-deux pendants pour Microsoft.
+proposée », « dit la vraie durée du cookie de parcours de Google », leurs
+deux pendants pour Microsoft, « ne décrit la connexion par lien que si la
+méthode est proposée, avec la vraie validité du lien » et « déclare une seule
+fois la conservation des demandes, que le lien partage avec le code ».
 
 Pièges verrouillés dans `tests/comptes-code-email.test.ts` :
 
@@ -378,6 +384,75 @@ Pièges verrouillés dans `tests/comptes-code-email.test.ts` :
 | Les limites ne tiennent qu'en mémoire, ou par adresse seule | les cas de « limites de demandes, en base, par adresse et par adresse IP », dont les demandes simultanées |
 | Un code rejoué, expiré ou deviné ; les codes des autres invalidés ou sondés | « vérification du code : expiré, déjà utilisé ou faux ne connecte pas », dont la limite des saisies fausses par IP |
 | Le code ou l'adresse en clair dans la base | « ne garde en base ni le code, ni l'adresse, ni l'IP » |
+
+## La connexion par lien envoyé par e-mail
+
+`"lien-email"` dans `METHODES`. **Réservée aux applis grand public**, celles
+où l'on se connecte avec une adresse personnelle (une appli à entrée ouverte,
+comme l'essai tours-de-coloc). En entreprise, le code reste la méthode : les
+antivirus de messagerie ouvrent les liens d'un e-mail avant la personne, et
+certains vont jusqu'à suivre une page ouverte. La page de confirmation plus bas
+déjoue ceux qui se contentent d'ouvrir le lien, pas ceux qui soumettent un
+formulaire ; et un lien s'ouvre souvent sur un autre appareil que celui de la
+demande, ce que le code n'impose pas.
+
+Sur `/connexion` : l'adresse, « Recevoir un lien de connexion », puis un
+message qui ne dit pas si l'adresse a un compte. « Renvoyer un lien » attend
+une minute. Le mail mène à `/connexion/lien`.
+
+- **Le piège traité d'abord : ouvrir le lien ne connecte pas.** Un lien à
+  usage unique consommé à l'ouverture était servi à l'antivirus, et la personne
+  lisait « lien expiré ». La page `/connexion/lien` (une page, jamais une route
+  GET : un test le verrouille) ne fait que lire si le lien vaut encore, et
+  montre l'adresse et un bouton « Me connecter ». C'est l'envoi de ce bouton,
+  une requête POST (server action `connecterParLienAction`), qui connecte et
+  consomme le lien. Rien ne le soumet tout seul.
+- **Le lien** : valable 15 minutes (`DUREE_VALIDITE_LIEN_MINUTES`), plus que le
+  code, parce qu'on l'ouvre depuis sa messagerie, souvent sur le téléphone ;
+  consommé au premier envoi du bouton. En demander un nouveau, lien ou code,
+  invalide le précédent. La session s'ouvre sur l'appareil où l'on appuie
+  sur le bouton.
+- **Ce que porte le lien** : un jeton, l'adresse et 192 bits d'aléa chiffrés
+  ensemble (AES-256-GCM, clé tirée d'`AUTH_SECRET`). L'adresse est dans le
+  lien parce que la base n'en garde que l'empreinte ; chiffrée, elle n'apparaît
+  ni dans les journaux de l'hébergeur ni dans l'historique. La page de
+  confirmation, elle, l'affiche, à qui tient le lien. Un jeton retouché
+  ne se déchiffre pas. La base garde l'empreinte de l'aléa, comme celle d'un
+  code.
+- **Les mêmes gardes que le code**, par les mêmes fonctions de `code-email.ts`
+  et dans la même table `codes_connexion` : les mêmes limites par adresse et
+  par IP, comptées avec celles du code (un lien puis un code dans la minute
+  pour la même adresse est refusé) ; la même réponse, que l'adresse ait un
+  compte ou non ; l'envoi après la réponse, à une adresse admise seulement ;
+  aucun compte créé avant le bouton. Un lien faux ou périmé envoyé compte pour
+  une saisie fausse de l'IP (trente par heure).
+- **Un lien qui ne vaut plus** (expiré, déjà servi, remplacé, inventé) mène à
+  la même page : « Ce lien a expiré ou a déjà servi », et le formulaire pour en
+  recevoir un nouveau, qui ne dit rien de l'adresse.
+- **L'adresse du lien.** En production, c'est `URL_PUBLIQUE` (en `https`, sans
+  chemin), jamais l'en-tête `Host` de la requête : un tiers qui l'écrit ferait
+  envoyer à une personne un lien vers son propre site, et y recueillerait le
+  jeton. Sans elle, la carte de `/connexion` dit qu'elle manque, et rien ne
+  part. Hors production, l'hôte de la requête : le lien du mail affiché dans la
+  console s'ouvre sur le poste. **En recette** (`NODE_ENV=production` sans
+  `URL_PUBLIQUE`), la méthode ne fonctionne donc pas ; y déclarer
+  `URL_PUBLIQUE` ouvrirait un site public aux moteurs (`src/lib/referencement.ts`).
+  La recette garde le code.
+
+Dans une appli qui propose le code et le lien, la dernière demande peut être
+un lien : un code saisi alors compte pour un essai faux. La politique de
+confidentialité décrit le traitement `connexion-lien`, et ne déclare la
+conservation des demandes qu'une fois quand les deux méthodes sont là.
+
+Pièges verrouillés dans `tests/comptes-lien-email.test.ts` :
+
+| Piège | Test |
+| --- | --- |
+| L'antivirus consomme le lien en l'ouvrant | « ouvrir le lien (GET) ne connecte pas et ne consomme pas le lien », et le verrou « n'a pas de route GET sous /connexion/lien » |
+| Un lien rejoué, expiré, remplacé ou retouché | « le bouton « Me connecter » (POST) connecte une fois » |
+| La réponse dit qui a un compte, ou les limites se contournent par le lien | « qui reçoit un lien : la réponse ne dit pas qui a un compte », dont « partage les limites du code par e-mail » |
+| L'adresse en clair dans le lien ou la base | « ne met l'adresse en clair ni dans le lien ni en base, ni le jeton en base » |
+| Un lien vers un autre site par l'en-tête `Host` | « l'adresse du lien : jamais celle que la requête prétend » |
 
 ## La connexion avec Google
 
@@ -699,10 +774,11 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `retour.ts` | `cheminDeRetour(valeur)` → `string` | Le chemin de l'appli où revenir après la connexion, `/` pour tout le reste. |
 | `protection.ts` | `protegerLaRoute(requete)` → `NextResponse \| null`, `ROUTES_OUVERTES`, `estOuverte(chemin)` → `boolean` | Appelé par `src/proxy.ts`. Une route ouverte de plus s'ajoute à `ROUTES_OUVERTES`, avec sa raison, sur sa propre ligne : une brique qui ouvre sa route la retire avec elle dans la liste de l'assembleur (la brique contact le fait pour `/contact`). `estOuverte` est vrai pour une route de la liste ou l'un de ses sous-chemins ; lu par `tests/referencement.test.ts`. |
 | `EcranConnexion.tsx` | `EcranConnexion({ retour, erreur? })` | Le contenu de `/connexion`, que la page entoure de `AppLayout`. `erreur` reçoit le paramètre `erreur` de l'adresse, tel quel : seul un code de refus de Google ou de Microsoft connu affiche un message. |
+| `EcranLien.tsx` | `EcranLien({ jeton?, retour, erreur? })` | Le contenu de `/connexion/lien`, où mène le lien de connexion du mail, que la page entoure de `AppLayout`. Son rendu ne fait que lire si le lien vaut encore : il montre l'adresse et le bouton « Me connecter », dont l'envoi (POST) connecte, ou la demande d'un nouveau lien. `retour` arrive filtré (`cheminDeRetour`). Sans lien valable, le message du lien expiré, quelle que soit l'`erreur` ; `acces` et `limite`, seuls codes reconnus en plus, donnent une alerte fixe. Page introuvable sans `"lien-email"` dans `METHODES`. |
 | `BandeauSession.tsx` | `BandeauSession` | Placé dans `src/app/layout.tsx`. |
-| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`) ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
-| `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code`, `connexion-google` et `connexion-microsoft`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code, celle avec Google et celle avec Microsoft n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et la vie du cookie de parcours de Google et de Microsoft sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. Chaque traitement déclare sa `conservation`, à valider avec le client : le compte 24 mois après la dernière connexion (clé `comptes-inactifs`, compté par le script de purge de la brique rgpd, effacé à la main), les sessions un jour après leur expiration (`sessions`), les demandes et saisies de code une heure (`codes-connexion`, `codes-connexion-essais`), purgées par la brique rgpd ; les connexions avec Google et avec Microsoft n'en déclarent pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
-| `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse, auteur)` : le compte s'anonymise (`anonymiserLeCompte`, au nom de `auteur`, l'admin qui efface), sessions et demandes de code sont supprimées. |
+| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"lien-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`) ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
+| `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code`, `connexion-lien`, `connexion-google` et `connexion-microsoft`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code, par lien, avec Google et avec Microsoft n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et du lien, et la vie du cookie de parcours de Google et de Microsoft sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. Chaque traitement déclare sa `conservation`, à valider avec le client : le compte 24 mois après la dernière connexion (clé `comptes-inactifs`, compté par le script de purge de la brique rgpd, effacé à la main), les sessions un jour après leur expiration (`sessions`), les demandes et saisies de code ou de lien une heure (`codes-connexion`, `codes-connexion-essais`, déclarées par le lien seulement quand le code n'est pas proposé), purgées par la brique rgpd ; les connexions avec Google et avec Microsoft n'en déclarent pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
+| `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code ou de lien se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse, auteur)` : le compte s'anonymise (`anonymiserLeCompte`, au nom de `auteur`, l'admin qui efface), sessions et demandes de code ou de lien sont supprimées. |
 | `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine`, `ouverte` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
 | `administration.ts` | `anonymiserLeCompte(executeur, email, auteur, contexte?)` → `Promise<CompteAnonymise \| Refus \| null>`, `adresseAnonymisee(id)` → `string` | L'anonymisation du compte d'une adresse, dans la transaction de l'appelant (l'effacement de la brique rgpd), suivie des effets d'effacement du registre au nom de `auteur` (`{ email }`, l'admin qui efface) : `null` sans compte, `Refus` pour le dernier admin actif ou un compte de démo. `CompteAnonymise` : `{ id, avertissement? }`, où `avertissement` dit de retirer l'adresse de la configuration. `avertissementDeConfiguration(email, contexte?)` → `string | null` donne cet avertissement aussi pour une adresse sans compte en base. |
 | `administration.ts` | types `CompteAdministre`, `DomaineAdministre`, `StatutDuCompte`, `Invitation`, `Prevenir`, `Refus`, `Trace`, `Geste`, `CompteAnonymise` | Les formes que rendent les fonctions ci-dessous ; l'écran de gestion-comptes les importe en `import type`. |
@@ -718,7 +794,8 @@ utilise. Les autres exports servent aux fichiers de la brique ou
   `ROLE_PAR_DEFAUT`, jamais un rôle d'administration ; `ROLE_ADMIN`, le rôle du
   premier admin ; `DROITS satisfies Droits`.
 - `src/config/comptes.ts` :
-  - `METHODES`, les méthodes proposées ;
+  - `METHODES`, les méthodes proposées (`"lien-email"` pour une appli grand
+    public seulement : voir « La connexion par lien envoyé par e-mail ») ;
   - `ENTREE`, qui entre (adresses et domaines, et `ouverte` pour un outil
     ouvert à toute adresse) ;
   - `DOMAINES_GOOGLE_WORKSPACE`, le ou les Workspace dont la connexion avec Google
@@ -734,8 +811,9 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 `lireSession`, `lireSessionDe`, `trouverUtilisateur`, `fermerLesSessionsDe`,
 `roleEffectif`, `origineDuCompte`, `seraitAdmis`, `COLONNES_ENTREE`,
 `enBaseDe`, `estAdresseDeDemo`, `domaineDe`, l'ensemble de `jeton.ts`,
-`code-email.ts`, `google.ts`, `microsoft.ts` et `parcours.ts`, les routes de
-Google et de Microsoft, les actions (`actions.ts`) et `FormulaireCode`.
+`code-email.ts`, `lien-email.ts`, `google.ts`, `microsoft.ts` et `parcours.ts`,
+les routes de Google et de Microsoft, la page du lien, les actions
+(`actions.ts`), `FormulaireCode` et `FormulaireLien`.
 
 **Règle d'entretien.** Tout changement d'interface publique (symbole ajouté,
 retiré ou renommé, signature modifiée) met à jour cette section. Il ajoute
@@ -780,9 +858,10 @@ redirect(cheminDeRetour(retour));
 | `MICROSOFT_CLIENT_ID` | L'ID d'application (client) de l'enregistrement fait dans le portail Azure (voir « La connexion avec Microsoft »). Seulement avec `"microsoft"` dans `METHODES`. | La carte Microsoft de `/connexion` dit qu'elle est à renseigner. Les autres méthodes restent là. |
 | `MICROSOFT_CLIENT_SECRET` | Sa valeur de secret client. **Secret** : saisi à la main chez l'hébergeur (`sync: false`), dans `.env.local` en local, jamais dans le dépôt. Expire (24 mois au plus). | Comme pour `MICROSOFT_CLIENT_ID`. |
 | `MICROSOFT_TENANT_ID` | L'ID de l'annuaire (tenant) du client, un GUID. Seulement avec `ANNUAIRES_MICROSOFT = "un-seul"`. | Comme pour `MICROSOFT_CLIENT_ID` ; un nom de domaine compte pour absent. |
+| `URL_PUBLIQUE` | L'adresse publique du site, en `https` et sans chemin, la variable du socle (`src/lib/referencement.ts`). Avec `"lien-email"` dans `METHODES`, l'adresse où mène le lien du mail, en production. | En production, la carte du lien de `/connexion` dit qu'elle manque, et aucun lien ne part. Hors production, l'hôte de la requête. |
 | `COMPTES_PREMIER_ADMIN` | L'adresse du premier admin. Elle ne sert qu'au premier démarrage : une fois un admin passé, elle n'en refait pas. | Personne n'entre en `ROLE_ADMIN` sans être listé dans `src/config/comptes.ts`. |
 
-La connexion par code envoie par la brique mails : ses variables
+La connexion par code, comme celle par lien, envoie par la brique mails : ses variables
 (`MAILS_FOURNISSEUR`, `MAILS_EXPEDITEUR`, `RESEND_API_KEY`) sont à régler chez
 l'hébergeur, voir son README. L'en-tête de l'adresse IP : voir « La connexion
 par code envoyé par e-mail ».
@@ -829,7 +908,6 @@ Pourquoi pas Auth.js :
 
 ## Pas encore là
 
-- La connexion par lien magique.
 - Une forme commune à `google.ts` et `microsoft.ts` : ils partagent le parcours
   (`parcours.ts`), mais chacun garde ses petites fonctions (redirection, nature d'un
   refus). À mettre en commun si une troisième méthode par fournisseur arrive.

@@ -37,6 +37,7 @@ const OUVERTS: Record<string, string> = {
   "connexion/google/retour/route.ts": "le retour de Google, qui ouvre la session",
   "connexion/microsoft/route.ts": "le départ de la connexion avec Microsoft : aucune session ne peut la précéder",
   "connexion/microsoft/retour/route.ts": "le retour de Microsoft, qui ouvre la session",
+  "connexion/lien/page.tsx": "la page où mène le lien de connexion du mail : aucune session ne peut la précéder",
   "contact/page.tsx": "le formulaire de contact public, protégé par ses filtres anti-spam (brique contact)",
 };
 

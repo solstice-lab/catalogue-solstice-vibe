@@ -131,7 +131,7 @@ Durées proposées par le catalogue, **à valider** :
 | --- | --- | --- | --- | --- |
 | `comptes` | `comptes-inactifs` | Compte | 24 mois après la dernière connexion | À la main (effacement) |
 | `comptes` | `sessions` | Sessions | 1 jour après leur expiration | Script |
-| `comptes` | `codes-connexion`, `codes-connexion-essais` | Empreintes des demandes et des saisies de code | 1 heure | Script (et le code, à la demande suivante) |
+| `comptes` | `codes-connexion`, `codes-connexion-essais` | Empreintes des demandes et des saisies de code ou de lien | 1 heure | Script (et le code, à la demande suivante) |
 | `contact` | `contact-envois` | Empreinte de l'adresse IP | 1 heure | Script (et le code, au message suivant) |
 | `contact` | `contact-messages` | Messages reçus par e-mail | 36 mois après le dernier échange | Hors base |
 | `journal` | `journal` | Lignes du journal | 12 mois après le geste | Script seul, jamais au passage |
@@ -192,7 +192,7 @@ Sources du catalogue (une appli n'a que celles des unités qu'elle garde) :
 
 | Unité | Source | Comment elle retrouve l'adresse |
 | --- | --- | --- |
-| `comptes` | `compte`, `sessions`, `codes-connexion` | Le compte par son adresse ; ses sessions par le compte ; les demandes de code en recalculant l'empreinte à clé de l'adresse. |
+| `comptes` | `compte`, `sessions`, `codes-connexion` | Le compte par son adresse ; ses sessions par le compte ; les demandes de code ou de lien en recalculant l'empreinte à clé de l'adresse. |
 | `validation` | `propositions` | Décidées par elle (`decide_par`), ou dont le contenu cite l'adresse comme valeur entière (le demandeur d'une demande d'achat). |
 | `import-lot` | `lignes-importees` | Les lignes d'un fichier importé où l'adresse figure comme valeur entière. |
 | `journal` | `journal` | Les lignes dont elle est l'auteur, par son compte (`utilisateur_id`, joint à `utilisateurs`). |

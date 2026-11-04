@@ -35,7 +35,7 @@ description: <une ou deux phrases pour les moteurs et l'aperçu, sur une ligne>
 site: <public | ferme>
 entree: <ferme | ouverte>                          # avec la brique comptes seulement
 role_par_defaut: <rôle de qui entre sans rôle attribué, jamais un rôle d'administration>
-methodes: [<code-email, google, microsoft>]        # « demo » reste en local, sans être listée
+methodes: [<code-email, lien-email, google, microsoft>]        # « demo » reste en local, sans être listée
 statut: <écrite avant tout code, brouillon validé par <qui> le <date>>
 commit_reference: <à renseigner : l'assembleur le remplace>
 briques_assemblees: [<briques choisies, plus rgpd avec comptes>]
@@ -89,7 +89,8 @@ briques:
     `membre` si le champ manque. Un rôle de l'appli (`src/config/acces.ts`) et **jamais un
     rôle qui administre**, pour aucune entrée : l'assembleur le refuse. Un rôle de plus
     s'ajoute par ticket après l'assemblage.
-  - `methodes` : une liste sur une ligne parmi `code-email`, `google` et `microsoft`, écrite
+  - `methodes` : une liste sur une ligne parmi `code-email`, `lien-email` (appli grand public
+    seulement, `URL_PUBLIQUE` en production), `google` et `microsoft`, écrite
     dans `METHODES` ; sans le champ, `code-email`. `"demo"` est toujours gardée en dernier,
     pour le local, et se retire à la mise en ligne (elle refuse la production). `google` et
     `microsoft` ne disent pas que leur application existe chez Google ou dans le portail

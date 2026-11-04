@@ -302,3 +302,38 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : une durée de conservation qui n'est qu'un texte de la
   politique n'est tenue par rien ; déclarée par donnée, elle se purge et se
   vérifie.
+
+## 2026-11-04 · Connexion par lien envoyé par e-mail · Rupture
+
+- **Ce qui change** :
+  - `MethodeDeConnexion` vaut `"code-email" | "lien-email" | "google" |
+    "microsoft" | "demo"` ;
+  - `"lien-email"` dans `METHODES` affiche sur `/connexion` la demande d'un
+    lien. Le lien mène à `/connexion/lien` (`src/app/connexion/lien/page.tsx`,
+    composant public `EcranLien({ jeton?, retour, erreur? })`), dont
+    l'ouverture ne connecte pas : seul l'envoi du bouton « Me connecter »
+    (POST) connecte et consomme le lien. Un lien qui ne vaut plus mène à la
+    demande d'un nouveau ;
+  - le lien vaut 15 minutes et partage la table `codes_connexion`, donc les
+    limites par adresse et par IP, avec le code : aucune migration ;
+  - en production, l'adresse du lien est `URL_PUBLIQUE`, jamais l'en-tête
+    `Host` ; sans elle, la carte du lien dit qu'elle manque ;
+  - `traitementsComptes` décrit le traitement `connexion-lien` quand
+    `METHODES` propose le lien ; la source d'export `codes-connexion`
+    s'intitule « Demandes de code ou de lien de connexion » ;
+  - dans une appli qui propose le code et le lien, les deux comptent ensemble
+    sous les limites, une demande de l'un invalide l'autre, et un code saisi
+    quand la dernière demande est un lien compte pour un essai faux.
+- **Appelant** :
+  - une appli qui met la brique à jour reçoit `src/app/connexion/lien/page.tsx`
+    et doit l'ajouter à `OUVERTS` de `tests/gardes-acces.test.ts`, sans quoi
+    ce test échoue, méthode proposée ou non. Elle ajoute aussi
+    `"connexion-lien"` à `CONFIDENTIALITE.choix` (`src/lib/confidentialite.ts`).
+    Sans `"lien-email"` dans `METHODES`, rien d'autre ;
+  - pour proposer le lien : une appli grand public seulement, `URL_PUBLIQUE`
+    déclarée en production, `"lien-email"` ajouté à `METHODES`. La recette
+    sans `URL_PUBLIQUE` garde le code.
+- **Pourquoi** : sur une appli grand public, cliquer un lien est plus simple
+  que recopier un code. En entreprise, les antivirus de messagerie ouvrent les
+  liens avant la personne : la méthode leur est réservée au grand public, et
+  le lien ne se consomme jamais à l'ouverture.

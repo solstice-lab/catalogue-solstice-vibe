@@ -3,15 +3,18 @@ import { ENTREE, METHODES } from "@/config/comptes";
 
 /*
  * Les types que l'appli remplit dans src/config/comptes.ts, et l'erreur de la
- * brique. Une méthode de connexion s'ajoute ici (à venir : lien magique).
+ * brique. Une méthode de connexion s'ajoute ici.
  */
 
 // « code-email » : un code à 6 chiffres envoyé par e-mail, la méthode
-// par défaut. « google » : un compte Google, une fois son application
-// OAuth créée (README de la brique). « microsoft » : un compte Microsoft
-// (Entra ID), une fois l'application enregistrée dans le portail Azure (même
-// README). « demo » : un rôle joué sans rien vérifier, hors production.
-export type MethodeDeConnexion = "code-email" | "google" | "microsoft" | "demo";
+// par défaut. « lien-email » : un lien envoyé par e-mail, pour une appli grand
+// public seulement (en entreprise, l'antivirus de la messagerie ouvre le lien
+// avant la personne : README de la brique). « google » : un compte Google, une
+// fois son application OAuth créée (README de la brique). « microsoft » : un
+// compte Microsoft (Entra ID), une fois l'application enregistrée dans le
+// portail Azure (même README). « demo » : un rôle joué sans rien vérifier,
+// hors production.
+export type MethodeDeConnexion = "code-email" | "lien-email" | "google" | "microsoft" | "demo";
 
 // Les annuaires (tenants) Entra ID dont la connexion avec Microsoft accepte les
 // comptes : « un-seul », celui du client (MICROSOFT_TENANT_ID) ; « tous », tout

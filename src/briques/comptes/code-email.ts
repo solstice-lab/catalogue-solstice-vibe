@@ -65,8 +65,8 @@ export function adresseValide(email: string): boolean {
 
 // Une empreinte à clé : sans AUTH_SECRET, l'empreinte d'un code à 6 chiffres
 // se retrouverait en un million d'essais hors ligne, et celle d'une adresse
-// en essayant un annuaire.
-function empreinte(secret: string, valeur: string): string {
+// en essayant un annuaire. Exportée pour la connexion par lien (lien-email.ts).
+export function empreinte(secret: string, valeur: string): string {
   return createHmac("sha256", secret).update(valeur).digest("hex");
 }
 
@@ -105,11 +105,37 @@ export async function demanderUnCode(
   const adresse = normaliser(email);
   // Avant toute écriture : sans secret valable, rien ne s'écrit à moitié.
   const secret = secretDeSession();
+  const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
+  const acceptee = await enregistrerUneDemande(
+    secret,
+    adresse,
+    ip,
+    empreinteDuCode(secret, adresse, code),
+    DUREE_VALIDITE_MINUTES
+  );
+  if (!acceptee) return "limite";
+
+  planifier(() => envoyerSiAdmis(adresse, code, contexte));
+  return "envoye";
+}
+
+/*
+ * Écrit la demande sous les limites, ou répond faux si l'une est atteinte.
+ * Partagée avec la connexion par lien (lien-email.ts) : un lien et un code
+ * sont deux lignes de la même table, comptées ensemble. Sans cela, une appli
+ * qui propose les deux méthodes doublait les mails qu'un tiers peut faire
+ * envoyer à une personne. `empreinteSecrete` est celle du code ou du lien.
+ */
+export async function enregistrerUneDemande(
+  secret: string,
+  adresse: string,
+  ip: string | null,
+  empreinteSecrete: string,
+  dureeMinutes: number
+): Promise<boolean> {
   const cleAdresse = empreinteDeLAdresse(secret, adresse);
   const cleIp = empreinteDeLIp(secret, ip);
-  const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
-
-  const acceptee = await transaction(async (client) => {
+  return transaction(async (client) => {
     // Deux demandes simultanées liraient sinon le même compte et passeraient
     // toutes deux sous la limite. Toujours l'adresse puis l'IP : pris dans le
     // même ordre, les verrous ne s'interbloquent pas.
@@ -141,21 +167,18 @@ export async function demanderUnCode(
       return false;
     }
 
-    // Un nouveau code invalide le précédent : seul le dernier reçu vaut.
+    // Un nouveau code invalide le précédent : seul le dernier reçu vaut. Un
+    // lien aussi, et l'un invalide l'autre.
     await client.query("UPDATE codes_connexion SET consomme = true WHERE adresse_empreinte = $1 AND NOT consomme", [
       cleAdresse,
     ]);
     await client.query(
       `INSERT INTO codes_connexion (adresse_empreinte, ip_empreinte, code_empreinte, expire_le)
        VALUES ($1, $2, $3, now() + make_interval(mins => $4))`,
-      [cleAdresse, cleIp, empreinteDuCode(secret, adresse, code), DUREE_VALIDITE_MINUTES]
+      [cleAdresse, cleIp, empreinteSecrete, dureeMinutes]
     );
     return true;
   });
-  if (!acceptee) return "limite";
-
-  planifier(() => envoyerSiAdmis(adresse, code, contexte));
-  return "envoye";
 }
 
 // Après la réponse : l'admission se lit ici, et le mail ne part qu'à qui
@@ -187,20 +210,20 @@ async function envoyerSiAdmis(adresse: string, code: string, contexte: ContexteE
   }
 }
 
+// La connexion de la transaction d'une vérification.
+type Client = Parameters<Parameters<typeof transaction>[0]>[0];
+
 /*
- * Vérifie le code saisi contre le DERNIER code demandé pour l'adresse.
- * « expire » couvre aussi le code déjà servi, invalidé ou jamais demandé :
- * dans tous ces cas, il n'y a qu'à en redemander un. Toute saisie fausse compte
- * pour un essai, même celle qui n'a pas la forme d'un code, et pour un essai
- * faux de l'IP ; au-delà de la limite de l'IP, aucun code n'est lu.
+ * Lance `verifier` dans une transaction, sauf si l'IP a atteint sa limite de
+ * saisies fausses : « limite » alors, sans rien lire. `echec` compte une
+ * saisie fausse de l'IP et rend le résultat qu'on lui passe. Partagée avec la
+ * connexion par lien (lien-email.ts) : un lien faux compte comme un code faux.
  */
-async function verifierLeCode(
-  adresse: string,
-  saisie: string,
-  ip: string | null
-): Promise<Exclude<ResultatConnexion, "connecte" | "acces"> | "valide"> {
-  const secret = secretDeSession();
-  const code = saisie.replace(/\s/g, "");
+export async function sousLaLimiteDeLIp<R>(
+  secret: string,
+  ip: string | null,
+  verifier: (client: Client, echec: <E>(resultat: E) => Promise<E>) => Promise<R>
+): Promise<R | "limite"> {
   const cleIp = empreinteDeLIp(secret, ip);
   return transaction(async (client) => {
     if (cleIp !== null) {
@@ -213,13 +236,33 @@ async function verifierLeCode(
         "SELECT count(*)::int AS n FROM codes_connexion_essais WHERE ip_empreinte = $1",
         [cleIp]
       );
-      if ((faux?.n ?? 0) >= ESSAIS_FAUX_PAR_HEURE_IP) return "limite";
+      if ((faux?.n ?? 0) >= ESSAIS_FAUX_PAR_HEURE_IP) return "limite" as const;
     }
-    const echec = async <R>(resultat: R): Promise<R> => {
+    const echec = async <E>(resultat: E): Promise<E> => {
       if (cleIp !== null) await client.query("INSERT INTO codes_connexion_essais (ip_empreinte) VALUES ($1)", [cleIp]);
       return resultat;
     };
+    return verifier(client, echec);
+  });
+}
 
+/*
+ * Vérifie le code saisi contre le DERNIER code demandé pour l'adresse.
+ * « expire » couvre aussi le code déjà servi, invalidé ou jamais demandé :
+ * dans tous ces cas, il n'y a qu'à en redemander un. Toute saisie fausse compte
+ * pour un essai, même celle qui n'a pas la forme d'un code, et pour un essai
+ * faux de l'IP ; au-delà de la limite de l'IP, aucun code n'est lu. Dans une
+ * appli qui propose aussi le lien, la dernière demande peut être un lien : un
+ * code saisi alors ne lui correspond pas, et compte pour un essai faux.
+ */
+async function verifierLeCode(
+  adresse: string,
+  saisie: string,
+  ip: string | null
+): Promise<Exclude<ResultatConnexion, "connecte" | "acces"> | "valide"> {
+  const secret = secretDeSession();
+  const code = saisie.replace(/\s/g, "");
+  return sousLaLimiteDeLIp(secret, ip, async (client, echec) => {
     const ligne = await client.queryOne<{ id: number; code_empreinte: string; essais: number }>(
       `SELECT id, code_empreinte, essais
          FROM codes_connexion
