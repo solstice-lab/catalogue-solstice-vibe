@@ -18,13 +18,15 @@ blueprint (étape 6). Ce qu'elle ne fait jamais : écrire dans une
 base distante, taper un `--confirmer`, écrire un `.env*`, fusionner, déployer. Elle dit quoi
 taper (`CLAUDE.md` §3 et §8).
 
-Reporter dans une appli assemblée un catalogue plus récent ne passe pas par cette skill :
-`node outils/mettre-a-jour.mjs <appli>`, depuis le catalogue (note `outils/mise-a-jour.md`),
-étapes de migration neuves comprises, ajoutées en fin de la liste de l'appli.
+Reporter dans une appli assemblée un catalogue plus récent, ou lui ajouter une brique, ne
+passe pas par cette skill : `node outils/mettre-a-jour.mjs <appli>` (`--ajouter <briques>`
+pour un ajout), depuis le catalogue (note `outils/mise-a-jour.md`), étapes de migration
+neuves comprises, ajoutées en fin de la liste de l'appli.
 
-**Hors v1** : ajouter une brique à une appli déjà assemblée, déployer,
+**Hors v1** : retirer une brique d'une appli déjà assemblée, déployer,
 faire lire la blueprint par le script (il n'en lit que `appli`, `profil`, `nom_affiche`, `description`,
-`site`, `entree`, `role_par_defaut` et `methodes` ; le reste de son en-tête reste informatif), plugin sur
+`site`, `entree`, `role_par_defaut` et `methodes`, et l'outil de mise à jour y réécrit
+`commit_reference` et `briques_assemblees` ; le reste de son en-tête reste informatif), plugin sur
 marketplace. Le module métier d'une appli (ses entités, sur le patron `dossiers`) ne
 s'assemble pas : il s'écrit dans l'appli, par tickets, une fois le dossier livré (étapes 5 et 6 ;
 `solstice-nouvelle-appli`, §2, ligne « Module dans cette appli »).
@@ -57,10 +59,16 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   profil retenu se note dans `profil:` de l'en-tête de la blueprint. Avec la vitrine :
   - Le client obtient : des pages dont le contenu est écrit dans le code, le kit, les
     mentions légales, la politique de confidentialité, `/sante` et la CSP du socle.
-  - Il n'obtient pas : de base, de connexion ni de saisie gardée en base. L'assembleur ne
-    les ajoutera pas après coup. Un formulaire de contact passe par la brique `contact`
-    (avec `mails`) : elle garde la base pour limiter les envois, le site reste sans
-    connexion.
+  - Il n'obtient pas : de base, de connexion ni de saisie gardée en base. Un formulaire
+    de contact passe par la brique `contact` (avec `mails`) : elle garde la base pour
+    limiter les envois, le site reste sans connexion.
+  - **La base et les comptes se décident maintenant.** Les ajouter plus tard reste
+    possible (`outils/mettre-a-jour.mjs --ajouter`), mais c'est un ajout lourd, un
+    ticket à part entière plutôt qu'une retouche : la base à faire créer et payer par le
+    client chez l'hébergeur, ses variables et les bases locales ; avec `comptes`, toutes
+    les pages déjà écrites passent derrière la connexion, et chacune est à trancher une
+    à une, publique ou derrière un droit. Le dire au client avec ce coût, et noter sa
+    réponse dans la blueprint.
   - Ses pages sont rendues à chaque requête (compromis de la CSP, étape 2).
   - Les blocs « Les données » et « Les accès » de `solstice-nouvelle-appli` §1 sautent.
     « Le besoin », « Les écrans » et « La mise en ligne » restent.
@@ -210,7 +218,8 @@ Règles de l'assembleur :
   `journal`, `gestion-comptes`, `espaces`, `echeances`, `calendrier`, `validation`,
   `import-lot` et `notifications` exigent la brique `donnees` (base, migrations, couche données du patron
   `dossiers`), que l'assembleur garde d'office dès qu'une brique gardée l'exige : ne pas la
-  nommer. Sans aucune d'elles, l'appli n'a pas de base, et n'en recevra pas après coup. Les
+  nommer. Sans aucune d'elles, l'appli n'a pas de base ; la recevoir plus tard est un ajout
+  lourd (ci-dessous). Les
   écrans du patron `dossiers` ne viennent qu'avec `comptes` (chaque page appelle `exiger`).
 - Une brique peut en exiger une autre : l'assembleur refuse de la garder sans elle et
   nomme l'option à ajouter. **`comptes`, `contact` et `notifications` exigent `mails`**
@@ -236,13 +245,21 @@ Règles de l'assembleur :
   « à brancher » dans la blueprint, chacune avec le ticket qui la branche.
 - **Le besoin n'a pas d'écran tout fait dans le catalogue, et c'est la règle** : le module
   métier s'écrit dans l'appli, sur le patron `dossiers`, et on choisit ici les briques dont
-  il aura besoin. Assembler sans brique qui lit la base donne une appli sans base, qui n'en
-  recevra pas après coup : ce n'est la réponse que si le besoin n'a pas de données à garder.
+  il aura besoin. Assembler sans brique qui lit la base donne une appli sans base : ce
+  n'est la réponse que si le besoin n'a pas de données à garder.
   Si le besoin a des données, le profil `outil-interne` au moins (sans profil,
   `--briques comptes,mails`, avec `rgpd` d'office) garde la base, les droits, l'export et l'effacement des données d'une personne et le
   patron `dossiers` à copier. Un doute sur ce que le besoin garde : le dire, et laisser la
   personne responsable du projet trancher (retirer ensuite des écrans à la main est un
   changement structurel, `CLAUDE.md` §5).
+- **La base et `comptes` se décident à l'assemblage, pas plus tard.** Une autre brique
+  s'ajoute ensuite sans grand frais (`outils/mettre-a-jour.mjs --ajouter`, depuis le
+  catalogue : une branche de l'appli, une PR). Ces deux-là s'ajoutent aussi, mais l'outil
+  les dit « lourdes », parce qu'elles changent l'appli entière : la base, un service payant
+  à faire créer par le client, ses variables, des tests qui exigent leur base ; `comptes`,
+  toutes les pages déjà écrites derrière la connexion, chacune à trancher, le référencement
+  à reprendre, un premier admin. Poser la question comme une décision à prendre maintenant,
+  avec ce coût, plutôt que de laisser croire qu'on y reviendra sans peine.
 
 Présenter le choix en clair (ce que le client obtient, ce qu'il n'obtient pas, ce qui
 restera à construire par tickets) et le **faire valider** avant d'écrire la blueprint.
