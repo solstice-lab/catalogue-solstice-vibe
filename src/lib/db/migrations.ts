@@ -22,6 +22,10 @@ import type { Pool } from "pg";
  *   la colonne n'existe pas encore quand il s'exécute.
  * - On n'insère qu'À LA FIN du tableau, on ne réordonne jamais : une base
  *   déployée a déjà rejoué les étapes existantes dans cet ordre.
+ * - Chaque étape est un objet écrit dans le tableau, d'un seul tenant (son
+ *   SQL en elle, aucune constante ni fonction du dehors), son nom une chaîne
+ *   en clair qu'aucune autre étape ne porte : la mise à jour depuis le
+ *   catalogue reconnaît une étape à son nom et la compare par son texte.
  */
 
 type Migration = {

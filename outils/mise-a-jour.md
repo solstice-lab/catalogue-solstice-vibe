@@ -1,8 +1,8 @@
 # Ajouter une brique à une appli assemblée, et la tenir à jour
 
 Note de conception, écrite avant tout code le 2026-11-03 ; ses questions ont été tranchées
-le même jour (« Décisions prises »). Les deux premières tranches sont outillées : la mise à
-jour d'une appli, hors migrations (« Ce qui est outillé »). Elle vit dans `outils/`, que
+le même jour (« Décisions prises »). Les trois premières tranches sont outillées : la mise à
+jour d'une appli, étapes de migration comprises (« Ce qui est outillé »). Elle vit dans `outils/`, que
 l'assembleur ne copie pas : une appli assemblée n'a ni l'outil ni ce qui le décrit.
 
 ## Le besoin
@@ -181,7 +181,7 @@ Prettier ne remet pas en forme (`.prettierignore`), puis :
   `nom` d'une étape à ajouter existe déjà dans l'appli. Un commentaire seul changé se
   signale, sans rien reporter ;
 - il **s'arrête** si `schema.sql` diffère entre l'origine et la cible : un `CREATE TABLE`
-  fusionné ne se retouche plus ;
+  fusionné ne se retouche plus. Absent de l'origine, il arrive avec la base : ajouté ;
 - le reste du fichier (en-tête, fonction qui rejoue les étapes) passe par la fusion à
   trois.
 
@@ -284,8 +284,8 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    node outils/mettre-a-jour.mjs <dossier-de-l-appli> [--branche <type>/<slug>] [--ajouter <briques>] [--vers <commit>] [--a-blanc]
    ```
 
-   `--ajouter` n'est pas encore outillé, ni le report des migrations (« Ce qui est
-   outillé »). Sans `--ajouter`, l'outil met à jour vers `--vers`, par défaut le `HEAD` du
+   `--ajouter` n'est pas encore outillé (« Ce qui est outillé »). Sans `--ajouter`, l'outil
+   met à jour vers `--vers`, par défaut le `HEAD` du
    catalogue. Avec `--ajouter`, il ajoute au commit de l'appli (A' = A) : une opération à
    la fois (« Options écartées »). Une brique qui n'existe pas au commit A se refuse :
    mettre à jour d'abord. `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée
@@ -372,7 +372,8 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    manifeste réécrit, l'en-tête de `blueprint.md`, les dépendances npm, le rapport (entrées
    des `CHANGELOG.md`, ruptures en tête, sujets des commits du socle, variables nouvelles,
    confidentialité, registre, ce que la fusion déclenche). Arrêt net si `migrations.ts` ou
-   `schema.sql` diffèrent entre l'origine et la cible. Les refus que la tranche 1 laisse
+   `schema.sql` diffèrent entre l'origine et la cible (levé par la tranche 3 pour
+   `migrations.ts`). Les refus que la tranche 1 laisse
    (« Ce qui est outillé »). Les textes qui disent la mise à jour « hors v1 »
    (`creer-appli`, `choix.md`, README du catalogue). Fait quand un test couvre chaque ligne de la table, lecture en LF comprise,
    que `npm ci` passe dans l'appli d'essai après l'opération (après `npm install` quand le
@@ -382,7 +383,7 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    mettre une appli à terre en production. Les étapes lues par `nom`, l'ajout en fin, les
    arrêts, `schema.sql`, et un verrou au catalogue : deux étapes n'y portent pas le même
    `nom`. Fait quand l'étape neuve se trouve après celles de l'appli et que le rejeu sur une
-   base de test passe.
+   base de test passe. Outillée (« Ce qui est outillé »).
 4. **Ajouter une brique, simple ou lourde** (`--ajouter`). `planifier` sur B plus x, le
    refus d'une brique absente au commit A, les briques « à brancher » et les ajouts lourds
    en tête du rapport. Le cadrage de `creer-appli` insiste sur la base et les comptes (une
@@ -410,7 +411,8 @@ Bloquées par : 2 par 1 ; 3 par 2 ; 4 par 3 ; 5 par 4.
 La tranche 1, le 2026-11-03 : retrouver l'origine d'une appli (la fonction `examiner` de
 l'outil, première étape de toute opération). La tranche 2, le 2026-11-04 : la mise à jour,
 `node outils/mettre-a-jour.mjs <appli> [--vers <commit>] [--branche <nom>] [--a-blanc]`,
-depuis le catalogue (« Le circuit »).
+depuis le catalogue (« Le circuit »). La tranche 3, le 2026-11-04 : les étapes de
+migration, en fin de liste (« Les migrations »).
 
 - **Le manifeste au format 2** (décision 4), écrit par l'assembleur :
   `catalogue.commitComplet` à côté du commit court, et `assemblage` : `briques` (les
@@ -468,11 +470,43 @@ depuis le catalogue (« Le circuit »).
   descend pas de celui de l'appli ; sauf à blanc, l'appli déjà au commit visé, une appli
   sans `origin/main` ou dont le `HEAD` n'est pas lui (l'outil ne fait pas de `fetch`), un
   nom de branche que git refuse ou qui existe ; une brique de l'appli inconnue au commit
-  A' ; `migrations.ts` ou `schema.sql` qui changent de l'origine à la cible (tranche 3) ;
-  un fichier neuf de la cible au chemin d'un fichier de l'appli, à la casse près (un
+  A' ; un fichier neuf de la cible au chemin d'un fichier de l'appli, à la casse près (un
   disque Windows ou macOS ne les distingue pas), ou au chemin d'un de ses dossiers, ou
   sous un de ses fichiers. Une écriture qui échoue en route (un fichier verrouillé) le dit,
   avec le geste pour revenir au `main` de l'appli.
+- **Les migrations** (tranche 3) : les étapes de `MIGRATIONS` se lisent dans l'arbre
+  syntaxique du fichier, par le parseur de TypeScript qu'a installé le catalogue, sans
+  exécuter le fichier : une expression régulière se tromperait sur une accolade ou une
+  virgule d'un SQL ou d'un commentaire, et importer le module ferait tourner du code de
+  l'appli dans l'outil. Une étape est un objet écrit dans la liste, son `nom` une chaîne
+  en clair, et d'un seul tenant : elle ne lit aucune valeur déclarée ou importée hors de
+  la liste, sans quoi ce qu'elle joue changerait avec cette valeur sans que son texte
+  change. Son texte va de la ligne de son premier commentaire à son accolade fermante, et
+  son code est ce texte sans commentaires ni mise en page, qui dit si elle a changé
+  autrement. Les étapes ajoutées gardent leur texte de la cible. Le reste du fichier passe
+  par la fusion à trois, la liste réduite à une marque dans les trois versions. Absent de
+  l'origine (la base arrive), le fichier passe par la table, ajouté. Le rapport a sa
+  rubrique « Migrations » : les étapes ajoutées, dont celles que la cible place avant une
+  étape que l'appli a déjà (une brique ajoutée d'office), mises en fin et signalées ;
+  celles dont seuls le commentaire ou la mise en page ont changé ; celles que l'appli a
+  changées, laissées telles quelles ; un reste du fichier qui change ; ce que la fusion
+  déclenche (rejeu au démarrage suivant, qu'un *Revert* ne défait pas) ;
+  `tests/migrations.test.ts` et `relecteur-migrations` dans la suite. Les arrêts, avant
+  toute écriture, chacun avec son geste, ceux qui comparent les étapes dits d'un coup :
+  une étape de l'origine dont le code change dans la cible ou qui en disparaît, des
+  étapes de l'origine dans un autre ordre, une étape de l'origine qui manque à l'appli, le
+  nom d'une étape à ajouter qui existe déjà dans l'appli ; et, chacun seul, deux étapes
+  du même nom dans une version, une liste illisible (fichier qui ne se lit pas, pas de
+  `MIGRATIONS` écrit en liste, étape qui n'est pas un objet, dont le nom n'est pas en
+  clair ou qui lit une valeur du dehors), `migrations.ts` supprimé par l'appli ou retiré
+  par le catalogue, une fusion du reste du fichier dont les conflits touchent la liste,
+  et `schema.sql` qui change de l'origine à la cible (un `schema.sql` qui arrive avec la
+  base est ajouté). Le verrou du catalogue,
+  `tests/mettre-a-jour-migrations.test.ts`, lit `migrations.ts` comme l'outil : il échoue
+  si deux étapes portent le même nom, si une étape ne se lit pas, ou s'il n'en lit
+  aucune, et compare les noms lus à ceux du tableau chargé. Ce fichier, sans assemblage ni base, tourne avec `npm test` ;
+  le rejeu des étapes reportées sur Postgres, d'abord celles d'avant la fusion puis celles
+  d'après sur la même base, est dans `tests/mettre-a-jour.test.ts`.
 
 ## Décisions prises
 
@@ -493,7 +527,8 @@ note :
 ## Sources
 
 - `outils/assembler.mjs` et `outils/modules.mjs` ; le manifeste et ses tests
-  (`tests/assembleur.test.ts`, `tests/mettre-a-jour.test.ts`) ; l'outil
+  (`tests/assembleur.test.ts`, `tests/mettre-a-jour.test.ts`,
+  `tests/mettre-a-jour-migrations.test.ts`) ; l'outil
   `outils/mettre-a-jour.mjs`.
 - La skill `creer-appli` (« Hors v1 », étapes 0 et 4) et son `choix.md`.
 - `src/lib/db/migrations.ts`, la skill `solstice-donnees`, `docs/cicatrices.md` (D1, D2).

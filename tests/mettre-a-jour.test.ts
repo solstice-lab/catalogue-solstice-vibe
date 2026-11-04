@@ -4,22 +4,26 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { assembler } from "../outils/assembler.mjs";
-import { ErreurMiseAJour, examiner, mettreAJour, rapport } from "../outils/mettre-a-jour.mjs";
+import { ErreurMiseAJour, examiner, lireLesEtapes, mettreAJour, rapport } from "../outils/mettre-a-jour.mjs";
+import { migrationsAvantPuisApres, nettoyerLesAssemblages } from "./aide-assemblage";
 
 /*
  * Test-verrou de outils/mettre-a-jour.mjs (outils/mise-a-jour.md) : retrouver
  * ce qu'une appli a reçu du catalogue en rejouant l'assembleur de son commit,
  * dire ce qu'elle en a retouché (tranche 1), puis y reporter le catalogue d'un
- * commit plus récent (tranche 2).
+ * commit plus récent (tranche 2), étapes de migration comprises (tranche 3).
  *
  * La CI ne clone pas l'historique du catalogue : le test construit le sien,
- * une copie du catalogue de travail en un commit A, puis les commits de la
- * tranche 2 et, en dernier, un commit qui monte Prettier. Les applis d'essai
- * sont assemblées à A.
+ * une copie du catalogue de travail en un commit A, puis les commits des
+ * tranches 2 et 3 et, en dernier, un commit qui monte Prettier. Les applis
+ * d'essai sont assemblées à A.
  *
- * Il rejoue plusieurs assemblages et lance un vrai npm ci : sorti de npm test
- * comme celui de l'assembleur, il tourne avec lui (npm run test:assembleur, job
- * assembleur de .github/workflows/assemblage.yml). Catalogue seulement
+ * Il rejoue plusieurs assemblages, lance un vrai npm ci et rejoue des
+ * migrations sur des bases neuves du Postgres de DATABASE_URL : sorti de npm
+ * test comme celui de l'assembleur, il tourne avec lui (npm run
+ * test:assembleur, job assembleur de .github/workflows/assemblage.yml, qui a
+ * son Postgres). Les cas de la tranche 3 sans assemblage ni base sont dans
+ * tests/mettre-a-jour-migrations.test.ts. Catalogue seulement
  * (EXCLUS_DU_CATALOGUE) : une appli n'a pas l'outil.
  */
 
@@ -68,6 +72,8 @@ function delierNodeModules(catalogue: string) {
 }
 
 afterAll(() => {
+  // Les copies de travail des rejeus de migrations (tests/aide-assemblage.ts).
+  nettoyerLesAssemblages();
   for (const dossier of aNettoyer.splice(0)) {
     delierNodeModules(dossier);
     fs.rmSync(dossier, { recursive: true, force: true });
@@ -351,7 +357,8 @@ describe("mettre-a-jour, examen : refus en clair, avant tout rejeu", () => {
  * Le catalogue d'essai reçoit, après A, deux commits qui donnent chaque ligne
  * de la table « Ce qu'il fait de chaque fichier » (outils/mise-a-jour.md) : un
  * commit de briques seules, puis un commit du socle, le commit visé A'. Un
- * dernier commit change migrations.ts, ce que la tranche 2 refuse.
+ * dernier commit change migrations.ts (tranche 3) : une étape neuve en fin, un
+ * commentaire seul changé dans une étape publiée, l'en-tête du fichier.
  */
 const BRANCHE = "feature/reporter-catalogue-essai";
 // Un refus ne rejoue rien, mais lit tout le HEAD de l'appli : plus de 5 s sur un poste chargé.
@@ -369,6 +376,20 @@ const remplacer = (avant: string, apres: string) => (texte: string) => {
   if (!texte.includes(avant)) throw new Error(`« ${avant} » introuvable : le test est à reprendre.`);
   return texte.replace(avant, apres);
 };
+
+const FICHIER_MIGRATIONS = "src/lib/db/migrations.ts";
+const ETAPE_DU_CATALOGUE = "essai_catalogue : table d'essai de la mise à jour";
+const ETAPE_DE_L_APPLI = "coloc_taches : les tâches de la colocation (appli)";
+const ETAPE_AU_COMMENTAIRE_REVU = "dossiers : champ notes (texte libre de la fiche)";
+
+// Une étape en fin de MIGRATIONS, avant la fonction qui les rejoue.
+const etapeEnFin = (commentaire: string, nom: string, sql: string) =>
+  remplacer(
+    "\n];\n\nexport async function appliquerMigrations",
+    `\n  {\n    // ${commentaire}\n    nom: ${JSON.stringify(nom)},\n    async appliquer(pool) {\n      await pool.query(\`${sql}\`);\n    },\n  },\n];\n\nexport async function appliquerMigrations`
+  );
+
+const nomsDesEtapes = (texte: string) => lireLesEtapes(texte, FICHIER_MIGRATIONS).map(({ nom }) => nom);
 
 // La première ligne seule : l'appli et le catalogue la réécrivent chacun, d'où le conflit.
 const premiereLigne = (ligne: string) => (texte: string) => `${ligne}${texte.slice(texte.indexOf("\n"))}`;
@@ -391,6 +412,26 @@ function refusDe(action: () => unknown): Error {
   throw new Error("aucun refus");
 }
 
+/*
+ * Un commit du catalogue hors de la suite principale, publié le temps de
+ * `action` : origin/main y pointe, puis revient où il était. Pour un cas qui
+ * arrête l'outil et que les cas suivants ne doivent pas voir.
+ */
+function avecUnCommitDuCatalogue(message: string, changer: () => void, action: (vers: string) => void) {
+  const sommet = git(catalogue, "rev-parse", "HEAD");
+  git(catalogue, "switch", "-q", "-c", "essai-hors-de-main");
+  try {
+    changer();
+    git(catalogue, "commit", "-q", "-am", message);
+    git(catalogue, "update-ref", "refs/remotes/origin/main", "HEAD");
+    action(git(catalogue, "rev-parse", "--short", "HEAD"));
+  } finally {
+    git(catalogue, "switch", "-q", "--discard-changes", "main");
+    git(catalogue, "branch", "-q", "-D", "essai-hors-de-main");
+    git(catalogue, "update-ref", "refs/remotes/origin/main", sommet);
+  }
+}
+
 // Ce qu'un refus laisse dans l'appli : ni branche, ni fichier écrit.
 function rienNEstTouche(dossier: string, head: string) {
   expect(git(dossier, "status", "--porcelain")).toBe("");
@@ -399,7 +440,7 @@ function rienNEstTouche(dossier: string, head: string) {
   expect(git(catalogue, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 }
 
-describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', hors migrations", () => {
+describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', étapes de migration comprises", () => {
   beforeAll(() => {
     // Le lien vers node_modules n'est pas une modification du catalogue : le motif
     // « node_modules/ » de .gitignore ne vise pas un lien.
@@ -463,7 +504,25 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
     git(catalogue, "commit", "-q", "-m", "Socle : essai d'une évolution du socle");
     commitVise = git(catalogue, "rev-parse", "--short", "HEAD");
 
-    ecrire(catalogue, "src/lib/db/migrations.ts", (t) => `${t}// Évolution des migrations.\n`);
+    ecrire(
+      catalogue,
+      FICHIER_MIGRATIONS,
+      etapeEnFin(
+        "Essai de la mise à jour : une étape neuve du catalogue, en fin de liste.",
+        ETAPE_DU_CATALOGUE,
+        "CREATE TABLE IF NOT EXISTS essai_catalogue (id SERIAL PRIMARY KEY);"
+      )
+    );
+    ecrire(
+      catalogue,
+      FICHIER_MIGRATIONS,
+      remplacer("// Modèle d'étape : le champ notes", "// Modèle d'étape, commentaire revu : le champ notes")
+    );
+    ecrire(
+      catalogue,
+      FICHIER_MIGRATIONS,
+      remplacer("faire évoluer une base déployée.", "faire évoluer une base déployée (évolution du catalogue).")
+    );
     git(catalogue, "add", "-A");
     git(catalogue, "commit", "-q", "-m", "Base : essai d'une évolution des migrations");
     commitMigration = git(catalogue, "rev-parse", "--short", "HEAD");
@@ -646,7 +705,7 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
       expect(rubrique("Registre RGPD")).toContain("`src/config/donnees-personnelles.ts`");
       const fusion = rubrique("Ce que la fusion déclenche");
       expect(fusion).toMatch(/[Dd]éploiement/);
-      expect(fusion).toMatch(/migration/);
+      expect(fusion).toMatch(/^- Migrations : /m);
       expect(texte).toMatch(/À blanc : rien n'est écrit dans l'appli\./);
       // À blanc : ni branche, ni fichier.
       rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
@@ -722,16 +781,119 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
     }
   );
 
+  // Une appli qui a sa propre étape, en fin de sa liste, et retouche la fin du fichier.
+  function appliAvecSonEtape(retoucher: (dossier: string) => void = () => {}): string {
+    const dossier = appliRetouchee((d) => {
+      ecrire(
+        d,
+        FICHIER_MIGRATIONS,
+        etapeEnFin(
+          "Étape de l'appli : sa table à elle.",
+          ETAPE_DE_L_APPLI,
+          "CREATE TABLE IF NOT EXISTS coloc_taches (id SERIAL PRIMARY KEY, titre TEXT NOT NULL);"
+        )
+      );
+      ecrire(d, FICHIER_MIGRATIONS, (t) => `${t}// Retouche de l'appli, en fin.\n`);
+      retoucher(d);
+    });
+    publier(dossier);
+    return dossier;
+  }
+
   it(
-    "refuse, avant toute écriture, migrations.ts ou schema.sql changés entre l'origine et la cible (ticket suivant)",
+    "ajoute l'étape neuve du catalogue après celles de l'appli, texte tel quel, fusionne le reste du fichier, et les étapes se rejouent sur une base qui a joué celles d'avant",
+    { timeout: REJEU },
+    async () => {
+      const dossier = appliAvecSonEtape();
+      const head = git(dossier, "rev-parse", "HEAD");
+      // L'appli telle qu'elle tourne en production avant la fusion de la PR.
+      const avantLaFusion = path.join(dossierTemporaire("appli-avant-"), "appli");
+      git(path.dirname(avantLaFusion), "clone", "-q", dossier, avantLaFusion);
+
+      const resultat = mettreAJour({ catalogue, appli: dossier, vers: commitMigration, branche: BRANCHE });
+      const avant = contenuDuCommit(dossier, head, FICHIER_MIGRATIONS).toString();
+      const apres = fs.readFileSync(path.join(dossier, FICHIER_MIGRATIONS), "utf-8");
+      const cible = contenuDuCommit(catalogue, commitMigration, FICHIER_MIGRATIONS).toString();
+
+      // En fin, après l'étape de l'appli ; les autres à leur place.
+      expect(nomsDesEtapes(avant).at(-1)).toBe(ETAPE_DE_L_APPLI);
+      expect(nomsDesEtapes(apres)).toEqual([...nomsDesEtapes(avant), ETAPE_DU_CATALOGUE]);
+      const etapeDeLaCible = lireLesEtapes(cible, FICHIER_MIGRATIONS).find(({ nom }) => nom === ETAPE_DU_CATALOGUE);
+      expect(apres).toContain(`${etapeDeLaCible?.texte},\n];`);
+      // Un commentaire seul changé au catalogue : l'appli garde le sien, c'est signalé.
+      expect(apres).toContain("// Modèle d'étape : le champ notes");
+      expect(apres).not.toContain("commentaire revu");
+      // Le reste du fichier, fusionné à trois : l'en-tête du catalogue, la fin de l'appli.
+      expect(apres).toContain("faire évoluer une base déployée (évolution du catalogue).");
+      expect(apres).toMatch(/\n\/\/ Retouche de l'appli, en fin\.\n$/);
+
+      expect(resultat.migrations).toEqual({
+        auMilieu: [],
+        retouchees: [],
+        reste: true,
+        avecLaBase: false,
+        ajoutees: [ETAPE_DU_CATALOGUE],
+        commentaires: [ETAPE_AU_COMMENTAIRE_REVU],
+      });
+      expect(resultat.fichiers.migrations).toEqual([FICHIER_MIGRATIONS]);
+      const texte = rapport(resultat);
+      expect(texte).toMatch(/\n## Migrations\n[\s\S]*essai_catalogue : table d'essai[\s\S]*\n## /);
+      expect(texte).toContain(ETAPE_AU_COMMENTAIRE_REVU);
+      expect(texte).toMatch(/[Ll]a fusion les rejoue en production/);
+
+      // Le rejeu : les étapes d'avant la fusion sur une base neuve, puis celles d'après.
+      git(dossier, "add", "-A");
+      git(dossier, "commit", "-q", "-m", "Reporter le catalogue");
+      const base = await migrationsAvantPuisApres(avantLaFusion, dossier);
+      expect(base.code, base.sortie).toBe(0);
+      expect(base.objets).toEqual(
+        expect.arrayContaining(["coloc_taches", "dossiers", "essai_catalogue", "utilisateurs"])
+      );
+    }
+  );
+
+  it(
+    "s'arrête avant toute écriture si une étape reçue du catalogue manque à l'appli, en disant quoi faire",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliAvecSonEtape((d) =>
+        ecrire(d, FICHIER_MIGRATIONS, (t) => {
+          const sans = t.replace(/ {2}\{\n {4}\/\/ Modèle d'étape[\s\S]*?\n {2}\},\n/, "");
+          if (sans === t) throw new Error("L'étape du patron dossiers est introuvable : le test est à reprendre.");
+          return sans;
+        })
+      );
+      const head = git(dossier, "rev-parse", "HEAD");
+      const message = refusDe(() =>
+        mettreAJour({ catalogue, appli: dossier, vers: commitMigration, branche: BRANCHE })
+      ).message;
+      expect(message).toMatch(/« dossiers : champ notes \(texte libre de la fiche\) ».*manque à l'appli/);
+      expect(message).toMatch(/[Rr]emettre/);
+      rienNEstTouche(dossier, head);
+    }
+  );
+
+  it(
+    "s'arrête avant toute écriture si schema.sql change entre l'origine et la cible : un CREATE TABLE fusionné ne se retouche plus",
     { timeout: REJEU },
     () => {
       const dossier = appliRetouchee(() => {});
       publier(dossier);
       const head = git(dossier, "rev-parse", "HEAD");
-      expect(
-        refusDe(() => mettreAJour({ catalogue, appli: dossier, vers: commitMigration, branche: BRANCHE })).message
-      ).toMatch(/src\/lib\/db\/migrations\.ts/);
+      avecUnCommitDuCatalogue(
+        "Base : essai d'un schema.sql retouché",
+        () =>
+          ecrire(
+            catalogue,
+            "src/lib/db/schema.sql",
+            remplacer("echeance DATE,", "echeance DATE,\n  priorite INTEGER,")
+          ),
+        (vers) => {
+          const message = refusDe(() => mettreAJour({ catalogue, appli: dossier, vers, branche: BRANCHE })).message;
+          expect(message).toMatch(/src\/lib\/db\/schema\.sql/);
+          expect(message).toMatch(/--vers/);
+        }
+      );
       rienNEstTouche(dossier, head);
     }
   );
@@ -740,12 +902,13 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
     const dossier = appliRetouchee(() => {});
     publier(dossier);
     // L'outil de la copie : il prend pour catalogue le dépôt où il se trouve.
-    const resultat = spawnSync(process.execPath, [path.join(catalogue, "outils/mettre-a-jour.mjs"), dossier], {
-      encoding: "utf-8",
-    });
-    // Le HEAD du catalogue d'essai change migrations.ts : l'arrêt prouve qu'il est visé.
-    expect(resultat.status, resultat.stderr).toBe(1);
-    expect(resultat.stderr).toMatch(new RegExp(`^Mise à jour refusée : .*${commitMigration}.*migrations\\.ts`, "m"));
+    const resultat = spawnSync(
+      process.execPath,
+      [path.join(catalogue, "outils/mettre-a-jour.mjs"), dossier, "--a-blanc"],
+      { encoding: "utf-8" }
+    );
+    expect(resultat.status, resultat.stderr).toBe(0);
+    expect(resultat.stdout).toMatch(new RegExp(`^# Reporter le catalogue de ${commitA} à ${commitMigration}$`, "m"));
   });
 
   it(

@@ -50,6 +50,10 @@ est décrit dans la skill `solstice-donnees`.
 - Avec la brique rgpd, une table nouvelle est déclarée dans
   `src/config/donnees-personnelles.ts` (source de l'export, donnée non exportée ou table
   sans donnée personnelle) : `tests/rgpd-export.test.ts` refuse une table oubliée.
+- Chaque nouvelle étape est un objet écrit dans le tableau, d'un seul tenant (aucune
+  constante ni fonction du dehors), son `nom` une chaîne en clair qu'aucune autre ne porte :
+  la mise à jour depuis le catalogue reconnaît une étape à son nom et la compare par son
+  texte.
 - Un test couvre-t-il la migration (rejouée deux fois sans erreur, colonne présente) ?
   Voir `tests/migrations.test.ts`.
 

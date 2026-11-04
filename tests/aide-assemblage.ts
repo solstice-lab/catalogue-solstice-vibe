@@ -437,31 +437,44 @@ main().catch((erreur) => {
 });
 `;
 
-// Lance un script TypeScript dans une copie de l'appli assemblée, contre une
-// base NEUVE créée sur le serveur local de DATABASE_URL puis supprimée, quoi
-// qu'il arrive.
-async function surBaseNeuve(assemble: string, script: string): Promise<{ code: number; sortie: string }> {
-  const dossier = copieDeTravail(assemble);
+// Lance des scripts TypeScript, chacun dans une copie de son appli assemblée et
+// dans l'ordre, contre une même base NEUVE créée sur le serveur local de
+// DATABASE_URL puis supprimée, quoi qu'il arrive. Le premier qui échoue arrête
+// la suite.
+async function surUneBaseNeuve(
+  passages: { assemble: string; script: string }[]
+): Promise<{ code: number; sortie: string }> {
   const nomBase = `asm_${process.pid}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
   const adresse = new URL(process.env.DATABASE_URL as string);
   adresse.pathname = `/${nomBase}`;
   await query(`CREATE DATABASE ${nomBase}`);
   try {
-    fs.writeFileSync(path.join(dossier, "verifier-sur-base.mts"), script);
-    try {
-      const sortie = execFileSync(
-        process.execPath,
-        [path.join(SOURCE, "node_modules", "tsx", "dist", "cli.mjs"), "verifier-sur-base.mts"],
-        { cwd: dossier, encoding: "utf-8", stdio: "pipe", env: { ...process.env, DATABASE_URL: adresse.toString() } }
-      );
-      return { code: 0, sortie };
-    } catch (erreur) {
-      const e = erreur as { status?: number; stdout?: string; stderr?: string };
-      return { code: e.status ?? 1, sortie: `${e.stdout ?? ""}${e.stderr ?? ""}` };
+    let sortie = "";
+    for (const { assemble, script } of passages) {
+      const dossier = copieDeTravail(assemble);
+      fs.writeFileSync(path.join(dossier, "verifier-sur-base.mts"), script);
+      try {
+        sortie = execFileSync(
+          process.execPath,
+          [path.join(SOURCE, "node_modules", "tsx", "dist", "cli.mjs"), "verifier-sur-base.mts"],
+          { cwd: dossier, encoding: "utf-8", stdio: "pipe", env: { ...process.env, DATABASE_URL: adresse.toString() } }
+        );
+      } catch (erreur) {
+        const e = erreur as { status?: number; stdout?: string; stderr?: string };
+        return { code: e.status ?? 1, sortie: `${e.stdout ?? ""}${e.stderr ?? ""}` };
+      }
     }
+    return { code: 0, sortie };
   } finally {
     await query(`DROP DATABASE IF EXISTS ${nomBase} WITH (FORCE)`);
   }
+}
+
+const surBaseNeuve = (assemble: string, script: string) => surUneBaseNeuve([{ assemble, script }]);
+
+function objetsDeLaBase({ code, sortie }: { code: number; sortie: string }) {
+  const ligne = sortie.split("\n").find((l) => l.startsWith("OBJETS:"));
+  return { code, objets: code === 0 && ligne ? JSON.parse(ligne.slice("OBJETS:".length)) : [], sortie };
 }
 
 // Rejoue schéma et migrations de l'appli assemblée sur une base NEUVE, deux fois,
@@ -469,9 +482,24 @@ async function surBaseNeuve(assemble: string, script: string): Promise<{ code: n
 export async function migrationsSurBaseNeuve(
   assemble: string
 ): Promise<{ code: number; objets: string[]; sortie: string }> {
-  const { code, sortie } = await surBaseNeuve(assemble, SCRIPT_DES_MIGRATIONS);
-  const ligne = sortie.split("\n").find((l) => l.startsWith("OBJETS:"));
-  return { code, objets: code === 0 && ligne ? JSON.parse(ligne.slice("OBJETS:".length)) : [], sortie };
+  return objetsDeLaBase(await surBaseNeuve(assemble, SCRIPT_DES_MIGRATIONS));
+}
+
+// Ce que vit la base de production d'une appli dont on fusionne une PR : schéma
+// et migrations de l'appli d'avant (`avant`, deux démarrages), puis ceux de
+// l'appli d'après (`apres`, deux démarrages), sur la même base NEUVE. Rend ce
+// qu'elle contient à la fin. Un rejeu d'`apres` sur une base vide ne dit pas
+// si ses étapes passent sur une base qui a déjà joué celles d'`avant`.
+export async function migrationsAvantPuisApres(
+  avant: string,
+  apres: string
+): Promise<{ code: number; objets: string[]; sortie: string }> {
+  return objetsDeLaBase(
+    await surUneBaseNeuve([
+      { assemble: avant, script: SCRIPT_DES_MIGRATIONS },
+      { assemble: apres, script: SCRIPT_DES_MIGRATIONS },
+    ])
+  );
 }
 
 const SCRIPT_DE_L_ENTREE = (adresse: string) => `

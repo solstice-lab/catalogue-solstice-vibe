@@ -31,7 +31,10 @@ est citée quand elle existe.
 - `schema.sql` — l'état INITIAL d'une base neuve, rien d'autre. Rejoué à
   chaque démarrage (idempotent).
 - `migrations.ts` — tableau ordonné d'étapes nommées, idempotentes, rejouées
-  à CHAQUE démarrage. Pas de table de suivi : l'idempotence fait foi.
+  à CHAQUE démarrage. Pas de table de suivi : l'idempotence fait foi. Chaque
+  étape est un objet écrit dans le tableau, d'un seul tenant (son SQL en elle),
+  son `nom` une chaîne en clair, à elle seule : la mise à jour depuis le
+  catalogue reconnaît une étape à son nom et la compare par son texte.
 
 ### Faire évoluer le schéma
 

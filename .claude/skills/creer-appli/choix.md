@@ -73,8 +73,8 @@ les appelle pas.
   <appli>`, depuis le catalogue, reporte dans l'appli le catalogue d'un commit plus récent,
   sur une branche, en fusionnant avec ce qu'elle a retouché, et recopie à son rapport les
   entrées des `CHANGELOG.md` depuis le commit noté au manifeste de l'appli
-  (`outils/mise-a-jour.md`). Hors migrations à ce jour : il s'arrête si `migrations.ts`
-  ou `schema.sql` changent. `catalogue.empreintes.json` donne l'empreinte de chaque
+  (`outils/mise-a-jour.md`). Les étapes de migration neuves s'ajoutent en fin de la liste
+  de l'appli, après les siennes. `catalogue.empreintes.json` donne l'empreinte de chaque
   fichier reçu : le rapport de `--a-blanc` liste ce que l'appli a retouché ou supprimé.
   Ajouter ensuite une brique non choisie n'est pas encore outillé : le choix fait ici
   reste celui de l'appli.

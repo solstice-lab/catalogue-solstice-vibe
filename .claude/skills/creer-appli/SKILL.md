@@ -20,7 +20,7 @@ taper (`CLAUDE.md` §3 et §8).
 
 Reporter dans une appli assemblée un catalogue plus récent ne passe pas par cette skill :
 `node outils/mettre-a-jour.mjs <appli>`, depuis le catalogue (note `outils/mise-a-jour.md`),
-hors migrations à ce jour : l'outil s'arrête si `migrations.ts` ou `schema.sql` changent.
+étapes de migration neuves comprises, ajoutées en fin de la liste de l'appli.
 
 **Hors v1** : ajouter une brique à une appli déjà assemblée, déployer,
 faire lire la blueprint par le script (il n'en lit que `appli`, `nom_affiche`, `description`,
