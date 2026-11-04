@@ -181,7 +181,7 @@ Prettier ne remet pas en forme (`.prettierignore`), puis :
   `nom` d'une étape à ajouter existe déjà dans l'appli. Un commentaire seul changé se
   signale, sans rien reporter ;
 - il **s'arrête** si `schema.sql` diffère entre l'origine et la cible : un `CREATE TABLE`
-  fusionné ne se retouche plus ;
+  fusionné ne se retouche plus. Absent de l'origine, il arrive avec la base : ajouté ;
 - le reste du fichier (en-tête, fonction qui rejoue les étapes) passe par la fusion à
   trois.
 
@@ -372,7 +372,8 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    manifeste réécrit, l'en-tête de `blueprint.md`, les dépendances npm, le rapport (entrées
    des `CHANGELOG.md`, ruptures en tête, sujets des commits du socle, variables nouvelles,
    confidentialité, registre, ce que la fusion déclenche). Arrêt net si `migrations.ts` ou
-   `schema.sql` diffèrent entre l'origine et la cible. Les refus que la tranche 1 laisse
+   `schema.sql` diffèrent entre l'origine et la cible (levé par la tranche 3 pour
+   `migrations.ts`). Les refus que la tranche 1 laisse
    (« Ce qui est outillé »). Les textes qui disent la mise à jour « hors v1 »
    (`creer-appli`, `choix.md`, README du catalogue). Fait quand un test couvre chaque ligne de la table, lecture en LF comprise,
    que `npm ci` passe dans l'appli d'essai après l'opération (après `npm install` quand le
@@ -478,26 +479,32 @@ migration, en fin de liste (« Les migrations »).
   exécuter le fichier : une expression régulière se tromperait sur une accolade ou une
   virgule d'un SQL ou d'un commentaire, et importer le module ferait tourner du code de
   l'appli dans l'outil. Une étape est un objet écrit dans la liste, son `nom` une chaîne
-  en clair ; son texte va de la ligne de son premier commentaire à son accolade fermante,
-  et son code est ce texte sans commentaires ni mise en page, qui dit si elle a changé
-  autrement que par un commentaire. Les étapes ajoutées gardent leur texte de la cible.
-  Le reste du fichier passe par la fusion à trois, la liste réduite à une marque dans les
-  trois versions. Absent de l'origine (la base arrive), le fichier passe par la table,
-  ajouté. Le rapport a sa rubrique « Migrations » : les étapes ajoutées, celles dont seul
-  le commentaire a changé, ce que la fusion déclenche (rejeu au démarrage suivant, qu'un
-  *Revert* ne défait pas), `tests/migrations.test.ts` et `relecteur-migrations` dans la
-  suite. Les arrêts, avant toute écriture et tous dits d'un coup, chacun avec son geste :
-  une étape de l'origine dont le code change dans la cible ou qui en disparaît, une
-  étape de l'origine qui manque à l'appli, le nom d'une étape à ajouter qui existe déjà
-  dans l'appli, deux étapes du même nom dans une version, une liste illisible (fichier
-  qui ne se lit pas, pas de `MIGRATIONS` écrit en liste, étape qui n'est pas un objet ou
-  dont le nom n'est pas en clair), `migrations.ts` supprimé par l'appli ou retiré par le
-  catalogue, une fusion du reste du fichier dont les conflits touchent la liste, et
-  `schema.sql` qui change de l'origine à la cible (un `schema.sql` qui arrive avec la
+  en clair, et d'un seul tenant : elle ne lit aucune valeur déclarée ou importée hors de
+  la liste, sans quoi ce qu'elle joue changerait avec cette valeur sans que son texte
+  change. Son texte va de la ligne de son premier commentaire à son accolade fermante, et
+  son code est ce texte sans commentaires ni mise en page, qui dit si elle a changé
+  autrement. Les étapes ajoutées gardent leur texte de la cible. Le reste du fichier passe
+  par la fusion à trois, la liste réduite à une marque dans les trois versions. Absent de
+  l'origine (la base arrive), le fichier passe par la table, ajouté. Le rapport a sa
+  rubrique « Migrations » : les étapes ajoutées, dont celles que la cible place avant une
+  étape que l'appli a déjà (une brique ajoutée d'office), mises en fin et signalées ;
+  celles dont seuls le commentaire ou la mise en page ont changé ; celles que l'appli a
+  changées, laissées telles quelles ; un reste du fichier qui change ; ce que la fusion
+  déclenche (rejeu au démarrage suivant, qu'un *Revert* ne défait pas) ;
+  `tests/migrations.test.ts` et `relecteur-migrations` dans la suite. Les arrêts, avant
+  toute écriture, chacun avec son geste, ceux qui comparent les étapes dits d'un coup :
+  une étape de l'origine dont le code change dans la cible ou qui en disparaît, des
+  étapes de l'origine dans un autre ordre, une étape de l'origine qui manque à l'appli, le
+  nom d'une étape à ajouter qui existe déjà dans l'appli ; et, chacun seul, deux étapes
+  du même nom dans une version, une liste illisible (fichier qui ne se lit pas, pas de
+  `MIGRATIONS` écrit en liste, étape qui n'est pas un objet, dont le nom n'est pas en
+  clair ou qui lit une valeur du dehors), `migrations.ts` supprimé par l'appli ou retiré
+  par le catalogue, une fusion du reste du fichier dont les conflits touchent la liste,
+  et `schema.sql` qui change de l'origine à la cible (un `schema.sql` qui arrive avec la
   base est ajouté). Le verrou du catalogue,
   `tests/mettre-a-jour-migrations.test.ts`, lit `migrations.ts` comme l'outil : il échoue
-  si deux étapes portent le même nom ou s'il n'en lit aucune, et compare les noms lus à
-  ceux du tableau chargé. Ce fichier, sans assemblage ni base, tourne avec `npm test` ;
+  si deux étapes portent le même nom, si une étape ne se lit pas, ou s'il n'en lit
+  aucune, et compare les noms lus à ceux du tableau chargé. Ce fichier, sans assemblage ni base, tourne avec `npm test` ;
   le rejeu des étapes reportées sur Postgres, d'abord celles d'avant la fusion puis celles
   d'après sur la même base, est dans `tests/mettre-a-jour.test.ts`.
 

@@ -828,6 +828,10 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
       expect(apres).toMatch(/\n\/\/ Retouche de l'appli, en fin\.\n$/);
 
       expect(resultat.migrations).toEqual({
+        auMilieu: [],
+        retouchees: [],
+        reste: true,
+        avecLaBase: false,
         ajoutees: [ETAPE_DU_CATALOGUE],
         commentaires: [ETAPE_AU_COMMENTAIRE_REVU],
       });

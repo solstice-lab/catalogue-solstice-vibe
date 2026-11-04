@@ -121,6 +121,17 @@ describe("lireLesEtapes : les étapes de MIGRATIONS par leur nom, sans exécuter
     );
   });
 
+  it("refuse une étape qui lit une valeur déclarée hors de la liste : ce qu'elle joue changerait sans que son texte change", () => {
+    const avecConstante = fichier(etape("a", { sql: "${SQL_INDEX}" })).replace(
+      "type Migration",
+      'const SQL_INDEX = "CREATE INDEX IF NOT EXISTS i ON t (c);";\n\ntype Migration'
+    );
+    expect(refusDe(() => lireLesEtapes(avecConstante, FICHIER))).toMatch(/« a » lit « SQL_INDEX ».*d'un seul tenant/);
+    // Un type importé ne joue rien : il passe.
+    const avecType = fichier(etape("a")).replace("async appliquer(pool)", "async appliquer(pool: Pool)");
+    expect(lireLesEtapes(avecType, FICHIER).map(({ nom }) => nom)).toEqual(["a"]);
+  });
+
   it("refuse un fichier qui ne se lit pas comme du TypeScript", () => {
     expect(
       refusDe(() => lireLesEtapes(fichier(A).replace("async appliquer(pool) {", "async appliquer(pool {"), FICHIER))
@@ -137,7 +148,29 @@ describe("reporterLesMigrations : les étapes neuves de la cible en fin de la li
       "x : étape d'une brique ajoutée, au milieu du catalogue",
       "y : étape ajoutée en fin du catalogue",
     ]);
-    expect(resultat.conflits).toBe(0);
+    // x précède au catalogue une étape que l'appli a déjà : mise en fin, elle se signale.
+    expect(resultat.auMilieu).toEqual(["x : étape d'une brique ajoutée, au milieu du catalogue"]);
+    expect(resultat).toMatchObject({ conflits: 0, reste: false, commentaires: [], retouchees: [] });
+  });
+
+  it("met les étapes ajoutées après un commentaire qui clôt la liste de l'appli", () => {
+    const clos = (texte: string) => texte.replace(/\];\n\nexport/, "  // Fin des étapes de l'appli.\n];\n\nexport");
+    expect(reporter(fichier(A), fichier(A, Y), clos(fichier(A, P))).contenu).toBe(
+      clos(fichier(A, P)).replace("];\n\nexport", `${Y}];\n\nexport`)
+    );
+  });
+
+  it("signale, sans s'arrêter ni la toucher, une étape reçue dont l'appli a changé le code", () => {
+    const appli = fichier(etape("a : première étape du catalogue", { sql: "SELECT 9;" }), B);
+    const resultat = reporter(fichier(A, B), fichier(A, B, Y), appli);
+    expect(resultat.retouchees).toEqual(["a : première étape du catalogue"]);
+    expect(resultat.contenu).toBe(`${appli.replace("];\n\nexport", `${Y}];\n\nexport`)}`);
+  });
+
+  it("s'arrête si les étapes de l'origine changent d'ordre dans la cible", () => {
+    const message = refusDe(() => reporter(fichier(A, B), fichier(B, A, Y), fichier(A, B)));
+    expect(message).toMatch(/changent d'ordre/);
+    expect(message).toMatch(/--vers/);
   });
 
   it("garde l'en-tête et la fonction de l'appli quand le catalogue n'y touche pas", () => {
@@ -242,5 +275,37 @@ describe("reporterLesMigrations : les étapes neuves de la cible en fin de la li
     // La fusion ne voit pas les étapes : chacune garde le même tableau, réduit à une marque.
     for (const version of vus[0]) expect(version).not.toMatch(/nom: "/);
     expect(resultat.contenu).toBe(fichier(A, P, Y).replace("en-tête.", "en-tête, évolué au catalogue."));
+    expect(resultat.reste).toBe(true);
+  });
+
+  // Ce que rend git merge-file quand l'appli et le catalogue réécrivent la même ligne de l'en-tête.
+  const enConflit = (squelette: string) =>
+    squelette.replace(
+      "/* Migrations de schéma : en-tête. */",
+      "<<<<<<< appli\n/* En-tête de l'appli. */\n||||||| origine\n/* Migrations de schéma : en-tête. */\n=======\n/* En-tête du catalogue. */\n>>>>>>> cible"
+    );
+
+  it("écrit un reste du fichier en conflit avec ses marqueurs, les étapes ajoutées en fin quand même", () => {
+    const resultat = reporterLesMigrations({
+      origine: fichier(A),
+      cible: fichier(A, Y).replace("en-tête.", "en-tête du catalogue."),
+      appli: fichier(A, P),
+      fusionner: ({ appli }: { appli: string }) => ({ contenu: enConflit(appli), conflits: 1 }),
+    });
+    expect(resultat.conflits).toBe(1);
+    expect(resultat.contenu).toBe(enConflit(fichier(A, P, Y)));
+  });
+
+  it("s'arrête si la fusion du reste du fichier a mêlé ses conflits à la liste des étapes", () => {
+    const message = refusDe(() =>
+      reporterLesMigrations({
+        origine: fichier(A),
+        cible: fichier(A, Y).replace("en-tête.", "en-tête du catalogue."),
+        appli: fichier(A, P),
+        // La marque de la liste prise dans un conflit : deux fois, d'un côté et de l'autre.
+        fusionner: ({ appli }: { appli: string }) => ({ contenu: `${appli}${appli}`, conflits: 1 }),
+      })
+    );
+    expect(message).toMatch(/a mêlé ses conflits à la liste MIGRATIONS.*à la main/);
   });
 });

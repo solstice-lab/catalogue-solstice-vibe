@@ -726,11 +726,11 @@ function fusionnerATrois(dossier, chemin, { origine, cible, appli }, { commitOri
  * de l'appli dans l'outil. Chargé à la première lecture : l'examen seul (la
  * première tranche) n'en a pas besoin.
  */
-const exiger = createRequire(import.meta.url);
+const requerir = createRequire(import.meta.url);
 let typescript;
 function leTypeScript() {
   try {
-    typescript ??= exiger("typescript");
+    typescript ??= requerir("typescript");
   } catch {
     throw new ErreurMiseAJour(
       `Le catalogue n'a pas TypeScript, qui lit les étapes de ${FICHIER_MIGRATIONS} : npm ci dans le catalogue, puis relancer.`
@@ -753,7 +753,15 @@ function lireLaListe(texte, quoi) {
   const ts = leTypeScript();
   const source = ts.createSourceFile("migrations.ts", texte, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const ligneDe = (position) => source.getLineAndCharacterOfPosition(position).line + 1;
-  const [erreur] = source.parseDiagnostics ?? [];
+  // Les erreurs de lecture, que createSourceFile garde sans les lever. Une version
+  // de TypeScript qui ne les donnerait plus là laisserait passer un fichier
+  // illisible : elle se refuse.
+  if (!Array.isArray(source.parseDiagnostics)) {
+    throw new ErreurMiseAJour(
+      `TypeScript ${ts.version} ne donne plus les erreurs de lecture où l'outil les lit (parseDiagnostics) : la lecture de ${FICHIER_MIGRATIONS} est à reprendre.`
+    );
+  }
+  const [erreur] = source.parseDiagnostics;
   if (erreur !== undefined) {
     throw new ErreurMiseAJour(
       `${quoi} ne se lit pas comme du TypeScript (ligne ${ligneDe(erreur.start)} : ` +
@@ -779,6 +787,25 @@ function lireLaListe(texte, quoi) {
   const imprimeur = ts.createPrinter({ removeComments: true });
   const nomDe = (propriete) =>
     ts.isIdentifier(propriete) || ts.isStringLiteral(propriete) ? propriete.text : undefined;
+  const declares = valeursDuPremierNiveau(ts, source);
+  // Un nom de propriété ou de type n'est pas la lecture d'une valeur.
+  const litUneValeur = (noeud) => {
+    const parent = noeud.parent;
+    return !(
+      (ts.isPropertyAccessExpression(parent) && parent.name === noeud) ||
+      ((ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent)) && parent.name === noeud) ||
+      (ts.isTypeReferenceNode(parent) && parent.typeName === noeud)
+    );
+  };
+  const valeursLues = (element) => {
+    const lues = new Set();
+    const parcourir = (noeud) => {
+      if (ts.isIdentifier(noeud) && declares.has(noeud.text) && litUneValeur(noeud)) lues.add(noeud.text);
+      ts.forEachChild(noeud, parcourir);
+    };
+    parcourir(element);
+    return [...lues];
+  };
   const etapes = tableau.elements.map((element, rang) => {
     const ou = `${quoi}, ligne ${ligneDe(element.getStart(source))}`;
     if (!ts.isObjectLiteralExpression(element)) {
@@ -792,6 +819,16 @@ function lireLaListe(texte, quoi) {
     if (valeur === undefined || !(ts.isStringLiteral(valeur) || ts.isNoSubstitutionTemplateLiteral(valeur))) {
       throw new ErreurMiseAJour(
         `${ou} : le nom de l'étape ${rang + 1} n'est pas une chaîne écrite en clair (nom: "…") : l'outil reconnaît une étape à son nom.`
+      );
+    }
+    // Une étape se compare par son seul texte : si elle lisait une constante ou une
+    // fonction déclarée hors de la liste, ce qu'elle joue changerait avec elle sans
+    // que l'outil le voie, et une étape déjà jouée en production changerait en silence.
+    const [dehors] = valeursLues(element);
+    if (dehors !== undefined) {
+      throw new ErreurMiseAJour(
+        `${ou} : l'étape « ${valeur.text} » lit « ${dehors} », déclaré hors de la liste : ce qu'elle joue changerait avec lui sans que l'outil le voie. ` +
+          "L'écrire d'un seul tenant, son SQL dans l'étape."
       );
     }
     // Les commentaires d'avant l'accolade sont à l'étape, sauf celui qui suit la
@@ -829,10 +866,42 @@ function lireLaListe(texte, quoi) {
   };
 }
 
+// Les valeurs que le fichier déclare ou importe au premier niveau, hors MIGRATIONS
+// (les types n'y sont pas : ils ne jouent rien).
+function valeursDuPremierNiveau(ts, source) {
+  const noms = new Set();
+  for (const instruction of source.statements) {
+    if (ts.isVariableStatement(instruction)) {
+      for (const { name } of instruction.declarationList.declarations) if (ts.isIdentifier(name)) noms.add(name.text);
+    } else if (
+      (ts.isFunctionDeclaration(instruction) ||
+        ts.isClassDeclaration(instruction) ||
+        ts.isEnumDeclaration(instruction)) &&
+      instruction.name
+    ) {
+      noms.add(instruction.name.text);
+    } else if (
+      ts.isImportDeclaration(instruction) &&
+      instruction.importClause &&
+      !instruction.importClause.isTypeOnly
+    ) {
+      const { name, namedBindings } = instruction.importClause;
+      if (name) noms.add(name.text);
+      if (namedBindings && ts.isNamespaceImport(namedBindings)) noms.add(namedBindings.name.text);
+      if (namedBindings && ts.isNamedImports(namedBindings)) {
+        for (const lien of namedBindings.elements) if (!lien.isTypeOnly) noms.add(lien.name.text);
+      }
+    }
+  }
+  noms.delete("MIGRATIONS");
+  return noms;
+}
+
 /**
  * Les étapes de MIGRATIONS d'un texte de migrations.ts, dans leur ordre :
  * `{ nom, texte, code }`. Refuse (ErreurMiseAJour) un fichier illisible, une
- * étape sans nom écrit en clair, deux étapes du même nom.
+ * étape sans nom écrit en clair, deux étapes du même nom, une étape qui lit une
+ * valeur déclarée hors de la liste.
  * @param {string} texte
  * @param {string} quoi le fichier, nommé dans les refus
  * @returns {{ nom: string, texte: string, code: string }[]}
@@ -908,6 +977,14 @@ export function reporterLesMigrations({ origine, cible, appli, fusionner }) {
   const nomsDeLOrigine = new Set(deLOrigine.etapes.map(({ nom }) => nom));
   const arrets = [];
   const commentaires = [];
+  const retouchees = [];
+  const ordreDeLaCible = deLaCible.etapes.filter(({ nom }) => nomsDeLOrigine.has(nom)).map(({ nom }) => nom);
+  const ordreDeLOrigine = deLOrigine.etapes.filter(({ nom }) => dansLaCible.has(nom)).map(({ nom }) => nom);
+  if (ordreDeLaCible.join("\n") !== ordreDeLOrigine.join("\n")) {
+    arrets.push(
+      `les étapes de l'origine changent d'ordre dans la cible, alors qu'une base déployée les a jouées dans le leur ; ${GESTE_DU_CATALOGUE}`
+    );
+  }
   for (const etape of deLOrigine.etapes) {
     const deLaCibleAussi = dansLaCible.get(etape.nom);
     if (deLaCibleAussi === undefined) {
@@ -921,7 +998,10 @@ export function reporterLesMigrations({ origine, cible, appli, fusionner }) {
     } else if (deLaCibleAussi.texte !== etape.texte) {
       commentaires.push(etape.nom);
     }
-    if (!dansLAppli.has(etape.nom)) {
+    if (dansLAppli.has(etape.nom) && dansLAppli.get(etape.nom).code !== etape.code) {
+      // L'appli a enfreint la règle, mais sa base de production a joué sa version : l'outil n'y touche pas.
+      retouchees.push(etape.nom);
+    } else if (!dansLAppli.has(etape.nom)) {
       arrets.push(
         `« ${etape.nom} » : étape reçue du catalogue qui manque à l'appli (supprimée ou renommée), et dont une étape à ajouter peut dépendre ` +
           "(celle de journal vise la table utilisateurs de comptes). Remettre l'étape dans l'appli, son nom et son code d'origine, " +
@@ -930,6 +1010,14 @@ export function reporterLesMigrations({ origine, cible, appli, fusionner }) {
     }
   }
   const ajouts = deLaCible.etapes.filter(({ nom }) => !nomsDeLOrigine.has(nom));
+  // Une étape neuve que la cible place avant une étape de l'origine : celle d'une
+  // brique ajoutée d'office par l'assembleur de la cible, ou une étape insérée au
+  // milieu par le catalogue. Mise en fin chez l'appli comme les autres, elle se signale :
+  // sur une base neuve, elle tourne après des étapes qu'elle précède au catalogue.
+  const derniereDeLOrigine = deLaCible.etapes.findLastIndex(({ nom }) => nomsDeLOrigine.has(nom));
+  const auMilieu = deLaCible.etapes
+    .filter(({ nom }, rang) => !nomsDeLOrigine.has(nom) && rang < derniereDeLOrigine)
+    .map(({ nom }) => nom);
   for (const { nom } of ajouts) {
     if (dansLAppli.has(nom)) {
       arrets.push(
@@ -971,7 +1059,10 @@ export function reporterLesMigrations({ origine, cible, appli, fusionner }) {
   return {
     contenu: contenu === appli ? undefined : contenu,
     ajoutees: ajouts.map(({ nom }) => nom),
+    auMilieu,
     commentaires,
+    retouchees,
+    reste: deOrigine !== deCible,
     conflits: fusion.conflits,
   };
 }
@@ -984,23 +1075,32 @@ export function reporterLesMigrations({ origine, cible, appli, fusionner }) {
  */
 function reporterLesMigrationsDeLAppli({ origine, cible, appli, fusionner }) {
   const [o, c, p] = [origine, cible, appli].map((contenus) => contenus.get(FICHIER_MIGRATIONS));
-  if (egaux(o, c)) return { ajoutees: [], commentaires: [] };
+  const rien = { ajoutees: [], auMilieu: [], commentaires: [], retouchees: [], reste: false, avecLaBase: false };
+  if (egaux(o, c)) return rien;
   if (o === undefined) {
-    return {
-      ajoutees: lireLesEtapes(texteDe(c), `${FICHIER_MIGRATIONS} de la cible`).map(({ nom }) => nom),
-      commentaires: [],
-    };
+    let etapes;
+    try {
+      etapes = lireLesEtapes(texteDe(c), `${FICHIER_MIGRATIONS} de la cible`);
+    } catch (erreur) {
+      if (erreur instanceof ErreurMiseAJour) {
+        throw new ErreurMiseAJour(
+          `${erreur.message} Viser par --vers un autre commit du catalogue, et le signaler au catalogue.`
+        );
+      }
+      throw erreur;
+    }
+    return { ...rien, ajoutees: etapes.map(({ nom }) => nom), avecLaBase: true };
   }
-  const { contenu, ajoutees, commentaires, conflits } = reporterLesMigrations({
+  const { contenu, conflits, ...report } = reporterLesMigrations({
     origine: texteDe(o),
     cible: c && texteDe(c),
     appli: p && texteDe(p),
     fusionner,
   });
-  const liste = conflits > 0 ? "enConflit" : ajoutees.length > 0 ? "migrations" : "fusionnes";
+  const liste = conflits > 0 ? "enConflit" : report.ajoutees.length > 0 ? "migrations" : "fusionnes";
   return {
-    ajoutees,
-    commentaires,
+    ...report,
+    avecLaBase: false,
     ecriture: contenu === undefined ? undefined : { contenu: Buffer.from(contenu, "utf-8"), liste },
   };
 }
@@ -1310,9 +1410,9 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
     // Un schema.sql qui arrive avec la base (absent de l'origine) passe par la table : ajouté.
     if (origine.has(SCHEMA) && !egaux(origine.get(SCHEMA), cible.get(SCHEMA))) {
       throw new ErreurMiseAJour(
-        `Du commit ${commitOrigine} au commit ${commitCible}, ${SCHEMA} change : un CREATE TABLE fusionné ne se retouche plus ` +
-          `(une base déployée a déjà sa table, et CREATE TABLE IF NOT EXISTS ne la corrigera pas), toute évolution passe par une étape en fin de ${FICHIER_MIGRATIONS}. ` +
-          "Le catalogue a enfreint sa règle : viser par --vers un commit d'avant ce changement, et le signaler au catalogue."
+        `Du commit ${commitOrigine} au commit ${commitCible}, ${SCHEMA} change, ce que l'outil ne reporte pas : un CREATE TABLE fusionné ne se retouche plus ` +
+          `(une base déployée a déjà sa table, et CREATE TABLE IF NOT EXISTS ne la corrigera pas), et une table neuve naît d'ordinaire dans une étape de ${FICHIER_MIGRATIONS}. ` +
+          "Viser par --vers un commit d'avant ce changement, et le signaler au catalogue, qui le portera par une étape en fin de liste."
       );
     }
     const migrations = reporterLesMigrationsDeLAppli({
@@ -1411,7 +1511,14 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
       notifications: briques.includes("notifications"),
       deploiement: briques.includes("deploiement"),
       base: cible.has(FICHIER_MIGRATIONS),
-      migrations: { ajoutees: migrations.ajoutees, commentaires: migrations.commentaires },
+      migrations: {
+        ajoutees: migrations.ajoutees,
+        auMilieu: migrations.auMilieu,
+        commentaires: migrations.commentaires,
+        retouchees: migrations.retouchees,
+        reste: migrations.reste,
+        avecLaBase: migrations.avecLaBase,
+      },
       patronDossiers: !egaux(origine.get(PATRON_DOSSIERS), cible.get(PATRON_DOSSIERS)),
       tokens: !egaux(origine.get("src/ui/theme/tokens.css"), cible.get("src/ui/theme/tokens.css")),
       blueprint: blueprint === undefined ? "non réécrite" : "réécrite",
@@ -1594,15 +1701,25 @@ function rubriqueDuRegistre(resultat) {
 
 function rubriqueDesMigrations(resultat) {
   if (!resultat.base) return [];
-  const { ajoutees, commentaires } = resultat.migrations;
+  const { ajoutees, auMilieu, commentaires, retouchees, reste, avecLaBase } = resultat.migrations;
   const lignes = ["## Migrations", ""];
+  const liste = (noms) => noms.map((nom) => `- « ${nom} »`);
   if (ajoutees.length === 0) {
     lignes.push(`Aucune étape neuve dans ${code(FICHIER_MIGRATIONS)}.`, "");
   } else {
     lignes.push(
-      `Étapes ajoutées en fin de ${code("MIGRATIONS")} (${code(FICHIER_MIGRATIONS)}), après celles de l'appli, dans l'ordre du catalogue, au texte inchangé (${ajoutees.length}) :`,
-      ...ajoutees.map((nom) => `- « ${nom} »`),
+      avecLaBase
+        ? `${code(FICHIER_MIGRATIONS)} arrive avec la base, ses étapes dans l'ordre du catalogue (${ajoutees.length}) :`
+        : `Étapes ajoutées en fin de ${code("MIGRATIONS")} (${code(FICHIER_MIGRATIONS)}), après celles de l'appli, dans l'ordre du catalogue, au texte inchangé (${ajoutees.length}) :`,
+      ...liste(ajoutees),
       "",
+      ...(auMilieu.length > 0
+        ? [
+            `Dont, placées au catalogue avant des étapes que l'appli a déjà (une brique ajoutée d'office ?), mises ici en fin : sur une base neuve, elles tournent après ces étapes. À relire (${auMilieu.length}) :`,
+            ...liste(auMilieu),
+            "",
+          ]
+        : []),
       "La fusion les rejoue en production au démarrage suivant, après les étapes de l'appli, puis à chaque démarrage. " +
         `Avant la PR, ${code("tests/migrations.test.ts")} de l'appli rejoue le schéma et toutes les étapes sur sa base de test, ` +
         `et l'agent ${code("relecteur-migrations")} relit l'ajout. Une étape qui vise une table que l'appli a retirée ` +
@@ -1612,8 +1729,21 @@ function rubriqueDesMigrations(resultat) {
   }
   if (commentaires.length > 0) {
     lignes.push(
-      `Étapes dont seul le commentaire a changé au catalogue, le code restant le même : non reportées, l'appli garde son texte (${commentaires.length}) :`,
-      ...commentaires.map((nom) => `- « ${nom} »`),
+      `Étapes dont seuls le commentaire ou la mise en page ont changé au catalogue, le code restant le même : non reportées, l'appli garde son texte (${commentaires.length}) :`,
+      ...liste(commentaires),
+      ""
+    );
+  }
+  if (retouchees.length > 0) {
+    lignes.push(
+      `Étapes reçues du catalogue dont l'appli a changé le code : laissées telles quelles (sa base de production a joué sa version), à relire (${retouchees.length}) :`,
+      ...liste(retouchees),
+      ""
+    );
+  }
+  if (reste) {
+    lignes.push(
+      `Le reste du fichier (en-tête, ${code("appliquerMigrations")}) change au catalogue et passe par la fusion à trois : il peut changer ce qui tourne au démarrage, à relire.`,
       ""
     );
   }
@@ -1631,8 +1761,10 @@ function rubriqueDeLaFusion(resultat) {
     !resultat.base
       ? "- Migrations : aucune, l'appli n'a pas de base."
       : etapes > 0
-        ? `- Migrations : ${etapes === 1 ? "une étape ajoutée, rejouée" : `${etapes} étapes ajoutées, rejouées`} en production au démarrage qui suit la fusion (rubrique Migrations). Un *Revert* de la PR ne les défait pas.`
-        : `- Migrations : aucune étape neuve ne part avec ce report, et ${code(SCHEMA)} ne change pas.`,
+        ? `- Migrations : ${etapes === 1 ? "une étape ajoutée, rejouée" : `${etapes} étapes ajoutées, rejouées`} en production au démarrage qui suit la fusion (rubrique Migrations). Un *Revert* de la PR ne ${etapes === 1 ? "la" : "les"} défait pas.`
+        : resultat.migrations.reste
+          ? `- Migrations : aucune étape neuve, mais le reste de ${code(FICHIER_MIGRATIONS)}, qui les rejoue au démarrage, change (rubrique Migrations).`
+          : `- Migrations : aucune étape neuve ne part avec ce report, et ${code(SCHEMA)} ne change pas.`,
     ...(resultat.patronDossiers
       ? [
           `- Le patron des modules métier change (${code(PATRON_DOSSIERS)}) : les modules que l'appli en a copiés ne reçoivent pas la correction, la leur reporter est un ticket de l'appli.`,

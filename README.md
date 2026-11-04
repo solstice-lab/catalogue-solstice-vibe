@@ -353,8 +353,10 @@ catalogue qui a des modifications non commitées, sauf avec
   reste celui qu'écrirait npm, et `npm ci` l'accepte.
 - `tests/assembleur.test.ts` se lance par `npm run test:assembleur`, pas par
   `npm test`, qui l'écarte : il dure plus de 10 minutes. `tests/mettre-a-jour.test.ts`,
-  celui de l'outil de mise à jour, l'accompagne : il rejoue des assemblages et lance un
-  vrai `npm ci`. Le job `assembleur` de
+  celui de l'outil de mise à jour, l'accompagne : il rejoue des assemblages, lance un
+  vrai `npm ci` et rejoue sur Postgres les étapes de migration qu'il reporte ; ses cas
+  sans base ni assemblage (`tests/mettre-a-jour-migrations.test.ts`) tournent avec
+  `npm test`. Le job `assembleur` de
   `.github/workflows/assemblage.yml` lance le test de l'assembleur sur chaque pull request prête à
   relire, réduit à un échantillon de combinaisons (`ECHANTILLON`), et en entier
   chaque nuit si main a changé, ou à la main ; celui de l'outil de mise à jour y passe en
