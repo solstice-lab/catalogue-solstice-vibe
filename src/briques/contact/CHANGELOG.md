@@ -30,7 +30,7 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : le RGPD (art. 13) demande d'informer qui écrit par le
   formulaire.
 
-## 2026-11-04 · Squelette de `/contact` · Changement de comportement
+## 2026-11-04 · Squelette de `/contact` · Comportement
 
 - **Ce qui change** : la page `/contact` prend `PageVitrine` quand l'appli n'a
   pas la brique comptes (un site public), et reste sous `AppLayout` avec elle.
