@@ -865,8 +865,8 @@ function entreesDesJournaux(origine, cible) {
   return [...entrees.filter(({ rupture }) => rupture), ...entrees.filter(({ rupture }) => !rupture)];
 }
 
-// Le sujet des commits de A à A' qui touchent un fichier du socle reçu par
-// l'appli : le socle n'a pas de CHANGELOG.md (décision 6 de la note).
+// Le sujet des commits de A à A' qui touchent un fichier du socle que le report
+// change : le socle n'a pas de CHANGELOG.md (décision 6 de la note).
 function commitsDuSocle(catalogue, de, a, chemins) {
   const sortie = git(catalogue, "log", "--no-merges", "--reverse", "--format=%x00%h %s", "--name-only", `${de}..${a}`);
   return sortie
@@ -1060,12 +1060,17 @@ export function mettreAJour({ catalogue, appli, vers, branche, aBlanc = false })
       avertissements.push("L'appli n'a pas de blueprint.md : commit_reference n'est noté que dans le manifeste.");
     }
 
+    // Les fichiers du socle que le report change : un commit qui ne touche au socle
+    // que par ce que l'assembleur retire (le script de test de package.json, sur
+    // tours-de-coloc) ne change rien pour l'appli.
     const socle = new Set(
-      [manifeste.fichiers, manifesteCible.fichiers].flatMap((liste) =>
-        Object.entries(liste)
-          .filter(([, { unite }]) => unite === "socle")
-          .map(([chemin]) => chemin)
-      )
+      [manifeste.fichiers, manifesteCible.fichiers]
+        .flatMap((liste) =>
+          Object.entries(liste)
+            .filter(([, { unite }]) => unite === "socle")
+            .map(([chemin]) => chemin)
+        )
+        .filter((chemin) => !egaux(origine.get(chemin), cible.get(chemin)))
     );
     const resultat = {
       appli: dossierAppli,
@@ -1211,7 +1216,7 @@ function rubriqueDuSocle(resultat) {
   const lignes = [
     "## Socle",
     "",
-    "Le socle n'a pas de journal : les sujets des commits du catalogue qui touchent un de ses fichiers reçus par l'appli.",
+    "Le socle n'a pas de journal : les sujets des commits du catalogue qui touchent un de ses fichiers que ce report change.",
     "",
   ];
   if (resultat.commitsDuSocle.length === 0) return [...lignes, "Aucun.", ""];

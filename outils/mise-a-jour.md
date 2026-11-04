@@ -453,8 +453,9 @@ depuis le catalogue (« Le circuit »).
   le catalogue ne change pas, les dépendances npm, les entrées neuves des `CHANGELOG.md`
   des briques reçues (les sections « ## » de la cible absentes de l'origine, ruptures en
   tête : un titre dont le dernier segment commence par « Rupture »), les sujets des
-  commits de A à A' qui touchent un fichier du socle reçu, les variables nouvelles de
-  `.env.example` et `render.yaml`, les traitements ajoutés (une clé `cle` neuve dans un
+  commits de A à A' qui touchent un fichier du socle que le report change (un fichier que
+  l'assembleur rend identique, comme le script de test de `package.json`, n'en fait pas
+  venir), les variables nouvelles de `.env.example` et `render.yaml`, les traitements ajoutés (une clé `cle` neuve dans un
   `confidentialite.ts` de brique) ou changés, le registre RGPD, ce que la fusion
   déclenche, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans
   aucun fichier à reporter : il dit ce qu'elle a retouché, l'usage seul de la tranche 1.
