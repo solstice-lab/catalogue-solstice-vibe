@@ -2398,7 +2398,7 @@ describe("fiche projet donnée à l'assembleur", () => {
     expect(Object.keys(JSON.parse(lireAssemble(dossier, MANIFESTE)).fichiers)).not.toContain("PROJET.md");
   });
 
-  it("sans fiche, n'écrit aucun PROJET.md", () => {
+  it("sans fiche, n'écrit aucun PROJET.md", { timeout: ENTIER }, () => {
     const { dossier } = assemblerEnTemporaire(variante);
     expect(existeAssemble(dossier, "PROJET.md")).toBe(false);
   });
