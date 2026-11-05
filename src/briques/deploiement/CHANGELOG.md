@@ -92,3 +92,18 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   lui-même un `CF-Connecting-IP` envoyé à la main. Cloudflare reçoit donc
   l'adresse IP de chaque visiteur, et le RGPD (art. 13) demande de nommer
   qui reçoit les données.
+
+## 2026-11-05 · Déclencheur refusé · Changement
+
+- **Ce qui change** : l'étape « Déclencher (adaptateur Render) » du job
+  `deployer` lit le code HTTP au lieu de `curl -f`. Un refus de l'hébergeur,
+  une adresse invalide ou sans réponse donnent un `::error::` qui nomme
+  `DEPLOIEMENT_DECLENCHEUR`, le code reçu et le geste à faire. L'appel
+  s'arrête au bout de 30 secondes.
+- **Appelant** : rien à faire avec l'adaptateur Render. Un adaptateur
+  remplacé (README, « Déployer ailleurs ») doit nommer le secret dans chacune
+  de ses erreurs et lire le code HTTP s'il appelle `curl`, sans `-f` : sinon
+  `tests/deploiement.test.ts` échoue.
+- **Pourquoi** : à l'essai réel sur Render, le 2026-11-05, un deploy hook
+  faux n'a laissé dans le journal que « curl: (22) The requested URL returned
+  error: 404 », sans rien qui désigne le secret.
