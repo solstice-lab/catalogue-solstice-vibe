@@ -88,8 +88,10 @@ les appelle pas.
   (`outils/mise-a-jour.md`). Les étapes de migration neuves s'ajoutent en fin de la liste
   de l'appli, après les siennes. `catalogue.empreintes.json` donne l'empreinte de chaque
   fichier reçu : le rapport de `--a-blanc` liste ce que l'appli a retouché ou supprimé.
-  Ajouter ensuite une brique non choisie n'est pas encore outillé : le choix fait ici
-  reste celui de l'appli.
+  Une brique non choisie s'ajoute ensuite de même, au commit de l'appli (`--ajouter
+  <briques>`), et une brique à brancher arrive au rapport avec la section de son README à
+  suivre. La base dans une appli qui n'en a pas, et `comptes`, s'ajoutent aussi, mais
+  comme ajouts lourds (étape 2 de `SKILL.md`) : les décider ici.
 
 ## Ce qui ne dépend pas du choix
 

@@ -2,7 +2,8 @@
 
 Chargé par `SKILL.md` à l'étape 3. Le format est décrit ici en entier : un en-tête YAML
 court, entre deux lignes `---` en tête de fichier, lu par l'assembleur pour `appli`, `commit_reference`,
-`profil`, `nom_affiche`, `description`, `site`, `entree`, `role_par_defaut` et `methodes`, puis un corps Markdown : un
+`profil`, `nom_affiche`, `description`, `site`, `entree`, `role_par_defaut` et `methodes`, et dont l'outil de mise
+à jour réécrit `commit_reference` et `briques_assemblees`, puis un corps Markdown : un
 titre, un paragraphe, et neuf sections numérotées dans l'ordre donné plus bas. Le ton :
 des phrases courtes, au présent, qui décrivent sans recopier ; la précision attendue :
 chaque règle a une valeur (un délai en jours, un volume, une clé), et chaque section
@@ -26,7 +27,8 @@ dans une autre section.
 ---
 # Blueprint de l'appli <nom>. L'en-tête ne porte que l'essentiel, en clair :
 # l'assembleur en lit appli, profil, nom_affiche, description, site, entree,
-# role_par_defaut, methodes et commit_reference ; tout le reste est dans le corps. Il ne recopie pas le branchement : il reste
+# role_par_defaut, methodes et commit_reference ; l'outil de mise à jour y réécrit
+# commit_reference et briques_assemblees ; tout le reste est dans le corps. Il ne recopie pas le branchement : il reste
 # dans son fichier.
 format: 1
 appli: <nom>
@@ -56,7 +58,10 @@ briques:
   moment de la commande (ou l'ajoute si elle manque). Sans en-tête entre deux lignes
   `---` en tête de fichier, il refuse la blueprint. L'outil de mise à jour
   (`outils/mettre-a-jour.mjs`) remplace aussi cette ligne à chaque report, et ajoute à
-  `briques_assemblees` les briques arrivées ; le reste de la blueprint ne change pas.
+  `briques_assemblees` les briques arrivées, par un report ou par `--ajouter` ; le reste de
+  la blueprint ne change pas. Chaque brique arrivée se note ensuite à la main : sa ligne
+  dans `briques` (ci-dessous : `branchement: à brancher`, ou le fichier qui la branche) et
+  sa ligne en section 3 ; une brique à brancher a en plus son ticket, repris en section 9.
 - `appli` : l'assembleur en tire le nom du paquet de l'appli (`package.json`, d'où ses bases
   locales), en minuscules sans accent, en tirets. Il refuse un nom qui ne commence pas par
   une lettre, trop long (plus de 58 caractères une fois ramené) ou qui est celui du
@@ -111,7 +116,8 @@ briques:
   c'est ce qui dit, sans lire le code, ce qui a été installé. **Elle doit redire exactement
   les briques du profil, puis celles de `--briques`, plus les briques ajoutées d'office
   (`rgpd` avec `comptes`)** : le script ne le vérifie pas. Pour `portail` avec
-  `--briques espaces` : `[comptes, mails, gestion-comptes, espaces, rgpd]`.
+  `--briques espaces` : `[comptes, mails, gestion-comptes, espaces, rgpd]`. Les briques
+  ajoutées ensuite (`outils/mettre-a-jour.mjs --ajouter`) s'y ajoutent, écrites par l'outil.
 - `entites` : les entités que **l'appli écrira**, aucune ne vient de l'assemblage. `module`
   est le dossier sous `src/app/` que l'appli créera en copiant le patron `dossiers`
   (`CLAUDE.md` §3), avec sa couche données dans `src/lib/db/`. Chaque entité a son ticket
