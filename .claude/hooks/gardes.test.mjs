@@ -3,8 +3,16 @@
 // vérifiable sur n'importe quel poste qui a Node.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { verifierCommande as cmd, verifierEcriture as ecr } from "./gardes.mjs";
+import {
+  entreesDesAdaptations,
+  rappelDAdaptation as rap,
+  verifierCommande as cmd,
+  verifierEcriture as ecr,
+} from "./gardes.mjs";
 
 const refuse = (v) => assert.equal(v?.[0], "deny", JSON.stringify(v));
 const passe = (v) => assert.equal(v, null, JSON.stringify(v));
@@ -112,10 +120,115 @@ refuse(ecr("/repo/scripts/import.ts", `const url = "${distante}";`));
 passe(ecr("/repo/docs/local.md", "postgresql://postgres:postgres@localhost:5434/app_dev"));
 passe(ecr("/repo/src/db.ts", "const url = process.env.DATABASE_URL;"));
 
+// --- Adaptations d'une appli assemblée : un rappel, jamais un refus ---
+// Le 2026-11-05, sur l'appli d'essai tours-de-coloc, trois retouches de fichiers
+// du catalogue n'ont été remontées qu'une fois vues à l'écran.
+
+const appli = fs.mkdtempSync(path.join(os.tmpdir(), "gardes-appli-"));
+fs.mkdirSync(path.join(appli, "src", "app", "kit"), { recursive: true });
+const sha = "0".repeat(64);
+fs.writeFileSync(
+  path.join(appli, "catalogue.empreintes.json"),
+  JSON.stringify({
+    format: 2,
+    fichiers: {
+      "src/app/page.tsx": { unite: "socle", sha256: sha },
+      "src/app/kit/page.tsx": { unite: "socle", sha256: sha },
+      "src/lib/navigation.ts": { unite: "socle", sha256: sha },
+    },
+  })
+);
+const dans = (...parties) => path.join(appli, ...parties);
+const rappel = (v) => {
+  assert.equal(v?.[0], "rappel", JSON.stringify(v));
+  assert.match(v[1], /ADAPTATIONS\.md/);
+};
+
+// Écrire un fichier du manifeste : rappel, avec le chemin relatif à l'appli.
+rappel(rap(dans("src", "app", "page.tsx"), appli));
+assert.match(rap(dans("src", "app", "page.tsx"), appli)[1], /src\/app\/page\.tsx/);
+// Un fichier de l'appli hors manifeste, ou hors de l'appli : rien.
+passe(rap(dans("src", "app", "coloc", "page.tsx"), appli));
+passe(rap(dans("ADAPTATIONS.md"), appli));
+passe(rap(path.join(os.tmpdir(), "ailleurs.ts"), appli));
+// Le catalogue n'a pas de manifeste : la garde n'y rappelle jamais rien.
+passe(
+  rap(
+    fileURLToPath(new URL("../../src/app/page.tsx", import.meta.url)),
+    fileURLToPath(new URL("../..", import.meta.url))
+  )
+);
+// Un manifeste illisible ne bloque rien.
+const illisibleAppli = fs.mkdtempSync(path.join(os.tmpdir(), "gardes-appli-"));
+fs.writeFileSync(path.join(illisibleAppli, "catalogue.empreintes.json"), "{ pas du json");
+passe(rap(path.join(illisibleAppli, "src", "app", "page.tsx"), illisibleAppli));
+
+// Déjà noté dans ADAPTATIONS.md, par son chemin ou par un dossier qui le contient : rien.
+fs.writeFileSync(
+  dans("ADAPTATIONS.md"),
+  [
+    "# Adaptations de l'appli",
+    "",
+    "```",
+    "## AAAA-MM-JJ",
+    "- Fichiers : `src/lib/navigation.ts`",
+    "```",
+    "",
+    "## 2026-11-05",
+    "- Fichiers : `src/app/page.tsx`, `src/app/kit/`",
+    "- Ce qui change : l'accueil livré vide devient le tableau des tours ; /kit est retiré.",
+    "- Pourquoi : l'accueil disait « Page d'accueil à écrire ».",
+    "- Nature : défaut du catalogue",
+    "",
+  ].join("\r\n")
+);
+passe(rap(dans("src", "app", "page.tsx"), appli));
+passe(rap(dans("src", "app", "kit", "page.tsx"), appli));
+// L'exemple de l'en-tête, dans un bloc de code, n'est pas une entrée.
+rappel(rap(dans("src", "lib", "navigation.ts"), appli));
+
+assert.deepEqual(
+  entreesDesAdaptations(fs.readFileSync(dans("ADAPTATIONS.md"), "utf8")).map(({ titre, chemins, nature }) => ({
+    titre,
+    chemins,
+    nature,
+  })),
+  [{ titre: "2026-11-05", chemins: ["src/app/page.tsx", "src/app/kit/"], nature: "défaut du catalogue" }]
+);
+
 // --- Bout en bout : le script lancé comme hook répond au format attendu ---
 
 const script = fileURLToPath(new URL("./gardes.mjs", import.meta.url));
-const lancer = (entree) => spawnSync(process.execPath, [script], { input: JSON.stringify(entree), encoding: "utf8" });
+const lancer = (entree, env = {}) =>
+  spawnSync(process.execPath, [script], {
+    input: JSON.stringify(entree),
+    encoding: "utf8",
+    env: { ...process.env, CLAUDE_PROJECT_DIR: "", ...env },
+  });
+
+// Le rappel arrive dans le contexte de Claude, sans décision : la demande de
+// permission habituelle reste (« allow » la sauterait).
+const rappelHook = lancer(
+  { tool_name: "Edit", tool_input: { file_path: dans("src", "lib", "navigation.ts"), new_string: "x" } },
+  { CLAUDE_PROJECT_DIR: appli }
+);
+assert.equal(rappelHook.status, 0);
+const sortieRappel = JSON.parse(rappelHook.stdout).hookSpecificOutput;
+assert.equal(sortieRappel.hookEventName, "PreToolUse");
+assert.equal(sortieRappel.permissionDecision, undefined);
+assert.match(sortieRappel.additionalContext, /src\/lib\/navigation\.ts[\s\S]*ADAPTATIONS\.md/);
+// Une commande n'est pas une écriture : pas de rappel.
+const commandeHook = lancer({ tool_name: "Bash", tool_input: { command: "ls" } }, { CLAUDE_PROJECT_DIR: appli });
+assert.equal(commandeHook.stdout, "");
+// Un refus passe avant le rappel.
+const refusHook = lancer(
+  { tool_name: "Write", tool_input: { file_path: dans(".env"), content: "X=1" } },
+  { CLAUDE_PROJECT_DIR: appli }
+);
+assert.equal(JSON.parse(refusHook.stdout).hookSpecificOutput.permissionDecision, "deny");
+
+fs.rmSync(appli, { recursive: true, force: true });
+fs.rmSync(illisibleAppli, { recursive: true, force: true });
 
 const refus = lancer({ tool_name: "Bash", tool_input: { command: "gh pr merge 42" } });
 assert.equal(refus.status, 0);

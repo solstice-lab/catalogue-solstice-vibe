@@ -14,7 +14,8 @@ dit comme tel.
 Ce qu'elle produit : une **blueprint** validée et un **dossier assemblé** (le socle et les
 briques choisies), dépôt git d'un seul commit, poussé vers un dépôt distant, **privé par défaut**, créé
 après un oui explicite (étape 5), non déployé, puis les issues de la section 9 de la
-blueprint (étape 6). Ce qu'elle ne fait jamais : écrire dans une
+blueprint (étape 6) et, une fois ces tickets faits, les brouillons de tickets du catalogue
+tirés de ses adaptations (étape 7). Ce qu'elle ne fait jamais : écrire dans une
 base distante, taper un `--confirmer`, écrire un `.env*`, fusionner, déployer. Elle dit quoi
 taper (`CLAUDE.md` §3 et §8).
 
@@ -779,3 +780,35 @@ reprendre.
    donne N, les numéros qui se suivent. Si l'outil s'est arrêté sur un écart de numéros
    (quelqu'un a ouvert un ticket entre-temps), rapporter son message tel quel : il dit
    quelles issues sont créées et que faire (les fermer, puis relancer). Ne rien corriger à la main.
+
+## 7. À la fin du premier cycle : les adaptations
+
+Une appli assemblée n'est jamais livrée telle quelle : son premier cycle de tickets retouche
+des fichiers venus du catalogue. Le 2026-11-05, sur tours-de-coloc, trois retouches (`/kit` et
+les écrans du patron retirés, l'accueil livré vide rempli, l'onglet de la coloc) signalaient
+chacune un défaut de l'assembleur, et ne sont remontées qu'une fois vues à l'écran. Dans
+l'appli, la garde rappelle de noter chaque retouche dans `ADAPTATIONS.md`, que l'assembleur
+écrit vide avec son en-tête.
+
+Quand les tickets de la section 9 sont fusionnés, depuis une session ouverte dans le
+catalogue, sur une copie locale de l'appli à son `origin/main` à jour :
+
+```powershell
+node outils/adaptations.mjs "<chemin absolu de l'appli>"
+```
+
+Lecture seule, sans réseau : les fichiers du catalogue retouchés ou supprimés, chacun avec
+son diff et sa note, ou « sans note » (`--json` pour un autre outil). D'après la liste :
+
+1. **Une adaptation sans note** se note d'abord dans l'appli, avec la personne qui l'a faite :
+   c'est la note qui dit « défaut du catalogue » ou « propre à l'appli », pas l'outil.
+2. **Un brouillon de ticket du catalogue par défaut**, et non un par fichier (les onze
+   fichiers de `/kit` et du patron font un ticket), au format des tickets du catalogue : le
+   cas réel daté (l'appli, ce qu'elle a dû retoucher, le diff qui le montre), ce que
+   l'assembleur devrait donner. Un défaut déjà ouvert au catalogue (`gh issue list`) reçoit
+   un commentaire, pas un doublon.
+3. **Les brouillons vont à la personne qui pilote**, qui les relit et les crée : rien ne
+   part du catalogue sans elle, et aucune donnée ne sort de l'appli.
+
+Le même geste revient à chaque mise à jour de l'appli (note `outils/mise-a-jour.md`,
+« Le circuit »).

@@ -128,6 +128,7 @@ navigateur : la personne qui pilote le projet vérifie elle-même le rendu.
 - **Avant une PR**, relire par sous-agents : l'agent `relecteur-migrations` si
   le diff touche `src/lib/db/` (brique données) ; l'agent `relecteur-docs` s'il renomme ou
   retire un fichier, un symbole, une route, une variable, ou touche un `.md`.
+- **Appli assemblée** : toute retouche d'un fichier au `catalogue.empreintes.json` se note dans `ADAPTATIONS.md` (la garde le rappelle) ; l'outil des adaptations du catalogue les liste, à la fin du premier cycle de tickets et à chaque mise à jour, et chaque défaut du catalogue y devient un brouillon de ticket remis à la personne qui pilote.
 - **Interface d'une brique** (`src/briques/*/`) : tout changement d'interface
   publique (symbole, signature, props, option, forme d'un retour) met à jour la
   section « Interface publique » de son README et ajoute une entrée en fin de

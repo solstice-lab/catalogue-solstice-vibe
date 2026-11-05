@@ -1,6 +1,8 @@
 // Gardes PreToolUse du harnais (branchées dans .claude/settings.json) :
 // refusent à Claude les gestes qui versent un secret dans le dépôt, touchent la
 // prod ou défont un filet de sécurité (force sur le distant, hooks git sautés).
+// Dans une appli assemblée, elles rappellent aussi, sans refuser, de noter
+// toute retouche d'un fichier venu du catalogue (fin de ce fichier).
 // Chaque règle renvoie à l'incident qui l'a fait naître (projets précédents,
 // septembre-octobre 2026), ou dit qu'il n'y en a pas.
 //
@@ -11,7 +13,9 @@
 // Test : `node .claude/hooks/gardes.test.mjs` (lancé par la CI). Un garde qui
 // bloque à tort se corrige avec un cas de test, comme un garde qui laisse passer.
 
-import { pathToFileURL } from "node:url";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Une URL de base qui porte un mot de passe et ne vise pas la machine locale :
 // collée dans PowerShell, l'URL de prod est restée dans l'historique et il a
@@ -199,6 +203,86 @@ export function verifierEcriture(chemin, contenu) {
   return null;
 }
 
+// --- Adaptations d'une appli assemblée -------------------------------------
+//
+// Dans une appli assemblée, catalogue.empreintes.json liste les fichiers venus
+// du catalogue. En modifier un, c'est une adaptation : normale, mais muette.
+// Le 2026-11-05, sur l'appli d'essai tours-de-coloc, trois retouches (/kit et
+// les écrans du patron retirés, l'accueil livré vide rempli, l'onglet de la
+// coloc) n'ont été remontées au catalogue qu'une fois vues à
+// l'écran. La garde laisse donc passer et rappelle de noter l'adaptation dans
+// ADAPTATIONS.md, jusqu'à ce qu'elle y soit. Le catalogue lui-même n'a pas de
+// manifeste : rien ne s'y déclenche. Un fichier supprimé par une commande
+// (rm, git rm) échappe au rappel : l'outil des adaptations du catalogue
+// (adaptations.mjs), lancé depuis le catalogue, le retrouve. L'appli n'a pas
+// l'outillage du catalogue, d'où le nom sans son chemin.
+
+const MANIFESTE = "catalogue.empreintes.json";
+export const ADAPTATIONS = "ADAPTATIONS.md";
+
+// Les blocs de code ne sont pas des entrées : l'en-tête d'ADAPTATIONS.md en
+// montre une en exemple.
+const sansBlocsDeCode = (texte) => texte.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, "");
+
+/**
+ * Les entrées d'ADAPTATIONS.md : une par titre `## `, ses chemins cités entre
+ * accents graves sur la ligne « Fichiers » (un dossier terminé par « / » couvre
+ * tout ce qu'il contient), sa nature, et son texte tel quel. L'outil des
+ * adaptations du catalogue l'importe : une seule lecture, celle que l'appli reçoit.
+ */
+export function entreesDesAdaptations(texte) {
+  const entrees = [];
+  for (const partie of sansBlocsDeCode(texte.replace(/\r\n/g, "\n")).split(/^(?=## )/m)) {
+    if (!partie.startsWith("## ")) continue;
+    const lignes = partie.trimEnd().split("\n");
+    const ligneFichiers = lignes.find((ligne) => /^\s*[-*]\s*Fichiers?\s*:/i.test(ligne)) ?? "";
+    const chemins = [...ligneFichiers.matchAll(/`([^`]+)`/g)].map(([, chemin]) => chemin.trim().replace(/^\.\//, ""));
+    const nature = /défaut du catalogue|propre à l'appli/i.exec(
+      lignes.find((ligne) => /^\s*[-*]\s*Nature\s*:/i.test(ligne)) ?? ""
+    )?.[0];
+    entrees.push({
+      titre: lignes[0].slice(3).trim(),
+      chemins,
+      nature: nature?.toLowerCase() ?? null,
+      texte: lignes.join("\n"),
+    });
+  }
+  return entrees;
+}
+
+export const couvre = (entree, chemin) =>
+  entree.chemins.some((cite) => cite === chemin || (cite.endsWith("/") && chemin.startsWith(cite)));
+
+// Lu à chaque appel : deux petits fichiers, quelques millisecondes, loin du
+// délai de 10 s de settings.json. Tout ce qui ne se lit pas laisse passer sans
+// un mot : un rappel ne doit jamais gêner le travail.
+export function rappelDAdaptation(chemin, racine) {
+  if (!chemin || !racine) return null;
+  let fichiers;
+  try {
+    fichiers = JSON.parse(fs.readFileSync(path.join(racine, MANIFESTE), "utf-8"))?.fichiers;
+  } catch {
+    return null;
+  }
+  const relatif = path.relative(racine, path.resolve(racine, chemin)).replace(/\\/g, "/");
+  if (relatif === "" || relatif.startsWith("../") || path.isAbsolute(relatif)) return null;
+  if (typeof fichiers !== "object" || fichiers === null || !Object.hasOwn(fichiers, relatif)) return null;
+  let notes = "";
+  try {
+    notes = fs.readFileSync(path.join(racine, ADAPTATIONS), "utf-8");
+  } catch {
+    // Pas encore de fichier : rien n'est noté.
+  }
+  if (entreesDesAdaptations(notes).some((entree) => couvre(entree, relatif))) return null;
+  return [
+    "rappel",
+    `${relatif} vient du catalogue (${MANIFESTE}) : le modifier est une adaptation de l'appli. L'écriture passe. ` +
+      `La noter dans ${ADAPTATIONS} à la racine de l'appli, une entrée de cinq lignes au plus (le modèle est en tête du fichier) : ` +
+      "date, fichiers, ce qui change, pourquoi, « défaut du catalogue » ou « propre à l'appli ». " +
+      "Ce rappel ne revient plus pour ce fichier une fois noté.",
+  ];
+}
+
 function contenuEcrit(entree) {
   if (entree.content != null) return entree.content;
   if (entree.new_string != null) return entree.new_string;
@@ -218,13 +302,25 @@ async function principal() {
   }
   const { tool_name: outil, tool_input: entree = {} } = donnees;
 
-  const verdict =
-    outil === "Bash" || outil === "PowerShell"
-      ? verifierCommande(entree.command ?? "")
-      : verifierEcriture(entree.file_path ?? entree.notebook_path ?? "", contenuEcrit(entree));
+  const commande = outil === "Bash" || outil === "PowerShell";
+  const chemin = entree.file_path ?? entree.notebook_path ?? "";
+  // La racine de l'appli : celle que Claude Code donne au hook, sinon deux
+  // niveaux au-dessus de ce script (.claude/hooks/).
+  const racine = process.env.CLAUDE_PROJECT_DIR || fileURLToPath(new URL("../..", import.meta.url));
+  const verdict = commande
+    ? verifierCommande(entree.command ?? "")
+    : (verifierEcriture(chemin, contenuEcrit(entree)) ?? rappelDAdaptation(chemin, racine));
   if (!verdict) return;
 
   const [decision, raison] = verdict;
+  if (decision === "rappel") {
+    // Sans permissionDecision : la demande de permission habituelle reste
+    // (« allow » la sauterait), le texte arrive dans le contexte de Claude.
+    process.stdout.write(
+      JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: raison } })
+    );
+    return;
+  }
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {

@@ -25,6 +25,7 @@ import {
   VITRINE_DU_KIT,
 } from "../outils/modules.mjs";
 import { nomsDesBases } from "../scripts/lib/bases-locales";
+import { entreesDesAdaptations } from "../.claude/hooks/gardes.mjs";
 import {
   assemblerEnTemporaire,
   COMMIT_DE_TEST,
@@ -510,7 +511,7 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
         dependabot: false,
         entete: null,
       });
-      const ecritsParLAssembleur = ["blueprint.md", "NOTICE", MANIFESTE];
+      const ecritsParLAssembleur = ["blueprint.md", "NOTICE", "ADAPTATIONS.md", MANIFESTE];
       const venusDuCatalogue = fichiersAssembles(dossier)
         .filter((chemin) => !ecritsParLAssembleur.includes(chemin))
         .sort();
@@ -896,9 +897,9 @@ describe("assemblage de tout le catalogue", () => {
       }
       comptes++;
     }
-    // La blueprint, l'avis NOTICE et le manifeste d'empreintes sont les seuls
-    // fichiers que le catalogue n'a pas.
-    expect(copies.size).toBe(comptes + 3);
+    // La blueprint, l'avis NOTICE, le registre des adaptations et le manifeste
+    // d'empreintes sont les seuls fichiers que le catalogue n'a pas.
+    expect(copies.size).toBe(comptes + 4);
   });
 
   // Le catalogue est publié sous MIT ; le code d'une appli client ne l'est
@@ -1298,6 +1299,23 @@ describe("avis de licence de l'appli assemblée", () => {
 
   it("le commite dès le premier commit", () => {
     expect(gitDans(dossier, "ls-files", "NOTICE")).toBe("NOTICE");
+  });
+});
+
+// Le 2026-11-05, les trois retouches de l'appli d'essai tours-de-coloc ne sont
+// remontées au catalogue qu'une fois vues à l'écran : l'appli
+// reçoit de quoi les noter, et la garde le rappelle (.claude/hooks/gardes.mjs).
+describe("registre des adaptations de l'appli assemblée", () => {
+  const { dossier } = assemblerEnTemporaire({ briques: [] });
+
+  it("écrit ADAPTATIONS.md, commité, hors manifeste, avec son en-tête et sans aucune entrée", () => {
+    expect(gitDans(dossier, "ls-files", "ADAPTATIONS.md")).toBe("ADAPTATIONS.md");
+    expect(Object.keys(JSON.parse(lireAssemble(dossier, MANIFESTE)).fichiers)).not.toContain("ADAPTATIONS.md");
+    const texte = lireAssemble(dossier, "ADAPTATIONS.md");
+    expect(texte).toMatch(/^# Adaptations de l'appli\n/);
+    expect(texte).toContain("défaut du catalogue");
+    // L'exemple de l'en-tête est dans un bloc de code : la garde ne le prend pas pour une note.
+    expect(entreesDesAdaptations(texte)).toEqual([]);
   });
 });
 
