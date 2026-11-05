@@ -126,7 +126,8 @@ pas : la personne qui fusionne lit le check `verifier` avant chaque fusion).
 
 La brique déploiement le porte, commenté de ses pièges et verrouillé par
 `tests/deploiement.test.ts` : service et base à Francfort, base payante (la gratuite est
-supprimée après 30 jours), auto-déploiement coupé (`autoDeployTrigger: "off"` ;
+supprimée après 30 jours), base créée sur 1 Go avec agrandissement automatique (sans
+`diskSizeGB`, Render la crée à 15 Go, qui ne se réduisent jamais), auto-déploiement coupé (`autoDeployTrigger: "off"` ;
 `autoDeploy` est déprécié, et à `true` déployait sans attendre la CI).
 
 - Un service renommé dans le tableau de bord quitte le Blueprint : « Manual sync » ne fait

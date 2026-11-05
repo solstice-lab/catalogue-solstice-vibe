@@ -186,7 +186,7 @@ describe("render.yaml : l'adaptateur Render", () => {
   // Render sans diskSizeGB : 4,50 $ par mois de disque vide, et un disque ne
   // se réduit jamais. Sans agrandissement automatique, une base pleine est
   // suspendue par Render.
-  it("crée la base sur 1 Go, qui grandit seul quand il se remplit : sans diskSizeGB, Render la crée à 15 Go pour toujours", () => {
+  it("crée la base sur 1 Go, qui grandit seul quand il se remplit : sans diskSizeGB, Render la crée à 15 Go, sans retour", () => {
     const databases = RENDER.split(/^databases:$/m)[1];
     if (databases === undefined) return;
     expect(databases).toMatch(/^    diskSizeGB: 1$/m);

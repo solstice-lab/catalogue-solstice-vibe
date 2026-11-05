@@ -15,7 +15,8 @@
 #   Francfort après coup, c'est une migration de données en production.
 # - Jamais le palier gratuit : la base est supprimée au bout de 30 jours, le
 #   service s'endort après 15 minutes sans trafic.
-# Spécification relue le 2026-10-22 : https://render.com/docs/blueprint-spec
+# Spécification relue le 2026-10-22, et pour le disque de la base le
+# 2026-11-05 : https://render.com/docs/blueprint-spec
 
 services:
   - type: web
