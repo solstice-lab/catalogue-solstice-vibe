@@ -191,6 +191,11 @@ describe("render.yaml : l'adaptateur Render", () => {
     if (databases === undefined) return;
     expect(databases).toMatch(/^    diskSizeGB: 1$/m);
     expect(databases).toMatch(/^    storageAutoscalingEnabled: true$/m);
+    // Avant ipAllowList, fin du bloc que l'assembleur retire sans la brique
+    // données : placées après, elles resteraient orphelines.
+    const fin = databases.indexOf("    ipAllowList: []");
+    expect(databases.indexOf("    diskSizeGB:")).toBeLessThan(fin);
+    expect(databases.indexOf("    storageAutoscalingEnabled:")).toBeLessThan(fin);
   });
 
   it("sonde /sante, ouverte sans session", () => {

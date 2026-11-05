@@ -113,12 +113,13 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Ce qui change** : `render.yaml` crée la base sur 1 Go (`diskSizeGB: 1`),
   avec l'agrandissement automatique (`storageAutoscalingEnabled: true`) :
   à 90 % plein, Render agrandit le disque de 50 %, arrondi au multiple de
-  5 Go.
-- **Appelant** : rien à faire pour une base à créer. Render ne lit ces deux
-  clés qu'à la création : une base existante garde son disque, qui ne se
-  réduit jamais. Pour elle, l'agrandissement automatique s'active dans le
-  tableau de bord (page Plan de la base, « Storage Autoscaling »).
+  5 Go, puis pas avant 6 heures.
+- **Appelant** : rien à faire pour une base à créer. Une base existante garde
+  son disque (`diskSizeGB` n'agit qu'à la création, et un disque ne se
+  réduit jamais). Son agrandissement automatique se vérifie dans le tableau
+  de bord après la synchronisation du Blueprint (page Plan de la base,
+  « Storage Autoscaling »), et s'y active à la main au besoin.
 - **Pourquoi** : à l'essai réel sur Render, le 2026-11-05, la base est née à
   15 Go, le défaut de Render sans `diskSizeGB` : 4,50 $ par mois de disque
-  vide, pour toujours. Sur 1 Go sans agrandissement automatique, une base
+  vide, tant que la base existe. Sur 1 Go sans agrandissement automatique, une base
   pleine est suspendue par Render.

@@ -87,7 +87,8 @@ eu lieu.
    (`diskSizeGB` de `render.yaml`) : sans lui, Render crée la base à 15 Go,
    soit 4,50 $ par mois de disque, et un disque ne se réduit jamais. Quand la
    base est pleine à 90 %, Render agrandit le disque de 50 %, arrondi au
-   multiple de 5 Go (1 Go devient 5 Go), et ne redescend pas.
+   multiple de 5 Go (1 Go devient 5 Go), puis pas avant 6 heures, et ne
+   redescend pas.
 3. **Render** : créer le compte ou l'espace de travail, puis *New → Blueprint*,
    choisir le dépôt. Render lit `render.yaml` et demande les variables en
    `sync: false` (`URL_PUBLIQUE`, à laisser vide tant que le domaine n'est pas

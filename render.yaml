@@ -123,10 +123,11 @@ databases:
     # Ne se change plus après la création.
     postgresMajorVersion: "18"
     # 1 Go, le plus petit disque : sans diskSizeGB, Render crée la base à
-    # 15 Go (le défaut de ce palier), et un disque ne se réduit jamais. À
-    # l'essai réel du 2026-11-05, 4,50 $ par mois de disque vide. Une base
-    # pleine est suspendue : à 90 %, Render agrandit seul de 50 %, arrondi au
-    # multiple de 5 Go (1 Go devient 5 Go). Lus à la création seulement.
+    # 15 Go, et un disque ne se réduit jamais. À l'essai réel du 2026-11-05,
+    # 4,50 $ par mois de disque vide. diskSizeGB n'agit qu'à la création :
+    # une base existante garde son disque. Une base pleine est suspendue : à
+    # 90 %, Render agrandit seul de 50 %, arrondi au multiple de 5 Go (1 Go
+    # devient 5 Go), puis pas avant 6 heures.
     diskSizeGB: 1
     storageAutoscalingEnabled: true
     # Aucune connexion depuis Internet : le service la joint par le réseau
