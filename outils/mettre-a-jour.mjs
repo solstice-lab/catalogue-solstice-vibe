@@ -1488,6 +1488,139 @@ function retardDeLAjout({ catalogue, shaOrigine, briques }) {
 }
 
 /*
+ * Les briques que la fiche projet de l'appli (PROJET.md) a écartées au cadrage,
+ * parmi `briques`, avec la raison écrite. Le 2026-11-05, --ajouter validation
+ * s'est fait sans un mot sur l'appli d'essai tours-de-coloc, dont la fiche
+ * écartait la brique (« un échange s'accepte entre deux personnes, pas par une
+ * personne habilitée »), raison toujours vraie dans le code : la PR a été
+ * fermée après relecture. Le gabarit de la fiche (skill solstice-nouvelle-appli)
+ * ne fixe pas la forme des options écartées, la lecture est donc tolérante et
+ * ne regarde que ce qui s'annonce comme écarté, jamais le corps de la fiche :
+ *   - une ligne « Écartées : … » (puce, gras ou non) : sa raison est le texte
+ *     après les deux-points, ou chaque sous-puce dessous ;
+ *   - une rubrique titrée « Briques écartées » : une raison par puce ;
+ *   - une ligne de tableau dont une cellule commence par « écartée » (« | validation
+ *     | écartée : … | ») : la ligne est l'entrée.
+ * Une brique se nomme en mot entier (mails n'est pas mails-groupes) ; sa raison
+ * est l'entrée qui la nomme, recopiée telle quelle.
+ * @param {string | undefined} fiche le texte de PROJET.md, undefined sans fiche
+ * @param {string[]} briques
+ * @returns {{ brique: string, raison: string }[]}
+ */
+export function briquesEcarteesParLaFiche(fiche, briques) {
+  const lignes = (fiche ?? "").split(/\r?\n/).map((ligne) => ligne.replace(/\*\*|__/g, ""));
+  // Le dépôt écrit lui-même « Écartés : » (socle.md) : le masculin compte comme le féminin.
+  const ANNONCE = /^(?:les\s+)?(?:(?:briques|options)\s+)?écart[ée]e?s?\b/i;
+  const CELLULE_ECARTEE = /^écart[ée]e?s?\b/i;
+  const puce = /^(\s*)[-*+]\s+(.*)$/;
+  const indentation = (ligne) => /^\s*/.exec(ligne)[0].length;
+  const entrees = [];
+  for (let i = 0; i < lignes.length; i++) {
+    // Une ligne de tableau dont une cellule dit « écartée » (la fiche de tours-de-coloc :
+    // « | validation | écartée : … | ») : la ligne entière est l'entrée.
+    if (/^\s*\|/.test(lignes[i])) {
+      const cellules = lignes[i]
+        .replace(/^\s*\||\|\s*$/g, "")
+        .split("|")
+        .map((cellule) => cellule.trim());
+      if (cellules.some((cellule) => CELLULE_ECARTEE.test(cellule))) entrees.push(cellules.filter(Boolean).join(" | "));
+      continue;
+    }
+    const titre = /^(#{1,6})\s+(.*)$/.exec(lignes[i]);
+    const annonce = puce.exec(lignes[i]) ?? /^(\s*)(.*)$/.exec(lignes[i]);
+    const etiquette = titre ? titre[2] : annonce[2].split(":")[0];
+    if (!ANNONCE.test(etiquette.trim())) continue;
+    // Le corps : sous un titre, jusqu'au titre suivant de même rang ou plus haut ;
+    // sous une ligne annoncée, ce qui est plus indenté (ou, hors puce, jusqu'à la ligne vide).
+    const rang = titre?.[1].length;
+    const reste = titre ? "" : annonce[2].slice(annonce[2].indexOf(":") + 1).trim();
+    const dansUnePuce = !titre && puce.test(lignes[i]);
+    const corps = [];
+    for (let j = i + 1; j < lignes.length; j++) {
+      const ligne = lignes[j];
+      const autreTitre = /^(#{1,6})\s/.exec(ligne);
+      if (titre ? autreTitre && autreTitre[1].length <= rang : autreTitre || ligne.trim() === "") break;
+      if (!titre && dansUnePuce && (ligne.trim() === "" || indentation(ligne) <= indentation(lignes[i]))) break;
+      if (!titre && !dansUnePuce && puce.test(ligne)) break;
+      // Hors puce, une ligne qui ouvre une autre étiquette (« Gardées : journal ») n'est pas la suite de la raison.
+      if (
+        !titre &&
+        !dansUnePuce &&
+        indentation(ligne) <= indentation(lignes[i]) &&
+        /^\s*[^\s:|][^:]{0,40}:\s/.test(ligne)
+      )
+        break;
+      // Sous une rubrique « Briques écartées », chaque ligne d'un tableau est une entrée comme une puce.
+      if (/^\s*\|/.test(ligne)) {
+        const cellules = ligne
+          .replace(/^\s*\||\|\s*$/g, "")
+          .split("|")
+          .map((cellule) => cellule.trim());
+        if (!cellules.every((cellule) => /^:?-+:?$/.test(cellule)))
+          corps.push(`- ${cellules.filter(Boolean).join(" | ")}`);
+      } else corps.push(ligne);
+    }
+    const profondeur = Math.min(...corps.filter((ligne) => puce.test(ligne)).map(indentation));
+    const aPuces = Number.isFinite(profondeur);
+    const morceaux = [];
+    for (const ligne of corps) {
+      const p = puce.exec(ligne);
+      if (p && indentation(ligne) === profondeur) morceaux.push(p[2].trim());
+      else if (aPuces && morceaux.length > 0 && ligne.trim() !== "")
+        morceaux[morceaux.length - 1] += ` ${ligne.trim()}`;
+    }
+    if (aPuces) entrees.push(...(reste === "" ? [] : [reste]), ...morceaux);
+    else entrees.push([reste, ...corps.map((ligne) => ligne.trim())].filter(Boolean).join(" "));
+  }
+  const nomme = (entree, brique) =>
+    new RegExp(`(?<![\\w-])${brique.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`, "i").test(entree);
+  return briques.flatMap((brique) => {
+    const raisons = entrees.filter((entree) => nomme(entree, brique));
+    return raisons.length === 0 ? [] : [{ brique, raison: raisons.join(" ; ") }];
+  });
+}
+
+/*
+ * Les tables que créent les étapes de migration reçues et qui n'ont pas de
+ * colonne espace_id (dans leur CREATE TABLE, ou par un ALTER TABLE qui l'ajoute),
+ * hors celles de la brique espaces elle-même (espaces, espaces_*), que le
+ * verrou tests/espaces-isolation.test.ts garde à part. Le verrou ne repère une
+ * table à protéger que par cette colonne : une table de brique qui ne l'a pas
+ * passe le verrou sans être isolée (le 2026-11-05, une brique arrivée dans une
+ * appli avec espaces, et rien ne le disait).
+ * @param {{ texte: string }[]} etapes
+ * @returns {string[]} triées
+ */
+// Celles que crée l'étape de la brique espaces : le verrou ne les protège pas (TABLES_DE_LA_BRIQUE) ou
+// n'a rien à y voir (espaces, espaces_essais_code). Une table d'appli nommée espaces_verts reste signalée.
+const TABLES_DE_LA_BRIQUE_ESPACES = ["espaces", "espaces_adhesions", "espaces_invitations", "espaces_essais_code"];
+
+export function tablesSansEspaceId(etapes) {
+  const sans = new Set();
+  const avec = new Set();
+  for (const { texte } of etapes) {
+    for (const creation of texte.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?\w+"?\.)?"?(\w+)"?\s*\(/gi)) {
+      // Le corps : jusqu'à la parenthèse qui ferme celle de l'ouverture (un CHECK en contient d'autres).
+      let profondeur = 1;
+      let fin = creation.index + creation[0].length;
+      while (fin < texte.length && profondeur > 0) {
+        if (texte[fin] === "(") profondeur++;
+        else if (texte[fin] === ")") profondeur--;
+        fin++;
+      }
+      const corps = texte.slice(creation.index + creation[0].length, fin);
+      (/\bespace_id\b/.test(corps) ? avec : sans).add(creation[1]);
+    }
+    for (const ajout of texte.matchAll(
+      /ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?(?:\w+\.)?(\w+)\s[^;`]*?\bespace_id\b/gi
+    )) {
+      avec.add(ajout[1]);
+    }
+  }
+  return [...sans].filter((table) => !avec.has(table) && !TABLES_DE_LA_BRIQUE_ESPACES.includes(table)).sort();
+}
+
+/*
  * Ce que le README d'une brique reçue dit qu'un module métier de l'appli doit
  * faire, lu dans sa section « La brancher » de la cible (le README que l'appli
  * reçoit), deux cas :
@@ -1733,6 +1866,19 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
         )
         .filter((chemin) => !egaux(origine.get(chemin), cible.get(chemin)))
     );
+    // Ce que le rapport d'un ajout dit en tête, au-delà du retard : la fiche projet qui écartait
+    // une brique arrivée, et les tables arrivées que le verrou d'isolation ne verrait pas.
+    const ecartees = ajout ? briquesEcarteesParLaFiche(texteDe(contenus.get("PROJET.md")), ajoutees) : [];
+    const tablesSansEspace =
+      // `avant` : l'appli qui avait déjà espaces, donc son verrou. Avec espaces dans le même ajout, les tables
+      // des autres briques (utilisateurs de comptes, par exemple) feraient du bruit : elles se branchent à neuf.
+      ajout && avant.includes("espaces") && cible.has(FICHIER_MIGRATIONS)
+        ? tablesSansEspaceId(
+            lireLesEtapes(texteDe(cible.get(FICHIER_MIGRATIONS)), FICHIER_MIGRATIONS).filter(({ nom }) =>
+              migrations.ajoutees.includes(nom)
+            )
+          )
+        : [];
     const resultat = {
       appli: dossierAppli,
       paquet: examen.reglages.paquet,
@@ -1753,6 +1899,8 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
       aJour: shaCible === shaOrigine && !ajout,
       // Ce que l'ajout au commit de l'appli laisse derrière lui ; null pour une mise à jour, qui vise main.
       retard: ajout ? retardDeLAjout({ catalogue: racineCatalogue, shaOrigine, briques: ajoutees }) : null,
+      ecartees,
+      tablesSansEspace,
       retouchesAvant: examen.resultat.retouches,
       supprimesAvant: examen.resultat.supprimes,
       fichiers,
@@ -2089,6 +2237,46 @@ function rubriqueDuRetard(resultat) {
 }
 
 /*
+ * En tête du rapport d'un ajout : les briques arrivées que la fiche projet de
+ * l'appli écartait au cadrage, avec la raison qu'elle donne. Avertir, pas
+ * refuser : la raison peut avoir changé depuis (ce qu'elle disait était vrai
+ * le 2026-11-05, dans le code de l'appli d'essai, et la PR a été fermée après
+ * relecture). Rien sans fiche, sans la ligne, ou sans brique nommée.
+ */
+function rubriqueDesEcartees(resultat) {
+  if (resultat.ecartees.length === 0) return [];
+  return [
+    "## Briques écartées par la fiche projet",
+    "",
+    `**Attention : ${code("PROJET.md")} écarte ${resultat.ecartees.length === 1 ? "une brique que cet ajout apporte" : "des briques que cet ajout apporte"}.** ` +
+      "L'ajout n'est pas refusé : la raison peut avoir changé. La relire avant de fusionner, et si elle tient toujours, ne pas ajouter la brique (cette branche se supprime) ; sinon la mettre à jour dans la fiche.",
+    "",
+    ...resultat.ecartees.map(({ brique, raison }) => `- ${code(brique)} : « ${raison} »`),
+    "",
+  ];
+}
+
+/*
+ * En tête du rapport d'un ajout, dans une appli qui a espaces : les tables
+ * arrivées sans colonne espace_id. Le verrou tests/espaces-isolation.test.ts ne
+ * repère une table à protéger que par cette colonne, donc une table qui ne
+ * l'a pas passe le verrou sans être isolée.
+ */
+function rubriqueDesTablesSansEspace(resultat) {
+  if (resultat.tablesSansEspace.length === 0) return [];
+  return [
+    "## Tables sans espace_id",
+    "",
+    `L'appli a la brique ${code("espaces")} : le verrou ${code("tests/espaces-isolation.test.ts")} ne protège une table que par sa colonne ${code("espace_id")}, et ces tables arrivent sans elle, donc sans que rien ne les isole d'un espace à l'autre :`,
+    "",
+    ...resultat.tablesSansEspace.map((table) => `- ${code(table)}`),
+    "",
+    "Chacune est à isoler par le branchement, ou à déclarer hors espace en connaissance de cause.",
+    "",
+  ];
+}
+
+/*
  * En tête du rapport : ce que la base ou comptes changent pour l'appli entière.
  * Leur coût est dans ce qui suit l'opération, pas dans les fichiers (« Les
  * ajouts lourds » de la note).
@@ -2282,6 +2470,8 @@ export function rapport(resultat) {
       : `Écrit sur la branche ${code(resultat.branche)}, partie du main publié de l'appli, sans commit.`,
     "",
     ...rubriqueDuRetard(resultat),
+    ...rubriqueDesEcartees(resultat),
+    ...rubriqueDesTablesSansEspace(resultat),
     ...rubriqueDesAjoutsLourds(resultat),
     ...rubriqueDesBriquesABrancher(resultat),
     ...rubriqueDesFichiers(resultat),
@@ -2345,7 +2535,9 @@ avoir le commit de l'appli (git fetch origin dans le catalogue). Avec --ajouter,
 le rapport avertit en tête du retard de l'appli sur origin/main : la brique
 arrive telle qu'elle était au commit de l'appli, et la commande --vers à lancer
 d'abord est donnée (sans origin/main, l'ajout se fait et le rapport dit que le
-retard n'est pas calculé). Seul appel
+retard n'est pas calculé) ; puis des briques ajoutées que le PROJET.md de l'appli
+écarte, avec sa raison, et, si l'appli a espaces, des tables arrivées sans
+espace_id (avertissements, jamais un refus). Seul appel
 au réseau : npm ci dans un worktree temporaire du catalogue, quand le Prettier
 d'un commit n'est pas celui qu'a installé le catalogue. La base dans une
 appli qui n'en a pas, et la brique comptes, s'ajoutent comme les autres :
