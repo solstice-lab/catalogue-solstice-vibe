@@ -118,8 +118,8 @@ commit de la branche du premier ticket. Contenu :
   `src/lib/confidentialite.ts`, et les données métier propres au projet), le lieu des
   sous-traitants que le code ne situe pas. Ces choix engagent le client : « à faire
   valider » tant qu'il ne les a pas validés, et la question passe aux questions ouvertes.
-  Les valeurs se recopient dans `src/lib/confidentialite.ts` (`choix`, et
-  `durees` et `dureesRevues` pour les durées que les briques proposent), que
+  Les valeurs se recopient dans `src/lib/confidentialite.ts` (`choix`, `lieux`
+  pour les sous-traitants que le code ne situe pas, et `durees` et `dureesRevues` pour les durées que les briques proposent), que
   la page `/confidentialite` affiche ;
 - pour une nouvelle appli, une rubrique **Entretien après livraison** : quelqu'un entretient-il
   l'appli (mises à jour des dépendances et des actions de la CI, correctifs de sécurité) ?

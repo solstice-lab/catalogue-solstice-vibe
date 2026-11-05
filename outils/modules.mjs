@@ -287,9 +287,17 @@ export const BRIQUES = {
         "#    auto-déploiement et ne met en ligne qu'après la vérification."
       ),
       // Le lieu de l'hébergeur dans la politique de confidentialité :
-      // sans la brique, il se remplit dans la configuration.
-      ligne("src/lib/confidentialite.ts", 'import { LIEUX_DEPLOIEMENT } from "@/briques/deploiement/confidentialite";'),
+      // sans la brique, il se remplit dans la configuration. Et Cloudflare,
+      // que Render place devant le site : sans la brique, rien ne dit qu'il
+      // y est.
+      ligne(
+        "src/lib/confidentialite.ts",
+        'import { LIEUX_DEPLOIEMENT, SOUS_TRAITANTS_DEPLOIEMENT } from "@/briques/deploiement/confidentialite";'
+      ),
       ligne("src/lib/confidentialite.ts", "  ...LIEUX_DEPLOIEMENT,"),
+      ligne("src/lib/confidentialite.ts", "      ...SOUS_TRAITANTS_DEPLOIEMENT,"),
+      ligne("src/lib/confidentialite.ts", "    // Brique déploiement : Cloudflare, que Render place devant le site."),
+      ligne("src/lib/confidentialite.ts", '    cloudflare: "",'),
       bloc(
         "src/lib/confidentialite.ts",
         "    // Ignoré avec la brique déploiement : le lieu se lit alors dans sa",

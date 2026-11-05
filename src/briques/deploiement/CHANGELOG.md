@@ -75,3 +75,20 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : une connexion chiffrée sans vérification parle à n'importe
   quel serveur qui se présente ; la coupure doit se demander en toutes
   lettres.
+
+## 2026-11-05 · `SOUS_TRAITANTS_DEPLOIEMENT` · Ajout
+
+- **Ce qui change** : `src/briques/deploiement/confidentialite.ts` exporte
+  `SOUS_TRAITANTS_DEPLOIEMENT` : Cloudflare, que Render place devant le site.
+  La politique de confidentialité (`src/lib/confidentialite.ts`) l'ajoute aux
+  sous-traitants de l'hébergement du site, et réclame son lieu de traitement
+  dans `CONFIDENTIALITE.lieux.cloudflare`.
+- **Appelant** : une appli déjà assemblée avec la brique remplit
+  `lieux.cloudflare` dans sa configuration, avec le client (lieu de
+  traitement, garanties de transfert hors de l'Union) ; tant qu'il est vide,
+  la page le signale comme à compléter.
+- **Pourquoi** : à l'essai réel sur Render, le 2026-11-05, chaque réponse
+  portait `server: cloudflare` et un `cf-ray`, et Cloudflare refusait
+  lui-même un `CF-Connecting-IP` envoyé à la main. Cloudflare reçoit donc
+  l'adresse IP de chaque visiteur, et le RGPD (art. 13) demande de nommer
+  qui reçoit les données.

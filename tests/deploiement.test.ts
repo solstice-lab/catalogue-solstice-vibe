@@ -2,11 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { LIEUX_DEPLOIEMENT } from "@/briques/deploiement/confidentialite";
-import { CONFIDENTIALITE, champsManquants, lieuDe } from "@/lib/confidentialite";
+import { CONFIDENTIALITE, champsManquants, lieuDe, traitements } from "@/lib/confidentialite";
 
 /*
  * Test-verrou de la brique déploiement. Chaque cas tient un
- * piège déjà payé sur un projet précédent (socle.md) : un
+ * piège déjà payé sur un projet précédent (socle.md), ou constaté à l'essai
+ * réel sur Render : un
  * hébergeur qui déployait main sans attendre la CI, une base gratuite
  * supprimée au bout de 30 jours, une région américaine migrée vers Francfort
  * après coup, une variable lue par l'appli mais jamais déclarée chez
@@ -167,12 +168,17 @@ describe("render.yaml : l'adaptateur Render", () => {
 });
 
 // La politique de confidentialité dit où l'hébergeur traite les
-// données : la région de render.yaml, pas une valeur saisie à côté.
-describe("lieu de l'hébergeur dans la politique de confidentialité", () => {
+// données (la région de render.yaml, pas une valeur saisie à côté) et qui se
+// tient devant lui.
+describe("hébergeur et sous-traitants placés devant lui dans la politique de confidentialité", () => {
   it("dit Francfort, la région de render.yaml, et ne le réclame plus à la configuration", () => {
     expect(RENDER).toMatch(/^    region: frankfurt$/m);
     expect(LIEUX_DEPLOIEMENT.hebergeur).toMatch(/Francfort/);
-    const sansLieu = { ...CONFIDENTIALITE, lieux: { ...CONFIDENTIALITE.lieux, hebergeur: "" } };
+    // Cloudflare a son propre lieu, réclamé à la configuration (cas suivant).
+    const sansLieu = {
+      ...CONFIDENTIALITE,
+      lieux: { ...CONFIDENTIALITE.lieux, hebergeur: "", cloudflare: "Lieu factice" },
+    };
     expect(lieuDe({ cle: "hebergeur", nom: "Render", role: "Hébergement." }, sansLieu)).toBe(
       LIEUX_DEPLOIEMENT.hebergeur
     );
@@ -181,5 +187,18 @@ describe("lieu de l'hébergeur dans la politique de confidentialité", () => {
         .map((champ) => champ.libelle)
         .filter((libelle) => libelle.startsWith("Hébergement du site : lieu"))
     ).toEqual([]);
+  });
+
+  // À l'essai réel sur Render, le 2026-11-05, chaque réponse portait
+  // « server: cloudflare » et un « cf-ray », et Cloudflare refusait lui-même un
+  // CF-Connecting-IP envoyé à la main : il reçoit l'adresse IP de chaque
+  // visiteur avant Render, et la politique ne le nommait pas.
+  it("nomme Cloudflare, placé devant Render, parmi les sous-traitants de l'hébergement, et réclame son lieu à la configuration", () => {
+    const hebergement = traitements().find((traitement) => traitement.cle === "hebergement");
+    expect(hebergement?.sousTraitants.map((sousTraitant) => sousTraitant.nom)).toContain("Cloudflare, Inc.");
+    const sansLieu = { ...CONFIDENTIALITE, lieux: { ...CONFIDENTIALITE.lieux, cloudflare: "" } };
+    expect(champsManquants(sansLieu).map((champ) => champ.libelle)).toContain(
+      "Hébergement du site : lieu de traitement (Cloudflare, Inc.)"
+    );
   });
 });
