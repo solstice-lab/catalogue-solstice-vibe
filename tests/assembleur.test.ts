@@ -1726,6 +1726,10 @@ describe("entrée de l'appli écrite par l'assembleur depuis la blueprint", () =
       ["methodes: [sms]", /méthode/],
       ["methodes: [demo]", /méthode/],
       ["methodes: code-email", /liste/],
+      ["personnes_par_reseau: 0", /personnes_par_reseau : un nombre entier/],
+      ["personnes_par_reseau: -3", /personnes_par_reseau : un nombre entier/],
+      ["personnes_par_reseau: 2.5", /personnes_par_reseau : un nombre entier/],
+      ["personnes_par_reseau: beaucoup", /personnes_par_reseau : un nombre entier/],
     ];
     for (const [entete, motif] of refus) {
       const sortie = dossierTemporaireVide();
@@ -1767,8 +1771,67 @@ describe("entrée de l'appli écrite par l'assembleur depuis la blueprint", () =
     expect(fs.readdirSync(sortie)).toEqual([]);
   });
 
+  // Essai réel de la brique déploiement : un téléphone en Wi-Fi refusé à sa
+  // première demande de code, un poste du même réseau ayant épuisé les 20 demandes
+  // par IP et par heure. La réponse à « combien de personnes se connectent au plus
+  // dans l'heure depuis un même réseau ? » est écrite au cadrage et lue ici.
+  const limitesDe = (dossier: string) =>
+    /export const LIMITES_PAR_RESEAU: LimitesParReseau = \{\n  demandesParHeure: (\d+),\n  codesFauxParHeure: (\d+),\n\};/
+      .exec(lireAssemble(dossier, "src/config/comptes.ts"))
+      ?.slice(1)
+      .map(Number);
+
+  it(
+    "écrit la réponse de la blueprint dans LIMITES_PAR_RESEAU : 50 personnes par réseau donnent 50 demandes et 75 saisies fausses par heure, et l'appli compile",
+    { timeout: ENTIER },
+    async () => {
+      const dossier = assemblerAvec("personnes_par_reseau: 50");
+      expect(limitesDe(dossier)).toEqual([50, 75]);
+      // Une valeur impaire s'arrondit au-dessus : jamais moins de saisies fausses que de personnes.
+      expect(limitesDe(assemblerAvec("personnes_par_reseau: 7  # un petit bureau"))).toEqual([7, 11]);
+      expect(JSON.parse(lireAssemble(dossier, MANIFESTE)).assemblage.entete.personnes_par_reseau).toBe("50");
+      expect((await typecheck(dossier)).code).toBe(0);
+    }
+  );
+
+  it(
+    "laisse les limites du catalogue (20 et 30) sans réponse et sans profil, ou avec une réponse égale au défaut",
+    { timeout: ENTIER },
+    () => {
+      for (const entete of ["", "entree: ouverte", "personnes_par_reseau: 20"]) {
+        expect(limitesDe(assemblerAvec(entete)), entete).toEqual([20, 30]);
+      }
+      const dossier = assemblerAvec("");
+      expect(JSON.parse(lireAssemble(dossier, MANIFESTE)).assemblage.entete.personnes_par_reseau).toBeUndefined();
+    }
+  );
+
+  it("refuse la valeur nulle ou sans plafond avant toute écriture, et celle que l'appli refuserait au démarrage ne s'écrit jamais", () => {
+    for (const valeur of ["0", "00", "-1", "1e3", "Infinity", "20 personnes"]) {
+      const sortie = dossierTemporaireVide();
+      expect(
+        () =>
+          assembler({
+            source: SOURCE,
+            sortie,
+            commit: COMMIT_DE_TEST,
+            ...AVEC_COMPTES,
+            blueprint: blueprintDe(`personnes_par_reseau: ${valeur}`),
+          }),
+        valeur
+      ).toThrow(/personnes_par_reseau/);
+      expect(fs.readdirSync(sortie), valeur).toEqual([]);
+    }
+  });
+
   it("refuse une entrée déclarée sans la brique comptes : promettre une connexion qu'elle ne donnerait pas", () => {
-    for (const entete of ["entree: ouverte", "entree: ferme", "role_par_defaut: membre", "methodes: [code-email]"]) {
+    for (const entete of [
+      "entree: ouverte",
+      "entree: ferme",
+      "role_par_defaut: membre",
+      "methodes: [code-email]",
+      "personnes_par_reseau: 50",
+    ]) {
       const sortie = dossierTemporaireVide();
       const blueprint = blueprintDe(entete);
       expect(
@@ -1787,10 +1850,26 @@ describe("entrée de l'appli écrite par l'assembleur depuis la blueprint", () =
 describe("profils de départ", () => {
   // Écrit en toutes lettres, pas relu de PROFILS : le test ne redit pas la
   // liste qu'il vérifie.
-  const ATTENDUES: Record<string, { briques: string[]; ajouteesDOffice: string[] }> = {
-    vitrine: { briques: [], ajouteesDOffice: [] },
-    "outil-interne": { briques: ["comptes", "mails"], ajouteesDOffice: ["rgpd"] },
-    portail: { briques: ["comptes", "mails", "gestion-comptes"], ajouteesDOffice: ["rgpd"] },
+  // personnesParReseau : la réponse par défaut à « combien de personnes au plus se
+  // connectent dans la même heure depuis un même réseau ? » (une vitrine n'a pas de
+  // connexion à limiter : sa valeur ne s'écrit nulle part).
+  const ATTENDUES: Record<
+    string,
+    { briques: string[]; ajouteesDOffice: string[]; personnesParReseau: number; limites?: number[] }
+  > = {
+    vitrine: { briques: [], ajouteesDOffice: [], personnesParReseau: 20 },
+    "outil-interne": {
+      briques: ["comptes", "mails"],
+      ajouteesDOffice: ["rgpd"],
+      personnesParReseau: 100,
+      limites: [100, 150],
+    },
+    portail: {
+      briques: ["comptes", "mails", "gestion-comptes"],
+      ajouteesDOffice: ["rgpd"],
+      personnesParReseau: 20,
+      limites: [20, 30],
+    },
   };
 
   function blueprintDe(entete: string): string {
@@ -1806,7 +1885,8 @@ describe("profils de départ", () => {
 
   it("donne à chaque profil sa liste de briques, et rien d'autre que ce qu'elles entraînent", () => {
     expect(Object.keys(PROFILS)).toEqual(Object.keys(ATTENDUES));
-    for (const [profil, { briques, ajouteesDOffice }] of Object.entries(ATTENDUES)) {
+    for (const [profil, { briques, ajouteesDOffice, personnesParReseau }] of Object.entries(ATTENDUES)) {
+      expect(PROFILS[profil as keyof typeof PROFILS].personnesParReseau, profil).toBe(personnesParReseau);
       expect(briquesDeLAssemblage({ profil, briques: [] }), profil).toEqual(briques);
       expect(
         briquesEntrainees(briques).map(({ nom }: { nom: string }) => nom),
@@ -1879,12 +1959,23 @@ describe("profils de départ", () => {
   it.each(Object.keys(ATTENDUES))(
     "assemble le profil « %s » lu dans l'en-tête de la blueprint, et note au manifeste la liste réelle des briques",
     (profil) => {
-      const { briques, ajouteesDOffice } = ATTENDUES[profil];
+      const { briques, ajouteesDOffice, personnesParReseau, limites } = ATTENDUES[profil];
       const { dossier } = assemblerEnTemporaire({ briques: [] }, { blueprint: blueprintDe(`profil: ${profil}`) });
       const { assemblage } = JSON.parse(lireAssemble(dossier, MANIFESTE));
       expect(assemblage.briques).toEqual(briques);
       expect(assemblage.ajouteesDOffice.map(({ nom }: { nom: string }) => nom)).toEqual(ajouteesDOffice);
-      expect(assemblage.entete).toEqual({ appli: "profil-test" });
+      // Le profil n'est pas rejoué : une valeur qu'il donne et que le fichier n'a pas
+      // par défaut est notée au manifeste, sans quoi le rejeu redonnerait 20.
+      expect(assemblage.entete).toEqual({
+        appli: "profil-test",
+        ...(personnesParReseau === 100 ? { personnes_par_reseau: "100" } : {}),
+      });
+      if (limites === undefined) expect(existeAssemble(dossier, "src/config/comptes.ts")).toBe(false);
+      else {
+        const comptes = lireAssemble(dossier, "src/config/comptes.ts");
+        expect(comptes).toContain(`demandesParHeure: ${limites[0]},`);
+        expect(comptes).toContain(`codesFauxParHeure: ${limites[1]},`);
+      }
       for (const nom of [...briques, ...ajouteesDOffice]) {
         expect(existeAssemble(dossier, `src/briques/${nom}/README.md`), nom).toBe(true);
       }
@@ -1895,6 +1986,21 @@ describe("profils de départ", () => {
       expect(lireAssemble(dossier, "blueprint.md")).toMatch(new RegExp(`^profil: ${profil}$`, "m"));
     },
     ENTIER
+  );
+
+  it(
+    "préfère la réponse de la blueprint au défaut du profil : un outil interne de 30 personnes par réseau n'écrit pas 100",
+    { timeout: ENTIER },
+    () => {
+      const { dossier } = assemblerEnTemporaire(
+        { briques: [] },
+        { blueprint: blueprintDe("profil: outil-interne\npersonnes_par_reseau: 30") }
+      );
+      const comptes = lireAssemble(dossier, "src/config/comptes.ts");
+      expect(comptes).toContain("demandesParHeure: 30,");
+      expect(comptes).toContain("codesFauxParHeure: 45,");
+      expect(JSON.parse(lireAssemble(dossier, MANIFESTE)).assemblage.entete.personnes_par_reseau).toBe("30");
+    }
   );
 
   it("ajoute au profil de l'en-tête les briques de --briques", { timeout: ENTIER }, () => {

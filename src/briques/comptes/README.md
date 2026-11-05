@@ -326,9 +326,13 @@ une minute ; « Changer d'adresse » recommence.
 - **Les limites**, comptées en base sous verrou (deux demandes simultanées ne
   passent pas toutes deux), sur l'heure écoulée :
   - une adresse depuis une même IP : une demande par minute, cinq par heure ;
-  - une IP, toutes adresses confondues : vingt par heure ;
+  - une IP, toutes adresses confondues : vingt par heure, réglable
+    (`LIMITES_PAR_RESEAU`, voir plus bas) ;
   - une adresse, toutes IP confondues : dix par heure, ce qui borne les essais à
     trente par heure et par adresse.
+
+  Les limites par adresse e-mail (cinq depuis une IP, dix sur toutes les IP) sont
+  fixes : elles parlent d'une seule personne.
 
   Compter par adresse seule laissait un tiers tenir une personne dehors : la
   limite par adresse se compte depuis une IP, et celle sur toutes les IP est
@@ -336,7 +340,7 @@ une minute ; « Changer d'adresse » recommence.
   adresse dehors une heure, et apprend, s'il bute sur elle avant ses dix
   demandes, que d'autres ont demandé un code pour cette adresse.
 - **Les saisies fausses** d'une IP, toutes adresses confondues : trente par
-  heure. Au-delà, plus aucun code n'est lu depuis cette IP. Sans cette limite,
+  heure, réglable aussi (`LIMITES_PAR_RESEAU`). Au-delà, plus aucun code n'est lu depuis cette IP. Sans cette limite,
   trois essais suffisaient à invalider le code en cours de n'importe qui, et
   « expiré » contre « incorrect » disait qui se connectait à l'instant.
 - **Rien ne dit qui a un compte.** Une adresse inconnue reçoit la même réponse
@@ -348,6 +352,21 @@ une minute ; « Changer d'adresse » recommence.
 - **Demander un code ne crée aucun compte.** Le compte naît quand le bon code
   est saisi (`admettre`). Une adresse désactivée entre l'envoi et la saisie est
   refusée.
+
+**Un réseau entier compte pour une adresse.** Derrière une même box, un bureau, une
+école ou un événement partagent une seule IP, donc les vingt demandes par heure : un
+téléphone en Wi-Fi a été refusé à sa première demande parce qu'un poste du même
+réseau avait épuisé la limite (essai réel de la brique déploiement). La valeur
+dépend de l'appli, pas de la brique : `LIMITES_PAR_RESEAU`, dans
+`src/config/comptes.ts`, donne `demandesParHeure` (vingt par défaut : un site
+grand public) et `codesFauxParHeure` (trente). Une seule question de cadrage les
+règle : combien de personnes au plus se connectent dans la même heure depuis un même
+réseau ? L'en-tête de la blueprint la porte (`personnes_par_reseau`), l'assembleur
+écrit les deux valeurs (la seconde, une fois et demie la première, arrondie au-dessus),
+et à défaut le profil donne vingt, cent pour un outil interne. Un entier d'au moins 1 :
+la limite par IP arrête un poste qui demande des codes à la chaîne (coût d'envoi,
+réputation de l'expéditeur), elle ne se retire pas, et l'appli refuse de démarrer sur
+une valeur nulle, négative ou non entière.
 
 **L'adresse IP derrière l'hébergeur.** Les limites par IP lisent l'adresse du
 visiteur par `adresseDuVisiteur` (`src/lib/adresse-ip.ts`, partagé avec la
@@ -425,7 +444,7 @@ une minute. Le mail mène à `/connexion/lien`.
   pour la même adresse est refusé) ; la même réponse, que l'adresse ait un
   compte ou non ; l'envoi après la réponse, à une adresse admise seulement ;
   aucun compte créé avant le bouton. Un lien faux ou périmé envoyé compte pour
-  une saisie fausse de l'IP (trente par heure).
+  une saisie fausse de l'IP (trente par heure, `LIMITES_PAR_RESEAU`).
 - **Un lien qui ne vaut plus** (expiré, déjà servi, remplacé, inventé) mène à
   la même page : « Ce lien a expiré ou a déjà servi », et le formulaire pour en
   recevoir un nouveau, qui ne dit rien de l'adresse.
@@ -776,7 +795,7 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `EcranConnexion.tsx` | `EcranConnexion({ retour, erreur? })` | Le contenu de `/connexion`, que la page entoure de `AppLayout`. `erreur` reçoit le paramètre `erreur` de l'adresse, tel quel : seul un code de refus de Google ou de Microsoft connu affiche un message. |
 | `EcranLien.tsx` | `EcranLien({ jeton?, retour, erreur? })` | Le contenu de `/connexion/lien`, où mène le lien de connexion du mail, que la page entoure de `AppLayout`. Son rendu ne fait que lire si le lien vaut encore : il montre l'adresse et le bouton « Me connecter », dont l'envoi (POST) connecte, ou la demande d'un nouveau lien. `retour` arrive filtré (`cheminDeRetour`). Sans lien valable, le message du lien expiré, quelle que soit l'`erreur` ; `acces` et `limite`, seuls codes reconnus en plus, donnent une alerte fixe. Page introuvable sans `"lien-email"` dans `METHODES`. |
 | `BandeauSession.tsx` | `BandeauSession` | Placé dans `src/app/layout.tsx`. |
-| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"lien-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`) ; classe `ErreurComptes` | Les types de `src/config/comptes.ts`. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
+| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"lien-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`), `LimitesParReseau` (`demandesParHeure`, `codesFauxParHeure`) ; classe `ErreurComptes` ; `refuserDesLimitesParReseauInvalides(limites?)` → `LimitesParReseau` | Les types de `src/config/comptes.ts`. `refuserDesLimitesParReseauInvalides` lève `ErreurComptes` pour une limite qui n'est pas un entier d'au moins 1 ; le proxy l'appelle à chaque requête, avec les deux gardes de démarrage (démo, entrée ouverte), et la brique à chaque demande ou saisie. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
 | `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code`, `connexion-lien`, `connexion-google` et `connexion-microsoft`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code, par lien, avec Google et avec Microsoft n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et du lien, et la vie du cookie de parcours de Google et de Microsoft sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. Chaque traitement déclare sa `conservation`, à valider avec le client : le compte 24 mois après la dernière connexion (clé `comptes-inactifs`, compté par le script de purge de la brique rgpd, effacé à la main), les sessions un jour après leur expiration (`sessions`), les demandes et saisies de code ou de lien une heure (`codes-connexion`, `codes-connexion-essais`, déclarées par le lien seulement quand le code n'est pas proposé), purgées par la brique rgpd ; les connexions avec Google et avec Microsoft n'en déclarent pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
 | `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code ou de lien se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse, auteur)` : le compte s'anonymise (`anonymiserLeCompte`, au nom de `auteur`, l'admin qui efface), sessions et demandes de code ou de lien sont supprimées. |
 | `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine`, `ouverte` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
@@ -802,7 +821,12 @@ utilise. Les autres exports servent aux fichiers de la brique ou
     accepte les comptes. Vide, elle accepte tout compte dont Google fait autorité ;
   - `ANNUAIRES_MICROSOFT`, `"un-seul"` (l'annuaire du client, `MICROSOFT_TENANT_ID`,
     le défaut) ou `"tous"` (tout annuaire, et les comptes personnels si
-    l'enregistrement de l'application les accepte).
+    l'enregistrement de l'application les accepte) ;
+  - `LIMITES_PAR_RESEAU`, `{ demandesParHeure, codesFauxParHeure }` : les limites par
+    adresse IP de la connexion par code ou lien, sur une heure (« Un réseau entier
+    compte pour une adresse », plus haut). `{ 20, 30 }` par défaut ; des entiers d'au
+    moins 1, sans quoi l'appli refuse de démarrer. Les limites par adresse e-mail ne
+    se règlent pas.
 - `src/config/effets-comptes.ts` : `EFFETS_COMPTES`, une entrée par unité qui
   réagit à un compte désactivé, réactivé ou effacé (le journal d'audit et les
   espaces, si l'appli les a, y sont déjà).

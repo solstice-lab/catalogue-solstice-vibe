@@ -10,13 +10,12 @@ import {
   demanderUnCode,
   DEMANDES_PAR_HEURE_ADRESSE,
   DEMANDES_PAR_HEURE_ADRESSE_IP,
-  DEMANDES_PAR_HEURE_IP,
-  ESSAIS_FAUX_PAR_HEURE_IP,
   ESSAIS_MAX,
 } from "../src/briques/comptes/code-email";
 import type { ContexteEntree } from "../src/briques/comptes/entree";
 import { nomDuCookie } from "../src/briques/comptes/jeton";
 import { lireSessionDe } from "../src/briques/comptes/session";
+import { refuserDesLimitesParReseauInvalides } from "../src/briques/comptes/methodes";
 
 /*
  * La connexion par code à 6 chiffres envoyé par e-mail, reprise
@@ -26,6 +25,16 @@ import { lireSessionDe } from "../src/briques/comptes/session";
  * base, et le code est à usage unique, expire, et ne supporte que trois
  * essais faux. Les mails sont capturés par la brique mails (NODE_ENV=test).
  */
+
+// Les limites par réseau de l'appli (src/config/comptes.ts), changées par test :
+// la brique doit lire le réglage de l'appli, pas une valeur à elle.
+const reglages = vi.hoisted(() => ({ limites: { demandesParHeure: 20, codesFauxParHeure: 30 } }));
+vi.mock("../src/config/comptes", async (original) => ({
+  ...(await original<typeof import("../src/config/comptes")>()),
+  LIMITES_PAR_RESEAU: reglages.limites,
+}));
+const DEMANDES_PAR_HEURE_IP = reglages.limites.demandesParHeure;
+const ESSAIS_FAUX_PAR_HEURE_IP = reglages.limites.codesFauxParHeure;
 
 // L'envoi peut être mis en panne par un test, le reste de la brique mails
 // reste le vrai (capture en test).
@@ -116,10 +125,76 @@ beforeEach(async () => {
   enAttente = [];
   apresReponse.length = 0;
   envoi.enPanne = false;
+  reglages.limites.demandesParHeure = DEMANDES_PAR_HEURE_IP;
+  reglages.limites.codesFauxParHeure = ESSAIS_FAUX_PAR_HEURE_IP;
 });
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+
+// Essai réel de la brique déploiement : un téléphone en Wi-Fi refusé à sa première
+// demande, un poste du même réseau ayant épuisé les 20 demandes par IP. La valeur
+// dépend de l'appli (un bureau de 50 personnes, une appli grand public) : elle se
+// règle dans src/config/comptes.ts, et la brique la lit.
+describe("limites par réseau : lues du réglage de l'appli, jamais retirées", { timeout: 30_000 }, () => {
+  it("lit les demandes par heure et par IP du réglage de l'appli : à 3, la 4e demande d'un réseau est refusée, et à 30 la 21e passe", async () => {
+    reglages.limites.demandesParHeure = 3;
+    for (let i = 0; i < 3; i++) expect(await demander(`reseau${i}@client.example`)).toBe("envoye");
+    expect(await demander("reseau3@client.example")).toBe("limite");
+    expect(await demander("reseau3@client.example", IP_B)).toBe("envoye");
+
+    await query("DELETE FROM codes_connexion");
+    reglages.limites.demandesParHeure = 30;
+    for (let i = 0; i < 21; i++) expect(await demander(`reseau${i}@client.example`)).toBe("envoye");
+  });
+
+  it("lit les saisies fausses par heure et par IP du réglage de l'appli : à 2, la 3e saisie d'une IP n'examine plus aucun code", async () => {
+    reglages.limites.codesFauxParHeure = 2;
+    const code = await recevoirUnCode();
+    for (let i = 0; i < 2; i++) {
+      expect(await connecterParCode(`sonde${i}@client.example`, "000000", IP_B, CONTEXTE)).not.toBe("limite");
+    }
+    expect(await connecterParCode(ADMISE, code, IP_B, CONTEXTE)).toBe("limite");
+    expect(await connecterParCode(ADMISE, code, IP_A, CONTEXTE)).toBe("connecte");
+  });
+
+  it("garde fixes les limites par adresse e-mail, quel que soit le réglage du réseau : elles parlent d'une seule personne", async () => {
+    reglages.limites.demandesParHeure = 1_000;
+    for (let i = 0; i < DEMANDES_PAR_HEURE_ADRESSE; i++) {
+      expect(await demander(ADMISE, `192.0.2.${i}`)).toBe("envoye");
+    }
+    expect(await demander(ADMISE, "192.0.2.200")).toBe("limite");
+  });
+
+  it("refuse une limite nulle, négative, non entière ou sans plafond, avant toute écriture : une limite par réseau se règle, elle ne se retire pas", async () => {
+    for (const refusee of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      reglages.limites.demandesParHeure = refusee;
+      await expect(demander(), String(refusee)).rejects.toThrow(/Brique comptes : .*demandesParHeure/);
+      reglages.limites.demandesParHeure = DEMANDES_PAR_HEURE_IP;
+      reglages.limites.codesFauxParHeure = refusee;
+      await expect(connecterParCode(ADMISE, "123456", IP_A, CONTEXTE), String(refusee)).rejects.toThrow(
+        /Brique comptes : .*codesFauxParHeure/
+      );
+      reglages.limites.codesFauxParHeure = ESSAIS_FAUX_PAR_HEURE_IP;
+    }
+    expect(await query("SELECT 1 FROM codes_connexion")).toHaveLength(0);
+    expect(await query("SELECT 1 FROM codes_connexion_essais")).toHaveLength(0);
+  });
+
+  it("refuse la limite invalide au démarrage, comme les autres gardes de la brique, et nomme le réglage fautif", () => {
+    expect(() => refuserDesLimitesParReseauInvalides()).not.toThrow();
+    expect(() => refuserDesLimitesParReseauInvalides({ demandesParHeure: 0, codesFauxParHeure: 30 })).toThrow(
+      /demandesParHeure.*LIMITES_PAR_RESEAU/
+    );
+    expect(() => refuserDesLimitesParReseauInvalides({ demandesParHeure: 20, codesFauxParHeure: -5 })).toThrow(
+      /codesFauxParHeure/
+    );
+    expect(refuserDesLimitesParReseauInvalides({ demandesParHeure: 100, codesFauxParHeure: 150 })).toEqual({
+      demandesParHeure: 100,
+      codesFauxParHeure: 150,
+    });
+  });
 });
 
 describe("demande d'un code : la réponse ne dit pas qui a un compte", () => {

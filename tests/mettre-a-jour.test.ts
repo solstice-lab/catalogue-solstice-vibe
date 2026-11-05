@@ -221,6 +221,37 @@ describe("mettre-a-jour, examen : l'origine d'une appli rejouée au commit de so
     }
   );
 
+  // Le profil n'est pas rejoué, mais le défaut qu'il a donné aux limites par réseau
+  // est noté au manifeste : sans lui, l'origine rejouée aurait 20 personnes par
+  // réseau là où l'appli en a 100, et ne redonnerait pas les empreintes.
+  it(
+    "rejoue sans écart une appli assemblée par le profil outil-interne, dont le défaut de personnes par réseau n'est pas celui du fichier",
+    { timeout: REJEU },
+    () => {
+      const parProfil = path.join(dossierTemporaire("appli-"), "outil-profile");
+      assemblerAuCommitA({
+        sortie: parProfil,
+        briques: [],
+        entete: "appli: Outil profilé\nprofil: outil-interne",
+      });
+      expect(fs.readFileSync(path.join(parProfil, "src/config/comptes.ts"), "utf-8")).toContain(
+        "demandesParHeure: 100,\n  codesFauxParHeure: 150,"
+      );
+      expect(JSON.parse(fs.readFileSync(path.join(parProfil, MANIFESTE), "utf-8")).assemblage.entete).toMatchObject({
+        personnes_par_reseau: "100",
+      });
+      const head = git(parProfil, "rev-parse", "HEAD");
+      const resultat = examiner({ catalogue, appli: parProfil });
+      expect(resultat).toMatchObject({
+        briques: ["comptes", "mails"],
+        retouches: [],
+        supprimes: [],
+        avertissements: [],
+      });
+      rienNEstEcrit(parProfil, head);
+    }
+  );
+
   it(
     "lit encore le format 1, en déduisant briques, nom du paquet, Dependabot et en-tête de la blueprint",
     { timeout: REJEU },
@@ -545,6 +576,12 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
     ecrire(catalogue, "src/lib/navigation.ts", (t) => `// Évolution du catalogue, en tête.\n${t}`);
     ecrire(catalogue, "src/lib/image-partage.ts", premiereLigne("/* Le catalogue réécrit cette ligne."));
     ecrire(catalogue, "src/config/donnees-personnelles.ts", (t) => `${t}// Évolution du registre.\n`);
+    // Le fichier que l'appli règle au cadrage (qui entre, et combien de personnes par réseau).
+    ecrire(
+      catalogue,
+      "src/config/comptes.ts",
+      (t) => `// Évolution du catalogue, en tête de la configuration des comptes.\n${t}`
+    );
     ecrire(catalogue, ".env.example", (t) => `${t}\n# Essai d'une variable nouvelle.\nESSAI_NOUVELLE_VARIABLE=\n`);
     ecrire(catalogue, "LICENSE", remplacer("SOFTWARE.", "SOFTWARE. (Évolution de la licence.)"));
     fs.writeFileSync(path.join(catalogue, "src/lib/nouveau-du-catalogue.ts"), "export const NOUVEAU = true;\n");
@@ -598,6 +635,15 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
       ecrire(d, "src/lib/format.ts", (t) => `${t}// Retouche de l'appli, le catalogue n'y touche pas.\n`);
       ecrire(d, "src/lib/navigation.ts", (t) => `${t}// Retouche de l'appli, en fin.\n`);
       ecrire(d, "src/lib/image-partage.ts", premiereLigne("/* L'appli réécrit cette ligne."));
+      // Le réglage de l'appli : cent personnes par réseau, et non les vingt du catalogue.
+      ecrire(
+        d,
+        "src/config/comptes.ts",
+        remplacer(
+          "demandesParHeure: 20,\n  codesFauxParHeure: 30,",
+          "demandesParHeure: 100,\n  codesFauxParHeure: 150,"
+        )
+      );
       fs.rmSync(path.join(d, "src/briques/mails/README.md"));
       ecrire(d, "src/ui/theme/polices/LISEZMOI.md", (t) => `${t}\nRetouche de l'appli.\n`);
       fs.appendFileSync(path.join(d, POLICE), Buffer.from([9, 9, 9]));
@@ -652,6 +698,12 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
       const conflit = lu("src/lib/image-partage.ts").toString();
       expect(conflit).toMatch(/^<{7} appli\n\/\* L'appli réécrit cette ligne\.\n/);
       expect(conflit).toMatch(/\n={7}\n\/\* Le catalogue réécrit cette ligne\.\n>{7} cible/);
+      // La configuration des comptes est un fichier de l'appli : le réglage des limites par
+      // réseau qu'elle a retouché survit au report, le changement du catalogue arrive à côté.
+      const configComptes = lu("src/config/comptes.ts").toString();
+      expect(configComptes).toMatch(/^\/\/ Évolution du catalogue, en tête de la configuration des comptes\.\n/);
+      expect(configComptes).toContain("demandesParHeure: 100,\n  codesFauxParHeure: 150,");
+      expect(configComptes).not.toMatch(/\r|<<<<<<<|>>>>>>>/);
       // changé, supprimé par l'appli : laissé absent.
       expect(fs.existsSync(path.join(dossier, "src/briques/mails/README.md"))).toBe(false);
       // absent, puis présent, absent de l'appli : ajouté.
@@ -693,7 +745,7 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
           ]),
           ajoutes: ["src/lib/nouveau-du-catalogue.ts"],
           supprimes: expect.arrayContaining(["docs/cicatrices.md"]),
-          fusionnes: ["NOTICE", "package.json", "src/lib/navigation.ts"],
+          fusionnes: ["NOTICE", "package.json", "src/config/comptes.ts", "src/lib/navigation.ts"],
           enConflit: ["src/lib/image-partage.ts"],
           supprimesParLAppli: ["src/briques/mails/README.md"],
           retouchesRetires: ["src/ui/theme/polices/LISEZMOI.md"],
@@ -721,6 +773,7 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
           "NOTICE",
           "package.json",
           POLICE,
+          "src/config/comptes.ts",
           "src/lib/format.ts",
           "src/lib/image-partage.ts",
           "src/lib/navigation.ts",

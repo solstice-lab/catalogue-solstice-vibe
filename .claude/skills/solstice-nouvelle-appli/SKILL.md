@@ -38,6 +38,15 @@ demander ce que le code ou le `CLAUDE.md` tranchent déjà.
 - Comment se connecter : code par e-mail, lien par e-mail (appli grand public
   seulement), Google, Microsoft 365 ? Avec Microsoft,
   l'annuaire du client seul (le cas normal) ou tous les annuaires ?
+- Combien de personnes au plus peuvent se connecter dans la même heure depuis un même
+  réseau (bureau, école, événement) ? Tout un réseau partage une adresse IP, et donc la
+  limite de demandes de code par IP et par heure (`LIMITES_PAR_RESEAU`,
+  `src/config/comptes.ts`) : un téléphone en Wi-Fi a été refusé à sa première demande
+  parce qu'un poste du même réseau l'avait épuisée. Recommandation : 20 pour une appli
+  grand public ou un portail, 100 pour un outil interne dont tout un bureau se connecte
+  au même moment. Le nombre ne se retire pas (pas de limite sans plafond) ; il se note
+  dans l'en-tête de la blueprint (`personnes_par_reseau:`), et sans réponse l'assembleur
+  prend le défaut du profil.
 - Un partage avec une personne extérieure, sans compte ? Ça se prévoit dès maintenant.
 
 **Les écrans**
