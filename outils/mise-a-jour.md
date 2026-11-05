@@ -78,6 +78,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | `catalogue.empreintes.json` de l'appli | Le commit A (`catalogue.commit`, et `catalogue.commitComplet` au format 2) ; au format 2, les réglages de l'assemblage (`assemblage`, « Ce qui est outillé ») ; au format 1, des réglages déduits : les briques B, valeurs d'`unite` qui sont des clés de `BRIQUES` d'`outils/modules.mjs` au commit A, ni `socle`, ni `donnees` (que `planifier` refuse dans `--briques`), ni les unités partagées `patron-dossiers` et `adresse-ip` (chaque brique a au moins son dossier, donc une entrée) ; Dependabot, par la présence de `.github/dependabot.yml` ; l'empreinte de chaque fichier venu du catalogue, hors `NOTICE` et `blueprint.md`. |
 | `package.json` de l'appli | Au format 1, le nom du paquet, que l'assembleur y a reporté. Un nom changé depuis se voit à la vérification des empreintes (`package.json` et le verrou le portent). |
 | `blueprint.md` de l'appli | `commit_reference`, recoupé avec le manifeste ; un désaccord se signale. Au format 1, son en-tête, que l'assembleur rejoué relit (`appli`, nom affiché, description, site, entrée, rôle par défaut, méthodes de connexion, personnes par réseau), sauf la blueprint minimale qu'il écrit sans `--blueprint`. |
+| `PROJET.md` de l'appli (avec `--ajouter`) | Les briques ajoutées que la fiche écarte, avec leur raison, recopiées au rapport (« Ce qui est outillé », puce « L'ajout ») ; le reste de la fiche n'est jamais lu. |
 | L'appli, à son `HEAD` | Le contenu de chaque fichier tel que git l'enregistre, comme le manifeste, pas le disque. L'arbre doit être propre. |
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
@@ -104,8 +105,9 @@ Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 ## Ce qu'il fait de chaque fichier
 
 Les fichiers que l'appli a créés, absents de l'origine comme de la cible, ne sont jamais
-lus ni touchés. `PROJET.md` est à l'appli ; `blueprint.md` aussi, hors deux champs de son
-en-tête (plus bas). Pour les autres :
+lus ni touchés. `PROJET.md` est à l'appli, jamais écrit (un ajout n'y lit que les briques
+écartées, plus bas) ; `blueprint.md` aussi, hors deux champs de son en-tête (plus bas).
+Pour les autres :
 
 | De l'origine à la cible | Dans l'appli | Ce que fait l'outil |
 | --- | --- | --- |
@@ -301,6 +303,10 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    qu'elle était à A : le rapport l'avertit en tête (retard de l'appli, commits de la brique,
    commande `--vers` à lancer d'abord), sans refuser. La personne choisit l'ordre : mettre à
    jour puis ajouter, ou ajouter tout de suite et se rattraper à la mise à jour suivante.
+   Le rapport avertit aussi, en tête, quand la ligne ou la rubrique « Écartées » de `PROJET.md`
+   nomme une brique ajoutée : il recopie la raison, que la personne relit avant de fusionner.
+   Il nomme enfin, dans une appli qui a déjà `espaces`, les tables arrivées sans `espace_id`,
+   que le verrou d'isolation ne voit pas : à isoler par le branchement, ou à déclarer hors espace en connaissance de cause.
    `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée
    la branche nommée (par défaut `feature/reporter-catalogue-<A'>`, ou
    `feature/ajouter-<briques>`), y écrit, **ne commite
@@ -401,7 +407,8 @@ catalogue d'essai à deux commits : la CI ne clone pas l'historique.
    base de test passe. Outillée (« Ce qui est outillé »).
 4. **Ajouter une brique, simple ou lourde** (`--ajouter`). `planifier` sur B plus x, le
    refus d'une brique absente au commit A, les briques « à brancher » et les ajouts lourds
-   en tête du rapport. Le cadrage de `creer-appli` insiste sur la base et les comptes (une
+   en tête du rapport, avec, de même, les briques que la fiche projet écarte et les tables
+   sans `espace_id` d'une appli avec `espaces`. Le cadrage de `creer-appli` insiste sur la base et les comptes (une
    décision à prendre maintenant, avec ce que coûterait de les ajouter plus tard), et les
    textes que l'ajout rend faux : « n'en recevra pas après coup » (`creer-appli`, étapes 1
    et 2), « pas outillé » (README de la brique notifications), et ceux qui disent l'en-tête
@@ -551,7 +558,24 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   jour. Sans retard, ou sans commit sur les briques reçues, une seule ligne le dit. Faute de
   `origin/main` au catalogue (l'outil ne fait pas de `fetch`), ou si A n'en descend pas, le
   rapport dit que le retard n'est pas calculé : l'ajout n'a pas besoin de `origin/main`, et
-  l'outil avertit, il ne refuse pas. Puis les **ajouts lourds** : la base arrivée (`migrations.ts`
+  l'outil avertit, il ne refuse pas. Puis, de même avertis sans refus et à blanc comme en
+  écriture, les **briques écartées par la fiche projet** (le 2026-11-05, `--ajouter validation`
+  sur l'appli d'essai tours-de-coloc, dont `PROJET.md` écartait la brique avec sa raison,
+  s'était fait sans un mot) : l'outil lit dans le `PROJET.md` de l'appli à son HEAD ce qui
+  s'annonce écarté, une ligne « Écartées : … » (sa raison est le texte après les deux-points
+  ou ses sous-puces), une rubrique titrée « Briques écartées » (une puce ou une ligne de
+  tableau par brique) ou une ligne de tableau dont une cellule commence par « écartée »
+  (« | validation | écartée : … | », la forme de la fiche de tours-de-coloc), nomme
+  chaque brique ajoutée ou entraînée qu'il y trouve en mot entier et recopie l'entrée qui la
+  nomme ; le gabarit de la fiche ne fixe pas cette forme, le corps de la fiche n'est jamais
+  analysé, et sans fiche ou sans la ligne il n'y a rien à dire. Et, quand l'appli avait déjà
+  `espaces` (sans quoi il n'y a pas de verrou, et les tables d'une brique arrivée avec lui,
+  `utilisateurs` de `comptes` par exemple, feraient du bruit), les **tables sans `espace_id`** : celles que créent les étapes de migration
+  arrivées (hors `espaces` et ses tables), sans cette colonne dans leur `CREATE TABLE` ni par
+  un `ALTER TABLE`. Le verrou `tests/espaces-isolation.test.ts` ne repère une table à
+  protéger que par cette colonne : une table de brique qui ne l'a pas passe le verrou sans
+  être isolée ; le rapport la nomme, à isoler par le branchement ou à déclarer hors espace en
+  connaissance de cause, et ne l'ajoute pas lui-même. Puis les **ajouts lourds** : la base arrivée (`migrations.ts`
   absent de l'origine), avec la décision de la créer chez l'hébergeur, `DATABASE_URL` et les
   bases locales ; `comptes` arrivée, avec les fichiers de l'appli que
   `tests/gardes-acces.test.ts` refusera, nommés un à un (les pages, routes et fichiers « use

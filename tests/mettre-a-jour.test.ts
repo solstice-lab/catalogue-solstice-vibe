@@ -4,7 +4,15 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { assembler } from "../outils/assembler.mjs";
-import { ErreurMiseAJour, examiner, lireLesEtapes, mettreAJour, rapport } from "../outils/mettre-a-jour.mjs";
+import {
+  briquesEcarteesParLaFiche,
+  ErreurMiseAJour,
+  examiner,
+  lireLesEtapes,
+  mettreAJour,
+  rapport,
+  tablesSansEspaceId,
+} from "../outils/mettre-a-jour.mjs";
 import {
   migrationsAvantPuisApres,
   migrationsSuccessives,
@@ -1612,6 +1620,212 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
         } finally {
           git(catalogue, "update-ref", "refs/remotes/origin/main", main);
         }
+      }
+    );
+  });
+
+  /*
+   * Le cas d'origine (2026-11-05) : --ajouter validation sur l'appli d'essai
+   * tours-de-coloc, dont la fiche projet écartait la brique au cadrage avec sa
+   * raison, s'est fait sans un mot du rapport ; et la brique arrivait avec une
+   * table sans espace_id dans une appli qui a espaces, que le verrou
+   * d'isolation (il ne repère une table que par cette colonne) ne voit pas.
+   * L'outil avertit, il ne refuse pas : la raison peut avoir changé.
+   */
+  describe("ce que la fiche projet et le verrou d'isolation ne diront pas seuls : brique écartée, table sans espace_id", () => {
+    const RAISON = "un échange s'accepte entre deux personnes, pas par une personne habilitée";
+
+    it("lit la ligne « Écartées » de la fiche : la raison recopiée, une brique nommée ailleurs dans le corps ne compte pas", () => {
+      const fiche = [
+        "# Fiche",
+        "",
+        "## Besoin",
+        "",
+        "Les colocs suivent leurs échanges de service ; une validation par un admin n'est pas voulue.",
+        "",
+        "## Formes retenues",
+        "",
+        `- **Écartées** : validation (${RAISON}), echeances (aucune date à suivre).`,
+        "- Gardées : journal.",
+      ].join("\n");
+      expect(briquesEcarteesParLaFiche(fiche, ["validation", "journal"])).toEqual([
+        { brique: "validation", raison: expect.stringContaining(RAISON) },
+      ]);
+      // Une brique que la ligne ne nomme pas, même citée dans le corps : rien.
+      expect(briquesEcarteesParLaFiche(fiche, ["journal"])).toEqual([]);
+    });
+
+    it("lit aussi une rubrique « Briques écartées » en puces, une raison par brique, et une ligne « Écartées : » à sous-puces", () => {
+      const enRubrique = [
+        "## Briques écartées",
+        "",
+        `- \`validation\` : ${RAISON}.`,
+        "- `echeances` : aucune date à suivre,",
+        "  le client n'a pas de délais.",
+        "",
+        "## Suite",
+        "",
+        "- journal : à garder.",
+      ].join("\n");
+      expect(briquesEcarteesParLaFiche(enRubrique, ["validation", "echeances", "journal"])).toEqual([
+        { brique: "validation", raison: `\`validation\` : ${RAISON}.` },
+        { brique: "echeances", raison: "`echeances` : aucune date à suivre, le client n'a pas de délais." },
+      ]);
+      const sousPuces = [
+        "- Écartées :",
+        `  - validation : ${RAISON}`,
+        "  - echeances : aucune date",
+        "- Gardées : journal",
+      ].join("\n");
+      expect(briquesEcarteesParLaFiche(sousPuces, ["validation", "journal"])).toEqual([
+        { brique: "validation", raison: `validation : ${RAISON}` },
+      ]);
+    });
+
+    it("lit une ligne de tableau dont une cellule dit « écartée » (la forme de la fiche de tours-de-coloc), et seulement cette ligne", () => {
+      const fiche = [
+        "## Les briques",
+        "",
+        "| Brique | Décision |",
+        "| --- | --- |",
+        "| journal | gardée : trace des changements |",
+        `| validation | écartée : ${RAISON} |`,
+        `| echeances | Écartée : aucune date à suivre |`,
+        "| notifications | à voir |",
+      ].join("\n");
+      expect(briquesEcarteesParLaFiche(fiche, ["validation", "journal", "notifications"])).toEqual([
+        { brique: "validation", raison: `validation | écartée : ${RAISON}` },
+      ]);
+      // Sous une rubrique « Briques écartées », chaque ligne du tableau est une entrée.
+      const enRubrique = [
+        "## Briques écartées",
+        "",
+        "| Brique | Raison |",
+        "| --- | --- |",
+        `| validation | ${RAISON} |`,
+        "| echeances | aucune date |",
+      ].join("\n");
+      expect(briquesEcarteesParLaFiche(enRubrique, ["validation", "journal"])).toEqual([
+        { brique: "validation", raison: `validation | ${RAISON}` },
+      ]);
+      // La cellule d'étiquette seule, sans « : » : la ligne entière est l'entrée.
+      expect(briquesEcarteesParLaFiche("| Écartées | validation, echeances |", ["echeances", "journal"])).toEqual([
+        { brique: "echeances", raison: "Écartées | validation, echeances" },
+      ]);
+    });
+
+    it("ne dit rien sans fiche, sans la ligne ou sans la brique ajoutée, et nomme une brique en mot entier", () => {
+      expect(briquesEcarteesParLaFiche(undefined, ["validation"])).toEqual([]);
+      expect(briquesEcarteesParLaFiche("# Fiche\n\nValidation : à voir.\n", ["validation"])).toEqual([]);
+      expect(briquesEcarteesParLaFiche("- Écartées : mails-groupes, contacts.", ["mails", "contact"])).toEqual([]);
+    });
+
+    it("lit « Écartés : » au masculin comme le dépôt l'écrit, et ne prend pas pour la suite de la raison la ligne d'une autre étiquette", () => {
+      expect(briquesEcarteesParLaFiche("- Écartés : validation (pas de décideur).", ["validation"])).toEqual([
+        { brique: "validation", raison: "validation (pas de décideur)." },
+      ]);
+      // Sans puce ni ligne vide : « Gardées : journal » n'est pas la suite de « Écartées : validation ».
+      expect(briquesEcarteesParLaFiche("Écartées : validation\nGardées : journal", ["validation", "journal"])).toEqual([
+        { brique: "validation", raison: "validation" },
+      ]);
+      // Une suite indentée de la raison reste la raison.
+      expect(
+        briquesEcarteesParLaFiche("Écartées : validation, parce que\n  personne ne décide.\nGardées : journal", [
+          "validation",
+          "journal",
+        ])
+      ).toEqual([{ brique: "validation", raison: "validation, parce que personne ne décide." }]);
+    });
+
+    it("nomme les tables arrivées sans espace_id, et laisse celles qui l'ont, celles que la brique espaces garde, et l'index", () => {
+      const etape = (texte: string) => ({ nom: "essai", texte, code: texte });
+      const sans = etape(
+        "await pool.query(`CREATE TABLE IF NOT EXISTS journal_audit (id SERIAL PRIMARY KEY, action TEXT NOT NULL CHECK (action IN ('a', 'b')))`);"
+      );
+      const avec = etape(
+        "await pool.query(`CREATE TABLE IF NOT EXISTS taches (id SERIAL PRIMARY KEY, espace_id INTEGER NOT NULL REFERENCES espaces (id))`);\n" +
+          "await pool.query(`CREATE INDEX IF NOT EXISTS taches_idx ON taches (espace_id)`);"
+      );
+      const aPart = etape(
+        "await pool.query(`CREATE TABLE IF NOT EXISTS espaces_invitations (id BIGSERIAL PRIMARY KEY, espace_id INTEGER)`);\n" +
+          "await pool.query(`CREATE TABLE IF NOT EXISTS espaces_essais_code (id BIGSERIAL PRIMARY KEY)`);"
+      );
+      const parAlter = etape(
+        "await pool.query(`CREATE TABLE IF NOT EXISTS depenses (id SERIAL PRIMARY KEY)`);\n" +
+          "await pool.query(`ALTER TABLE depenses ADD COLUMN IF NOT EXISTS espace_id INTEGER`);"
+      );
+      expect(tablesSansEspaceId([sans])).toEqual(["journal_audit"]);
+      expect(tablesSansEspaceId([avec])).toEqual([]);
+      expect(tablesSansEspaceId([aPart])).toEqual([]);
+      expect(tablesSansEspaceId([parAlter])).toEqual([]);
+      expect(tablesSansEspaceId([avec, sans, aPart, parAlter])).toEqual(["journal_audit"]);
+      // Le nom de table entre guillemets se lit ; une table d'appli au préfixe espaces_ n'est pas exemptée.
+      expect(
+        tablesSansEspaceId([
+          etape('await pool.query(`CREATE TABLE "journal_audit" (id SERIAL PRIMARY KEY)`);'),
+          etape("await pool.query(`CREATE TABLE espaces_verts (id SERIAL PRIMARY KEY)`);"),
+        ])
+      ).toEqual(["espaces_verts", "journal_audit"]);
+    });
+
+    it(
+      "dit en tête du rapport, à blanc comme en écriture, qu'une brique ajoutée est écartée par la fiche projet, avec sa raison, sans refuser ; sans fiche, rien",
+      { timeout: 3 * REJEU },
+      () => {
+        const sansFiche = appliRetouchee(() => {});
+        publier(sansFiche);
+        const nue = mettreAJour({ catalogue, appli: sansFiche, ajouter: ["journal"], aBlanc: true });
+        expect(nue.ecartees).toEqual([]);
+        expect(rapport(nue)).not.toContain("## Briques écartées par la fiche projet");
+
+        const avecFiche = appliRetouchee((dossier) => {
+          fs.writeFileSync(
+            path.join(dossier, "PROJET.md"),
+            `# Essai de coloc\n\n## Formes retenues\n\n- Écartées : journal (${RAISON}), notifications (rien à envoyer).\n`
+          );
+        });
+        publier(avecFiche);
+        const aBlanc = mettreAJour({ catalogue, appli: avecFiche, ajouter: ["journal"], aBlanc: true });
+        expect(aBlanc.ecartees).toEqual([{ brique: "journal", raison: expect.stringContaining(RAISON) }]);
+        const texte = rapport(aBlanc);
+        const rubrique = rubriqueDe(texte, "Briques écartées par la fiche projet") ?? "";
+        expect(rubrique).toContain("`journal`");
+        expect(rubrique).toContain(RAISON);
+        expect(rubrique).toMatch(/la raison peut avoir changé/);
+        expect(texte.indexOf("## Briques écartées par la fiche projet")).toBeLessThan(texte.indexOf("## Fichiers"));
+        rienNEstTouche(avecFiche, git(avecFiche, "rev-parse", "HEAD"));
+
+        // En écriture : la branche s'écrit (pas de refus), et le rapport qu'elle laisse porte le même avertissement.
+        const ecrit = mettreAJour({ catalogue, appli: avecFiche, ajouter: ["journal"] });
+        expect(git(avecFiche, "branch", "--show-current")).toBe("feature/ajouter-journal");
+        const dansLeFichier = fs.readFileSync(ecrit.fichierDuRapport ?? "", "utf-8");
+        expect(rubriqueDe(dansLeFichier, "Briques écartées par la fiche projet")).toBe(rubrique);
+      }
+    );
+
+    it(
+      "nomme la table sans espace_id d'une brique arrivée dans une appli qui a espaces, avec la conduite à tenir ; sans espaces, rien",
+      { timeout: 3 * REJEU },
+      () => {
+        const avecEspaces = path.join(dossierTemporaire("appli-espaces-"), "essai-espaces");
+        assemblerAuCommitA({ sortie: avecEspaces, briques: ["comptes", "mails", "espaces"] });
+        publier(avecEspaces);
+        const resultat = mettreAJour({ catalogue, appli: avecEspaces, ajouter: ["journal"], aBlanc: true });
+        expect(resultat.tablesSansEspace).toEqual(["journal_audit"]);
+        const texte = rapport(resultat);
+        const rubrique = rubriqueDe(texte, "Tables sans espace_id") ?? "";
+        expect(rubrique).toContain("`journal_audit`");
+        expect(rubrique).toContain("à isoler par le branchement, ou à déclarer hors espace en connaissance de cause");
+        expect(rubrique).toContain("tests/espaces-isolation.test.ts");
+        expect(texte.indexOf("## Tables sans espace_id")).toBeLessThan(texte.indexOf("## Fichiers"));
+        rienNEstTouche(avecEspaces, git(avecEspaces, "rev-parse", "HEAD"));
+
+        // La même brique dans une appli sans espaces : le verrou n'existe pas, rien à dire.
+        const sansEspaces = appliRetouchee(() => {});
+        publier(sansEspaces);
+        const autre = mettreAJour({ catalogue, appli: sansEspaces, ajouter: ["journal"], aBlanc: true });
+        expect(autre.tablesSansEspace).toEqual([]);
+        expect(rapport(autre)).not.toContain("## Tables sans espace_id");
       }
     );
   });

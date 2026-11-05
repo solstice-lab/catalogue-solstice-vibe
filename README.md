@@ -318,7 +318,8 @@ Avec `--ajouter <briques>`, il ajoute de même des briques à l'appli, au commit
 y compris une brique qui apporte la base, et `comptes`, que le rapport annonce en tête
 avec ce qu'elles coûtent. Une brique arrive telle qu'elle était au commit de l'appli : le
 rapport avertit en tête du retard de l'appli sur `origin/main` et des commits de la brique
-depuis, sans refuser. Côté assembleur, `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
+depuis, des briques que son `PROJET.md` écarte, et, dans une appli avec `espaces`, des
+tables arrivées sans `espace_id`, sans refuser. Côté assembleur, `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
 personne n'entretient en recevait une PR de mise à jour par semaine, jamais fusionnée
 (le catalogue garde le sien). Il fait
 ensuite du dossier un dépôt git local d'un seul commit, sur la branche `main`
