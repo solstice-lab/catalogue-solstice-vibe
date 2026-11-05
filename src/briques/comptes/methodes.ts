@@ -58,8 +58,11 @@ export class ErreurComptes extends Error {
 // lecture : l'appli refuse de démarrer au lieu de refuser, sans un mot, tout le
 // monde.
 export function refuserDesLimitesParReseauInvalides(limites: LimitesParReseau = LIMITES_PAR_RESEAU): LimitesParReseau {
-  for (const [nom, valeur] of Object.entries(limites)) {
-    if (!Number.isInteger(valeur) || valeur < 1) {
+  // Les deux clés nommées : une clé absente ferait de la comparaison « >= undefined »
+  // une limite qui ne refuse jamais, sans un mot.
+  for (const nom of ["demandesParHeure", "codesFauxParHeure"] as const) {
+    const valeur: unknown = limites[nom];
+    if (typeof valeur !== "number" || !Number.isInteger(valeur) || valeur < 1) {
       throw new ErreurComptes(
         `la limite « ${nom} » de LIMITES_PAR_RESEAU (src/config/comptes.ts) doit être un entier d'au moins 1 (valeur lue : ${String(valeur)}). Une limite par réseau se règle, elle ne se retire pas.`
       );

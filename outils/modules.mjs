@@ -844,9 +844,10 @@ export const BRIQUES = {
 //   personnesParReseau : combien de personnes au plus se connectent dans la même
 //               heure depuis un même réseau (bureau, école, événement), quand
 //               la blueprint ne répond pas (LIMITES_PAR_RESEAU de
-//               src/config/comptes.ts). Absent d'un profil sans la brique comptes :
-//               la vitrine n'a pas de connexion, sa valeur ne sert que si une
-//               brique ajoutée après coup en apporte une.
+//               src/config/comptes.ts). N'est écrit que si la brique comptes
+//               est gardée : la vitrine, sans connexion, porte 20 pour qu'une
+//               brique ajoutée après coup parte du même défaut, mais l'assembleur
+//               ne l'écrit nulle part.
 export const PROFILS = {
   // Un site sans connexion ni données gardées, son contenu écrit dans le code.
   // Une brique qui connecte ou garde des fiches en ferait une autre appli :
@@ -1163,8 +1164,9 @@ export const METHODES_DE_CONNEXION = ["code-email", "lien-email", "google", "mic
 
 // Ce que src/config/comptes.ts donne sans réponse : 20 personnes par réseau et par
 // heure, 30 saisies fausses. Une seule réponse règle les deux limites par IP : la
-// seconde est une fois et demie la première, le rapport du défaut (20 et 30), qui
-// laisse aux fautes de frappe de qui se connecte de quoi passer.
+// seconde est une fois et demie la première, le rapport du défaut (20 et 30). Sur
+// un réseau de 100 personnes, 30 saisies fausses par heure se dépasseraient par
+// de simples fautes de frappe : la limite doit suivre le nombre de personnes.
 export const PERSONNES_PAR_RESEAU_PAR_DEFAUT = 20;
 
 export function limitesParReseau(personnes) {

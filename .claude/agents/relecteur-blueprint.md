@@ -86,11 +86,11 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   (`public` ou `ferme`) : un champ absent laisse sa valeur de remplacement (`NOM_APP`,
   titres « À compléter », site fermé), ce qui est un constat si le corps ou la fiche les
   dit décidés. `nom_affiche`, `description` et le choix `site` redisent la fiche et la
-  section 5 ; `appli` n'est pas le nom affiché. Avec `comptes`, `entree`, `role_par_defaut`
+  section 5 ; `appli` n'est pas le nom affiché. Avec `comptes`, `entree`, `role_par_defaut`,
   `methodes` et `personnes_par_reseau` redisent ce que la section 5 et la fiche tranchent (liste d'adresses ou
   outil ouvert à toute adresse, rôles, code ou lien par e-mail, Google ou Microsoft) : une entrée `ouverte`
   avec des droits que la section 5 réserve à des personnes listées est un constat. Un champ
-  absent laisse le défaut (entrée fermée, rôle `membre`, méthode `code-email`) : constat si
+  absent laisse le défaut (entrée fermée, rôle `membre`, méthode `code-email`, personnes par réseau du profil) : constat si
   la section 5 ou la fiche dit autre chose. Avec `espaces` et une entrée fermée, la
   section 5 dit comment une adresse invitée est admise (l'invitation ne crée pas de
   compte) : constat si elle ne le dit pas. Section 9 :

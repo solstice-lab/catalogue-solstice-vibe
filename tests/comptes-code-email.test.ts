@@ -190,6 +190,9 @@ describe("limites par réseau : lues du réglage de l'appli, jamais retirées", 
     expect(() => refuserDesLimitesParReseauInvalides({ demandesParHeure: 20, codesFauxParHeure: -5 })).toThrow(
       /codesFauxParHeure/
     );
+    // Une clé absente ferait d'une comparaison une limite qui ne refuse jamais.
+    expect(() => refuserDesLimitesParReseauInvalides({ demandesParHeure: 20 } as never)).toThrow(/codesFauxParHeure/);
+    expect(() => refuserDesLimitesParReseauInvalides({ codesFauxParHeure: 30 } as never)).toThrow(/demandesParHeure/);
     expect(refuserDesLimitesParReseauInvalides({ demandesParHeure: 100, codesFauxParHeure: 150 })).toEqual({
       demandesParHeure: 100,
       codesFauxParHeure: 150,

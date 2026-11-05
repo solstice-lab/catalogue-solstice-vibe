@@ -1964,11 +1964,12 @@ describe("profils de départ", () => {
       const { assemblage } = JSON.parse(lireAssemble(dossier, MANIFESTE));
       expect(assemblage.briques).toEqual(briques);
       expect(assemblage.ajouteesDOffice.map(({ nom }: { nom: string }) => nom)).toEqual(ajouteesDOffice);
-      // Le profil n'est pas rejoué : une valeur qu'il donne et que le fichier n'a pas
-      // par défaut est notée au manifeste, sans quoi le rejeu redonnerait 20.
+      // Le profil n'est pas rejoué : la valeur qu'il donne est notée au manifeste, même
+      // quand c'est celle du fichier, sans quoi le rejeu redonnerait 20 à un outil
+      // interne. Une vitrine, sans connexion à limiter, n'en note aucune.
       expect(assemblage.entete).toEqual({
         appli: "profil-test",
-        ...(personnesParReseau === 100 ? { personnes_par_reseau: "100" } : {}),
+        ...(limites === undefined ? {} : { personnes_par_reseau: String(personnesParReseau) }),
       });
       if (limites === undefined) expect(existeAssemble(dossier, "src/config/comptes.ts")).toBe(false);
       else {

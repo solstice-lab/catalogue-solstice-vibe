@@ -38,7 +38,6 @@ import {
   OPTIONS_DU_SOCLE,
   NOM_DU_CATALOGUE,
   PATRON_DOSSIERS,
-  PERSONNES_PAR_RESEAU_PAR_DEFAUT,
   PROFILS,
   RETRAITS_DU_SOCLE,
   remplissagesDeLEnTete,
@@ -969,21 +968,19 @@ const CHAMPS_DE_L_ENTETE_LUS = [
   "personnes_par_reseau",
 ];
 
-// `personnesParReseau` : la valeur écrite dans l'appli. Quand elle vient du
-// profil, que le rejeu ne connaît pas, elle est notée ici : sans cela l'assembleur
-// rejoué par outils/mettre-a-jour.mjs redonnerait le défaut du fichier (20) à une
-// appli assemblée à 100, et l'origine rejouée ne redonnerait pas les empreintes.
+// `personnesParReseau` : la valeur écrite dans l'appli, qu'elle vienne de l'en-tête
+// ou du profil. Celle du profil, que le rejeu ne connaît pas, est notée ici : sans
+// cela l'assembleur rejoué par outils/mettre-a-jour.mjs redonnerait le défaut du
+// fichier (20) à une appli assemblée à 100, et l'origine rejouée ne redonnerait pas
+// les empreintes. Notée même quand elle vaut le défaut du fichier, pour que
+// l'outil sache toujours d'où elle vient.
 function enteteLue(markdown, personnesParReseau) {
   const entete = {};
   for (const cle of CHAMPS_DE_L_ENTETE_LUS) {
     const brut = ligneDeLEntete(markdown, cle);
     if (brut !== undefined) entete[cle] = brut;
   }
-  if (
-    entete.personnes_par_reseau === undefined &&
-    personnesParReseau !== undefined &&
-    personnesParReseau !== PERSONNES_PAR_RESEAU_PAR_DEFAUT
-  ) {
+  if (entete.personnes_par_reseau === undefined && personnesParReseau !== undefined) {
     entete.personnes_par_reseau = String(personnesParReseau);
   }
   return entete;

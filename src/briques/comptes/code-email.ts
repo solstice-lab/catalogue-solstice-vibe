@@ -35,21 +35,21 @@ export const ESSAIS_MAX = 3;
 // tenir la personne dehors une heure.
 export const DELAI_ENTRE_DEMANDES_S = 60;
 export const DEMANDES_PAR_HEURE_ADRESSE_IP = 5;
-// Une IP, toutes adresses confondues : borne qui essaie des milliers d'adresses.
-// Réglage de l'appli, pas de la brique (LIMITES_PAR_RESEAU de
-// src/config/comptes.ts) : tout un réseau partage une IP, et le nombre de
-// personnes qui s'y connectent dans l'heure dépend de l'appli.
+// Les deux limites par IP ne sont pas ici : elles se règlent par appli
+// (LIMITES_PAR_RESEAU de src/config/comptes.ts), car tout un réseau partage une IP
+// et le nombre de personnes qui s'y connectent dans l'heure dépend de l'appli.
+// - Les demandes d'une IP, toutes adresses confondues : borne qui essaie des
+//   milliers d'adresses.
+// - Les saisies fausses d'une IP, toutes adresses confondues. Sans elle, trois
+//   essais d'une seule IP invalidaient le code en cours de n'importe qui, pour
+//   des milliers d'adresses, et « expiré » contre « incorrect » disait qui se
+//   connectait à l'instant. Une fois atteinte, plus aucun code n'est lu depuis
+//   cette IP : ni invalidé, ni sondé.
 // Une adresse, toutes IP confondues : sans elle, qui dispose de beaucoup d'IP
 // demande 5 codes par heure et par IP, et 3 essais chacun, sans fin. Avec
 // elle, au plus 30 essais par heure sur un million de codes. Le prix : qui a
 // plusieurs IP peut tenir une adresse dehors une heure.
 export const DEMANDES_PAR_HEURE_ADRESSE = 10;
-// Les saisies fausses d'une IP, toutes adresses confondues. Sans elle, trois
-// essais d'une seule IP invalidaient le code en cours de n'importe qui, pour
-// des milliers d'adresses, et « expiré » contre « incorrect » disait qui se
-// connectait à l'instant. Une fois atteinte, plus aucun
-// code n'est lu depuis cette IP : ni invalidé, ni sondé. Réglée aussi par
-// LIMITES_PAR_RESEAU.
 
 // Les lignes ne servent qu'aux limites et au code en cours : une heure suffit.
 const CONSERVATION_S = 3_600;

@@ -362,7 +362,9 @@ dépend de l'appli, pas de la brique : `LIMITES_PAR_RESEAU`, dans
 grand public) et `codesFauxParHeure` (trente). Une seule question de cadrage les
 règle : combien de personnes au plus se connectent dans la même heure depuis un même
 réseau ? L'en-tête de la blueprint la porte (`personnes_par_reseau`), l'assembleur
-écrit les deux valeurs (la seconde, une fois et demie la première, arrondie au-dessus),
+écrit les deux valeurs (la seconde, une fois et demie la première, arrondie au-dessus :
+sur un réseau de cent personnes, trente saisies fausses par heure se dépasseraient par
+de simples fautes de frappe, d'où un rapport gardé de celui du défaut, vingt et trente),
 et à défaut le profil donne vingt, cent pour un outil interne. Un entier d'au moins 1 :
 la limite par IP arrête un poste qui demande des codes à la chaîne (coût d'envoi,
 réputation de l'expéditeur), elle ne se retire pas, et l'appli refuse de démarrer sur
@@ -444,7 +446,7 @@ une minute. Le mail mène à `/connexion/lien`.
   pour la même adresse est refusé) ; la même réponse, que l'adresse ait un
   compte ou non ; l'envoi après la réponse, à une adresse admise seulement ;
   aucun compte créé avant le bouton. Un lien faux ou périmé envoyé compte pour
-  une saisie fausse de l'IP (trente par heure, `LIMITES_PAR_RESEAU`).
+  une saisie fausse de l'IP (trente par heure par défaut, `LIMITES_PAR_RESEAU`).
 - **Un lien qui ne vaut plus** (expiré, déjà servi, remplacé, inventé) mène à
   la même page : « Ce lien a expiré ou a déjà servi », et le formulaire pour en
   recevoir un nouveau, qui ne dit rien de l'adresse.

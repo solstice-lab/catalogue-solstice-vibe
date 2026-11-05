@@ -338,7 +338,7 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   liens avant la personne : la méthode leur est réservée au grand public, et
   le lien ne se consomme jamais à l'ouverture.
 
-## 2026-11-05 · Limites de connexion par réseau réglables par l'appli
+## 2026-11-05 · Limites de connexion par réseau réglables par l'appli · Rupture
 
 - **Ce qui change** :
   - `LIMITES_PAR_RESEAU` dans `src/config/comptes.ts`, `{ demandesParHeure: 20,
