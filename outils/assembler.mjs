@@ -730,9 +730,28 @@ export function rolesDeLApp(acces) {
   return { connus: roles.map((role) => role.slice(1, -1)), roleAdmin };
 }
 
+// Le nombre de personnes qui se connectent au plus dans l'heure depuis un même
+// réseau (`personnes_par_reseau`), entier d'au moins 1. Refusé sinon : un zéro ou
+// un texte écrit tel quel dans src/config/comptes.ts ferait refuser l'appli au
+// démarrage (la brique refuse une limite nulle), ou pire, serait lu comme une
+// absence de réponse.
+function personnesParReseauDeLEntete(markdown) {
+  const brut = champDeLEntete(markdown, "personnes_par_reseau");
+  if (brut === undefined) return undefined;
+  const personnes = /^[0-9]+$/.test(brut) ? Number(brut) : Number.NaN;
+  if (!Number.isSafeInteger(personnes) || personnes < 1) {
+    throw new ErreurAssemblage(
+      `En-tête de la blueprint, personnes_par_reseau : un nombre entier de personnes d'au moins 1 attendu (combien se connectent au plus dans l'heure depuis un même réseau), « ${brut} » trouvé.`
+    );
+  }
+  return personnes;
+}
+
 /*
  * L'entrée de l'appli que déclare l'en-tête : `entree` (ouverte ou ferme),
- * `role_par_defaut` et `methodes`. Refusée avant toute écriture :
+ * `role_par_defaut`, `methodes` et `personnes_par_reseau`. Sans réponse à cette
+ * dernière, le défaut du profil (PROFILS de modules.mjs), s'il y en a un et que
+ * la brique qui porte la connexion est gardée. Refusée avant toute écriture :
  *   - sans la brique qui porte la connexion, la promesse ne serait pas tenue ;
  *   - un rôle par défaut qui administre : une entrée ouverte le donnerait à
  *     n'importe quelle adresse d'Internet, et un domaine à tout son personnel.
@@ -742,18 +761,24 @@ export function rolesDeLApp(acces) {
  * `demo` reste dans METHODES, en local : elle refuse de démarrer en production,
  * et son retrait fait partie des gestes de la mise en ligne.
  */
-function entreeDeLEntete(markdown, { unites, racine }) {
+function entreeDeLEntete(markdown, { unites, racine, profil }) {
   const entree = champDeLEntete(markdown, "entree");
   if (entree !== undefined && entree !== "ouverte" && entree !== "ferme") {
     throw new ErreurAssemblage(`En-tête de la blueprint, entree : ouverte ou ferme attendu, « ${entree} » trouvé.`);
   }
   const roleParDefaut = champDeLEntete(markdown, "role_par_defaut");
   const liste = listeDeLEntete(markdown, "methodes");
-  if (entree === undefined && roleParDefaut === undefined && liste === undefined) return {};
+  const personnesDonnees = personnesParReseauDeLEntete(markdown);
+  const connexionGardee = unites.some((unite) => unite.gardee && unite.definition.connexion);
+  // Le défaut du profil ne vaut que s'il y a une connexion à limiter.
+  const personnesDuProfil = connexionGardee ? PROFILS[profil]?.personnesParReseau : undefined;
+  if (entree === undefined && roleParDefaut === undefined && liste === undefined && personnesDonnees === undefined) {
+    return { personnesParReseau: personnesDuProfil };
+  }
 
-  if (!unites.some((unite) => unite.gardee && unite.definition.connexion)) {
+  if (!connexionGardee) {
     throw new ErreurAssemblage(
-      "L'en-tête de la blueprint règle l'entrée (entree, role_par_defaut ou methodes), mais la brique qui porte la connexion n'est pas gardée : l'ajouter à --briques, ou retirer ces champs."
+      "L'en-tête de la blueprint règle l'entrée (entree, role_par_defaut, methodes ou personnes_par_reseau), mais la brique qui porte la connexion n'est pas gardée : l'ajouter à --briques, ou retirer ces champs."
     );
   }
   if (roleParDefaut !== undefined) {
@@ -785,7 +810,12 @@ function entreeDeLEntete(markdown, { unites, racine }) {
       );
     }
   }
-  return { ouverte: entree === undefined ? undefined : entree === "ouverte", roleParDefaut, methodes };
+  return {
+    ouverte: entree === undefined ? undefined : entree === "ouverte",
+    roleParDefaut,
+    methodes,
+    personnesParReseau: personnesDonnees ?? personnesDuProfil,
+  };
 }
 
 /*
@@ -927,13 +957,31 @@ const FORMAT_DU_MANIFESTE = 2;
 // blueprint qui n'a qu'eux, ils redonnent les mêmes valeurs. Hors `profil` :
 // ses briques sont dans `assemblage.briques`, et le rejouer les redonnerait
 // selon le profil du jour, pas celui de l'assemblage.
-const CHAMPS_DE_L_ENTETE_LUS = ["appli", "nom_affiche", "description", "site", "entree", "role_par_defaut", "methodes"];
+const CHAMPS_DE_L_ENTETE_LUS = [
+  "appli",
+  "nom_affiche",
+  "description",
+  "site",
+  "entree",
+  "role_par_defaut",
+  "methodes",
+  "personnes_par_reseau",
+];
 
-function enteteLue(markdown) {
+// `personnesParReseau` : la valeur écrite dans l'appli, qu'elle vienne de l'en-tête
+// ou du profil. Celle du profil, que le rejeu ne connaît pas, est notée ici : sans
+// cela l'assembleur rejoué par outils/mettre-a-jour.mjs redonnerait le défaut du
+// fichier (20) à une appli assemblée à 100, et l'origine rejouée ne redonnerait pas
+// les empreintes. Notée même quand elle vaut le défaut du fichier, pour que
+// l'outil sache toujours d'où elle vient.
+function enteteLue(markdown, personnesParReseau) {
   const entete = {};
   for (const cle of CHAMPS_DE_L_ENTETE_LUS) {
     const brut = ligneDeLEntete(markdown, cle);
     if (brut !== undefined) entete[cle] = brut;
+  }
+  if (entete.personnes_par_reseau === undefined && personnesParReseau !== undefined) {
+    entete.personnes_par_reseau = String(personnesParReseau);
   }
   return entete;
 }
@@ -990,7 +1038,7 @@ function blueprintParDefaut({ nom, commit, briques }) {
     "---",
     "# Blueprint de l'appli, créée par outils/assembler.mjs. L'en-tête ne porte que",
     "# l'essentiel, en clair : l'assembleur en lit appli, profil, nom_affiche, description,",
-    "# site, entree, role_par_defaut, methodes et commit_reference ; l'outil de mise à jour",
+    "# site, entree, role_par_defaut, methodes, personnes_par_reseau et commit_reference ; l'outil de mise à jour",
     "# du catalogue y réécrit commit_reference et briques_assemblees ; tout le reste est",
     "# dans le corps, à écrire.",
     "format: 1",
@@ -1107,7 +1155,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
       ? unites.find((unite) => unite.gardee && unite.definition.hebergeur)?.definition.hebergeur
       : undefined,
   };
-  const entree = blueprint ? entreeDeLEntete(contenuBlueprint, { unites, racine }) : {};
+  const entree = blueprint ? entreeDeLEntete(contenuBlueprint, { unites, racine, profil }) : {};
   for (const retrait of retraitsAAppliquer(unites, nomPaquet, valeurs, entree)) {
     // Un fichier retiré par une autre unité n'a plus rien à retoucher.
     if (aSupprimer(retrait.fichier) || correspond(retrait.fichier, EXCLUS_DU_CATALOGUE)) continue;
@@ -1220,7 +1268,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
           paquet: nomPaquet,
           nom: nom ?? null,
           dependabot,
-          entete: blueprint ? enteteLue(contenuBlueprint) : null,
+          entete: blueprint ? enteteLue(contenuBlueprint, entree.personnesParReseau) : null,
         },
         fichiers: venusDuCatalogue,
         uniteDe,
@@ -1249,7 +1297,8 @@ const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste
                       Son en-tête donne aussi le profil de départ (profil: ${Object.keys(PROFILS).join(", ")}),
                       dont les briques passent avant --briques, le nom affiché (nom_affiche),
                       la description et le choix site: public ou ferme, écrits dans l'appli ;
-                      avec la brique comptes, l'entrée (entree, role_par_defaut, methodes)
+                      avec la brique comptes, l'entrée (entree, role_par_defaut, methodes) et
+                      les personnes au plus par réseau et par heure (personnes_par_reseau)
   --fiche <fichier>   la fiche projet, copiée telle quelle en PROJET.md à la racine
                       (défaut : pas de PROJET.md)
   --dependabot        garder .github/dependabot.yml, à demander quand quelqu'un entretient

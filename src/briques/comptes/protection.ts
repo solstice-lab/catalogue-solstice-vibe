@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { nomDuCookie, verifierSignature } from "./jeton";
-import { refuserLaDemoEnProduction, refuserUneEntreeOuverteQuiAdministre } from "./methodes";
+import {
+  refuserDesLimitesParReseauInvalides,
+  refuserLaDemoEnProduction,
+  refuserUneEntreeOuverteQuiAdministre,
+} from "./methodes";
 
 /*
  * Tout protégé par défaut, depuis src/proxy.ts, le seul proxy
@@ -45,6 +49,7 @@ export function estOuverte(chemin: string): boolean {
 export function protegerLaRoute(requete: NextRequest): NextResponse | null {
   refuserLaDemoEnProduction();
   refuserUneEntreeOuverteQuiAdministre();
+  refuserDesLimitesParReseauInvalides();
   if (estOuverte(requete.nextUrl.pathname)) return null;
   if (verifierSignature(requete.cookies.get(nomDuCookie())?.value)) return null;
   const connexion = new URL("/connexion", requete.url);

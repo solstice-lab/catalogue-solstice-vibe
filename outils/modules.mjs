@@ -848,7 +848,14 @@ export const BRIQUES = {
 //               sortie de l'assembleur le dit ;
 //   permises  : les seules briques qui peuvent s'y ajouter, quand le profil
 //               borne sa liste ; absent, toute brique du catalogue ;
-//   proposees : les briques que la skill propose en plus, si le besoin les demande.
+//   proposees : les briques que la skill propose en plus, si le besoin les demande ;
+//   personnesParReseau : combien de personnes au plus se connectent dans la même
+//               heure depuis un même réseau (bureau, école, événement), quand
+//               la blueprint ne répond pas (LIMITES_PAR_RESEAU de
+//               src/config/comptes.ts). N'est écrit que si la brique comptes
+//               est gardée : la vitrine, sans connexion, porte 20 pour qu'une
+//               brique ajoutée après coup parte du même défaut, mais l'assembleur
+//               ne l'écrit nulle part.
 export const PROFILS = {
   // Un site sans connexion ni données gardées, son contenu écrit dans le code.
   // Une brique qui connecte ou garde des fiches en ferait une autre appli :
@@ -858,13 +865,18 @@ export const PROFILS = {
     briques: [],
     permises: ["mails", "contact", "deploiement"],
     proposees: ["mails", "contact", "deploiement"],
+    personnesParReseau: 20,
   },
   // Une appli à comptes pour les personnes de l'organisation. Son module métier
   // s'écrit dans l'appli sur le patron dossiers ; les briques qu'il appelle se
   // choisissent entité par entité au cadrage (skill creer-appli, étape 1).
   "outil-interne": {
+    // Cent : un bureau où cinquante personnes se connectent le lundi matin, sur
+    // un même réseau, aurait épuisé les vingt demandes par heure d'une appli
+    // grand public.
     briques: ["comptes", "mails"],
     proposees: [],
+    personnesParReseau: 100,
   },
   // Un outil interne ouvert à des personnes extérieures : un admin y gère les
   // comptes et les invitations (/comptes). espaces si le besoin est des groupes
@@ -872,6 +884,7 @@ export const PROFILS = {
   portail: {
     briques: ["comptes", "mails", "gestion-comptes"],
     proposees: ["espaces"],
+    personnesParReseau: 20,
   },
 };
 
@@ -1157,6 +1170,17 @@ export function remplissagesDeLEnTete({ nomService, nomAffiche, description, sit
 // et se retire à la mise en ligne.
 export const METHODES_DE_CONNEXION = ["code-email", "lien-email", "google", "microsoft"];
 
+// Ce que src/config/comptes.ts donne sans réponse : 20 personnes par réseau et par
+// heure, 30 saisies fausses. Une seule réponse règle les deux limites par IP : la
+// seconde est une fois et demie la première, le rapport du défaut (20 et 30). Sur
+// un réseau de 100 personnes, 30 saisies fausses par heure se dépasseraient par
+// de simples fautes de frappe : la limite doit suivre le nombre de personnes.
+export const PERSONNES_PAR_RESEAU_PAR_DEFAUT = 20;
+
+export function limitesParReseau(personnes) {
+  return { demandesParHeure: personnes, codesFauxParHeure: Math.ceil(personnes * 1.5) };
+}
+
 // L'entrée de l'appli, tranchée au cadrage (essai de tours-de-coloc : l'ouvrir à
 // toute adresse a pris un ticket entier). La configuration est celle de la
 // brique comptes : l'assembleur n'y ajoute aucune règle, il écrit des valeurs
@@ -1164,9 +1188,21 @@ export const METHODES_DE_CONNEXION = ["code-email", "lien-email", "google", "mic
 // refuserUneEntreeOuverteQuiAdministre, et le refus de l'assembleur en amont).
 //   ouverte        : `true` ouvre l'entrée à toute adresse ; `false` est le défaut ;
 //   roleParDefaut  : le rôle de qui entre sans rôle attribué (ROLE_PAR_DEFAUT) ;
-//   methodes       : METHODES, « demo » toujours en dernier.
-export function remplissagesDeLEntree({ ouverte, roleParDefaut, methodes }) {
+//   methodes       : METHODES, « demo » toujours en dernier ;
+//   personnesParReseau : LIMITES_PAR_RESEAU, la réponse à « combien de personnes
+//                    au plus se connectent dans la même heure depuis un même
+//                    réseau ? » (limitesParReseau en tire les deux limites).
+export function remplissagesDeLEntree({ ouverte, roleParDefaut, methodes, personnesParReseau }) {
   return [
+    ...(personnesParReseau === undefined || personnesParReseau === PERSONNES_PAR_RESEAU_PAR_DEFAUT
+      ? []
+      : [
+          remplace(
+            "src/config/comptes.ts",
+            "export const LIMITES_PAR_RESEAU: LimitesParReseau = {\n  demandesParHeure: 20,\n  codesFauxParHeure: 30,\n};",
+            `export const LIMITES_PAR_RESEAU: LimitesParReseau = {\n  demandesParHeure: ${personnesParReseau},\n  codesFauxParHeure: ${limitesParReseau(personnesParReseau).codesFauxParHeure},\n};`
+          ),
+        ]),
     ...(ouverte === true ? [remplace("src/config/comptes.ts", "  ouverte: false,\n", "  ouverte: true,\n")] : []),
     ...(methodes === undefined
       ? []

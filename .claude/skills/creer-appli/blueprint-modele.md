@@ -2,7 +2,7 @@
 
 Chargé par `SKILL.md` à l'étape 3. Le format est décrit ici en entier : un en-tête YAML
 court, entre deux lignes `---` en tête de fichier, lu par l'assembleur pour `appli`, `commit_reference`,
-`profil`, `nom_affiche`, `description`, `site`, `entree`, `role_par_defaut` et `methodes`, et dont l'outil de mise
+`profil`, `nom_affiche`, `description`, `site`, `entree`, `role_par_defaut`, `methodes` et `personnes_par_reseau`, et dont l'outil de mise
 à jour réécrit `commit_reference` et `briques_assemblees`, puis un corps Markdown : un
 titre, un paragraphe, et neuf sections numérotées dans l'ordre donné plus bas. Le ton :
 des phrases courtes, au présent, qui décrivent sans recopier ; la précision attendue :
@@ -27,7 +27,7 @@ dans une autre section.
 ---
 # Blueprint de l'appli <nom>. L'en-tête ne porte que l'essentiel, en clair :
 # l'assembleur en lit appli, profil, nom_affiche, description, site, entree,
-# role_par_defaut, methodes et commit_reference ; l'outil de mise à jour y réécrit
+# role_par_defaut, methodes, personnes_par_reseau et commit_reference ; l'outil de mise à jour y réécrit
 # commit_reference et briques_assemblees ; tout le reste est dans le corps. Il ne recopie pas le branchement : il reste
 # dans son fichier.
 format: 1
@@ -39,6 +39,7 @@ site: <public | ferme>
 entree: <ferme | ouverte>                          # avec la brique comptes seulement
 role_par_defaut: <rôle de qui entre sans rôle attribué, jamais un rôle d'administration>
 methodes: [<code-email, lien-email, google, microsoft>]        # « demo » reste en local, sans être listée
+personnes_par_reseau: <combien de personnes au plus se connectent dans la même heure depuis un même réseau>
 statut: <écrite avant tout code, brouillon validé par <qui> le <date>>
 commit_reference: <à renseigner : l'assembleur le remplace>
 briques_assemblees: [<briques du profil, puis celles de --briques, plus rgpd avec comptes>]
@@ -92,7 +93,7 @@ briques:
     légales, durées, coordonnées de l'hébergeur restent « À compléter ». Avec la brique
     `deploiement`, le nom de l'hébergeur (Render Services, Inc.) est écrit dans les
     mentions légales ; son adresse et son téléphone, non.
-- `entree`, `role_par_defaut`, `methodes` : l'entrée tranchée au cadrage (`solstice-nouvelle-appli`
+- `entree`, `role_par_defaut`, `methodes`, `personnes_par_reseau` : l'entrée tranchée au cadrage (`solstice-nouvelle-appli`
   §1, « Les accès »), que l'assembleur écrit dans `src/config/comptes.ts` et
   `src/config/acces.ts`. **Seulement avec la brique `comptes`** : déclarés sans elle, ils
   sont refusés, comme une promesse de connexion que l'appli ne tiendrait pas.
@@ -110,6 +111,13 @@ briques:
     `microsoft` ne disent pas que leur application existe chez Google ou dans le portail
     Azure : leurs variables restent à déclarer. `microsoft` accepte un seul annuaire
     (`ANNUAIRES_MICROSOFT`), à changer par ticket pour un outil ouvert à plusieurs entreprises.
+  - `personnes_par_reseau` : la réponse à « combien de personnes au plus peuvent se connecter
+    dans la même heure depuis un même réseau (bureau, école, événement) ? », un entier d'au
+    moins 1 (zéro, un texte ou un décimal sont refusés : la limite par IP ne se retire pas).
+    Écrit dans `LIMITES_PAR_RESEAU` : `demandesParHeure` vaut ce nombre, `codesFauxParHeure` une
+    fois et demie, arrondi au-dessus. Sans le champ, le défaut du profil (20 pour `vitrine` et
+    `portail`, 100 pour `outil-interne`), et 20 sans profil. Les limites par adresse e-mail ne
+    se règlent pas.
   - Reste à faire par ticket : les actions du module métier qu'un visiteur de l'entrée
     ouverte aura le droit de faire (`src/config/acces.ts`).
 - `briques_assemblees` est la liste que l'assembleur écrit dans sa blueprint minimale :

@@ -25,7 +25,7 @@ neuves comprises, ajoutées en fin de la liste de l'appli.
 
 **Hors v1** : retirer une brique d'une appli déjà assemblée, déployer,
 faire lire la blueprint par le script (il n'en lit que `appli`, `profil`, `nom_affiche`, `description`,
-`site`, `entree`, `role_par_defaut` et `methodes`, et l'outil de mise à jour y réécrit
+`site`, `entree`, `role_par_defaut`, `methodes` et `personnes_par_reseau`, et l'outil de mise à jour y réécrit
 `commit_reference` et `briques_assemblees` ; le reste de son en-tête reste informatif), plugin sur
 marketplace. Le module métier d'une appli (ses entités, sur le patron `dossiers`) ne
 s'assemble pas : il s'écrit dans l'appli, par tickets, une fois le dossier livré (étapes 5 et 6 ;
@@ -82,7 +82,9 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   `solstice-nouvelle-appli` §1 (une liste d'adresses ou de domaines, ou un outil ouvert à toute
   adresse ; le rôle de qui entre sans rôle attribué ; code ou lien par e-mail, Google,
   Microsoft) se notent dans l'en-tête de la blueprint : `entree: ferme` ou `ouverte`,
-  `role_par_defaut:` et `methodes: [code-email, google]`. L'assembleur les écrit dans
+  `role_par_defaut:` et `methodes: [code-email, google]`, et la réponse à « combien de
+  personnes au plus se connectent dans la même heure depuis un même réseau ? » dans
+  `personnes_par_reseau:` (défaut du profil sans réponse). L'assembleur les écrit dans
   `src/config/comptes.ts` et `src/config/acces.ts`. Le rôle par défaut n'est jamais un rôle
   qui administre, et une entrée ouverte demande donc un rôle de plus que l'administration
   (le catalogue en a deux : `membre` et `admin`). Les adresses et domaines admis ne se
@@ -331,7 +333,7 @@ référencement (`description:`, `site:`), le nom du service et de la base de `r
 (d'après `appli:` ou `--nom`, avec la brique `deploiement` ; le nom du dossier de sortie n'en est pas un) et le nom de l'hébergeur des
 mentions légales (avec cette brique), puis, avec la brique `comptes`, l'entrée (`entree:`,
 `role_par_defaut:`, `methodes:` : `ouverte` de `ENTREE`, `ROLE_PAR_DEFAUT` et `METHODES`,
-où `"demo"` reste en dernier pour le local). Un champ absent de l'en-tête laisse sa valeur de
+où `"demo"` reste en dernier pour le local ; `personnes_par_reseau:` : `LIMITES_PAR_RESEAU`). Un champ absent de l'en-tête laisse sa valeur de
 remplacement. Rien de ce qui engage la personne n'est rempli. `node outils/assembler.mjs --aide`
 rappelle les options.
 
@@ -363,8 +365,8 @@ attendu », se corrigent en relisant la commande.
 | « « donnees » ne se choisit pas » | La retirer de `--briques` : la base vient d'office avec les briques qui la lisent. |
 | « La brique … exige la ou les briques … » | Ajouter ces briques à `--briques`, après avoir vérifié à l'étape 2 que le besoin les veut. La mention « (ajoutée d'office avec comptes) » désigne `rgpd`, que `comptes` entraîne. |
 | « Nom d'appli … » | Le champ `appli:` de la blueprint (ou le nom du dossier) donne un nom de paquet refusé (pas de lettre en tête, trop long, celui du catalogue) : corriger `appli:`, ou passer `--nom`. |
-| « En-tête de la blueprint, … » | Le champ cité (`site:` : `public` ou `ferme` ; `entree:` : `ouverte` ou `ferme` ; `role_par_defaut:` jamais un rôle d'administration ; `methodes:` une liste entre crochets ; une valeur sur plusieurs lignes ou à guillemet mal fermé) est à corriger dans l'en-tête de la blueprint. Rien n'est écrit. |
-| « … règle l'entrée … la brique qui porte la connexion n'est pas gardée » | L'en-tête déclare `entree`, `role_par_defaut` ou `methodes` sans la brique `comptes` : l'ajouter à `--briques` (avec `mails`) si le besoin veut des connexions, sinon retirer ces champs. |
+| « En-tête de la blueprint, … » | Le champ cité (`site:` : `public` ou `ferme` ; `entree:` : `ouverte` ou `ferme` ; `role_par_defaut:` jamais un rôle d'administration ; `methodes:` une liste entre crochets ; `personnes_par_reseau:` un entier d'au moins 1 ; une valeur sur plusieurs lignes ou à guillemet mal fermé) est à corriger dans l'en-tête de la blueprint. Rien n'est écrit. |
+| « … règle l'entrée … la brique qui porte la connexion n'est pas gardée » | L'en-tête déclare `entree`, `role_par_defaut`, `methodes` ou `personnes_par_reseau` sans la brique `comptes` : l'ajouter à `--briques` (avec `mails`) si le besoin veut des connexions, sinon retirer ces champs. |
 | « Le dossier de sortie … n'est pas vide » | En choisir un autre. **Ne jamais vider un dossier à la place de l'humain.** |
 | « … est dans le catalogue » ou « … est un fichier » | Un dossier à côté du catalogue, pas dedans. |
 | « Le catalogue a des modifications non commitées » | `git status --short`, dire lesquelles à l'humain. `--tolerer-arbre-modifie` seulement s'il le demande : le commit noté devient `<commit>+arbre-modifie` et ne décrit plus ce qui est copié. |

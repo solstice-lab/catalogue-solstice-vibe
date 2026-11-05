@@ -8,7 +8,8 @@ import { ROLE_PAR_DEFAUT } from "../src/config/acces";
 import { query } from "../src/lib/db/client";
 import { mailsCaptures, viderMailsCaptures } from "../src/briques/mails/envoi";
 import { connecterParLienAction, demanderLienAction } from "../src/briques/comptes/actions";
-import { demanderUnCode, ESSAIS_FAUX_PAR_HEURE_IP, DEMANDES_PAR_HEURE_IP } from "../src/briques/comptes/code-email";
+import { demanderUnCode } from "../src/briques/comptes/code-email";
+import { LIMITES_PAR_RESEAU } from "../src/config/comptes";
 import { EcranLien } from "../src/briques/comptes/EcranLien";
 import type { ContexteEntree } from "../src/briques/comptes/entree";
 import { nomDuCookie } from "../src/briques/comptes/jeton";
@@ -228,9 +229,9 @@ describe("le bouton « Me connecter » (POST) connecte une fois", { timeout: 30_
     expect(await connecterParLien(jeton, IP_A, FERMEE)).toBe("connecte");
   });
 
-  it(`n'examine plus aucun lien depuis une IP après ${ESSAIS_FAUX_PAR_HEURE_IP} envois faux dans l'heure, comme pour le code`, async () => {
+  it(`n'examine plus aucun lien depuis une IP après ${LIMITES_PAR_RESEAU.codesFauxParHeure} envois faux dans l'heure, comme pour le code`, async () => {
     const jeton = await recevoirUnLien();
-    for (let i = 0; i < ESSAIS_FAUX_PAR_HEURE_IP; i++) {
+    for (let i = 0; i < LIMITES_PAR_RESEAU.codesFauxParHeure; i++) {
       expect(await connecterParLien(`faux-${i}`, IP_B, FERMEE)).toBe("expire");
     }
     expect(await connecterParLien(jeton, IP_B, FERMEE)).toBe("limite");
@@ -288,8 +289,8 @@ describe("qui reçoit un lien : la réponse ne dit pas qui a un compte", { timeo
     expect(await demander()).toBe("limite");
   });
 
-  it(`refuse la ${DEMANDES_PAR_HEURE_IP + 1}e demande de l'heure depuis une même IP, toutes adresses confondues`, async () => {
-    for (let i = 0; i < DEMANDES_PAR_HEURE_IP; i++)
+  it(`refuse la ${LIMITES_PAR_RESEAU.demandesParHeure + 1}e demande de l'heure depuis une même IP, toutes adresses confondues`, async () => {
+    for (let i = 0; i < LIMITES_PAR_RESEAU.demandesParHeure; i++)
       expect(await demander(`personne${i}@client.example`)).toBe("envoye");
     expect(await demander("encore-une@client.example")).toBe("limite");
     expect(await demander("encore-une@client.example", IP_B)).toBe("envoye");

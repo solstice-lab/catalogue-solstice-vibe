@@ -2028,7 +2028,7 @@ function rubriqueDesAjoutsLourds(resultat) {
             "",
           ]
         : []),
-      `- L'entrée et les méthodes de connexion sont celles du catalogue par défaut : l'en-tête de la blueprint ne pouvait pas les régler sans la brique. Les décider (qui entre, avec quel rôle, par quelle méthode), puis les régler dans ${code("src/config/comptes.ts")}.`,
+      `- L'entrée et les méthodes de connexion sont celles du catalogue par défaut : l'en-tête de la blueprint ne pouvait pas les régler sans la brique. Les décider (qui entre, avec quel rôle, par quelle méthode, et combien de personnes au plus se connectent dans la même heure depuis un même réseau : ${code("LIMITES_PAR_RESEAU")}, 20 par défaut), puis les régler dans ${code("src/config/comptes.ts")}.`,
       `- Les pages publiques du référencement (${code("src/lib/referencement.ts")}) se reprennent : l'accueil passe derrière la connexion.`,
       `- Les écrans du patron ${code("dossiers")} arrivent (${code("src/app/dossiers/")}) : le premier module de l'appli s'écrit en les copiant, ou l'appli les supprime.`,
       ...(rgpd

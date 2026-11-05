@@ -1,8 +1,10 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { envoyerMail } from "@/briques/mails/envoi";
+import { LIMITES_PAR_RESEAU } from "@/config/comptes";
 import { transaction } from "@/lib/db/client";
 import { admettre, contexteDeLAppli, normaliser, seraitAdmis, type ContexteEntree } from "./entree";
 import { secretDeSession } from "./jeton";
+import { refuserDesLimitesParReseauInvalides } from "./methodes";
 import { ouvrirSession } from "./session";
 
 /*
@@ -33,19 +35,21 @@ export const ESSAIS_MAX = 3;
 // tenir la personne dehors une heure.
 export const DELAI_ENTRE_DEMANDES_S = 60;
 export const DEMANDES_PAR_HEURE_ADRESSE_IP = 5;
-// Une IP, toutes adresses confondues : borne qui essaie des milliers d'adresses.
-export const DEMANDES_PAR_HEURE_IP = 20;
+// Les deux limites par IP ne sont pas ici : elles se règlent par appli
+// (LIMITES_PAR_RESEAU de src/config/comptes.ts), car tout un réseau partage une IP
+// et le nombre de personnes qui s'y connectent dans l'heure dépend de l'appli.
+// - Les demandes d'une IP, toutes adresses confondues : borne qui essaie des
+//   milliers d'adresses.
+// - Les saisies fausses d'une IP, toutes adresses confondues. Sans elle, trois
+//   essais d'une seule IP invalidaient le code en cours de n'importe qui, pour
+//   des milliers d'adresses, et « expiré » contre « incorrect » disait qui se
+//   connectait à l'instant. Une fois atteinte, plus aucun code n'est lu depuis
+//   cette IP : ni invalidé, ni sondé.
 // Une adresse, toutes IP confondues : sans elle, qui dispose de beaucoup d'IP
 // demande 5 codes par heure et par IP, et 3 essais chacun, sans fin. Avec
 // elle, au plus 30 essais par heure sur un million de codes. Le prix : qui a
 // plusieurs IP peut tenir une adresse dehors une heure.
 export const DEMANDES_PAR_HEURE_ADRESSE = 10;
-// Les saisies fausses d'une IP, toutes adresses confondues. Sans elle, trois
-// essais d'une seule IP invalidaient le code en cours de n'importe qui, pour
-// des milliers d'adresses, et « expiré » contre « incorrect » disait qui se
-// connectait à l'instant. Une fois atteinte, plus aucun
-// code n'est lu depuis cette IP : ni invalidé, ni sondé.
-export const ESSAIS_FAUX_PAR_HEURE_IP = 30;
 
 // Les lignes ne servent qu'aux limites et au code en cours : une heure suffit.
 const CONSERVATION_S = 3_600;
@@ -135,6 +139,8 @@ export async function enregistrerUneDemande(
 ): Promise<boolean> {
   const cleAdresse = empreinteDeLAdresse(secret, adresse);
   const cleIp = empreinteDeLIp(secret, ip);
+  // Lue avant la transaction : une valeur refusée ne laisse aucun verrou pris.
+  const limites = refuserDesLimitesParReseauInvalides(LIMITES_PAR_RESEAU);
   return transaction(async (client) => {
     // Deux demandes simultanées liraient sinon le même compte et passeraient
     // toutes deux sous la limite. Toujours l'adresse puis l'IP : pris dans le
@@ -162,7 +168,7 @@ export async function enregistrerUneDemande(
       compte.minute > 0 ||
       compte.adresse_ip >= DEMANDES_PAR_HEURE_ADRESSE_IP ||
       compte.adresse >= DEMANDES_PAR_HEURE_ADRESSE ||
-      compte.ip >= DEMANDES_PAR_HEURE_IP
+      compte.ip >= limites.demandesParHeure
     ) {
       return false;
     }
@@ -225,6 +231,7 @@ export async function sousLaLimiteDeLIp<R>(
   verifier: (client: Client, echec: <E>(resultat: E) => Promise<E>) => Promise<R>
 ): Promise<R | "limite"> {
   const cleIp = empreinteDeLIp(secret, ip);
+  const limites = refuserDesLimitesParReseauInvalides(LIMITES_PAR_RESEAU);
   return transaction(async (client) => {
     if (cleIp !== null) {
       // Deux saisies simultanées d'une IP ne passent pas toutes deux sous la limite.
@@ -236,7 +243,7 @@ export async function sousLaLimiteDeLIp<R>(
         "SELECT count(*)::int AS n FROM codes_connexion_essais WHERE ip_empreinte = $1",
         [cleIp]
       );
-      if ((faux?.n ?? 0) >= ESSAIS_FAUX_PAR_HEURE_IP) return "limite" as const;
+      if ((faux?.n ?? 0) >= limites.codesFauxParHeure) return "limite" as const;
     }
     const echec = async <E>(resultat: E): Promise<E> => {
       if (cleIp !== null) await client.query("INSERT INTO codes_connexion_essais (ip_empreinte) VALUES ($1)", [cleIp]);

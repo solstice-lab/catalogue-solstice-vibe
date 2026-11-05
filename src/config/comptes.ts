@@ -1,4 +1,4 @@
-import type { AnnuairesMicrosoft, Entree, MethodeDeConnexion } from "@/briques/comptes/methodes";
+import type { AnnuairesMicrosoft, Entree, LimitesParReseau, MethodeDeConnexion } from "@/briques/comptes/methodes";
 
 /*
  * Qui peut se connecter à cette appli, et comment : le fichier
@@ -61,3 +61,19 @@ export const DOMAINES_GOOGLE_WORKSPACE: readonly string[] = [];
 // un outil ouvert à plusieurs entreprises. ENTREE décide encore dans les deux
 // cas.
 export const ANNUAIRES_MICROSOFT: AnnuairesMicrosoft = "un-seul";
+
+// Les limites de la connexion par code ou lien qui se comptent par adresse IP,
+// sur une heure. Derrière une même box, un bureau, une école ou un événement
+// partagent UNE adresse : demandesParHeure est donc le nombre de personnes qui
+// peuvent demander leur code dans l'heure depuis un même réseau, et
+// codesFauxParHeure le nombre de saisies fausses qu'il peut commettre (une
+// fois et demie plus, pour les fautes de frappe). Un téléphone en Wi-Fi a été
+// refusé à sa première demande parce qu'un poste du même réseau avait épuisé la
+// limite. Entiers d'au moins 1 : la limite par IP arrête un poste qui demande
+// des codes à la chaîne, elle ne se retire pas (refusée au démarrage). Les
+// limites par adresse e-mail parlent d'une seule personne et restent celles de
+// la brique.
+export const LIMITES_PAR_RESEAU: LimitesParReseau = {
+  demandesParHeure: 20,
+  codesFauxParHeure: 30,
+};

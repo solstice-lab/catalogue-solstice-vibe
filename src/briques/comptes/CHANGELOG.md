@@ -337,3 +337,32 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   que recopier un code. En entreprise, les antivirus de messagerie ouvrent les
   liens avant la personne : la méthode leur est réservée au grand public, et
   le lien ne se consomme jamais à l'ouverture.
+
+## 2026-11-05 · Limites de connexion par réseau réglables par l'appli · Rupture
+
+- **Ce qui change** :
+  - `LIMITES_PAR_RESEAU` dans `src/config/comptes.ts`, `{ demandesParHeure: 20,
+    codesFauxParHeure: 30 }` par défaut : les deux limites par adresse IP de la
+    connexion par code ou par lien, qui étaient les constantes
+    `DEMANDES_PAR_HEURE_IP` et `ESSAIS_FAUX_PAR_HEURE_IP` de `code-email.ts` (retirées) ;
+  - le type `LimitesParReseau` et `refuserDesLimitesParReseauInvalides` dans
+    `methodes.ts` : une limite qui n'est pas un entier d'au moins 1 fait refuser le
+    démarrage de l'appli (le proxy l'appelle), et la brique la relit à chaque
+    demande ou saisie ;
+  - les limites par adresse e-mail (`DEMANDES_PAR_HEURE_ADRESSE`,
+    `DEMANDES_PAR_HEURE_ADRESSE_IP`) restent des constantes de la brique.
+- **Appelant** :
+  - une appli qui met la brique à jour reçoit la ligne par la fusion à trois de son
+    `src/config/comptes.ts` (avec `LimitesParReseau` à l'import de `methodes`), à 20 et
+    30 : ses limites ne changent pas. Une appli qui s'ouvre à un bureau ou à une école
+    règle `demandesParHeure` à la main (un outil interne assemblé avant ce changement ne
+    passe pas à 100 de lui-même) ; sans la ligne, le typecheck échoue ;
+  - un test qui importait `DEMANDES_PAR_HEURE_IP` ou `ESSAIS_FAUX_PAR_HEURE_IP` lit
+    `LIMITES_PAR_RESEAU` de `@/config/comptes`.
+- **Pourquoi** : tout un réseau (bureau, école, événement) partage une adresse IP.
+  Pendant l'essai réel de la brique déploiement, un téléphone en Wi-Fi a été refusé à
+  sa première demande de code parce qu'un poste du même réseau avait épuisé les vingt
+  demandes par heure. Vingt convient à une appli grand public, pas à un outil interne
+  où cinquante personnes se connectent le lundi matin : la valeur dépend de l'appli.
+  L'assembleur la règle depuis l'en-tête de la blueprint (`personnes_par_reseau`), avec
+  un défaut par profil.
