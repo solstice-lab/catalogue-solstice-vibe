@@ -107,3 +107,18 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : à l'essai réel sur Render, le 2026-11-05, un deploy hook
   faux n'a laissé dans le journal que « curl: (22) The requested URL returned
   error: 404 », sans rien qui désigne le secret.
+
+## 2026-11-05 · Disque de la base · Changement
+
+- **Ce qui change** : `render.yaml` crée la base sur 1 Go (`diskSizeGB: 1`),
+  avec l'agrandissement automatique (`storageAutoscalingEnabled: true`) :
+  à 90 % plein, Render agrandit le disque de 50 %, arrondi au multiple de
+  5 Go.
+- **Appelant** : rien à faire pour une base à créer. Render ne lit ces deux
+  clés qu'à la création : une base existante garde son disque, qui ne se
+  réduit jamais. Pour elle, l'agrandissement automatique s'active dans le
+  tableau de bord (page Plan de la base, « Storage Autoscaling »).
+- **Pourquoi** : à l'essai réel sur Render, le 2026-11-05, la base est née à
+  15 Go, le défaut de Render sans `diskSizeGB` : 4,50 $ par mois de disque
+  vide, pour toujours. Sur 1 Go sans agrandissement automatique, une base
+  pleine est suspendue par Render.
