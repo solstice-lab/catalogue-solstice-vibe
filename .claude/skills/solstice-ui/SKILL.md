@@ -96,6 +96,18 @@ Deux couches, à ne jamais mélanger :
   cryptique. Le digest reste affiché : c'est la référence à chercher dans les
   logs. Les messages ne nomment jamais une personne — dire « l'équipe
   technique ».
+- **La limite de taille annoncée est celle qui s'applique** : un champ fichier
+  annonçait 10 Mo alors que le plafond réel était de 3 Mo, et refusait sans
+  explication. Le texte à l'écran et le contrôle lisent la même valeur, plafond
+  du framework ou de l'hébergeur compris ; un refus dit la limite.
+- **Un statut inconnu ne s'affiche jamais comme un état sain** : un statut que
+  l'écran ne sait pas lire se montre tel quel, avec sa valeur, jamais derrière
+  le libellé ou le ton d'un état sain (un « tout va bien » sur un écran de
+  règlement).
+- **Un pas de saisie ne contraint pas la valeur** : un champ montant à pas de
+  100 € refusait un reliquat légitime de 3 334 €. Pas de `step` plus gros que
+  la plus petite unité admise (le centime) ; la règle métier se contrôle côté
+  serveur.
 - Registre sobre : pas de superlatifs, pas d'emojis, une à deux touches
   d'accent par écran.
 - Flux secondaires (confirmation, saisie courte, détail rapide) : préférer
