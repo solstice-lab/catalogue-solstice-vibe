@@ -7,6 +7,7 @@ import config from "../next.config";
 import { nomDuCookie, nouveauJeton, signer } from "../src/briques/comptes/jeton";
 import { estOuverte, ROUTES_OUVERTES } from "../src/briques/comptes/protection";
 import { config as configProxy, proxy } from "../src/proxy";
+import { poserLesMethodes } from "./aide-comptes";
 
 /*
  * Tout est protégé par défaut : sans session valable, chaque
@@ -126,12 +127,27 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
 
   it("refuse de servir quoi que ce soit en production tant que la démo est une méthode, /sante comprise : l'hébergeur voit l'échec au déploiement", () => {
     vi.stubEnv("NODE_ENV", "production");
+    poserLesMethodes(["code-email", "demo"]);
     try {
       for (const chemin of ["/", "/sante", "/connexion", "/mentions-legales"]) {
         expect(() => proxy(requete(chemin)), chemin).toThrow(/démo.*production/);
       }
     } finally {
       vi.unstubAllEnvs();
+      poserLesMethodes(null);
+    }
+  });
+
+  it("sert /sante en production une fois la démo retirée des méthodes : le geste d'avant la mise en ligne suffit", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    poserLesMethodes(["code-email"]);
+    try {
+      const reponse = proxy(requete("/sante"));
+      expect(versLaConnexion(reponse)).toBeNull();
+      expect(reponse.headers.get("content-security-policy")).toBeTruthy();
+    } finally {
+      vi.unstubAllEnvs();
+      poserLesMethodes(null);
     }
   });
 
