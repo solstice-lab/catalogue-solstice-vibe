@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cookiesDeTest } from "./aide-cookies";
-import { supprimerTousLesComptes } from "./aide-comptes";
+import { poserLesMethodes, supprimerTousLesComptes } from "./aide-comptes";
 import { ROLE_ADMIN, ROLE_PAR_DEFAUT, ROLES } from "../src/config/acces";
 import { query, queryOne } from "../src/lib/db/client";
 import { entrerEnDemoAction, seDeconnecterAction } from "../src/briques/comptes/actions";
@@ -392,6 +392,13 @@ describe("chemin de retour après connexion", () => {
 });
 
 describe("méthode démo", () => {
+  beforeEach(() => {
+    poserLesMethodes(["code-email", "demo"]);
+  });
+  afterEach(() => {
+    poserLesMethodes(null);
+  });
+
   it("refuse de démarrer quand NODE_ENV=production : n'importe qui y joue l'admin", async () => {
     vi.stubEnv("NODE_ENV", "production");
     expect(() => demoProposee()).toThrow(/démo.*production/);
