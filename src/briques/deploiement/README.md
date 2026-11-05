@@ -8,9 +8,10 @@ La brique est en deux parties. Le **cœur** ne nomme pas l'hébergeur ;
 l'**adaptateur Render** tient en deux fichiers et une étape. Déployer ailleurs,
 c'est remplacer l'adaptateur seul (voir « Déployer ailleurs »).
 
-Elle n'a qu'une constante dans l'appli : `/sante` (`src/app/sante/route.ts`)
+Elle n'a que deux constantes dans l'appli : `/sante` (`src/app/sante/route.ts`)
 est au socle et lit déjà `COMMIT_DEPLOYE`. `confidentialite.ts` donne à la
-politique de confidentialité le lieu où l'hébergeur traite les données.
+politique de confidentialité le lieu où l'hébergeur traite les données, et
+Cloudflare, que Render place devant le site.
 
 ## Ce qu'elle apporte
 
@@ -44,13 +45,14 @@ la première requête, `src/lib/db/client.ts`).
 | `render.yaml` (racine du dépôt) | Adaptateur Render | Le Blueprint : service, base, variables, recopie du commit au démarrage. |
 | `tests/deploiement.test.ts` | Verrou | Les pièges ci-dessous, sur le texte des deux fichiers. |
 | `src/briques/deploiement/` | Documentation | Ce README et le journal (et `confidentialite.ts`, ligne suivante). |
-| `src/briques/deploiement/confidentialite.ts` | Adaptateur Render | `LIEUX_DEPLOIEMENT` : le lieu de l'hébergeur, d'après la région de `render.yaml`, pour la politique de confidentialité. |
+| `src/briques/deploiement/confidentialite.ts` | Adaptateur Render | `LIEUX_DEPLOIEMENT` : le lieu de l'hébergeur, d'après la région de `render.yaml`, et `SOUS_TRAITANTS_DEPLOIEMENT` : Cloudflare, devant Render, pour la politique de confidentialité. |
 
 ## Interface publique
 
 Ce que la brique attend autour d'elle : des noms, chez GitHub et chez
-l'hébergeur, neutres, qui ne changent pas avec l'hébergeur. Et une constante
-dans l'appli, `LIEUX_DEPLOIEMENT`, qui change avec lui.
+l'hébergeur, neutres, qui ne changent pas avec l'hébergeur. Et deux constantes
+dans l'appli, `LIEUX_DEPLOIEMENT` et `SOUS_TRAITANTS_DEPLOIEMENT`, qui changent
+avec lui.
 
 | Nom | Où | Rôle |
 | --- | --- | --- |
@@ -61,6 +63,7 @@ dans l'appli, `LIEUX_DEPLOIEMENT`, qui change avec lui.
 | `PGSSLMODE` | Variable d'environnement du service | Le chiffrement de la connexion à la base, lu par `src/lib/db/client.ts`. Vide, le certificat se vérifie. Render : `no-verify`, déclaré dans `render.yaml` en attendant l'essai de l'étape 7. |
 | `deployer` | Job de `ci.yml` | Le nom du check, à ne pas exiger dans la protection de `main` (il ne tourne qu'après la fusion). |
 | `LIEUX_DEPLOIEMENT` | `src/briques/deploiement/confidentialite.ts` | `{ hebergeur }` : où l'hébergeur traite les données, lu par `src/lib/confidentialite.ts` à la place de `CONFIDENTIALITE.lieux.hebergeur`. `tests/deploiement.test.ts` vérifie qu'il dit la région de `render.yaml`. L'assembleur retire l'import quand la brique part, et le lieu se remplit alors dans la configuration. |
+| `SOUS_TRAITANTS_DEPLOIEMENT` | `src/briques/deploiement/confidentialite.ts` | Les sous-traitants que l'hébergeur place devant le site, ajoutés par `src/lib/confidentialite.ts` à l'hébergement du site. Render : Cloudflare, qui reçoit l'adresse IP et les requêtes de chaque visiteur (constaté à l'essai réel du 2026-11-05). Son lieu de traitement se remplit dans `CONFIDENTIALITE.lieux.cloudflare` : la page le réclame tant qu'il est vide. L'assembleur retire l'import, la ligne et la clé quand la brique part. |
 
 **Règle d'entretien.** Tout changement d'interface publique (nom ajouté,
 retiré ou renommé, comportement d'un nom modifié) met à jour cette section et
@@ -137,11 +140,14 @@ eu lieu.
    et son téléphone se recopient de sa page de mentions légales. La politique de confidentialité
    (`/confidentialite`) le reprend, avec son lieu, la région de Francfort.
    Render est une société américaine : les garanties d'accès aux données
-   depuis les États-Unis sont à faire valider par le client. L'en-tête
-   `cf-connecting-ip` laisse penser que Cloudflare est devant Render : à
-   vérifier dans la documentation de Render, et, si c'est le cas, à nommer
-   comme sous-traitant ultérieur (`CONFIDENTIALITE` ou une ligne de
-   `confidentialite.ts`).
+   depuis les États-Unis sont à faire valider par le client. Cloudflare est
+   devant Render (essai réel du 2026-11-05 : `server: cloudflare` et `cf-ray`
+   sur chaque réponse ; render.com/docs/ddos-protection le nomme) : la
+   politique le nomme parmi les sous-traitants de l'hébergement. C'est un
+   sous-traitant de Render, pas du client, et une société américaine, comme
+   Render. Son lieu de
+   traitement et les garanties de transfert hors de l'Union se remplissent
+   dans `CONFIDENTIALITE.lieux.cloudflare`, à faire valider par le client.
 
 Une variable ajoutée plus tard à `render.yaml` se déclare aussi dans le
 tableau de bord : Render ne resynchronise pas les variables d'un service
@@ -160,17 +166,17 @@ Cinq choses sont propres à Render, et seulement cinq.
 | Le déclenchement | Étape « Déclencher (adaptateur Render) » du job `deployer` de `ci.yml` | La commande de l'hébergeur (API ou CLI) qui met en ligne `$COMMIT`, avec son jeton ou son adresse dans le secret `DEPLOIEMENT_DECLENCHEUR`. Renommer l'étape et la constante `ADAPTATEUR` de `tests/deploiement.test.ts`. |
 | La recopie du commit | `startCommand` de `render.yaml` | Poser `COMMIT_DEPLOYE` depuis la variable de l'hébergeur (`VERCEL_GIT_COMMIT_SHA`…), au démarrage ou au build. |
 | L'en-tête de l'adresse IP (avec la brique `comptes` ou `contact`) | `IP_EN_TETE_CLIENT` dans `render.yaml` | L'en-tête que pose le proxy du nouvel hébergeur, lu dans sa documentation puis vérifié sur une requête réelle (étape 7 ci-dessus). Jamais l'en-tête d'un service qui n'est plus devant l'appli : sans Cloudflare devant, `cf-connecting-ip` s'écrit à la main, et chacun choisit son adresse. Sans en-tête sûr, laisser la variable vide. |
-| Le lieu de l'hébergeur | `LIEUX_DEPLOIEMENT` de `src/briques/deploiement/confidentialite.ts` | Le pays et la région où le nouvel hébergeur traite les données, d'après sa configuration. |
+| Le lieu de l'hébergeur, et ce qui se tient devant lui | `LIEUX_DEPLOIEMENT` et `SOUS_TRAITANTS_DEPLOIEMENT` de `src/briques/deploiement/confidentialite.ts` | Le pays et la région où le nouvel hébergeur traite les données, d'après sa configuration ; les services qu'il place devant le site (réseau de diffusion, protection contre les attaques), vérifiés sur une requête réelle, ou une liste vide. |
 
 Puis réécrire, dans `tests/deploiement.test.ts`, le bloc « render.yaml :
-l'adaptateur Render » pour le nouveau fichier et le cas du lieu de
-l'hébergeur, et l'hébergeur dans les mentions légales (l'assembleur y a écrit
+l'adaptateur Render » pour le nouveau fichier, le cas du lieu de
+l'hébergeur et celui de Cloudflare, et l'hébergeur dans les mentions légales (l'assembleur y a écrit
 Render : le remplacer).
 
 **Ne changent pas** : le reste du job `deployer` (`needs`, condition,
 concurrence, attente de `/sante`), les noms `DEPLOIEMENT_URL`,
 `DEPLOIEMENT_DECLENCHEUR`, `COMMIT_DEPLOYE` et `IP_EN_TETE_CLIENT`, la route
-`/sante`, le reste du test.
+`/sante`, le reste du test (hors des cas propres à Render cités plus haut).
 
 ## Pièges verrouillés
 
@@ -188,6 +194,7 @@ Tests dans `tests/deploiement.test.ts`.
 | `NODE_ENV=production` au build : `typescript` non installé | « ne pose pas NODE_ENV » |
 | L'hébergeur nommé dans le cœur | « ne nomme l'hébergeur que dans l'étape adaptateur » |
 | Une politique de confidentialité qui situerait l'hébergeur ailleurs que `render.yaml` | « dit Francfort, la région de render.yaml, et ne le réclame plus à la configuration » |
+| Cloudflare, devant Render, absent de la politique de confidentialité | « nomme Cloudflare, placé devant Render, parmi les sous-traitants de l'hébergement, et réclame son lieu à la configuration » |
 
 ## Questions ouvertes
 

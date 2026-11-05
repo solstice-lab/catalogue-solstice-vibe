@@ -1,7 +1,7 @@
 import { MENTIONS_LEGALES, type MentionsLegales } from "@/lib/mentions-legales";
 import { TRAITEMENTS_COMPTES } from "@/briques/comptes/confidentialite";
 import { TRAITEMENTS_CONTACT } from "@/briques/contact/confidentialite";
-import { LIEUX_DEPLOIEMENT } from "@/briques/deploiement/confidentialite";
+import { LIEUX_DEPLOIEMENT, SOUS_TRAITANTS_DEPLOIEMENT } from "@/briques/deploiement/confidentialite";
 import { TRAITEMENTS_ESPACES } from "@/briques/espaces/confidentialite";
 import { TRAITEMENTS_JOURNAL } from "@/briques/journal/confidentialite";
 import { TRAITEMENTS_MAILS } from "@/briques/mails/confidentialite";
@@ -191,6 +191,8 @@ export const CONFIDENTIALITE: Confidentialite = {
     // Ignoré avec la brique déploiement : le lieu se lit alors dans sa
     // configuration (LIEUX_DEPLOIEMENT), pas ici.
     hebergeur: "",
+    // Brique déploiement : Cloudflare, que Render place devant le site.
+    cloudflare: "",
     resend: "",
   },
   durees: {},
@@ -218,9 +220,10 @@ const LIEUX_CONNUS: Record<string, string> = {
   ...LIEUX_DEPLOIEMENT,
 };
 
-// Le traitement que tout site en ligne fait, base ou non : l'hébergeur reçoit
-// l'adresse IP de chaque visiteur pour lui répondre. Ce qu'il en garde dans
-// ses journaux dépend de lui, pas du code : la durée se remplit dans les choix.
+// Le traitement que tout site en ligne fait, base ou non : l'hébergeur, et ce
+// qu'il place devant le site, reçoivent l'adresse IP de chaque visiteur pour
+// lui répondre. Ce qu'ils en gardent dans leurs journaux dépend d'eux, pas du
+// code : la durée se remplit dans les choix.
 function traitementHebergement(mentions: MentionsLegales): Traitement {
   return {
     cle: "hebergement",
@@ -230,6 +233,7 @@ function traitementHebergement(mentions: MentionsLegales): Traitement {
     personnes: "Toute personne qui visite le site.",
     sousTraitants: [
       { cle: "hebergeur", nom: mentions.hebergeur.nom.trim(), role: "Hébergement du site et de ses données." },
+      ...SOUS_TRAITANTS_DEPLOIEMENT,
     ],
     precisions: [],
     conservation: [],

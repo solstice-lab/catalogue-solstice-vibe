@@ -585,7 +585,10 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
     ).toBe(gardee("comptes"));
     expect(/TRAITEMENTS_MAILS|^\s+mails: \{|^\s+resend:/m.test(politique), "mails").toBe(gardee("mails"));
     expect(/TRAITEMENTS_CONTACT|^\s+contact: \{ baseLegale/m.test(politique), "contact").toBe(gardee("contact"));
-    expect(/LIEUX_DEPLOIEMENT|brique déploiement/.test(politique), "déploiement").toBe(gardee("deploiement"));
+    expect(
+      /LIEUX_DEPLOIEMENT|SOUS_TRAITANTS_DEPLOIEMENT|brique déploiement|^s+cloudflare:/im.test(politique),
+      "déploiement"
+    ).toBe(gardee("deploiement"));
     expect(/TRAITEMENTS_JOURNAL|^s+journal: {/m.test(politique), "journal").toBe(gardee("journal"));
     expect(/TRAITEMENTS_NOTIFICATIONS|^\s+notifications: \{/m.test(politique), "notifications").toBe(
       gardee("notifications")
