@@ -224,8 +224,8 @@ la description, puis :
    commentaires de `PiedDePage.tsx`, `ui.css` et `tokens.css`, exception de
    `tests/kit-tokens.test.ts`) ; écrire l'adaptateur de déploiement d'un hébergeur autre que
    Render (avec la brique `deploiement`). Avec la brique `comptes` : retirer `"demo"` de
-   `METHODES` (`src/config/comptes.ts`) avant la première mise en ligne, car elle refuse la
-   production ; elle reste en local, que la blueprint la déclare ou non.
+   `METHODES` (`src/config/comptes.ts`), fusionné sur `main` avant la création du Blueprint
+   (qui déploie `main`), car elle refuse la production ; elle reste en local, que la blueprint la déclare ou non.
 
    **Format lu par l'outil des issues** (`outils/creer-issues.mjs`, étape 6 de `SKILL.md`) :
    un paragraphe d'introduction libre, puis une étape par sous-titre `### 9.n Titre`, numérotée

@@ -133,8 +133,8 @@ eu lieu.
      `/sante` répond « Certificat de la base refusé
      (DEPTH_ZERO_SELF_SIGNED_CERT) » ; Render abandonne après 15 minutes de
      health check et l'ancienne version reste en ligne ;
-   - **déclencheur faux** : le job `deployer` échoue sans rien déployer ;
-     corrigé, le secret se reprend en relançant le job échoué ;
+   - **déclencheur faux** : le job `deployer` échoue sans rien déployer, et
+     la version en ligne reste ;
    - **coût** : 7 $ par mois pour le service ; pour la base, 6 $ de calcul
      plus le disque (0,30 $ par Go et par mois), hors plan de l'espace de
      travail.
@@ -172,8 +172,13 @@ Cinq choses sont propres à Render, et seulement cinq.
 | La configuration de l'hébergeur | `render.yaml`, entier | Celle du nouvel hébergeur, ou rien s'il se configure dans son tableau de bord. Garder ses exigences : région dans l'Union européenne, base qui n'expire pas, sonde sur `/sante`, auto-déploiement coupé, secrets générés ou saisis chez l'hébergeur, dépendances de production seules au démarrage, chaque variable de `.env.example` déclarée. |
 | Le déclenchement | Étape « Déclencher (adaptateur Render) » du job `deployer` de `ci.yml` | La commande de l'hébergeur (API ou CLI) qui met en ligne `$COMMIT`, avec son jeton ou son adresse dans le secret `DEPLOIEMENT_DECLENCHEUR`. Un refus de l'hébergeur ou une adresse muette s'écrit en `::error::` qui nomme ce secret : `tests/deploiement.test.ts` refuse `curl -f`, un `curl` qui ne lit pas le code HTTP, et une erreur qui ne nomme pas le secret. Renommer l'étape et la constante `ADAPTATEUR` de `tests/deploiement.test.ts`. |
 | La recopie du commit | `startCommand` de `render.yaml` | Poser `COMMIT_DEPLOYE` depuis la variable de l'hébergeur (`VERCEL_GIT_COMMIT_SHA`…), au démarrage ou au build. |
-| L'en-tête de l'adresse IP (avec la brique `comptes` ou `contact`) | `IP_EN_TETE_CLIENT` dans `render.yaml` | L'en-tête que pose le proxy du nouvel hébergeur, lu dans sa documentation puis vérifié sur une requête réelle (étape 7 ci-dessus). Jamais l'en-tête d'un service qui n'est plus devant l'appli : sans Cloudflare devant, `cf-connecting-ip` s'écrit à la main, et chacun choisit son adresse. Sans en-tête sûr, laisser la variable vide. |
+| L'en-tête de l'adresse IP (avec la brique `comptes` ou `contact`) | `IP_EN_TETE_CLIENT` dans `render.yaml` | L'en-tête que pose le proxy du nouvel hébergeur, lu dans sa documentation puis vérifié sur une requête réelle : deux connexions (un ordinateur, un téléphone en 4G) donnent deux adresses, les journaux ne montrent aucune ligne `[adresse-ip]`, et une requête qui pose elle-même l'en-tête ne choisit pas son adresse. Jamais l'en-tête d'un service qui n'est plus devant l'appli : sans Cloudflare devant, `cf-connecting-ip` s'écrit à la main, et chacun choisit son adresse. Sans en-tête sûr, laisser la variable vide. |
 | Le lieu de l'hébergeur, et ce qui se tient devant lui | `LIEUX_DEPLOIEMENT` et `SOUS_TRAITANTS_DEPLOIEMENT` de `src/briques/deploiement/confidentialite.ts` | Le pays et la région où le nouvel hébergeur traite les données, d'après sa configuration ; les services qu'il place devant le site (réseau de diffusion, protection contre les attaques), vérifiés sur une requête réelle, ou une liste vide. |
+
+Le certificat de la base se vérifie de même au premier déploiement : sans
+`PGSSLMODE`, `/sante` dit si la base répond ou si son certificat est refusé
+(journaux du service). Refusé : `PGSSLROOTCERT` reçoit le chemin du CA de
+l'hébergeur s'il en publie un, sinon `PGSSLMODE=no-verify`, comme chez Render.
 
 Puis réécrire, dans `tests/deploiement.test.ts`, le bloc « render.yaml :
 l'adaptateur Render » pour le nouveau fichier, le cas du lieu de

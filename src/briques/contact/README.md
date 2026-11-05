@@ -144,11 +144,14 @@ Les seuils (délai, limites, fenêtre) sont des constantes en tête de
 
 ## Gestes humains
 
-- **Au premier déploiement, vérifier la lecture de l'adresse IP** sur une
-  requête réelle (essai à venir). `IP_EN_TETE_CLIENT` doit
-  nommer l'en-tête que pose le proxy de l'hébergeur (Render :
-  `cf-connecting-ip`, déjà dans `render.yaml` avec la brique déploiement ;
-  sans elle, la régler chez l'hébergeur). Puis :
+- **La lecture de l'adresse IP.** `IP_EN_TETE_CLIENT` nomme l'en-tête que
+  pose le proxy de l'hébergeur. Render : `cf-connecting-ip`, déjà dans
+  `render.yaml` avec la brique déploiement, et vérifié sur une requête réelle
+  le 2026-11-05 (README de la brique déploiement, étape 7) ; Cloudflare y
+  refuse une requête qui pose elle-même cet en-tête. Après les premiers
+  envois, les journaux du serveur ne montrent aucune ligne `[adresse-ip]`.
+  Chez un autre hébergeur, ou sans la brique déploiement, régler la variable
+  chez lui et vérifier au premier déploiement :
   - deux messages envoyés depuis deux connexions (un ordinateur, un téléphone
     en 4G) donnent deux empreintes différentes dans `contact_envois`, et
     aucune ligne « sans-adresse » (en-tête absent : pas de limite par
@@ -156,7 +159,7 @@ Les seuils (délai, limites, fenêtre) sont des constantes en tête de
   - APRÈS ces envois (l'avertissement ne s'écrit qu'au premier passage), les
     journaux du serveur ne montrent aucune ligne `[adresse-ip]` ;
   - un envoi qui pose lui-même l'en-tête configuré, avec une adresse forgée,
-    donne l'empreinte de la vraie adresse.
+    ne donne pas l'empreinte de l'adresse forgée.
 - Renseigner `CONTACT_DESTINATAIRE` chez l'hébergeur, et vérifier qu'un
   message de test arrive dans cette boîte.
 
