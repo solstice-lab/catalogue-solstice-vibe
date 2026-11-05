@@ -255,7 +255,7 @@ describe("connexion avec Google : le retour, PKCE, state et nonce", () => {
     const nom = nomDuCookieDeParcours("google");
     const [donnees, signature] = (cookiesDeTest.get(nom) ?? "").split(".");
     const retouche = JSON.parse(Buffer.from(donnees, "base64url").toString());
-    retouche.retour = "/kit";
+    retouche.retour = "/une-page";
     cookiesDeTest.set(nom, `${Buffer.from(JSON.stringify(retouche)).toString("base64url")}.${signature}`);
     await aucuneConnexion(await revenir({ code: "code-de-google", state: aller.state }), "google-expire");
   });

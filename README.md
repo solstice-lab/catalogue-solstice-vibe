@@ -185,7 +185,7 @@ Trois volets :
   fichier, les invariants ne se négocient pas.
 - **Données** — la brique données (`src/lib/db/`), qu'une appli reçoit avec une
   brique qui lit la base et qu'un site sans en a pas : client Postgres à migrations idempotentes, module métier
-  canonique à copier (`dossiers`, ses écrans avec `comptes` seulement), squelette de scripts d'import en dry-run
+  canonique à copier (`dossiers`, écrans au catalogue seulement, couche données livrée avec la base), squelette de scripts d'import en dry-run
   par défaut, tests avec garde anti-prod : impossible de les lancer contre
   autre chose qu'une base locale.
 - **Méthode** — skills de cadrage (`solstice-nouvelle-appli`) et de livraison
@@ -236,10 +236,11 @@ ouverte à la racine du catalogue.
 5. **Thématiser** : suivre la procédure de la skill `solstice-ui` pour remplir
    `src/ui/theme/tokens.css` depuis la charte du client (PDF ou site). Sans
    charte client, garder le thème de repli, la charte Solstice Lab.
-6. Vérifier la vitrine du kit (`/kit`, hors navigation, gardée pour les
-   thématisations suivantes) et, avec la brique `comptes`, le patron
-   `dossiers` ; puis remplacer `dossiers` et l'accueil (`/`) par les premiers
-   écrans réels, en copiant le patron `dossiers` pour chaque module métier.
+6. Remplacer l'accueil (`/`) par les premiers écrans réels, en copiant le patron
+   `dossiers` pour chaque module métier. L'appli assemblée n'a ni la vitrine du kit
+   (`/kit`) ni les écrans de ce patron : ils restent au catalogue, où se lisent
+   `src/app/kit/` et `src/app/dossiers/` ; elle garde la couche données du patron
+   (`src/lib/db/dossiers.ts`).
 
 ### Démarrer en local
 
@@ -342,10 +343,10 @@ catalogue qui a des modifications non commitées, sauf avec
   ```
   node outils/assembler.mjs ../mon-portail --blueprint ../mon-portail-blueprint.md --briques espaces
   ```
-- `comptes` (avec `mails`) donne la base, le patron `dossiers`
+- `comptes` (avec `mails`) donne la base, la couche données du patron `dossiers`
   et les droits, avec un accueil à écrire ; `contact` (avec `mails`) donne
-  la base pour la limite d'envois, sans les écrans du patron `dossiers`, qui
-  appellent `exiger` et ne se gardent qu'avec `comptes` ; `rgpd` vient
+  la base pour la limite d'envois, sans connexion ; aucune brique ne livre les
+  écrans du patron `dossiers` ; `rgpd` vient
   d'office avec `comptes`, `journal`, `gestion-comptes` et `espaces` s'y ajoutent. Une
   brique à brancher (`echeances`, `calendrier`, `validation`, `import-lot`,
   `notifications`) donne la base et attend son branchement dans l'appli.
@@ -418,7 +419,7 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
 - `src/lib/db/` — brique données : client Postgres (`client.ts`, seul point d'accès),
   `schema.sql` (état initial) et `migrations.ts` (étapes idempotentes,
   rejouées à chaque démarrage).
-- `src/app/dossiers/` — le patron `dossiers`, module métier canonique à copier : liste à actions en lot,
+- `src/app/dossiers/` — le patron `dossiers`, module métier canonique à copier (au catalogue seulement : l'assembleur ne livre que sa couche données) : liste à actions en lot,
   fiche en lecture seule, `/nouveau`, `/modifier`, garde d'accès
   (`exiger` de `src/briques/comptes/roles.ts`, droits dans `src/config/acces.ts`), slugs
   (`src/lib/slug.ts`).
@@ -426,7 +427,7 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   avec la brique données, état de la base (`src/lib/db/sante.ts`), 503 si elle
   ne répond pas.
 - `src/app/kit/` — la vitrine du kit, hors navigation, pour vérifier une
-  thématisation.
+  thématisation. Au catalogue seulement : l'assembleur ne la livre à aucune appli.
 - `src/app/mentions-legales/` — les mentions légales (LCEN), ouvertes sans
   connexion, remplies depuis `src/lib/mentions-legales.ts`.
 - `src/app/confidentialite/` — la politique de confidentialité (RGPD,

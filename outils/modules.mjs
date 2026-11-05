@@ -383,6 +383,8 @@ export const BRIQUES = {
       "tests/comptes-code-email.test.ts",
       "tests/comptes-lien-email.test.ts",
       "tests/comptes-administration.test.ts",
+      // Le test-verrou du menu : il lit les droits, que seule la brique porte.
+      "tests/navigation.test.ts",
       "tests/comptes-google.test.ts",
       "tests/comptes-microsoft.test.ts",
       // Le registre des effets de comptes : ce que les autres unités font d'un
@@ -911,25 +913,58 @@ export const ADRESSE_IP = {
   ],
 };
 
-// Les écrans du patron dossiers (CLAUDE.md §3) : chaque page et chaque action
-// appelle exiger, ils ne se gardent donc qu'avec la brique comptes
-// (assembler.mjs). La brique contact garde la base sans comptes,
-// et une vitrine « mails + contact » ne compilait pas avec ces écrans. La
-// couche données du patron (dossiers.ts, dossiers-domaine.ts, l'import
-// d'exemple) reste avec la base : elle n'appelle aucune garde.
+// Les écrans du patron dossiers (CLAUDE.md §3) : le modèle d'un module métier,
+// à lire dans le catalogue et à copier, jamais livré à une appli. Le cas : le
+// 2026-11-05, l'essai tours-de-coloc a reçu ces écrans et leur entrée
+// « Dossiers » au menu, et la personne qui l'a vu a demandé ce que c'était.
+// Retirés de toute copie, avec ou sans la brique comptes. La couche données du
+// patron (dossiers.ts, dossiers-domaine.ts, l'import d'exemple, la table) reste
+// avec la base : la retirer d'une appli déjà en ligne serait une étape de
+// migration, et les briques journal, rgpd et les tests d'isolement s'y branchent.
 export const PATRON_DOSSIERS = {
-  fichiers: [
-    "src/app/dossiers/",
-    // Il prouve que le menu suit les gardes, sur l'exemple des dossiers.
-    "tests/navigation.test.ts",
-  ],
+  fichiers: ["src/app/dossiers/"],
   retraits: [
     // Ses droits (src/config/acces.ts) n'ont rien à retirer : acces.ts part
-    // avec la brique comptes, sans qui ces écrans ne se gardent pas.
+    // avec la brique comptes, et le droit reste la référence des briques à
+    // brancher (leurs README le citent).
     ligne(
       "src/lib/navigation.ts",
       '{ libelle: "Dossiers", href: "/dossiers", visible: visiblePour("dossiers.acceder") },'
     ),
+  ],
+};
+
+// La vitrine du kit (/kit et /kit/site-vitrine) : les composants de src/ui/ sur
+// des données fictives, pour qui thématise ou étend le kit dans le catalogue.
+// Une appli n'a pas à la livrer à ses utilisateurs ni à la faire relire à son
+// client : retirée de toute copie. Ses renvois dans les skills et les README
+// qu'une appli reçoit se réécrivent ici.
+export const VITRINE_DU_KIT = {
+  fichiers: ["src/app/kit/"],
+  retraits: [
+    // Ses deux pages, ouvertes sans garde (le fichier part avec la brique
+    // comptes : sans elle, ces retraits se sautent).
+    ligne("tests/gardes-acces.test.ts", '"kit/page.tsx": "la vitrine du kit, sur des données fictives",'),
+    ligne(
+      "tests/gardes-acces.test.ts",
+      '"kit/site-vitrine/page.tsx": "les composants de site vitrine du kit, sur un texte fictif",'
+    ),
+    // Le README de la brique comptes (parti avec elle, ces retraits se sautent) et
+    // la skill de l'interface : sans la vitrine, plus de page de démonstration
+    // où vérifier un thème.
+    remplace(
+      "src/briques/comptes/README.md",
+      "qui dit « Session expirée », et `/kit`, sur des données fictives.",
+      "qui dit « Session expirée »."
+    ),
+    ligne(".claude/skills/solstice-ui/SKILL.md", "- Démonstration : `/kit/site-vitrine`, liée depuis `/kit`."),
+    bloc(
+      ".claude/skills/solstice-ui/SKILL.md",
+      "- Vérifier le rendu sur la page vitrine (`/kit`)",
+      "  vérification par la personne qui pilote le projet.",
+      "- Après thématisation, `npm run build`, puis la personne qui pilote le projet vérifie le rendu sur les écrans\n  de l'appli : ne pas lancer de navigateur pour autant."
+    ),
+    remplace(".claude/skills/solstice-nouvelle-appli/socle.md", "(l'accueil, `/kit`…)", "(l'accueil…)"),
   ],
 };
 

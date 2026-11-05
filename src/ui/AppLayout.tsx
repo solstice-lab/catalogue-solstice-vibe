@@ -21,7 +21,7 @@ export async function liensVisibles(navigation: LienNavigation[]): Promise<LienN
 }
 
 // Le filtre est asynchrone (il lit l'utilisateur) et un composant client ne
-// peut pas l'être : la vitrine du kit, cliente, passe des liens sans garde et
+// peut pas l'être : une page vitrine cliente (`PageVitrine`) passe des liens sans garde et
 // prend la voie synchrone de `MenuNavigation`. Seuls libellé et adresse lui
 // sont passés : les fonctions `visible` ne traversent pas la frontière client.
 async function MenuFiltre({ navigation }: { navigation: LienNavigation[] }) {

@@ -91,7 +91,7 @@ S'arrêter à la première qui répond :
 
 | Besoin | Forme |
 |---|---|
-| Une fonction de plus pour les utilisateurs de l'appli | **Module dans cette appli**, en copiant le patron `dossiers` de la brique données : aucune infra à toucher. Sans les écrans du patron (appli assemblée sans `comptes`, avec ou sans base), le dire et faire trancher |
+| Une fonction de plus pour les utilisateurs de l'appli | **Module dans cette appli**, en copiant le patron `dossiers` de la brique données : aucune infra à toucher. Une appli assemblée n'a pas les écrans du patron (le catalogue les garde, dans son dépôt public) : les y lire, et sans `comptes` ni base, le dire et faire trancher |
 | Un site de quelques pages, sans données à garder ni connexion | **Site vitrine** : copie assemblée depuis le catalogue Solstice-vibe, sans base ni module métier (au plus les briques `mails` et `deploiement`, et `contact` pour un formulaire de contact, qui garde la base). Pas de connexion, pages rendues à chaque requête (`socle.md`, « CSP à nonce ») |
 | Un produit à part, fiches, listes, formulaires, rôles | **Nouvelle appli assemblée** par la skill `creer-appli` du catalogue Solstice-vibe, avec les briques qu'elle demande ; son module métier s'écrit ensuite chez elle, sur le patron `dossiers` |
 | Fichiers, exports Office lourds, navigateur sans tête, scripts de données | Ce harnais n'est pas le bon point de départ : le dire et faire trancher |

@@ -41,7 +41,7 @@ branche) : c'est l'étape 0 de la skill, pas la blueprint.
    l'ordre, ce que la blueprint ne cite pas).
 2. `outils/modules.mjs` : `BRIQUES` (noms, `exige`, `entraine`, `fichiers`), `PROFILS`
    (les briques de chaque profil, et celles qu'il admet en plus), les unités
-   partagées `PATRON_DOSSIERS` (les écrans du patron, gardés avec `comptes`), `ADRESSE_IP`
+   partagées `PATRON_DOSSIERS` et `VITRINE_DU_KIT` (écrans du patron et vitrine du kit, jamais livrés), `ADRESSE_IP`
    et `DONNEES` (la base, gardée dès qu'une brique gardée l'exige), `EXCLUS_DU_CATALOGUE`.
    La liste est la vérité ; `.claude/skills/creer-appli/choix.md` n'en est qu'un résumé
    daté.
@@ -140,7 +140,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   référencement (`src/lib/referencement.ts`),
   thématiser, écrire l'accueil (une carte « Page d'accueil à écrire » dans toute appli
   assemblée), écrire une entité ou un écran métier, retirer la signature Solstice Lab,
-  retirer `dossiers` et `/kit`, écrire un script de données, écrire
+  écrire un script de données, écrire
   l'adaptateur d'un hébergeur autre que Render, déployer, créer une base,
   écrire des données, envoyer des mails, des comptes ou de l'authentification, mettre à jour une
   brique après coup. Chacun est à la section 9 comme ticket, ou à la section 7 comme exclu.
@@ -155,8 +155,8 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   une brique gardée qui apporte ses écrans, à comparer aux routes de `src/app/` listées
   dans ses `fichiers` (`/connexion` avec `comptes`, `/mes-donnees` et
   `/donnees-personnelles` avec `rgpd`, `/comptes` avec `gestion-comptes`, `/journal` avec
-  `journal`, `/contact` avec `contact`, `/espace` et `/espace/rejoindre` avec `espaces`) ; le socle (`/kit`, toujours là, et `/dossiers`,
-  dans `PATRON_DOSSIERS`, avec `comptes`, à remplacer par un ticket ; `/mentions-legales`
+  `journal`, `/contact` avec `contact`, `/espace` et `/espace/rejoindre` avec `espaces`) ; le socle (ni `/kit` ni `/dossiers` ne sont livrés : `PATRON_DOSSIERS` et
+  `VITRINE_DU_KIT` sont toujours retirés ; `/mentions-legales`
   et `/confidentialite`, toujours là, à remplir ; `/robots.txt`, `/sitemap.xml`,
   `/opengraph-image`, `/twitter-image`, remplis depuis `src/lib/referencement.ts` ; `/`,
   la carte « Page d'accueil à écrire ») ; ou une page que l'appli écrira (l'accueil, les
@@ -215,8 +215,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   seulement qu'elle est notée.
 - Section 9 : renommer l'appli, régler `format.ts`, remplir les mentions légales, la
   politique de confidentialité et le référencement, thématiser, écrire l'accueil, construire
-  chaque entité de la section 2 sur le patron `dossiers` puis remplacer ou retirer
-  `dossiers`, brancher les briques « à brancher », écrire les scripts de données de la
+  chaque entité de la section 2 sur le patron `dossiers`, brancher les briques « à brancher », écrire les scripts de données de la
   section 6, retirer la signature si la section 5 le dit, écrire l'adaptateur de
   déploiement si `deploiement` est gardée pour un hébergeur autre que Render : chaque point
   qui s'applique, dans l'ordre, un ticket chacun. Le format est celui de

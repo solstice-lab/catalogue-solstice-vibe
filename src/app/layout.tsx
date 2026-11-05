@@ -43,7 +43,7 @@ export default async function RacineLayout({ children }: { children: React.React
   // build n'en a aucun — elle s'afficherait sans qu'aucun script ne tourne.
   // Le bandeau de session de la brique comptes (un cookie) rend déjà tout
   // dynamique, mais une appli sans la brique ne l'a pas : sans cette ligne,
-  // son /kit serait cassé en silence.
+  // toute page rendue au build serait cassée en silence.
   await connection();
 
   return (

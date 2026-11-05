@@ -207,8 +207,7 @@ Règles de l'assembleur :
   (envois de l'appli) ou `deploiement` (mise en ligne après la CI) que si le besoin les
   demande. L'appli n'a ni protection des routes, ni bandeau de session : `src/proxy.ts`
   n'y pose que la CSP. Elle n'a pas de base, sauf avec un formulaire de contact
-  (`mails,contact`), qui la garde pour sa limite d'envois, sans connexion ni patron
-  `dossiers`.
+  (`mails,contact`), qui la garde pour sa limite d'envois, sans connexion.
   - **Le compromis de la CSP** : son nonce n'existe que dans une page rendue à la requête.
     C'est le rôle de `await connection()` dans le layout racine, que
     `tests/en-tetes-securite.test.ts` verrouille. Aucune page n'est donc statique, et un
@@ -223,15 +222,15 @@ Règles de l'assembleur :
   `dossiers`), que l'assembleur garde d'office dès qu'une brique gardée l'exige : ne pas la
   nommer. Sans aucune d'elles, l'appli n'a pas de base ; la recevoir plus tard est un ajout
   lourd (ci-dessous). Les
-  écrans du patron `dossiers` ne viennent qu'avec `comptes` (chaque page appelle `exiger`).
+  écrans du patron `dossiers` ne viennent jamais : le catalogue les garde, à lire et à copier.
 - Une brique peut en exiger une autre : l'assembleur refuse de la garder sans elle et
   nomme l'option à ajouter. **`comptes`, `contact` et `notifications` exigent `mails`**
   (le code de connexion part par e-mail : nommer `comptes,mails`) ; **`rgpd`, `journal` et
   `gestion-comptes` exigent `comptes`**, et **`espaces` exige `comptes` et `mails`**. Il
   n'ajoute rien en silence : seule `rgpd` vient
   d'office avec `comptes`, et il le dit.
-- `comptes` (avec `mails`) donne la base, les droits et le patron `dossiers`, écrans
-  compris : c'est le départ de toute appli qui garde des données, dont le module métier
+- `comptes` (avec `mails`) donne la base, les droits et la couche données du patron `dossiers`
+  (ses écrans restent au catalogue) : c'est le départ de toute appli qui garde des données, dont le module métier
   copiera `dossiers`. L'accueil de toute appli assemblée est une carte « Page d'accueil à
   écrire » (`src/app/page.tsx`).
 - **`rgpd` vient d'office avec `comptes`** (l'export et l'effacement des données d'une
@@ -385,8 +384,8 @@ Relire la sortie : la ligne « Assemblé : … » (nombre de fichiers, commit), 
 ligne « Profil : … », qui redit les briques du profil puis celles de `--briques`, la ligne
 « Ajouté d'office : rgpd (avec comptes). » quand `comptes` est choisi sans `rgpd`, et la ligne
 « Retiré : … », qui doit contenir tout ce qui n'a été ni choisi ni ajouté d'office : chaque
-brique non choisie, `partagée patron-dossiers` quand `comptes` ne l'est pas, `partagée
-adresse-ip` quand ni `comptes` ni `contact` ne l'est, et `brique donnees` quand aucune brique
+brique non choisie, `partagée patron-dossiers` et `partagée vitrine-du-kit` toujours (ni les écrans du patron
+ni `/kit` ne sont livrés), `partagée adresse-ip` quand ni `comptes` ni `contact` ne l'est, et `brique donnees` quand aucune brique
 gardée ne lit la base. Une brique choisie qui y figure est une anomalie : arrêter. La ligne
 « Dependabot : » (absente de « Retiré : », qui ne liste que des unités) doit redire la fiche (étape 1) ;
 le premier commit la reprend. La ligne
@@ -658,7 +657,7 @@ README de la brique). Et ce que l'assembleur n'a **pas** fait :
 `src/lib/format.ts` garde le fuseau du
 catalogue, le thème est le thème de repli du catalogue (la charte Solstice Lab), la
 signature Solstice Lab est en place (à retirer par ticket si la fiche le dit, étape 1),
-`/kit` (et `dossiers`, avec la brique `comptes`) sont toujours là, et
+ni `/kit` ni les écrans du patron `dossiers` ne sont livrés, et
 `src/lib/mentions-legales.ts` est vide hors le nom de l'hébergeur et le statut de
 l'éditeur, « professionnel » par défaut (la page
 `/mentions-legales` le signale), comme les
