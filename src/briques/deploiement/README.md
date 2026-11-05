@@ -25,7 +25,7 @@ Cloudflare, que Render place devant le site.
   ligne).
 - **Une base de production dans l'Union européenne**, sur un palier payant
   (la base gratuite est supprimée au bout de 30 jours), fermée aux connexions
-  depuis Internet.
+  depuis Internet, sur un disque de 1 Go qui grandit seul quand il se remplit.
 - **Aucun secret dans le dépôt** : `AUTH_SECRET` est généré par l'hébergeur,
   les clés sont saisies dans son tableau de bord, l'adresse de déclenchement
   est un secret GitHub.
@@ -82,7 +82,13 @@ eu lieu.
    sa création quitte le Blueprint, sans message.
 2. **Le coût** : un service web `0.5c-512mb` et une base `0.1c-256mb`, plus le
    stockage de la base, facturés chaque mois. Lire les prix sur
-   render.com/pricing avant de créer.
+   render.com/pricing avant de créer. Le stockage se facture au Go
+   (0,30 $ par Go et par mois, relevé le 2026-11-05) et part à 1 Go
+   (`diskSizeGB` de `render.yaml`) : sans lui, Render crée la base à 15 Go,
+   soit 4,50 $ par mois de disque, et un disque ne se réduit jamais. Quand la
+   base est pleine à 90 %, Render agrandit le disque de 50 %, arrondi au
+   multiple de 5 Go (1 Go devient 5 Go), puis pas avant 6 heures, et ne
+   redescend pas.
 3. **Render** : créer le compte ou l'espace de travail, puis *New → Blueprint*,
    choisir le dépôt. Render lit `render.yaml` et demande les variables en
    `sync: false` (`URL_PUBLIQUE`, à laisser vide tant que le domaine n'est pas
@@ -162,7 +168,7 @@ Cinq choses sont propres à Render, et seulement cinq.
 
 | À remplacer | Où | Par |
 | --- | --- | --- |
-| La configuration de l'hébergeur | `render.yaml`, entier | Celle du nouvel hébergeur, ou rien s'il se configure dans son tableau de bord. Garder ses exigences : région dans l'Union européenne, base qui n'expire pas, sonde sur `/sante`, auto-déploiement coupé, secrets générés ou saisis chez l'hébergeur, dépendances de production seules au démarrage, chaque variable de `.env.example` déclarée. |
+| La configuration de l'hébergeur | `render.yaml`, entier | Celle du nouvel hébergeur, ou rien s'il se configure dans son tableau de bord. Garder ses exigences : région dans l'Union européenne, base qui n'expire pas, disque de base au plus petit qui s'agrandit seul (un disque ne se réduit pas), sonde sur `/sante`, auto-déploiement coupé, secrets générés ou saisis chez l'hébergeur, dépendances de production seules au démarrage, chaque variable de `.env.example` déclarée. |
 | Le déclenchement | Étape « Déclencher (adaptateur Render) » du job `deployer` de `ci.yml` | La commande de l'hébergeur (API ou CLI) qui met en ligne `$COMMIT`, avec son jeton ou son adresse dans le secret `DEPLOIEMENT_DECLENCHEUR`. Un refus de l'hébergeur ou une adresse muette s'écrit en `::error::` qui nomme ce secret : `tests/deploiement.test.ts` refuse `curl -f`, un `curl` qui ne lit pas le code HTTP, et une erreur qui ne nomme pas le secret. Renommer l'étape et la constante `ADAPTATEUR` de `tests/deploiement.test.ts`. |
 | La recopie du commit | `startCommand` de `render.yaml` | Poser `COMMIT_DEPLOYE` depuis la variable de l'hébergeur (`VERCEL_GIT_COMMIT_SHA`…), au démarrage ou au build. |
 | L'en-tête de l'adresse IP (avec la brique `comptes` ou `contact`) | `IP_EN_TETE_CLIENT` dans `render.yaml` | L'en-tête que pose le proxy du nouvel hébergeur, lu dans sa documentation puis vérifié sur une requête réelle (étape 7 ci-dessus). Jamais l'en-tête d'un service qui n'est plus devant l'appli : sans Cloudflare devant, `cf-connecting-ip` s'écrit à la main, et chacun choisit son adresse. Sans en-tête sûr, laisser la variable vide. |
@@ -189,6 +195,7 @@ Tests dans `tests/deploiement.test.ts`.
 | Une version annoncée en ligne sans l'être | « attend sur /sante que le commit en ligne soit celui de la CI » ; « recopie RENDER_GIT_COMMIT dans COMMIT_DEPLOYE » |
 | Un `working-directory` au niveau du workflow : le déploiement jamais appelé | « aucun working-directory au niveau du workflow » |
 | La base gratuite supprimée au bout de 30 jours | « n'utilise jamais le palier gratuit » |
+| Une base née à 15 Go, le défaut de Render, qui ne se réduit jamais | « crée la base sur 1 Go, qui grandit seul quand il se remplit » |
 | Une région américaine migrée vers Francfort après coup | « place le service ET la base à Francfort » |
 | Une variable lue par l'appli, absente chez l'hébergeur | « déclare chaque variable de .env.example », prouvé par un cas fautif |
 | `NODE_ENV=production` au build : `typescript` non installé | « ne pose pas NODE_ENV » |

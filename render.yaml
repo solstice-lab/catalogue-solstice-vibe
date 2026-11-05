@@ -15,7 +15,8 @@
 #   Francfort après coup, c'est une migration de données en production.
 # - Jamais le palier gratuit : la base est supprimée au bout de 30 jours, le
 #   service s'endort après 15 minutes sans trafic.
-# Spécification relue le 2026-10-22 : https://render.com/docs/blueprint-spec
+# Spécification relue le 2026-10-22, et pour le disque de la base le
+# 2026-11-05 : https://render.com/docs/blueprint-spec
 
 services:
   - type: web
@@ -122,6 +123,14 @@ databases:
     # Aligné sur `IMAGE: postgres:` (étape « Démarrer Postgres » de ci.yml).
     # Ne se change plus après la création.
     postgresMajorVersion: "18"
+    # 1 Go, le plus petit disque : sans diskSizeGB, Render crée la base à
+    # 15 Go, et un disque ne se réduit jamais. À l'essai réel du 2026-11-05,
+    # 4,50 $ par mois de disque vide. diskSizeGB n'agit qu'à la création :
+    # une base existante garde son disque. Une base pleine est suspendue : à
+    # 90 %, Render agrandit seul de 50 %, arrondi au multiple de 5 Go (1 Go
+    # devient 5 Go), puis pas avant 6 heures.
+    diskSizeGB: 1
+    storageAutoscalingEnabled: true
     # Aucune connexion depuis Internet : le service la joint par le réseau
     # interne de Render. Pour un script de données ou une restauration,
     # ajouter son adresse IP dans le tableau de bord, le temps de l'opération.

@@ -182,6 +182,22 @@ describe("render.yaml : l'adaptateur Render", () => {
     expect(RENDER).not.toMatch(/plan: ["']?free/);
   });
 
+  // À l'essai réel du 2026-11-05, la base est née à 15 Go, le défaut de
+  // Render sans diskSizeGB : 4,50 $ par mois de disque vide, et un disque ne
+  // se réduit jamais. Sans agrandissement automatique, une base pleine est
+  // suspendue par Render.
+  it("crée la base sur 1 Go, qui grandit seul quand il se remplit : sans diskSizeGB, Render la crée à 15 Go, sans retour", () => {
+    const databases = RENDER.split(/^databases:$/m)[1];
+    if (databases === undefined) return;
+    expect(databases).toMatch(/^    diskSizeGB: 1$/m);
+    expect(databases).toMatch(/^    storageAutoscalingEnabled: true$/m);
+    // Avant ipAllowList, fin du bloc que l'assembleur retire sans la brique
+    // données : placées après, elles resteraient orphelines.
+    const fin = databases.indexOf("    ipAllowList: []");
+    expect(databases.indexOf("    diskSizeGB:")).toBeLessThan(fin);
+    expect(databases.indexOf("    storageAutoscalingEnabled:")).toBeLessThan(fin);
+  });
+
   it("sonde /sante, ouverte sans session", () => {
     expect(RENDER).toMatch(/^    healthCheckPath: \/sante$/m);
   });
