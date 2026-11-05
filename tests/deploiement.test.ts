@@ -40,6 +40,29 @@ function etapes(job: string): Map<string, string> {
 const ADAPTATEUR = "Déclencher (adaptateur Render)";
 
 /*
+ * Ce qui, dans l'étape adaptateur, laisse un échec sans dire quoi corriger.
+ * curl -f sort en erreur sous bash -e avant tout message ; curl sans -f ni
+ * lecture du code HTTP prend un refus pour un succès ; une erreur qui ne
+ * nomme pas le secret envoie chercher ailleurs ; un seul ::error:: (le secret
+ * absent) laisse le refus de l'hébergeur muet.
+ */
+function echecsAnonymes(etape: string): string[] {
+  const defauts: string[] = [];
+  const commandes = etape.replace(/^\s*#.*$/gm, "");
+  const appelsCurl = commandes.split("\n").filter((ligne) => /\bcurl\s/.test(ligne));
+  for (const appel of appelsCurl) {
+    if (/\s(-[a-zA-Z]*f[a-zA-Z]*|--fail[a-z-]*)(?=\s|$)/.test(appel)) defauts.push("curl -f : échec sans message");
+    else if (!appel.includes("http_code")) defauts.push("curl sans code HTTP : un refus passe pour un succès");
+  }
+  const erreurs = [...commandes.matchAll(/::error::(.*)/g)].map((m) => m[1]);
+  for (const erreur of erreurs) {
+    if (!erreur.includes("DEPLOIEMENT_DECLENCHEUR")) defauts.push(`erreur sans le secret : ${erreur}`);
+  }
+  if (erreurs.length < 2) defauts.push("aucune erreur pour un refus de l'hébergeur");
+  return defauts;
+}
+
+/*
  * Les variables de .env.example (commentées comprises : COMMIT_DEPLOYE l'est)
  * que render.yaml ne déclare pas. Une variable lue par l'appli et absente
  * chez l'hébergeur ne se voit qu'en production.
@@ -80,6 +103,43 @@ describe("ci.yml : le job deployer, cœur neutre de la brique", () => {
     expect(declencher, `étape « ${ADAPTATEUR} » absente`).toBeDefined();
     expect(declencher).toMatch(/--url-query "ref=\$COMMIT"/);
     expect(declencher).toMatch(/COMMIT: \$\{\{ github\.sha \}\}/);
+  });
+
+  // À l'essai réel sur Render, le 2026-11-05, un deploy hook faux n'a laissé
+  // dans le journal que « curl: (22) The requested URL returned error: 404 » :
+  // rien ne disait que le secret était en cause.
+  it("nomme le secret DEPLOIEMENT_DECLENCHEUR quand l'hébergeur refuse ou ne répond pas, pas seulement quand il manque", () => {
+    expect(echecsAnonymes(etapes(job).get(ADAPTATEUR) ?? "")).toEqual([]);
+  });
+
+  it("le verrou attrape l'étape de l'essai réel, muette sur un hook refusé", () => {
+    const etapeDeLEssai = [
+      `      - name: ${ADAPTATEUR}`,
+      "        run: |",
+      '          if [ -z "$DECLENCHEUR" ]; then',
+      `            echo "::error::Secret DEPLOIEMENT_DECLENCHEUR absent : rien n'a été déclenché."`,
+      "            exit 1",
+      "          fi",
+      '          curl -fsS -X POST --url-query "ref=$COMMIT" "$DECLENCHEUR"',
+    ].join("\n");
+    expect(echecsAnonymes(etapeDeLEssai)).toEqual([
+      "curl -f : échec sans message",
+      "aucune erreur pour un refus de l'hébergeur",
+    ]);
+    // Sans -f mais sans lire le code : le 404 de l'essai serait passé pour un succès.
+    const sansCode = etapeDeLEssai.replace(
+      '          curl -fsS -X POST --url-query "ref=$COMMIT" "$DECLENCHEUR"',
+      [
+        '          if ! curl -sS -X POST --url-query "ref=$COMMIT" "$DECLENCHEUR"; then',
+        '            echo "::error::Secret DEPLOIEMENT_DECLENCHEUR : sans réponse."',
+        "            exit 1",
+        "          fi",
+      ].join("\n")
+    );
+    expect(echecsAnonymes(sansCode)).toEqual(["curl sans code HTTP : un refus passe pour un succès"]);
+    expect(echecsAnonymes(etapeDeLEssai.replace("curl -fsS -X POST", "curl -sS -X POST -f"))).toContain(
+      "curl -f : échec sans message"
+    );
   });
 
   it("attend sur /sante que le commit en ligne soit celui de la CI, et échoue sinon", () => {

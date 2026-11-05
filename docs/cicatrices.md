@@ -39,7 +39,7 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 | D10 | Tout statut que le code peut écrire est admis par la contrainte de la base, et la base n'en admet pas d'autre. | Le code écrivait un verdict que la contrainte `CHECK` de sa table refusait : relevé à la lecture du code, toute écriture de ce verdict devait échouer. | `solstice-donnees` (`SKILL.md:73`) ; `relecteur-migrations` (`:36`) ; pour la brique validation, `tests/validation.test.ts:568` (seul test : la règle générale se tient par la relecture) |
 | D11 | Une valeur dérivée se recalcule côté serveur après l'écriture, jamais lue depuis le formulaire. | Un montant affiché en lecture seule était quand même renvoyé par le formulaire : sa valeur périmée écrasait la somme des montants mensuels. | `solstice-donnees` (`SKILL.md:106`) |
 | D12 | Un rattrapage de données n'invente rien. | Des fiches anciennes sans créateur connu sont restées sans créateur, plutôt que d'en recevoir un choisi au hasard. | `solstice-donnees` (`SKILL.md:59`) |
-| D13 | Les tests tournent sur le même moteur de base, à la même version, que la production. | Le tri des valeurs vides différait entre deux moteurs de base ; il a fallu un ordre explicite (`NULLS LAST`). | `solstice-nouvelle-appli` (`socle.md:87`) ; `tests/deploiement.test.ts:151` |
+| D13 | Les tests tournent sur le même moteur de base, à la même version, que la production. | Le tri des valeurs vides différait entre deux moteurs de base ; il a fallu un ordre explicite (`NULLS LAST`). | `solstice-nouvelle-appli` (`socle.md:87`) ; `tests/deploiement.test.ts:211` |
 
 ## 2. Tests et bases locales
 
@@ -244,11 +244,11 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
 | DP1 | La CI vérifie chaque pull request dès le premier jour. | 86 pull requests ont été fusionnées avant qu'une ligne ne soit compilée ailleurs que chez l'hébergeur. | `.github/workflows/ci.yml:3` |
-| DP2 | Rien ne part en production sans la CI verte. | L'hébergeur déployait `main` sans attendre la CI. | `tests/deploiement.test.ts:62`, `:106` |
-| DP3 | La sonde de santé répond sans session et donne le commit en ligne. | Placée derrière l'authentification, la sonde recevait une redirection et chaque déploiement échouait. | `tests/sante.test.ts:62` ; `tests/deploiement.test.ts:84` |
-| DP4 | Jamais le palier gratuit de l'hébergeur pour la base. | La base gratuite est supprimée au bout de 30 jours. | `tests/deploiement.test.ts:120` |
-| DP5 | Service et base dans l'Union européenne dès le départ. | Une base a été migrée d'une région américaine vers l'Europe après coup : une migration de données en production. | `tests/deploiement.test.ts:111` |
-| DP6 | Une variable ajoutée au fichier de l'hébergeur se déclare aussi dans son tableau de bord. | Les variables d'un service existant ne se resynchronisent pas depuis le fichier. | **En partie** : commentaire de `render.yaml:6` ; `tests/deploiement.test.ts:157` vérifie la déclaration, pas la resynchronisation |
+| DP2 | Rien ne part en production sans la CI verte. | L'hébergeur déployait `main` sans attendre la CI. | `tests/deploiement.test.ts:85`, `:166` |
+| DP3 | La sonde de santé répond sans session et donne le commit en ligne. | Placée derrière l'authentification, la sonde recevait une redirection et chaque déploiement échouait. | `tests/sante.test.ts:62` ; `tests/deploiement.test.ts:144` |
+| DP4 | Jamais le palier gratuit de l'hébergeur pour la base. | La base gratuite est supprimée au bout de 30 jours. | `tests/deploiement.test.ts:180` |
+| DP5 | Service et base dans l'Union européenne dès le départ. | Une base a été migrée d'une région américaine vers l'Europe après coup : une migration de données en production. | `tests/deploiement.test.ts:171` |
+| DP6 | Une variable ajoutée au fichier de l'hébergeur se déclare aussi dans son tableau de bord. | Les variables d'un service existant ne se resynchronisent pas depuis le fichier. | **En partie** : commentaire de `render.yaml:6` ; `tests/deploiement.test.ts:217` vérifie la déclaration, pas la resynchronisation |
 | DP7 | Un service se nomme avant sa création, jamais renommé ensuite. | Un service renommé dans le tableau de bord a quitté la synchronisation, sans message ; il est revenu en reprenant son nom. | `render.yaml:9` ; `solstice-nouvelle-appli` (`socle.md:123`) |
 | DP8 | Les actions de CI s'épinglent par empreinte de commit, pas par étiquette. | Une montée de version flottante d'une action a changé ce que faisait la CI, sans aucun commit du dépôt. | `.github/workflows/ci.yml:52` ; `solstice-nouvelle-appli` (`socle.md:89`) |
 | DP9 | Quand l'appli tourne en conteneur, la CI construit l'image. | Un binaire qui marchait en conteneur sur le poste a refusé de démarrer chez l'hébergeur. | `solstice-nouvelle-appli` (`socle.md:87`) |
@@ -271,7 +271,7 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | ME10 | Une modification des fichiers sensibles (authentification, proxy, schéma, infrastructure) se signale. | Même origine ; la liste des fichiers reste à fixer par projet. | **Non tenue** |
 | ME11 | Avant de coder un écran, demander la cible : téléphone, ordinateur ou les deux. | Les allers-retours d'interface venaient de cibles devinées. | `solstice-ui` (`SKILL.md:41`) |
 | ME12 | Une règle de contrôle à seuil se mesure sur un corpus avant d'être écrite. | Des règles d'un contrôle de documents ont produit des faux positifs en série : 32 cas légitimes pour l'une, 13 pour une autre. | **Non tenue** |
-| ME13 | Le spécifique d'un client vit dans la configuration, jamais dans le moteur. | Un outil livré gardait en dur les conventions et le domaine de son client : impossible à réutiliser ailleurs. | **En partie** : une brique ne connaît aucun module (tests d'isolement, par exemple `tests/echeances-isolement.test.ts:43`) et l'hébergeur ne se nomme que dans son adaptateur (`tests/deploiement.test.ts:94`) ; rien ne vérifie l'absence de convention propre à un client |
+| ME13 | Le spécifique d'un client vit dans la configuration, jamais dans le moteur. | Un outil livré gardait en dur les conventions et le domaine de son client : impossible à réutiliser ailleurs. | **En partie** : une brique ne connaît aucun module (tests d'isolement, par exemple `tests/echeances-isolement.test.ts:43`) et l'hébergeur ne se nomme que dans son adaptateur (`tests/deploiement.test.ts:154`) ; rien ne vérifie l'absence de convention propre à un client |
 
 ## Hors registre
 

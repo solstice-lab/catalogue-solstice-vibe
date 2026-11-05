@@ -214,12 +214,28 @@ jobs:
       - name: Déclencher (adaptateur Render)
         # Le deploy hook de Render, avec le commit vérifié : sans ref=,
         # Render construit la tête de main au moment de l'appel.
+        # Pas de curl -f : à l'essai réel, un hook faux n'a laissé que
+        # « curl: (22) … 404 », sans dire que le secret était en cause.
+        # Codes d'après la documentation des deploy hooks de Render.
         run: |
           if [ -z "$DECLENCHEUR" ]; then
             echo "::error::Secret DEPLOIEMENT_DECLENCHEUR absent : rien n'a été déclenché."
             exit 1
           fi
-          curl -fsS -X POST --url-query "ref=$COMMIT" "$DECLENCHEUR"
+          reponse="$RUNNER_TEMP/declencheur.json"
+          if ! code=$(curl -sS -o "$reponse" -w '%{http_code}' --max-time 30 -X POST --url-query "ref=$COMMIT" "$DECLENCHEUR"); then
+            echo "::error::Secret DEPLOIEMENT_DECLENCHEUR : adresse invalide ou sans réponse, rien n'a été déclenché. Y recopier le Deploy Hook du service (Settings), puis relancer ce job."
+            exit 1
+          fi
+          case "$code" in
+            2??) cat "$reponse"; echo; exit 0 ;;
+            401) lecture="clé refusée" ; geste="Y recopier le Deploy Hook du service (Settings), puis relancer ce job." ;;
+            404) lecture="service inconnu, ou commit absent du dépôt que Render lit" ; geste="Y recopier le Deploy Hook du service (Settings), vérifier que Render lit ce dépôt, puis relancer ce job." ;;
+            5??) lecture="erreur de l'hébergeur" ; geste="Relancer ce job." ;;
+            *) lecture="réponse inattendue" ; geste="Vérifier le Deploy Hook du service (Settings), puis relancer ce job." ;;
+          esac
+          echo "::error::Secret DEPLOIEMENT_DECLENCHEUR : Render répond $code ($lecture), rien n'a été déclenché. $geste"
+          exit 1
         env:
           DECLENCHEUR: ${{ secrets.DEPLOIEMENT_DECLENCHEUR }}
           COMMIT: ${{ github.sha }}
