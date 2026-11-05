@@ -447,6 +447,6 @@ Par la personne responsable du projet, le 2026-10-28 :
 | Le mode essai accepte-t-il une adresse libre ? | Non : une liste d'adresses permises dans la configuration. Limiter aux destinataires connus ne marcherait pas : qui répète n'est souvent responsable de rien. |
 | `Echeance` porte-t-elle la ligne source ? | Non : la liaison fait sa propre requête et appelle les règles de `calcul.ts`. La brique échéances ne change pas. |
 | Branchement sur la GMAO ? | Pas avec la brique : les contrats d'abord, la GMAO quand le besoin se confirme. |
-| Installation et retrait | L'assembleur retire la brique, sa migration et ses variables. Une base déjà déployée garde sa table si on retire la brique ensuite : la supprimer est un geste humain. Ajouter la brique à une copie déjà assemblée passe par l'outil de mise à jour du catalogue (`--ajouter notifications`, voir `outils/mise-a-jour.md`) ; le détail est dans « Ce qu'elle ne fait pas (v1) ». |
+| Installation et retrait | L'assembleur retire la brique, sa migration et ses variables. Une base déjà déployée garde sa table si on retire la brique ensuite : la supprimer est un geste humain. Ajouter la brique à une copie déjà assemblée passe par l'outil de mise à jour du catalogue (`--ajouter notifications`, lancé depuis le catalogue) ; le détail est dans « Ce qu'elle ne fait pas (v1) ». |
 | Durée du journal | 12 mois, purgés par la route à chaque envoi. |
 | Domaine d'envoi et compte | Pour un client, les siens ; pour un prototype, un sous-domaine dédié de Solstice Lab. Ne bloque que la mise en ligne. |
