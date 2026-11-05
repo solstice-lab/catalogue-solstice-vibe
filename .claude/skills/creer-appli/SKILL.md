@@ -1,6 +1,6 @@
 ---
 name: creer-appli
-description: "Assembler une appli client depuis le catalogue Solstice-vibe (un socle et des briques) : mener le cadrage, choisir les briques que l'assembleur sait donner, écrire la blueprint de l'appli et la faire relire, lancer outils/assembler.mjs vers un dossier vide, créer son dépôt distant après accord, en créer les issues de la section 9 de la blueprint et dire à l'humain quoi taper ensuite. À charger quand la personne qui utilise le catalogue veut créer une appli client depuis ce dépôt (pas depuis une appli client déjà assemblée)."
+description: "Assembler une appli client depuis le catalogue Solstice-vibe (un socle et des briques) : mener le cadrage, choisir les briques que l'assembleur sait donner, écrire la blueprint de l'appli et la faire relire, lancer outils/assembler.mjs vers un dossier vide, créer son dépôt distant après accord, en créer les issues de la section 9 de la blueprint et dire à l'humain quoi taper ensuite ; puis, ces tickets faits, lister les adaptations de l'appli (outils/adaptations.mjs) et en tirer les brouillons de tickets du catalogue. À charger quand la personne qui utilise le catalogue veut créer une appli client depuis ce dépôt (pas depuis une appli client déjà assemblée)."
 ---
 
 # creer-appli — du cadrage à un dossier assemblé
@@ -341,7 +341,8 @@ La commande **ne déploie rien, ne touche à aucune base, ne lit aucun secret, n
 remote et ne pousse rien** : elle copie les fichiers que git suit, retouche les fichiers
 partagés du socle selon `outils/modules.mjs` puis les remet en forme par Prettier, écrit `blueprint.md`, `NOTICE` (l'avis de
 licence), `catalogue.empreintes.json` (le manifeste d'empreintes des fichiers venus du
-catalogue, à ne pas retoucher à la main) et `PROJET.md` (la fiche, telle quelle) à la **racine** du dossier, puis en fait un dépôt git **local** : branche
+catalogue, à ne pas retoucher à la main), `ADAPTATIONS.md` (le registre des adaptations, vide
+avec son en-tête, étape 7) et `PROJET.md` (la fiche, telle quelle) à la **racine** du dossier, puis en fait un dépôt git **local** : branche
 `main`, un seul commit « Socle : appli assemblée depuis le catalogue au commit `<commit>` »,
 avec les briques gardées, ajoutées d'office et retirées dans le corps. Elle exige une identité git
 (`user.name`, `user.email`) et vérifie que la racine du dépôt est bien le dossier de sortie,

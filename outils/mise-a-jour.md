@@ -54,8 +54,8 @@ Le manifeste prouve que la reproduction est exacte : les empreintes de l'origine
 doivent être **toutes** égales à celles du manifeste de l'appli. Au premier écart, l'outil
 s'arrête en nommant les fichiers : une fusion contre une origine fausse attribuerait à
 l'appli des retouches qu'elle n'a pas faites, ou l'inverse. Le manifeste ne couvre que les
-fichiers venus du catalogue : ni `NOTICE` ni `blueprint.md`, que l'assembleur écrit
-lui-même, n'y ont d'empreinte. L'origine de `NOTICE` n'est donc pas prouvée ; elle ne
+fichiers venus du catalogue : ni `NOTICE`, ni `ADAPTATIONS.md`, ni `blueprint.md`, que
+l'assembleur écrit lui-même, n'y ont d'empreinte. L'origine de `NOTICE` n'est donc pas prouvée ; elle ne
 dépend que de `LICENSE` et de la licence des polices au commit A.
 
 L'origine et la cible se lisent dans le commit que l'assembleur rejoué a fait, comme
@@ -593,8 +593,9 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
     passer toute écriture d'un fichier au manifeste et rappelle de la noter dans
     `ADAPTATIONS.md`, tant qu'aucune entrée ne la couvre (son chemin, ou un dossier cité avec
     sa barre finale). Un rappel, jamais un refus : le texte arrive dans le contexte de Claude
-    sans décision de permission. Le catalogue, sans manifeste, n'en reçoit aucun. Une
-    suppression par une commande (`rm`, `git rm`) n'est pas une écriture : seul l'outil la voit ;
+    sans décision de permission. Le catalogue, sans manifeste, n'en reçoit aucun. Un
+    fichier écrit ou supprimé par une commande (`sed -i`, `Set-Content`, `rm`, `git rm`)
+    échappe à la garde, qui ne voit que les outils d'écriture : seul l'outil le voit ;
   - **`ADAPTATIONS.md`**, que l'assembleur écrit vide avec son en-tête, hors manifeste comme
     `NOTICE` : une entrée par adaptation, cinq lignes au plus (`## date`, `Fichiers`, ce qui
     change, pourquoi, `Nature : défaut du catalogue` ou `propre à l'appli`) ;

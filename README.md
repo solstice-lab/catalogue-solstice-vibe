@@ -120,7 +120,8 @@ n'existe qu'une fois, et le client ne reçoit que ce qu'il a choisi. La skill
 `creer-appli` mène le cadrage, écrit la blueprint de l'appli, un `.md` à
 en-tête YAML (commit de référence du catalogue, entités, briques et leurs
 branchements), lance l'assembleur, crée le dépôt distant et les issues de la
-section 9 de la blueprint.
+section 9 de la blueprint ; à la fin de ces tickets, elle liste les adaptations de
+l'appli et en tire les brouillons de tickets du catalogue.
 
 ## Briques
 
@@ -286,7 +287,8 @@ l'arrêter d'abord.
 choisies vers un dossier vide hors du catalogue, et rien de ce qui
 fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md`,
 `outils/`, ni la skill `creer-appli` et l'agent
-`relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues et de l'outil de mise à jour, ni
+`relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues, de l'outil de mise à jour et de
+l'outil des adaptations, ni
 le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`
 et les modèles de ticket et de PR, ni les captures du README, `docs/captures/`
 (liste `EXCLUS_DU_CATALOGUE` de
@@ -295,7 +297,8 @@ Il écrit `blueprint.md` à la racine, avec le commit de référence du catalogu
 moment de la commande) ; `--blueprint` en donne une existante, dont seul le
 commit est mis à jour ; `--nom` fixe le nom du paquet de l'appli, d'où celui
 de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` ;
-il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et remet en forme
+il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et `ADAPTATIONS.md`, vide
+avec son en-tête, où l'appli note chaque retouche d'un fichier venu du catalogue, et remet en forme
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
 il écrit aussi `catalogue.empreintes.json`, le manifeste d'empreintes : le commit du
 catalogue, court et complet, et le champ `version` de son `package.json` (fixe tant qu'aucune version n'est
@@ -459,8 +462,10 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   assemblée (`mettre-a-jour.mjs`, qui reporte un catalogue plus récent ou ajoute une
   brique) et sa note de
   conception
-  (`mise-a-jour.md`), propres au catalogue : une appli assemblée ne
-  les reçoit pas.
+  (`mise-a-jour.md`), l'outil des adaptations (`adaptations.mjs`, en lecture seule : les
+  fichiers venus du catalogue qu'une appli a retouchés, avec leur diff et leur note) et la
+  lecture du manifeste qu'il partage (`manifeste.mjs`), propres au catalogue : une appli
+  assemblée ne les reçoit pas.
 - `scripts/` — squelette des imports et correctifs de données : dry-run par
   défaut, `--confirmer` à la main ; `bases-locales.ts`, qui crée les bases locales (voir
   « Démarrer en local ») ; et `verifier-audit.mjs`, lancé par la
@@ -474,8 +479,9 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   `solstice-nouvelle-appli` (cadrage, fiche projet, socle prêt pour la prod,
   découpage), `solstice-livrer` (du ticket à la mise en ligne) et
   `creer-appli` (le dialogue de cadrage, la blueprint, l'appel de l'assembleur, puis
-  le dépôt distant privé créé après accord, puis les issues de la section 9 ;
-  propre au catalogue, une appli assemblée ne la reçoit pas).
+  le dépôt distant privé créé après accord, puis les issues de la section 9, puis,
+  ces tickets faits, les brouillons de tickets du catalogue tirés des adaptations de
+  l'appli ; propre au catalogue, une appli assemblée ne la reçoit pas).
 - `.claude/agents/` — `relecteur-migrations` et `relecteur-docs`, lancés
   avant une PR selon ce que touche le diff ; `relecteur-blueprint`, lancé par
   la skill `creer-appli` sur la blueprint, avant l'assembleur (propre au

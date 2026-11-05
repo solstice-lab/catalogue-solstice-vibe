@@ -2,7 +2,8 @@
 // refusent à Claude les gestes qui versent un secret dans le dépôt, touchent la
 // prod ou défont un filet de sécurité (force sur le distant, hooks git sautés).
 // Dans une appli assemblée, elles rappellent aussi, sans refuser, de noter
-// toute retouche d'un fichier venu du catalogue (fin de ce fichier).
+// toute retouche d'un fichier venu du catalogue (section « Adaptations d'une
+// appli assemblée »).
 // Chaque règle renvoie à l'incident qui l'a fait naître (projets précédents,
 // septembre-octobre 2026), ou dit qu'il n'y en a pas.
 //
@@ -207,15 +208,15 @@ export function verifierEcriture(chemin, contenu) {
 //
 // Dans une appli assemblée, catalogue.empreintes.json liste les fichiers venus
 // du catalogue. En modifier un, c'est une adaptation : normale, mais muette.
-// Le 2026-11-05, sur l'appli d'essai tours-de-coloc, trois retouches (/kit et
-// les écrans du patron retirés, l'accueil livré vide rempli, l'onglet de la
-// coloc) n'ont été remontées au catalogue qu'une fois vues à
+// Le 2026-11-05, sur l'appli d'essai tours-de-coloc, trois retouches (la
+// vitrine du kit et les écrans du patron retirés, l'accueil livré vide rempli,
+// l'onglet de la coloc) n'ont été remontées au catalogue qu'une fois vues à
 // l'écran. La garde laisse donc passer et rappelle de noter l'adaptation dans
 // ADAPTATIONS.md, jusqu'à ce qu'elle y soit. Le catalogue lui-même n'a pas de
-// manifeste : rien ne s'y déclenche. Un fichier supprimé par une commande
-// (rm, git rm) échappe au rappel : l'outil des adaptations du catalogue
-// (adaptations.mjs), lancé depuis le catalogue, le retrouve. L'appli n'a pas
-// l'outillage du catalogue, d'où le nom sans son chemin.
+// manifeste : rien ne s'y déclenche. Un fichier écrit ou supprimé par une
+// commande (sed -i, Set-Content, rm, git rm) échappe au rappel : l'outil des
+// adaptations du catalogue (adaptations.mjs), lancé depuis le catalogue, le
+// retrouve. L'appli n'a pas l'outillage du catalogue, d'où le nom sans son chemin.
 
 const MANIFESTE = "catalogue.empreintes.json";
 export const ADAPTATIONS = "ADAPTATIONS.md";
@@ -224,34 +225,53 @@ export const ADAPTATIONS = "ADAPTATIONS.md";
 // montre une en exemple.
 const sansBlocsDeCode = (texte) => texte.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, "");
 
+// Une ligne de champ de l'entrée (« - Fichiers : », « - **Nature** : ») ; une
+// ligne de suite (« - `src/app/exemples/` » en retrait) n'en est pas une.
+const CHAMP = /^[-*]\s+\**\s*([\p{L}' ]+?)\s*\**\s*:/u;
+const champ = (ligne) => CHAMP.exec(ligne.trim())?.[1].toLowerCase();
+
 /**
  * Les entrées d'ADAPTATIONS.md : une par titre `## `, ses chemins cités entre
- * accents graves sur la ligne « Fichiers » (un dossier terminé par « / » couvre
- * tout ce qu'il contient), sa nature, et son texte tel quel. L'outil des
- * adaptations du catalogue l'importe : une seule lecture, celle que l'appli reçoit.
+ * accents graves sur la ligne « Fichiers » et ses lignes de suite, sa nature,
+ * et son texte tel quel. L'outil des adaptations du catalogue l'importe : une
+ * seule lecture, celle que l'appli reçoit. Lue avec indulgence (champ en gras,
+ * liste sur plusieurs lignes, barres obliques inverses, apostrophe
+ * typographique) : une note mal lue ferait revenir le rappel à chaque écriture.
  */
 export function entreesDesAdaptations(texte) {
   const entrees = [];
   for (const partie of sansBlocsDeCode(texte.replace(/\r\n/g, "\n")).split(/^(?=## )/m)) {
     if (!partie.startsWith("## ")) continue;
     const lignes = partie.trimEnd().split("\n");
-    const ligneFichiers = lignes.find((ligne) => /^\s*[-*]\s*Fichiers?\s*:/i.test(ligne)) ?? "";
-    const chemins = [...ligneFichiers.matchAll(/`([^`]+)`/g)].map(([, chemin]) => chemin.trim().replace(/^\.\//, ""));
-    const nature = /défaut du catalogue|propre à l'appli/i.exec(
-      lignes.find((ligne) => /^\s*[-*]\s*Nature\s*:/i.test(ligne)) ?? ""
-    )?.[0];
-    entrees.push({
-      titre: lignes[0].slice(3).trim(),
-      chemins,
-      nature: nature?.toLowerCase() ?? null,
-      texte: lignes.join("\n"),
-    });
+    const debut = lignes.findIndex((ligne) => /^fichiers?$/.test(champ(ligne) ?? ""));
+    const lignesFichiers = [];
+    for (let i = debut; debut !== -1 && i < lignes.length; i++) {
+      if (i > debut && champ(lignes[i]) !== undefined) break;
+      lignesFichiers.push(lignes[i]);
+    }
+    const chemins = [...lignesFichiers.join("\n").matchAll(/`([^`]+)`/g)].map(([, chemin]) =>
+      chemin.trim().replace(/\\/g, "/").replace(/^\.\//, "")
+    );
+    const ligneNature = lignes.find((ligne) => champ(ligne) === "nature") ?? "";
+    const nature = /défaut du catalogue|propre à l['’]appli/i.exec(ligneNature)?.[0].toLowerCase().replace("’", "'");
+    entrees.push({ titre: lignes[0].slice(3).trim(), chemins, nature: nature ?? null, texte: lignes.join("\n") });
   }
   return entrees;
 }
 
+// Un chemin cité couvre ce fichier, et tout ce qu'il contient s'il est un
+// dossier, barre finale ou non.
 export const couvre = (entree, chemin) =>
-  entree.chemins.some((cite) => cite === chemin || (cite.endsWith("/") && chemin.startsWith(cite)));
+  entree.chemins.some((cite) => cite === chemin || chemin.startsWith(cite.endsWith("/") ? cite : `${cite}/`));
+
+// La clé du manifeste qui désigne ce chemin. Sous Windows, le disque ne
+// distingue pas la casse : écrire `src/App/page.tsx`, c'est écrire `src/app/page.tsx`.
+function cleDuManifeste(fichiers, relatif) {
+  if (Object.hasOwn(fichiers, relatif)) return relatif;
+  if (process.platform !== "win32") return undefined;
+  const minuscules = relatif.toLowerCase();
+  return Object.keys(fichiers).find((cle) => cle.toLowerCase() === minuscules);
+}
 
 // Lu à chaque appel : deux petits fichiers, quelques millisecondes, loin du
 // délai de 10 s de settings.json. Tout ce qui ne se lit pas laisse passer sans
@@ -266,21 +286,33 @@ export function rappelDAdaptation(chemin, racine) {
   }
   const relatif = path.relative(racine, path.resolve(racine, chemin)).replace(/\\/g, "/");
   if (relatif === "" || relatif.startsWith("../") || path.isAbsolute(relatif)) return null;
-  if (typeof fichiers !== "object" || fichiers === null || !Object.hasOwn(fichiers, relatif)) return null;
+  if (typeof fichiers !== "object" || fichiers === null) return null;
+  const cle = cleDuManifeste(fichiers, relatif);
+  if (cle === undefined) return null;
   let notes = "";
   try {
     notes = fs.readFileSync(path.join(racine, ADAPTATIONS), "utf-8");
   } catch {
     // Pas encore de fichier : rien n'est noté.
   }
-  if (entreesDesAdaptations(notes).some((entree) => couvre(entree, relatif))) return null;
+  if (entreesDesAdaptations(notes).some((entree) => couvre(entree, cle))) return null;
   return [
     "rappel",
-    `${relatif} vient du catalogue (${MANIFESTE}) : le modifier est une adaptation de l'appli. L'écriture passe. ` +
+    `${cle} vient du catalogue (${MANIFESTE}) : le modifier est une adaptation de l'appli. L'écriture passe. ` +
       `La noter dans ${ADAPTATIONS} à la racine de l'appli, une entrée de cinq lignes au plus (le modèle est en tête du fichier) : ` +
       "date, fichiers, ce qui change, pourquoi, « défaut du catalogue » ou « propre à l'appli ». " +
       "Ce rappel ne revient plus pour ce fichier une fois noté.",
   ];
+}
+
+// Le rappel n'arrête jamais une écriture, même sur un cas que ses tests n'ont
+// pas prévu : une exception s'y tait, là où un refus des gardes, lui, compte.
+function rappelSansRisque(chemin, racine) {
+  try {
+    return rappelDAdaptation(chemin, racine);
+  } catch {
+    return null;
+  }
 }
 
 function contenuEcrit(entree) {
@@ -309,7 +341,7 @@ async function principal() {
   const racine = process.env.CLAUDE_PROJECT_DIR || fileURLToPath(new URL("../..", import.meta.url));
   const verdict = commande
     ? verifierCommande(entree.command ?? "")
-    : (verifierEcriture(chemin, contenuEcrit(entree)) ?? rappelDAdaptation(chemin, racine));
+    : (verifierEcriture(chemin, contenuEcrit(entree)) ?? rappelSansRisque(chemin, racine));
   if (!verdict) return;
 
   const [decision, raison] = verdict;

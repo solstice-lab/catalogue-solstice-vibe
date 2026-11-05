@@ -1056,7 +1056,7 @@ const ENTETE_DES_ADAPTATIONS = [
   "leur note : chaque défaut du catalogue y devient un ticket du catalogue.",
   "",
   "Cinq lignes au plus par entrée, la plus récente en bas. Un dossier cité avec sa barre finale",
-  "(`src/app/kit/`) couvre tout ce qu'il contient. « Propre à l'appli » : une évolution voulue par",
+  "(`src/app/exemples/`) couvre tout ce qu'il contient. « Propre à l'appli » : une évolution voulue par",
   "l'appli, que le catalogue n'a pas à donner.",
   "",
   "```",

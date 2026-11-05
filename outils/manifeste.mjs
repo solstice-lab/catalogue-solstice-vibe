@@ -3,10 +3,11 @@
  * écrit par outils/assembler.mjs) : le lire au HEAD de l'appli, le vérifier, et
  * dire quels fichiers venus du catalogue l'appli a retouchés ou supprimés.
  *
- * Partagé entre les outils qui comparent l'appli au manifeste. Repris tel quel
- * de outils/mettre-a-jour.mjs, qui garde pour l'heure sa propre copie : deux
- * sessions le modifiaient en même temps que celle qui a créé ce module, le
- * 2026-11-05. Son branchement ici est la suite prévue.
+ * Partagé entre les outils qui comparent l'appli au manifeste, pour qu'une
+ * règle de lecture (un format de plus, une vérification) ne change pas d'un
+ * côté seulement. Repris de outils/mettre-a-jour.mjs, qui garde encore sa propre
+ * copie : son branchement ici est la suite prévue (outils/mise-a-jour.md, « Ce
+ * qui est outillé », « Les adaptations de l'appli »).
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -64,16 +65,17 @@ export function lireDesObjets(depot, objets) {
   const contenus = [];
   let curseur = 0;
   for (let rang = 0; rang < objets.length; rang++) {
-    // « <objet> blob <taille> », puis le contenu, puis un saut de ligne ;
-    // « <objet> missing » pour un objet absent.
+    // « <objet> <type> <taille> », puis le contenu, puis un saut de ligne ;
+    // « <nom demandé> missing » pour un objet absent, où le nom (`commit:chemin`)
+    // peut contenir des espaces : seul l'en-tête complet d'un objet trouvé compte.
     const finEntete = sortie.indexOf(0x0a, curseur);
-    const entete = sortie.toString("latin1", curseur, finEntete).split(" ");
-    if (entete[1] === "missing" || entete.length < 3) {
+    const trouve = /^[0-9a-f]+ \w+ (\d+)$/.exec(sortie.toString("latin1", curseur, finEntete));
+    if (trouve === null) {
       contenus.push(undefined);
       curseur = finEntete + 1;
       continue;
     }
-    const taille = Number(entete[2]);
+    const taille = Number(trouve[1]);
     contenus.push(sortie.subarray(finEntete + 1, finEntete + 1 + taille));
     curseur = finEntete + 1 + taille + 1;
   }

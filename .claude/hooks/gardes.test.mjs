@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  couvre,
   entreesDesAdaptations,
   rappelDAdaptation as rap,
   verifierCommande as cmd,
@@ -125,7 +126,7 @@ passe(ecr("/repo/src/db.ts", "const url = process.env.DATABASE_URL;"));
 // du catalogue n'ont été remontées qu'une fois vues à l'écran.
 
 const appli = fs.mkdtempSync(path.join(os.tmpdir(), "gardes-appli-"));
-fs.mkdirSync(path.join(appli, "src", "app", "kit"), { recursive: true });
+fs.mkdirSync(path.join(appli, "src", "app", "exemples"), { recursive: true });
 const sha = "0".repeat(64);
 fs.writeFileSync(
   path.join(appli, "catalogue.empreintes.json"),
@@ -133,7 +134,7 @@ fs.writeFileSync(
     format: 2,
     fichiers: {
       "src/app/page.tsx": { unite: "socle", sha256: sha },
-      "src/app/kit/page.tsx": { unite: "socle", sha256: sha },
+      "src/app/exemples/page.tsx": { unite: "socle", sha256: sha },
       "src/lib/navigation.ts": { unite: "socle", sha256: sha },
     },
   })
@@ -158,10 +159,37 @@ passe(
     fileURLToPath(new URL("../..", import.meta.url))
   )
 );
-// Un manifeste illisible ne bloque rien.
+// Un manifeste illisible ou d'une forme inattendue ne bloque rien et ne dit rien :
+// JSON cassé, octets qui ne sont pas de l'UTF-8, marque d'ordre en tête, autre
+// chose qu'un objet, liste de fichiers absente ou d'un autre type.
 const illisibleAppli = fs.mkdtempSync(path.join(os.tmpdir(), "gardes-appli-"));
-fs.writeFileSync(path.join(illisibleAppli, "catalogue.empreintes.json"), "{ pas du json");
+const manifesteIllisible = path.join(illisibleAppli, "catalogue.empreintes.json");
+for (const contenu of [
+  "{ pas du json",
+  Buffer.from([0x7b, 0xff, 0xfe, 0x7d]),
+  `﻿${JSON.stringify({ fichiers: { "src/app/page.tsx": {} } })}`,
+  "null",
+  "[]",
+  '"texte"',
+  "{}",
+  '{ "fichiers": "src/app/page.tsx" }',
+  '{ "fichiers": null }',
+]) {
+  fs.writeFileSync(manifesteIllisible, contenu);
+  passe(rap(path.join(illisibleAppli, "src", "app", "page.tsx"), illisibleAppli));
+}
+// Un manifeste qui est un dossier : pas lisible non plus.
+fs.rmSync(manifesteIllisible);
+fs.mkdirSync(manifesteIllisible);
 passe(rap(path.join(illisibleAppli, "src", "app", "page.tsx"), illisibleAppli));
+
+// ADAPTATIONS.md illisible (un dossier à sa place, des octets qui ne sont pas de
+// l'UTF-8) : l'écriture passe, avec le rappel ordinaire, rien n'y étant lisible comme noté.
+fs.mkdirSync(dans("ADAPTATIONS.md"));
+rappel(rap(dans("src", "app", "page.tsx"), appli));
+fs.rmSync(dans("ADAPTATIONS.md"), { recursive: true });
+fs.writeFileSync(dans("ADAPTATIONS.md"), Buffer.from([0x23, 0x20, 0xff, 0xfe, 0x0a, 0x60, 0xc3]));
+rappel(rap(dans("src", "app", "page.tsx"), appli));
 
 // Déjà noté dans ADAPTATIONS.md, par son chemin ou par un dossier qui le contient : rien.
 fs.writeFileSync(
@@ -175,15 +203,15 @@ fs.writeFileSync(
     "```",
     "",
     "## 2026-11-05",
-    "- Fichiers : `src/app/page.tsx`, `src/app/kit/`",
-    "- Ce qui change : l'accueil livré vide devient le tableau des tours ; /kit est retiré.",
+    "- Fichiers : `src/app/page.tsx`, `src/app/exemples/`",
+    "- Ce qui change : l'accueil livré vide devient le tableau des tours ; les exemples sont retirés.",
     "- Pourquoi : l'accueil disait « Page d'accueil à écrire ».",
     "- Nature : défaut du catalogue",
     "",
   ].join("\r\n")
 );
 passe(rap(dans("src", "app", "page.tsx"), appli));
-passe(rap(dans("src", "app", "kit", "page.tsx"), appli));
+passe(rap(dans("src", "app", "exemples", "page.tsx"), appli));
 // L'exemple de l'en-tête, dans un bloc de code, n'est pas une entrée.
 rappel(rap(dans("src", "lib", "navigation.ts"), appli));
 
@@ -193,8 +221,40 @@ assert.deepEqual(
     chemins,
     nature,
   })),
-  [{ titre: "2026-11-05", chemins: ["src/app/page.tsx", "src/app/kit/"], nature: "défaut du catalogue" }]
+  [{ titre: "2026-11-05", chemins: ["src/app/page.tsx", "src/app/exemples/"], nature: "défaut du catalogue" }]
 );
+
+// Une note écrite autrement que le modèle compte quand même : champ en gras,
+// liste sur plusieurs lignes, dossier sans barre finale, barres obliques
+// inverses, apostrophe typographique. Mal lue, elle ferait revenir le rappel à
+// chaque écriture.
+assert.deepEqual(
+  entreesDesAdaptations(
+    [
+      "## 2026-11-05 : onglet de la coloc",
+      "- **Fichiers** :",
+      "  - `src\\lib\\navigation.ts`",
+      "  - `src/app/exemples`",
+      "- **Ce qui change** : l'onglet s'appelle « Ma coloc ».",
+      "- **Nature** : propre à l’appli",
+    ].join("\n")
+  ).map(({ chemins, nature }) => ({ chemins, nature })),
+  [{ chemins: ["src/lib/navigation.ts", "src/app/exemples"], nature: "propre à l'appli" }]
+);
+fs.writeFileSync(
+  dans("ADAPTATIONS.md"),
+  `${fs.readFileSync(dans("ADAPTATIONS.md"), "utf8")}\n## 2026-11-06\n- **Fichiers** :\n  - \`src\\lib\\navigation.ts\`\n- Nature : propre à l’appli\n`
+);
+passe(rap(dans("src", "lib", "navigation.ts"), appli));
+// Un dossier cité sans barre finale couvre ce qu'il contient, pas un voisin au nom qui commence pareil.
+assert.ok(couvre({ chemins: ["src/app/exemples"] }, "src/app/exemples/page.tsx"));
+assert.ok(!couvre({ chemins: ["src/app/exemples"] }, "src/app/exemples-bis/page.tsx"));
+// Sous Windows, un chemin d'une autre casse désigne le même fichier.
+fs.writeFileSync(dans("ADAPTATIONS.md"), "# Adaptations de l'appli\n");
+if (process.platform === "win32") {
+  rappel(rap(dans("SRC", "App", "page.tsx"), appli));
+  assert.match(rap(dans("SRC", "App", "page.tsx"), appli)[1], /^src\/app\/page\.tsx /);
+}
 
 // --- Bout en bout : le script lancé comme hook répond au format attendu ---
 
@@ -226,6 +286,16 @@ const refusHook = lancer(
   { CLAUDE_PROJECT_DIR: appli }
 );
 assert.equal(JSON.parse(refusHook.stdout).hookSpecificOutput.permissionDecision, "deny");
+// Lancé comme hook dans une appli au manifeste cassé : code 0, aucune sortie, l'écriture passe.
+fs.rmSync(manifesteIllisible, { recursive: true });
+fs.writeFileSync(manifesteIllisible, "{ pas du json");
+const casseHook = lancer(
+  { tool_name: "Write", tool_input: { file_path: path.join(illisibleAppli, "src", "app", "page.tsx"), content: "x" } },
+  { CLAUDE_PROJECT_DIR: illisibleAppli }
+);
+assert.equal(casseHook.status, 0);
+assert.equal(casseHook.stdout, "");
+assert.equal(casseHook.stderr, "");
 
 fs.rmSync(appli, { recursive: true, force: true });
 fs.rmSync(illisibleAppli, { recursive: true, force: true });

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { adaptations, ErreurAdaptations, rapport } from "../outils/adaptations.mjs";
+import { lireDesObjets } from "../outils/manifeste.mjs";
 import {
   assemblerEnTemporaire,
   dossierTemporaireVide,
@@ -154,6 +155,15 @@ describe("outils/adaptations.mjs", { timeout: ENTIER }, () => {
     const resultat = adaptations({ catalogue: SOURCE, appli });
     expect(resultat.adaptations).toEqual([]);
     expect(resultat.avertissements.join("\n")).toMatch(/non commitées/);
+  });
+
+  // git répond « <nom demandé> missing », et un chemin peut contenir une espace :
+  // découpé par espace, l'en-tête donnait une taille NaN et un contenu vide pris
+  // pour l'origine, d'où un diff qui montrait tout le fichier comme ajouté.
+  it("lit un objet absent comme absent, même nommé par un chemin à espaces, sans décaler les suivants", () => {
+    const lus = lireDesObjets(SOURCE, ["HEAD:pas là/un fichier.ts", "HEAD:package.json"]);
+    expect(lus[0]).toBeUndefined();
+    expect(lus[1]?.toString("utf-8")).toBe(gitDans(SOURCE, "show", "HEAD:package.json") + "\n");
   });
 
   it("refuse en le disant un dossier qui n'est pas une appli assemblée", () => {
