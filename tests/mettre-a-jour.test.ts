@@ -1208,8 +1208,8 @@ function retouchesDeLaColoc(d: string) {
     d,
     "src/lib/navigation.ts",
     remplacer(
-      '  { libelle: "Dossiers", href: "/dossiers", visible: visiblePour("dossiers.acceder") },\n',
-      '  { libelle: "Dossiers", href: "/dossiers", visible: visiblePour("dossiers.acceder") },\n  { libelle: "Tâches", href: "/taches", visible: visiblePour("taches.gerer") },\n'
+      '  { libelle: "Accueil", href: "/" },\n',
+      '  { libelle: "Accueil", href: "/" },\n  { libelle: "Tâches", href: "/taches", visible: visiblePour("taches.gerer") },\n'
     )
   );
   ecrire(
@@ -1351,7 +1351,7 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
   );
 
   it(
-    "ajoute mails,contact puis comptes à une vitrine sans base : ajouts lourds annoncés, typecheck et rejeu des migrations passent, et tests/gardes-acces.test.ts échoue sur la seule page de l'appli (et l'entrée du kit qu'elle a supprimé), nommées au rapport",
+    "ajoute mails,contact puis comptes à une vitrine sans base : ajouts lourds annoncés, typecheck et rejeu des migrations passent, et tests/gardes-acces.test.ts échoue sur la seule page de l'appli (et l'entrée des mentions légales qu'elle a supprimées), nommées au rapport",
     { timeout: 1_800_000 },
     async () => {
       const assemblee = path.join(dossierTemporaire("appli-"), "vitrine-essai");
@@ -1362,9 +1362,10 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
           path.join(d, "src/app/a-propos/page.tsx"),
           "export default function PageAPropos() {\n  return <p>Qui nous sommes.</p>;\n}\n"
         );
-        // Une page du kit que la vitrine n'expose pas : le verrou des gardes la nomme dans ses fichiers ouverts.
-        fs.rmSync(path.join(d, "src/app/kit/site-vitrine"), { recursive: true });
-        ecrire(d, "src/app/kit/Vitrine.tsx", remplacer('href="/kit/site-vitrine"', 'href="/kit"'));
+        // Une page ouverte que la vitrine a supprimée (avec son test, qui l'importe) : le verrou des gardes la
+        // nomme dans ses fichiers ouverts. Le kit, qui faisait ce cas, n'est plus livré.
+        fs.rmSync(path.join(d, "src/app/mentions-legales"), { recursive: true });
+        fs.rmSync(path.join(d, "tests/mentions-legales.test.ts"));
       }, assemblee);
       publier(vitrine);
       const head = git(vitrine, "rev-parse", "HEAD");
@@ -1402,14 +1403,14 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
           base: false,
           comptes: true,
           pages: ["src/app/a-propos/page.tsx"],
-          ouvertsSupprimes: ["src/app/kit/site-vitrine/page.tsx"],
+          ouvertsSupprimes: ["src/app/mentions-legales/page.tsx"],
         },
       });
       const texteComptes = rapport(comptes);
       const lourdComptes = rubriqueDe(texteComptes, "Ajouts lourds") ?? "";
       expect(lourdComptes).toMatch(/### La brique comptes/);
       expect(lourdComptes).toMatch(/`tests\/gardes-acces\.test\.ts`[\s\S]*\n- `src\/app\/a-propos\/page\.tsx`\n/);
-      expect(lourdComptes).toMatch(/`OUVERTS`[^\n]*\n- `src\/app\/kit\/site-vitrine\/page\.tsx`\n/);
+      expect(lourdComptes).toMatch(/`OUVERTS`[^\n]*\n- `src\/app\/mentions-legales\/page\.tsx`\n/);
       expect(lourdComptes).toContain("`src/config/comptes.ts`");
       expect(lourdComptes).toContain("rgpd");
       expect(texteComptes).toMatch(/^# Ajouter comptes à l'appli/m);
@@ -1428,7 +1429,7 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
       expect(fautes, sansCouleurs(gardes.sortie).slice(-4000)).toContain("a-propos/page.tsx : PageAPropos");
       expect([...new Set(fautes.map((faute) => faute.split(" : ")[0]))]).toEqual(["a-propos/page.tsx"]);
       // Et l'entrée ouverte dont la vitrine a supprimé le fichier, nommée au rapport elle aussi.
-      expect(sansCouleurs(gardes.sortie)).toMatch(/kit\/site-vitrine\/page\.tsx: expected false to be true/);
+      expect(sansCouleurs(gardes.sortie)).toMatch(/mentions-legales\/page\.tsx: expected false to be true/);
     }
   );
 

@@ -96,12 +96,12 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
   it("redirige un cookie forgé, tronqué ou d'un autre secret comme une absence de session", () => {
     const jeton = nouveauJeton();
     for (const fautif of ["x", jeton, `${jeton}.faux`, signer(jeton).slice(0, -2), signer(jeton, "z".repeat(40))]) {
-      expect(versLaConnexion(proxy(requete("/kit", avecCookie(fautif)))), fautif).not.toBeNull();
+      expect(versLaConnexion(proxy(requete("/une-page", avecCookie(fautif)))), fautif).not.toBeNull();
     }
   });
 
   it("laisse passer un cookie bien signé, avec la CSP sur la réponse ET dans la requête : sans elle, plus aucun script ne tourne", () => {
-    const reponse = proxy(requete("/kit", avecCookie(signer(nouveauJeton()))));
+    const reponse = proxy(requete("/une-page", avecCookie(signer(nouveauJeton()))));
     expect(versLaConnexion(reponse)).toBeNull();
     expect(reponse.headers.get("content-security-policy")).toBeTruthy();
     expect(reponse.headers.get("x-middleware-request-content-security-policy")).toBe(
@@ -119,9 +119,9 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
     const prechargements: Record<string, string>[] = [{ "next-router-prefetch": "1" }, { purpose: "prefetch" }];
     for (const enTetes of prechargements) {
       expect(
-        unstable_doesMiddlewareMatch({ config: configProxy, url: "/kit", headers: enTetes, nextConfig: config })
+        unstable_doesMiddlewareMatch({ config: configProxy, url: "/une-page", headers: enTetes, nextConfig: config })
       ).toBe(true);
-      expect(versLaConnexion(proxy(requete("/kit", enTetes)))).not.toBeNull();
+      expect(versLaConnexion(proxy(requete("/une-page", enTetes)))).not.toBeNull();
     }
   });
 

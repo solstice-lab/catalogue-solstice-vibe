@@ -183,8 +183,8 @@ la description, puis :
    `src/lib/navigation.ts`, ordinateur et téléphone, sans citer le détail de ce fichier.
    Chaque écran a l'une de trois origines, dite dans le tableau : une brique gardée qui
    apporte ses écrans (`/connexion`, `/mes-donnees`, `/donnees-personnelles`, `/comptes`,
-   `/journal`, `/contact`, `/espace` et `/espace/rejoindre`) ; le socle (`/kit` et, avec `comptes`, `/dossiers`, à remplacer
-   par ticket ; `/mentions-legales`, `/confidentialite`, à remplir) ; ou une page que
+   `/journal`, `/contact`, `/espace` et `/espace/rejoindre`) ; le socle (`/mentions-legales`, `/confidentialite`, à remplir ;
+   ni `/kit` ni `/dossiers` ne sont livrés) ; ou une page que
    l'appli écrira (l'accueil, les écrans de chaque entité, les vues des briques à
    brancher), marquée « à écrire » avec son ticket.
 5. **Accès et thème** : ce qui est décidé des droits (`src/config/acces.ts` : rôles, et
@@ -216,8 +216,8 @@ la description, puis :
    l'éditeur ; pour un professionnel, éditeur et directeur de la publication ; coordonnées
    de l'hébergeur), remplir la politique de confidentialité
    (`src/lib/confidentialite.ts`, avant toute mise en ligne, choix validés par le client), compléter le référencement (`src/lib/referencement.ts` : les pages publiques), thématiser, écrire
-   l'accueil, construire chaque entité de la section 2 en copiant le patron `dossiers`
-   (puis remplacer ou retirer `dossiers`), brancher les briques « à brancher », écrire les
+   l'accueil, construire chaque entité de la section 2 en copiant le patron `dossiers`,
+   brancher les briques « à brancher », écrire les
    scripts de données de la section 6. S'il y a lieu : retirer
    la signature Solstice Lab (hors livraison Solstice Lab, si la fiche le dit, avec les
    textes qui la décrivent : `CLAUDE.md` §1, skill `solstice-ui`,

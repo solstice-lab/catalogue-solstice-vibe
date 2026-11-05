@@ -118,6 +118,14 @@ en-tête (plus bas). Pour les autres :
 | présent, puis absent | retouché | gardé, signalé : un renommage au catalogue perdrait sinon les retouches de l'appli |
 | changé, binaire (police, image) | retouché | gardé, signalé : un binaire ne se fusionne pas |
 
+**Ce que l'assembleur a cessé de livrer** : la vitrine du kit (`/kit`) et les écrans du patron
+`dossiers` (`src/app/dossiers/`), que l'essai tours-de-coloc a dû retirer lui-même le 2026-11-05.
+Une appli assemblée avant ce changement suit la ligne « présent, puis absent » de la table : ses
+fichiers intacts sont supprimés, ceux qu'elle a retouchés (le patron copié en premier module)
+sont gardés et signalés. L'entrée « Dossiers » de son menu part de `src/lib/navigation.ts` par
+la fusion à trois, ou crée un conflit si l'appli a retouché la ligne. La couche données du patron
+(`src/lib/db/dossiers.ts`, sa table) n'est pas concernée : elle reste livrée avec la base.
+
 `NOTICE` suit la même table, sans empreinte au manifeste : l'appli est jugée intacte si
 elle égale l'origine rejouée. Ont un traitement propre, dit dans les sections suivantes :
 `src/lib/db/migrations.ts`, `src/lib/db/schema.sql`, `package-lock.json`,
@@ -264,8 +272,7 @@ en tête ce qui change pour toute l'appli, puis les décisions et les gestes qui
   L'appli a été écrite sans droits : `tests/gardes-acces.test.ts` refuse chacune de ses
   pages qui n'appelle pas `exiger`, et donne ainsi la liste exacte des pages à trancher une
   à une (publique, ou derrière quel droit). La liste des pages publiques du référencement se
-  reprend (l'accueil passe derrière la connexion), les écrans du patron `dossiers` arrivent
-  (l'appli peut les supprimer), et il faut un premier admin, `AUTH_SECRET` et l'envoi des
+  reprend (l'accueil passe derrière la connexion), et il faut un premier admin, `AUTH_SECRET` et l'envoi des
   codes par Resend. C'est un ticket de l'appli à part entière, pas une retouche.
 
 Parce que l'ajout reste coûteux, **le cadrage insiste** : `creer-appli` pose la question de
@@ -532,9 +539,9 @@ lourds »).
   `tests/gardes-acces.test.ts` refusera, nommés un à un (les pages, routes et fichiers « use
   server » de `src/app/` que l'appli a écrits, absents de l'origine comme de la cible), les
   pages publiques du référencement, les entrées de `OUVERTS` du verrou dont l'appli a
-  supprimé le fichier (le kit d'une vitrine), l'entrée et les méthodes de connexion prises
-  par défaut (l'en-tête de la blueprint ne pouvait pas les régler sans la brique), les
-  écrans du patron `dossiers`, `rgpd` d'office, le premier admin et `AUTH_SECRET`. Puis
+  supprimé le fichier (une page publique qu'elle a retirée), l'entrée et les méthodes de connexion prises
+  par défaut (l'en-tête de la blueprint ne pouvait pas les régler sans la brique), `rgpd` d'office,
+  le premier admin et `AUTH_SECRET`. Puis
   les **briques à brancher**, lues dans la section « La brancher » du README de la cible :
   celles dont elle commence par « Tout se déclare côté appli » arrivent sans appelant
   (`echeances`, `calendrier`, `validation`, `import-lot`, `notifications`, le vocabulaire

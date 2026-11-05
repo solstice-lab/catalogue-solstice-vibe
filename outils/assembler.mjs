@@ -19,10 +19,10 @@
  *
  * Ce que le script décide vient de outils/modules.mjs (la liste déclarative).
  * Ce fichier-ci ne connaît aucun nom de brique : il applique la liste. Son
- * code ne nomme que les écrans du patron dossiers, l'adresse IP du visiteur et
- * la base (« donnees »), qui ne se choisissent pas mais suivent ce qui les
- * exige, et les briques comptes et contact, que suivent les écrans du patron
- * et l'adresse IP.
+ * code ne nomme que la vitrine du kit et les écrans du patron dossiers, que
+ * aucune copie ne reçoit, l'adresse IP du visiteur et la base (« donnees »),
+ * qui ne se choisissent pas mais suivent ce qui les exige, et les briques
+ * comptes et contact, que suit l'adresse IP.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -40,6 +40,7 @@ import {
   PATRON_DOSSIERS,
   PROFILS,
   RETRAITS_DU_SOCLE,
+  VITRINE_DU_KIT,
   remplissagesDeLEnTete,
   remplissagesDeLEntree,
   retraitsDuNom,
@@ -222,25 +223,25 @@ export function planifier({ briques: choisies }, catalogue = { BRIQUES }) {
     }
   }
   // Aucune brique qui lit la base : un site sans base. La brique comptes
-  // garde la base et son patron dossiers, d'où partira le premier module
-  // métier de l'appli, avec, s'il est choisi, l'écran /comptes de la brique
-  // gestion-comptes, et les espaces de la brique du même nom ; la brique
-  // contact garde la base sans les écrans du patron ; les briques
+  // garde la base et la couche données du patron dossiers (ses écrans, jamais :
+  // voir plus haut), d'où partira le premier module métier de l'appli, avec,
+  // s'il est choisi, l'écran /comptes de la brique gestion-comptes, et les
+  // espaces de la brique du même nom ; la brique contact garde la base sans
+  // connexion ; les briques
   // echeances, calendrier, validation, import-lot et
   // notifications la gardent et arrivent à brancher sur ce module métier.
   const lisentLaBase = briques.filter((nom) => lesBriques[nom].exige.includes(BASE));
   const baseGardee = lisentLaBase.length > 0;
 
   const unites = [];
-  // Les écrans du patron dossiers appellent exiger : ils suivent la brique
-  // comptes, qui garde la base. La base sans comptes (brique contact)
-  // garde la couche données du patron, pas ses écrans.
-  unites.push({
-    genre: "partagée",
-    nom: "patron-dossiers",
-    definition: PATRON_DOSSIERS,
-    gardee: briques.includes("comptes"),
-  });
+  // Les écrans du patron dossiers et la vitrine du kit ne sont jamais livrés :
+  // ils restent au catalogue, où l'appli les lit et les copie à la demande. Des
+  // unités qui ne se gardent pour aucune combinaison, pour que leurs retraits
+  // de texte (menu, gardes, skills) et leur ligne « Retiré » dans le premier
+  // commit passent par le même chemin que les autres. La couche données du
+  // patron reste avec la base.
+  unites.push({ genre: "partagée", nom: "patron-dossiers", definition: PATRON_DOSSIERS, gardee: false });
+  unites.push({ genre: "partagée", nom: "vitrine-du-kit", definition: VITRINE_DU_KIT, gardee: false });
   // L'adresse IP du visiteur suit les briques qui la lisent.
   unites.push({
     genre: "partagée",

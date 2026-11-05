@@ -232,6 +232,10 @@ export const REFERENCES: Record<string, RegExp> = {
   deploiement: /briques\/deploiement|render\.yaml|DEPLOIEMENT_URL|DEPLOIEMENT_DECLENCHEUR|\bdeployer:/,
   // Les écrans du patron dossiers ; sa couche données reste avec la base.
   "patron-dossiers": /app\/dossiers\b/,
+  // La vitrine du kit : ses pages et tout lien vers elle (« /kit » entre
+  // guillemets ou suivi d'une barre, jamais « src/app/kit » nu : celui-là est
+  // couvert par le premier motif).
+  "vitrine-du-kit": /app\/kit\b|(?<![\w.-])\/kit(?![\w-])/,
   // Le formulaire de contact : sa page, sa table et sa variable. Pas la
   // chaîne « /contact » : tests/referencement.test.ts s'en sert comme exemple ;
   // une route ou une page publique restée sans sa page fait échouer

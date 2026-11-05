@@ -35,7 +35,7 @@ brancher** sur ce module.
 - **La base** (brique `donnees` : `src/lib/db/`, migrations, couche données du patron
   `dossiers`, squelette des scripts de données) n'est pas au choix : l'assembleur la garde
   dès qu'une brique gardée l'exige, et la retire sinon. Les écrans du patron `dossiers` ne
-  viennent qu'avec `comptes` : ils appellent `exiger`.
+  viennent jamais : le catalogue les garde.
 - **Le site vitrine** : aucune brique qui lit la base ; au plus `mails`, `deploiement`, et
   `contact` avec `mails`. Sans `contact`, il ne garde que le socle : pas de base, pas de
   connexion, `src/proxy.ts` réduit à la CSP. Ses pages sont rendues à chaque requête, sans
@@ -97,9 +97,9 @@ les appelle pas.
 
 Toute appli assemblée garde : le kit `src/ui/` avec son thème de repli (la charte Solstice
 Lab) et la signature Solstice Lab du pied de page (obligatoire pour une livraison Solstice
-Lab, retirable par ticket sinon : `SKILL.md`, étape 1), la vitrine `/kit` (à remplacer par les
-premiers écrans réels, voir `CLAUDE.md` et la skill `solstice-ui`), l'accueil « Page
-d'accueil à écrire », la page
+Lab, retirable par ticket sinon : `SKILL.md`, étape 1), l'accueil « Page
+d'accueil à écrire » (à remplacer par les premiers écrans réels, voir `CLAUDE.md` et la skill
+`solstice-ui`), la page
 `/mentions-legales` et sa configuration `src/lib/mentions-legales.ts` (vide, statut « professionnel » d'office, à remplir), la
 page `/confidentialite` et sa configuration `src/lib/confidentialite.ts` (les traitements des
 briques gardées y sont décrits, les choix du responsable sont vides, à remplir), le
@@ -107,7 +107,7 @@ référencement (`src/lib/referencement.ts`, `robots.ts`, `sitemap.ts`, image de
 fermé aux moteurs par défaut, les
 skills et agents du harnais, les gardes de Claude. Avec une brique qui lit la base, elle
 garde aussi la brique données : la base et ses migrations, la couche données du patron
-`dossiers` (ses écrans avec `comptes`), le squelette des scripts de données
+`dossiers`, le squelette des scripts de données
 (`scripts/lib/cli.ts`), la skill `solstice-donnees` et l'agent `relecteur-migrations`. Elle
-ne reçoit ni le `README.md`, ni `outils/` du catalogue, ni la skill `creer-appli`, ni
+ne reçoit ni la vitrine `/kit`, ni les écrans du patron `dossiers`, ni le `README.md`, ni `outils/` du catalogue, ni la skill `creer-appli`, ni
 l'agent `relecteur-blueprint`.
