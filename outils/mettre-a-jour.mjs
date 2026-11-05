@@ -1452,6 +1452,42 @@ function controlerLAjout({ ajouter, presentes, definitions, commit }) {
 }
 
 /*
+ * Le retard de l'appli sur origin/main du catalogue, vu des briques qu'elle reçoit.
+ * Ajouter se fait au commit de l'appli (A' = A) : la brique arrive telle qu'elle
+ * était alors, pas telle qu'elle est. Le 2026-11-05, l'ajout de notifications à
+ * un commit en retard de 50 commits, dont trois sur la brique, l'a donnée sans
+ * un mot, et la mise à jour suivante a relu les mêmes fichiers. Le rapport
+ * avertit, il ne refuse pas : une mise à jour peut être lourde et attendre son
+ * propre ticket, quand l'ajout est urgent. Les fusions ne comptent pas : elles
+ * ne portent pas de changement, et un `git log` sur un dossier ne les voit pas.
+ * Faute de origin/main (l'ajout n'en a pas besoin, l'outil ne fait pas de fetch),
+ * le retard n'est pas calculé, et le rapport le dit.
+ */
+function retardDeLAjout({ catalogue, shaOrigine, briques }) {
+  const main = origineMain(catalogue);
+  if (main === undefined) {
+    return {
+      indisponible: "le catalogue n'a pas de origin/main : git fetch origin dans le catalogue pour le connaître",
+    };
+  }
+  if (!reussit(catalogue, "merge-base", "--is-ancestor", shaOrigine, main)) {
+    return { indisponible: "le commit de l'appli n'est pas sur origin/main du catalogue" };
+  }
+  const intervalle = `${shaOrigine}..${main}`;
+  return {
+    commitMain: git(catalogue, "rev-parse", "--short", main).trim(),
+    total: Number(git(catalogue, "rev-list", "--count", "--no-merges", intervalle).trim()),
+    briques: briques.map((brique) => ({
+      brique,
+      commits: git(catalogue, "log", "--no-merges", "--format=%h %s", intervalle, "--", `src/briques/${brique}`)
+        .split("\n")
+        .filter(Boolean)
+        .map((ligne) => ({ court: ligne.slice(0, ligne.indexOf(" ")), sujet: ligne.slice(ligne.indexOf(" ") + 1) })),
+    })),
+  };
+}
+
+/*
  * Ce que le README d'une brique reçue dit qu'un module métier de l'appli doit
  * faire, lu dans sa section « La brancher » de la cible (le README que l'appli
  * reçoit), deux cas :
@@ -1715,6 +1751,8 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
       branche: nomDeBranche,
       aBlanc,
       aJour: shaCible === shaOrigine && !ajout,
+      // Ce que l'ajout au commit de l'appli laisse derrière lui ; null pour une mise à jour, qui vise main.
+      retard: ajout ? retardDeLAjout({ catalogue: racineCatalogue, shaOrigine, briques: ajoutees }) : null,
       retouchesAvant: examen.resultat.retouches,
       supprimesAvant: examen.resultat.supprimes,
       fichiers,
@@ -1984,6 +2022,72 @@ function rubriqueDesMigrations(resultat) {
   return lignes;
 }
 
+// Au-delà, le nombre seul : le journal de la brique se lit par git log.
+const COMMITS_LISTES = 5;
+
+/*
+ * En tête du rapport d'un ajout : la brique arrive telle qu'elle était au commit
+ * de l'appli. Un seul paragraphe d'une ligne quand il n'y a rien à dire (pas de
+ * retard, ou aucun commit sur les briques reçues) ; sinon l'avertissement, avec
+ * la commande qui ferait recevoir la brique du jour (puce « L'ajout » de « Ce
+ * qui est outillé », dans la note).
+ */
+function rubriqueDuRetard(resultat) {
+  const { retard } = resultat;
+  if (!retard) return [];
+  const { ajoutees, commitOrigine } = resultat;
+  const celleDuJour =
+    ajoutees.length > 1 ? "les briques reçues sont celles du jour" : "la brique reçue est celle du jour";
+  const entete = ["## Retard sur le catalogue", ""];
+  if (retard.indisponible !== undefined) {
+    return [
+      ...entete,
+      `Le retard n'est pas calculé : ${retard.indisponible}. La brique arrive telle qu'elle était au commit ${commitOrigine}.`,
+      "",
+    ];
+  }
+  const { commitMain, total, briques } = retard;
+  if (total === 0) {
+    return [
+      ...entete,
+      `L'appli est au commit ${commitOrigine} du catalogue, qui est celui d'origin/main : ${celleDuJour}.`,
+      "",
+    ];
+  }
+  const commits = (nombre) => (nombre === 1 ? "1 commit" : `${nombre} commits`);
+  const touchees = briques.filter(({ commits: liste }) => liste.length > 0);
+  if (touchees.length === 0) {
+    return [
+      ...entete,
+      `L'appli est à ${commits(total)} de retard sur origin/main du catalogue (${commitOrigine} à ${commitMain}, hors fusions), aucun ne touche ${ajoutees.join(", ")} : ${celleDuJour}.`,
+      "",
+    ];
+  }
+  const ligne = ({ brique, commits: liste }) =>
+    liste.length === 0
+      ? [`- ${code(brique)} : aucun commit depuis ${commitOrigine}, la brique reçue est celle du jour.`]
+      : [
+          `- ${code(brique)} : ${commits(liste.length)} du catalogue la touchent depuis ${commitOrigine}${liste.length > COMMITS_LISTES ? ` (${code(`git log --no-merges ${commitOrigine}..${commitMain} -- src/briques/${brique}`)})` : " :"}`,
+          ...(liste.length > COMMITS_LISTES ? [] : liste.map(({ court, sujet }) => `  - ${code(court)} ${sujet}`)),
+        ];
+  return [
+    ...entete,
+    `**Attention : l'appli est à ${commits(total)} de retard sur origin/main du catalogue** (au commit ${commitOrigine}, origin/main à ${commitMain} ; hors fusions, donc moins que le git log --oneline). ` +
+      `L'ajout se fait au commit ${commitOrigine}, sans refus : les briques arrivent telles qu'elles étaient alors, pas telles qu'elles sont.`,
+    "",
+    ...briques.flatMap(ligne),
+    "",
+    "Pour recevoir les briques du jour, mettre l'appli à jour d'abord (une PR à part ; cette branche d'ajout ne part pas, ou se supprime), faire fusionner cette mise à jour, puis relancer l'ajout, qui recevra directement les briques du jour :",
+    "",
+    "```",
+    `node outils/mettre-a-jour.mjs <dossier-de-l-appli> --vers ${commitMain}`,
+    "```",
+    "",
+    `Sinon l'ajout reste juste : la mise à jour suivante reportera ces changements, et relira alors les mêmes fichiers.`,
+    "",
+  ];
+}
+
 /*
  * En tête du rapport : ce que la base ou comptes changent pour l'appli entière.
  * Leur coût est dans ce qui suit l'opération, pas dans les fichiers (« Les
@@ -2177,11 +2281,13 @@ export function rapport(resultat) {
       ? "À blanc : rien n'est écrit dans l'appli."
       : `Écrit sur la branche ${code(resultat.branche)}, partie du main publié de l'appli, sans commit.`,
     "",
+    ...rubriqueDuRetard(resultat),
     ...rubriqueDesAjoutsLourds(resultat),
     ...rubriqueDesBriquesABrancher(resultat),
     ...rubriqueDesFichiers(resultat),
     ...rubriqueDesDependances(resultat),
-    // Au même commit, les journaux des briques et l'histoire du socle n'ont rien de neuf pour l'appli.
+    // Au même commit, les journaux des briques et l'histoire du socle n'ont rien de neuf pour l'appli :
+    // la seule histoire d'un ajout est son retard sur origin/main, en tête du rapport.
     ...(ajout ? [] : rubriqueDesJournaux(resultat)),
     ...(ajout ? [] : rubriqueDuSocle(resultat)),
     ...rubriqueDesVariables(resultat),
@@ -2235,7 +2341,11 @@ l'appli ; l'outil s'arrête avant toute écriture si une étape reçue change au
 catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe déjà,
 ou si schema.sql, déjà dans l'appli, change entre l'origine et la cible (un
 schema.sql qui arrive avec la base est ajouté). Le catalogue doit
-avoir le commit de l'appli (git fetch origin dans le catalogue). Seul appel
+avoir le commit de l'appli (git fetch origin dans le catalogue). Avec --ajouter,
+le rapport avertit en tête du retard de l'appli sur origin/main : la brique
+arrive telle qu'elle était au commit de l'appli, et la commande --vers à lancer
+d'abord est donnée (sans origin/main, l'ajout se fait et le rapport dit que le
+retard n'est pas calculé). Seul appel
 au réseau : npm ci dans un worktree temporaire du catalogue, quand le Prettier
 d'un commit n'est pas celui qu'a installé le catalogue. La base dans une
 appli qui n'en a pas, et la brique comptes, s'ajoutent comme les autres :
