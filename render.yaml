@@ -54,17 +54,16 @@ services:
           name: mon-appli-db
           property: connectionString
       # Chiffré SANS vérifier le certificat (src/lib/db/client.ts vérifie par
-      # défaut) : on ne sait pas encore si celui de la base Render se vérifie
-      # par les CA que Node reconnaît, depuis le réseau interne. L'essai réel de la
-      # brique sur Render le dira ; vérifiable, cette entrée part et la
-      # vérification redevient la règle.
+      # défaut) : la base Render présente sur le réseau interne un certificat
+      # auto-signé, sans CA publiée. À l'essai réel du 2026-11-05, sans cette
+      # entrée, /sante refusait le certificat (DEPTH_ZERO_SELF_SIGNED_CERT) et
+      # le déploiement échouait au health check.
       - key: PGSSLMODE
         value: no-verify
       # L'adresse IP du visiteur (src/lib/adresse-ip.ts) : Render passe par
-      # Cloudflare, qui pose CF-Connecting-IP (constat d'un projet précédent).
-      # X-Forwarded-For garde ce que le visiteur envoie : jamais lui. À
-      # vérifier sur une requête réelle au premier déploiement (README de la
-      # brique déploiement).
+      # Cloudflare, qui pose CF-Connecting-IP et refuse une requête qui
+      # l'envoie elle-même (essai réel du 2026-11-05). X-Forwarded-For garde
+      # ce que le visiteur envoie : jamais lui.
       - key: IP_EN_TETE_CLIENT
         value: cf-connecting-ip
       # Brique comptes (src/briques/comptes/).
