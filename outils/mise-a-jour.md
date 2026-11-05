@@ -82,6 +82,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
 | L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle que le report change : le socle n'a pas de `CHANGELOG.md` (décision 6). |
+| L'historique du catalogue, de A à `origin/main` (avec `--ajouter`, où A' = A) | Les commits, fusions exclues, qui touchent le dossier de chaque brique reçue, et le nombre total : le retard de l'appli, dit en tête du rapport. Sans `origin/main` au catalogue, ou si A n'en descend pas, le retard n'est pas calculé et le rapport le dit. |
 
 Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 
@@ -289,7 +290,11 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    Sans `--ajouter`, l'outil met à jour vers `--vers`, par défaut le `HEAD` du
    catalogue. Avec `--ajouter`, il ajoute au commit de l'appli (A' = A) : une opération à
    la fois (« Options écartées »). Une brique qui n'existe pas au commit A se refuse :
-   mettre à jour d'abord. `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée
+   mettre à jour d'abord. Une brique qui existe à A mais a changé depuis arrive telle
+   qu'elle était à A : le rapport l'avertit en tête (retard de l'appli, commits de la brique,
+   commande `--vers` à lancer d'abord), sans refuser. La personne choisit l'ordre : mettre à
+   jour puis ajouter, ou ajouter tout de suite et se rattraper à la mise à jour suivante.
+   `--a-blanc` donne le rapport et n'écrit rien. Sinon l'outil crée
    la branche nommée (par défaut `feature/reporter-catalogue-<A'>`, ou
    `feature/ajouter-<briques>`), y écrit, **ne commite
    pas** et imprime le rapport en Markdown, pour le corps de la PR ; il l'écrit aussi dans
@@ -344,6 +349,7 @@ Restent à un humain :
 | Fusionner `migrations.ts` comme du texte | Placerait les étapes d'une brique ajoutée au milieu de celles de l'appli, contre la règle « en fin ». |
 | Laisser Claude réécrire les fichiers retouchés, sans fusion | Ni reproductible ni vérifiable. L'outil est déterministe ; Claude n'intervient que sur les conflits qu'il liste, et un humain relit. |
 | Ajout et mise à jour dans la même opération | Une PR qui mêle une brique neuve et les évolutions de toutes les autres se relit mal (`CLAUDE.md` §5 : une demande, un changement). Deux opérations, deux PR. |
+| Refuser `--ajouter` tant que l'appli est en retard sur `origin/main` (enchaîner les deux est écarté plus haut) | Une mise à jour peut être lourde (ruptures, conflits, migrations) et attendre son propre ticket, quand l'ajout est urgent. L'ajout au commit A reste juste, et se rattrape à la mise à jour suivante : le rapport avertit du retard et laisse choisir l'ordre. |
 | Un paquet npm versionné par brique | Une brique retouche des fichiers du socle (menu, droits, registre, migrations, variables) : elle ne s'isole pas en paquet sans refondre le catalogue. |
 | Continuer à prendre d'avance les briques probables | Du code et des tables sans usage en production, des traitements déclarés pour rien dans la politique, des variables et une surface d'attaque en plus. Reste possible ; ce n'est pas une réponse. |
 
@@ -418,7 +424,9 @@ l'outil, première étape de toute opération). La tranche 2, le 2026-11-04 : la
 depuis le catalogue (« Le circuit »). La tranche 3, le 2026-11-04 : les étapes de
 migration, en fin de liste (« Les migrations »). La tranche 4, le 2026-11-04 : l'ajout
 d'une brique, `--ajouter <briques>` à la place de `--vers` (« Le principe », « Les ajouts
-lourds »).
+lourds »). Le 2026-11-05, à l'essai réel de la tranche 5, un ajout a donné une brique
+d'un commit en retard sans le dire : le rapport d'un ajout avertit désormais du retard de
+l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
 
 - **Le manifeste au format 2** (décision 4), écrit par l'assembleur :
   `catalogue.commitComplet` à côté du commit court, et `assemblage` : `briques` (les
@@ -526,7 +534,17 @@ lourds »).
   pas (mettre à jour d'abord), une brique déjà dans l'appli, une brique ajoutée (ou
   entraînée) qui en exige une que l'appli n'a pas et qui n'est pas demandée avec elle, le
   refus disant quoi passer à `--ajouter`. `--retirer` se refuse (« Hors v1 »). Le rapport
-  porte en tête, avant les fichiers, les **ajouts lourds** : la base arrivée (`migrations.ts`
+  porte en tête, avant les fichiers, le **retard sur le catalogue** (le 2026-11-05, l'ajout
+  de `notifications` à un commit en retard de 50 commits sur `origin/main`, dont trois sur la
+  brique, l'avait donnée telle qu'elle était à A sans un mot) : à blanc comme en écriture, le
+  nombre de commits de retard de l'appli (fusions exclues) et, pour chaque brique ajoutée ou
+  entraînée, ceux qui touchent son dossier entre A et `origin/main`, avec leurs sujets jusqu'à
+  cinq, et la commande `node outils/mettre-a-jour.mjs <appli> --vers <origin/main>` à lancer
+  d'abord : une fois cette mise à jour fusionnée, l'ajout reçoit directement la brique du
+  jour. Sans retard, ou sans commit sur les briques reçues, une seule ligne le dit. Faute de
+  `origin/main` au catalogue (l'outil ne fait pas de `fetch`), ou si A n'en descend pas, le
+  rapport dit que le retard n'est pas calculé : l'ajout n'a pas besoin de `origin/main`, et
+  l'outil avertit, il ne refuse pas. Puis les **ajouts lourds** : la base arrivée (`migrations.ts`
   absent de l'origine), avec la décision de la créer chez l'hébergeur, `DATABASE_URL` et les
   bases locales ; `comptes` arrivée, avec les fichiers de l'appli que
   `tests/gardes-acces.test.ts` refusera, nommés un à un (les pages, routes et fichiers « use
@@ -546,7 +564,8 @@ lourds »).
   commit A : `comptes` dans une `vitrine`), le rapport avertit que `profil:` de l'en-tête
   est à reprendre à la main. Au
   même commit, le rapport ne recopie ni les
-  journaux des briques ni les commits du socle. Les deux cas d'essai de la tranche sont
+  entrées des `CHANGELOG.md` des briques ni les commits du socle : la seule histoire qu'il
+  porte est le retard sur `origin/main`, en tête. Les deux cas d'essai de la tranche sont
   dans `tests/mettre-a-jour.test.ts`, avec un assemblage direct au commit A pour comparer,
   le typecheck, les tests de l'appli sur une base de test neuve, et le rejeu des étapes
   version après version.

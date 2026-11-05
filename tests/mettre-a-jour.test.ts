@@ -1405,6 +1405,13 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
           ouvertsSupprimes: ["src/app/kit/site-vitrine/page.tsx"],
         },
       });
+      // Les briques venues d'office comptent aussi dans le retard : rgpd arrive avec comptes.
+      expect(comptes.retard.briques.map(({ brique }: { brique: string }) => brique)).toEqual(["comptes", "rgpd"]);
+      // Cas mixte : comptes a un commit (celui des briques d'essai), rgpd aucun, et la commande est donnée quand même.
+      const retardDesComptes = rubriqueDe(rapport(comptes), "Retard sur le catalogue") ?? "";
+      expect(retardDesComptes).toMatch(/`comptes` : 1 commit du catalogue la touche/);
+      expect(retardDesComptes).toMatch(/`rgpd` : aucun commit depuis/);
+      expect(retardDesComptes).toContain("--vers");
       const texteComptes = rapport(comptes);
       const lourdComptes = rubriqueDe(texteComptes, "Ajouts lourds") ?? "";
       expect(lourdComptes).toMatch(/### La brique comptes/);
@@ -1457,6 +1464,156 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
       expect(git(parProfil, "rev-parse", "HEAD")).toBe(head);
     }
   );
+
+  /*
+   * Le cas d'origine (2026-11-05) : --ajouter notifications sur une appli en
+   * retard de 50 commits sur main, dont trois sur la brique, a donné la brique
+   * d'alors sans un mot. Au catalogue d'essai, origin/main est en avance sur A
+   * par les commits des briques mails et comptes, du socle et des migrations
+   * (jamais ceux de journal, que les cas choisissent).
+   */
+  describe("retard de l'appli sur origin/main : l'ajout avertit, il ne refuse pas", () => {
+    // Le retard de l'appli d'essai avant tout commit sur journal, tel que git le compte hors fusions.
+    const retardDeBase = () =>
+      Number(git(catalogue, "rev-list", "--count", "--no-merges", `${commitA}..refs/remotes/origin/main`));
+    // Deux commits sur la brique journal, publiés le temps de `action`.
+    const sujetDuPremier = "Journal : première évolution d'essai de la brique";
+    const sujetDuSecond = "Journal : seconde évolution d'essai de la brique";
+    function avecJournalChange(action: (vers: string) => void) {
+      avecUnCommitDuCatalogue(
+        sujetDuSecond,
+        () => {
+          ecrire(catalogue, "src/briques/journal/README.md", (t) => `${t}\nPremière phrase du catalogue.\n`);
+          git(catalogue, "commit", "-q", "-am", sujetDuPremier);
+          ecrire(catalogue, "src/briques/journal/README.md", (t) => `${t}\nSeconde phrase du catalogue.\n`);
+        },
+        action
+      );
+    }
+
+    it(
+      "dit en tête du rapport, à blanc comme en écriture, les commits du catalogue qui touchent la brique ajoutée, le retard total et la commande --vers à lancer d'abord",
+      { timeout: 3 * REJEU },
+      () => {
+        const retardee = appliRetouchee(() => {});
+        publier(retardee);
+        const deBase = retardDeBase();
+        expect(deBase).toBeGreaterThan(0);
+        avecJournalChange((vers) => {
+          const aBlanc = mettreAJour({ catalogue, appli: retardee, ajouter: ["journal"], aBlanc: true });
+          expect(aBlanc.retard).toMatchObject({
+            commitMain: vers,
+            total: deBase + 2,
+            briques: [
+              {
+                brique: "journal",
+                commits: [
+                  // Le plus récent d'abord, comme git log.
+                  { court: expect.stringMatching(/^[0-9a-f]{7,}$/), sujet: sujetDuSecond },
+                  { court: expect.stringMatching(/^[0-9a-f]{7,}$/), sujet: sujetDuPremier },
+                ],
+              },
+            ],
+          });
+          const texte = rapport(aBlanc);
+          const retard = rubriqueDe(texte, "Retard sur le catalogue") ?? "";
+          expect(retard).toMatch(
+            new RegExp(`${deBase + 2} commits de retard sur origin/main[^\\n]*commit ${commitA}[^\\n]*${vers}`)
+          );
+          expect(retard).toMatch(/`journal` : 2 commits du catalogue la touchent depuis/);
+          expect(retard).toContain(sujetDuPremier);
+          expect(retard).toContain(sujetDuSecond);
+          // Un avertissement : l'ajout n'est pas refusé, il se fait au commit de l'appli.
+          expect(retard).toMatch(/sans refus : les briques arrivent telles qu'elles étaient alors/);
+          expect(retard).toContain(`node outils/mettre-a-jour.mjs <dossier-de-l-appli> --vers ${vers}`);
+          // En tête : avant les fichiers.
+          expect(texte.indexOf("## Retard sur le catalogue")).toBeLessThan(texte.indexOf("## Fichiers"));
+          rienNEstTouche(retardee, git(retardee, "rev-parse", "HEAD"));
+
+          // En écriture : la branche est écrite, et le rapport qu'elle laisse porte le même avertissement.
+          const ecrit = mettreAJour({ catalogue, appli: retardee, ajouter: ["journal"] });
+          expect(ecrit.retard).toEqual(aBlanc.retard);
+          const dansLeFichier = fs.readFileSync(ecrit.fichierDuRapport ?? "", "utf-8");
+          expect(rubriqueDe(dansLeFichier, "Retard sur le catalogue")).toBe(retard);
+          expect(git(retardee, "branch", "--show-current")).toBe("feature/ajouter-journal");
+        });
+      }
+    );
+
+    it(
+      "ne compte que les commits de la brique ajoutée : retard sans commit sur elle, une seule ligne qui dit que la brique reçue est celle du jour",
+      { timeout: REJEU },
+      () => {
+        // Du retard au catalogue d'essai, sur comptes, mails, le socle et les migrations seulement.
+        const publiee = appliRetouchee(() => {});
+        publier(publiee);
+        const deBase = retardDeBase();
+        expect(deBase).toBeGreaterThan(0);
+        const resultat = mettreAJour({ catalogue, appli: publiee, ajouter: ["journal"], aBlanc: true });
+        expect(resultat.retard).toMatchObject({ total: deBase, briques: [{ brique: "journal", commits: [] }] });
+        const retard = rubriqueDe(rapport(resultat), "Retard sur le catalogue") ?? "";
+        expect(retard).toMatch(
+          new RegExp(`${deBase} commits de retard[^\\n]*hors fusions[^\\n]*aucun[^\\n]* journal[^\\n]*celle du jour`)
+        );
+        expect(
+          retard
+            .trim()
+            .split("\n")
+            .filter((ligne) => ligne !== "" && !ligne.startsWith("## "))
+        ).toHaveLength(1);
+        expect(retard).not.toContain("--vers");
+      }
+    );
+
+    it(
+      "sans retard, une seule ligne dit que la brique reçue est celle du jour, sans commande à lancer",
+      { timeout: 2 * REJEU },
+      () => {
+        // Une appli assemblée au commit du catalogue qui est aussi son origin/main.
+        const aJour = path.join(dossierTemporaire("appli-a-jour-"), "essai-a-jour");
+        assembler({
+          source: catalogue,
+          sortie: aJour,
+          commit: git(catalogue, "rev-parse", "--short", "origin/main"),
+          briques: REGLAGES_DE_L_APPLI.briques,
+          dependabot: REGLAGES_DE_L_APPLI.dependabot,
+          blueprint: blueprint(REGLAGES_DE_L_APPLI.entete),
+        });
+        publier(aJour);
+        const resultat = mettreAJour({ catalogue, appli: aJour, ajouter: ["journal"], aBlanc: true });
+        expect(resultat.retard).toMatchObject({ total: 0, briques: [{ brique: "journal", commits: [] }] });
+        const retard = rubriqueDe(rapport(resultat), "Retard sur le catalogue") ?? "";
+        expect(retard).toMatch(/qui est celui d'origin\/main[^\n]*celle du jour/);
+        expect(
+          retard
+            .trim()
+            .split("\n")
+            .filter((ligne) => ligne !== "" && !ligne.startsWith("## "))
+        ).toHaveLength(1);
+        expect(retard).not.toContain("--vers");
+      }
+    );
+
+    it(
+      "sans origin/main au catalogue, le retard n'est pas calculé : l'ajout se fait, et le rapport le dit en une ligne",
+      { timeout: REJEU },
+      () => {
+        const publiee = appliRetouchee(() => {});
+        publier(publiee);
+        const main = git(catalogue, "rev-parse", "refs/remotes/origin/main");
+        git(catalogue, "update-ref", "-d", "refs/remotes/origin/main");
+        try {
+          const resultat = mettreAJour({ catalogue, appli: publiee, ajouter: ["journal"], aBlanc: true });
+          expect(resultat.retard).toMatchObject({ indisponible: expect.stringMatching(/origin\/main/) });
+          expect(rubriqueDe(rapport(resultat), "Retard sur le catalogue")).toMatch(
+            /retard n'est pas calculé[^\n]*git fetch origin/
+          );
+        } finally {
+          git(catalogue, "update-ref", "refs/remotes/origin/main", main);
+        }
+      }
+    );
+  });
 
   describe("refus en clair, avant toute écriture", () => {
     let publiee: string;
