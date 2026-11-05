@@ -224,7 +224,7 @@ export function planifier({ briques: choisies }, catalogue = { BRIQUES }) {
   }
   // Aucune brique qui lit la base : un site sans base. La brique comptes
   // garde la base et la couche données du patron dossiers (ses écrans, jamais :
-  // voir plus haut), d'où partira le premier module métier de l'appli, avec,
+  // voir plus bas), d'où partira le premier module métier de l'appli, avec,
   // s'il est choisi, l'écran /comptes de la brique gestion-comptes, et les
   // espaces de la brique du même nom ; la brique contact garde la base sans
   // connexion ; les briques

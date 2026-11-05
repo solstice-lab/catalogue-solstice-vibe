@@ -185,7 +185,7 @@ Trois volets :
   fichier, les invariants ne se négocient pas.
 - **Données** — la brique données (`src/lib/db/`), qu'une appli reçoit avec une
   brique qui lit la base et qu'un site sans en a pas : client Postgres à migrations idempotentes, module métier
-  canonique à copier (`dossiers`, ses écrans avec `comptes` seulement), squelette de scripts d'import en dry-run
+  canonique à copier (`dossiers`, écrans au catalogue seulement, couche données livrée avec la base), squelette de scripts d'import en dry-run
   par défaut, tests avec garde anti-prod : impossible de les lancer contre
   autre chose qu'une base locale.
 - **Méthode** — skills de cadrage (`solstice-nouvelle-appli`) et de livraison
@@ -343,10 +343,10 @@ catalogue qui a des modifications non commitées, sauf avec
   ```
   node outils/assembler.mjs ../mon-portail --blueprint ../mon-portail-blueprint.md --briques espaces
   ```
-- `comptes` (avec `mails`) donne la base, le patron `dossiers`
+- `comptes` (avec `mails`) donne la base, la couche données du patron `dossiers`
   et les droits, avec un accueil à écrire ; `contact` (avec `mails`) donne
-  la base pour la limite d'envois, sans les écrans du patron `dossiers`, qui
-  appellent `exiger` et ne se gardent qu'avec `comptes` ; `rgpd` vient
+  la base pour la limite d'envois, sans connexion ; aucune brique ne livre les
+  écrans du patron `dossiers` ; `rgpd` vient
   d'office avec `comptes`, `journal`, `gestion-comptes` et `espaces` s'y ajoutent. Une
   brique à brancher (`echeances`, `calendrier`, `validation`, `import-lot`,
   `notifications`) donne la base et attend son branchement dans l'appli.

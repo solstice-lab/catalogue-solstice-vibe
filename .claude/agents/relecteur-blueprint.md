@@ -41,7 +41,7 @@ branche) : c'est l'étape 0 de la skill, pas la blueprint.
    l'ordre, ce que la blueprint ne cite pas).
 2. `outils/modules.mjs` : `BRIQUES` (noms, `exige`, `entraine`, `fichiers`), `PROFILS`
    (les briques de chaque profil, et celles qu'il admet en plus), les unités
-   partagées `PATRON_DOSSIERS` (les écrans du patron, gardés avec `comptes`), `ADRESSE_IP`
+   partagées `PATRON_DOSSIERS` et `VITRINE_DU_KIT` (écrans du patron et vitrine du kit, jamais livrés), `ADRESSE_IP`
    et `DONNEES` (la base, gardée dès qu'une brique gardée l'exige), `EXCLUS_DU_CATALOGUE`.
    La liste est la vérité ; `.claude/skills/creer-appli/choix.md` n'en est qu'un résumé
    daté.

@@ -92,12 +92,9 @@ Avant la PR, l'agent `relecteur-migrations` relit toute évolution de schéma.
 ## Le module métier canonique (`src/app/dossiers/`)
 
 Tout nouveau module se construit en COPIANT ce patron, puis « dossiers » se
-remplace par le premier module réel. Une appli assemblée n'a jamais ses écrans :
-elle reçoit la couche données (`src/lib/db/dossiers.ts`,
-`src/lib/dossiers-domaine.ts`) et lit les écrans dans le dépôt public du
-catalogue (`src/app/dossiers/`), où elle les copie à la demande. Ils appellent
-`exiger` : une appli sans la brique comptes (une vitrine avec la brique contact)
-prend la brique comptes avant son premier module. Avec la brique
+remplace par le premier module réel. Une appli assemblée n'en a que la couche données
+(`src/lib/db/dossiers.ts`) : ses écrans, qui appellent `exiger`, se lisent dans le dépôt public
+du catalogue, et sans la brique comptes elle la prend avant son premier module. Avec la brique
 journal, ses écritures (`src/lib/db/dossiers.ts`) passent en `transaction()` avec
 leur trace, et sa fiche porte l'historique : à la copie, renommer l'entité ;
 sans la brique, ces blocs sont déjà retirés (README de la brique, « La
