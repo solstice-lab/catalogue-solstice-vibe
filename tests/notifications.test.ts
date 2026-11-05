@@ -83,6 +83,40 @@ describe("brique notifications : la boucle d'envoi", () => {
     ]);
   });
 
+  // La contrainte du journal compare l'adresse à lower(btrim(...)) de Postgres ;
+  // la brique l'écrit après toLowerCase() de Node. Si les deux minuscules
+  // divergent (collation de la base, lettres à plusieurs formes), l'INSERT est
+  // refusé APRÈS l'envoi et la boucle s'arrête : cas relevé à la relecture de
+  // l'ajout de la brique à tours-de-coloc, jamais rencontré en vrai. Constat du
+  // 2026-11-05 : la base de test est en collation en_US.utf8 (pas C), donc
+  // lower() y connaît les lettres accentuées, et aucun de ces cas ne diverge.
+  // Rejoué à la main en collation C (lower(x) collate "C"), il passe aussi :
+  // la valeur arrive déjà en minuscules, que lower() laisse alors inchangée.
+  // Ce que le test ne couvre PAS : une autre collation que ces deux-là (celle
+  // de l'hébergeur). Si un cas casse un jour, normaliser côté Node avant
+  // l'écriture (jamais retoucher le CREATE TABLE).
+  it.each([
+    ["une majuscule accentuée", " Économat.Général@Exemple.test ", "économat.général@exemple.test"],
+    [
+      "un i majuscule pointé (İ, deux points de code en minuscules)",
+      "İstanbul.Contact@Exemple.test",
+      "i̇stanbul.contact@exemple.test",
+    ],
+    ["un sigma majuscule final (Σ devient ς en fin de mot)", "ΑΣ@Exemple.test", "ας@exemple.test"],
+    ["un ß majuscule (ẞ)", "STRAẞE@Exemple.test", "straße@exemple.test"],
+  ])(
+    "une adresse avec %s traverse l'insertion au journal, rangée en minuscules (contrainte lower/btrim de la base)",
+    async (_cas, adresse, rangee) => {
+      await envoyerNotifications([notification(adresse), notification("apres@exemple.test")], {
+        mode: "reel",
+        source: SOURCE,
+      });
+
+      const lignes = await journal();
+      expect(lignes.map((ligne) => ligne.destinataire)).toEqual([rangee, "apres@exemple.test"]);
+    }
+  );
+
   it("l'échec d'envoi à une personne ne bloque ni les suivantes ni le reste du traitement", async () => {
     const rapport = await envoyerNotifications(
       [notification("un@exemple.test"), notification("pas-une-adresse"), notification("deux@exemple.test")],
