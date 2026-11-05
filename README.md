@@ -55,8 +55,10 @@ cadrage à la livraison, « Démarrer un projet client ».
 - **Expérimental.** Le catalogue sert aux livraisons de Solstice Lab et
   change avec elles. Des combinaisons de briques s'assemblent dans les tests
   (fichiers, imports, mise en forme, typecheck, migrations), mais lint, tests et build ne
-  sont rejoués que sur l'appli sans base. La brique `deploiement` n'a pas
-  été éprouvée par une mise en ligne réelle.
+  sont rejoués que sur l'appli sans base. La brique `deploiement` a été
+  éprouvée le 2026-11-05 sur Render avec une appli de test : quatre mises en
+  ligne par la CI, un échec contrôlé au certificat de la base, un
+  déclencheur faux.
 - **Pas de version publiée** : ni tag, ni release, ni paquet npm. Seule la
   branche `main` est entretenue. `package.json` porte `"private": true` pour
   que npm refuse de publier le paquet : c'est le dépôt qui est sous licence

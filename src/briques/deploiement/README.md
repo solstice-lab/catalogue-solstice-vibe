@@ -60,7 +60,7 @@ avec lui.
 | `DEPLOIEMENT_DECLENCHEUR` | Secret de dépôt GitHub | Ce qui déclenche le déploiement chez l'hébergeur. Render : l'URL du deploy hook. Absent alors que `DEPLOIEMENT_URL` existe, refusé par l'hébergeur ou sans réponse, le job échoue en le nommant. |
 | `COMMIT_DEPLOYE` | Variable d'environnement du service | Le SHA en ligne, que `/sante` renvoie. Posée par l'adaptateur au démarrage, jamais déclarée à la main. |
 | `IP_EN_TETE_CLIENT` | Variable d'environnement du service | L'en-tête où le proxy de l'hébergeur pose l'adresse IP du visiteur, lu par `src/lib/adresse-ip.ts` pour les limites par adresse (connexion par code, formulaire de contact) : seulement avec la brique `comptes` ou `contact`, sans qui l'assembleur retire fichier et variable. Render : `cf-connecting-ip`, déclaré dans `render.yaml`. En production, vide ou nommant un en-tête absent de la requête, les limites par adresse ne s'appliquent pas et le serveur l'avertit une fois, au premier passage. |
-| `PGSSLMODE` | Variable d'environnement du service | Le chiffrement de la connexion à la base, lu par `src/lib/db/client.ts`. Vide, le certificat se vérifie. Render : `no-verify`, déclaré dans `render.yaml` en attendant l'essai de l'étape 7. |
+| `PGSSLMODE` | Variable d'environnement du service | Le chiffrement de la connexion à la base, lu par `src/lib/db/client.ts`. Vide, le certificat se vérifie. Render : `no-verify`, déclaré dans `render.yaml` : la base présente sur le réseau interne un certificat auto-signé (étape 7). |
 | `deployer` | Job de `ci.yml` | Le nom du check, à ne pas exiger dans la protection de `main` (il ne tourne qu'après la fusion). |
 | `LIEUX_DEPLOIEMENT` | `src/briques/deploiement/confidentialite.ts` | `{ hebergeur }` : où l'hébergeur traite les données, lu par `src/lib/confidentialite.ts` à la place de `CONFIDENTIALITE.lieux.hebergeur`. `tests/deploiement.test.ts` vérifie qu'il dit la région de `render.yaml`. L'assembleur retire l'import quand la brique part, et le lieu se remplit alors dans la configuration. |
 | `SOUS_TRAITANTS_DEPLOIEMENT` | `src/briques/deploiement/confidentialite.ts` | Les sous-traitants que l'hébergeur place devant le site, ajoutés par `src/lib/confidentialite.ts` à l'hébergement du site. Render : Cloudflare, qui reçoit l'adresse IP et les requêtes de chaque visiteur (constaté à l'essai réel du 2026-11-05). Son lieu de traitement se remplit dans `CONFIDENTIALITE.lieux.cloudflare` : la page le réclame tant qu'il est vide. L'assembleur retire l'import, la ligne et la clé quand la brique part. |
@@ -75,8 +75,11 @@ request qui le fait : date, ce qui change pour l'appelant, raison.
 Claude ne les fait pas. Chaque étape se défait tant que la suivante n'a pas
 eu lieu.
 
-1. **Avant le Blueprint**, dans une PR : vérifier le nom du service et de la
-   base dans `render.yaml`. L'assembleur les a écrits d'après `appli` dans
+1. **Avant le Blueprint**, dans une PR fusionnée sur `main` : avec la brique
+   comptes, retirer `"demo"` de `METHODES` (`src/config/comptes.ts`). La
+   démo fait refuser toute requête en production, `/sante` comprise, et la
+   création du Blueprint déploie la tête de `main`. Puis vérifier le nom du
+   service et de la base dans `render.yaml`. L'assembleur les a écrits d'après `appli` dans
    l'en-tête de la blueprint (ou `--nom` ; le nom du paquet, et `<nom>-db` pour la base) ;
    un nom à changer se change ici, avant la création. Un service renommé après
    sa création quitte le Blueprint, sans message.
@@ -97,8 +100,9 @@ eu lieu.
    `COMPTES_PREMIER_ADMIN`, `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
    (vides si `"google"` n'est pas dans `METHODES`), `MICROSOFT_CLIENT_ID`,
    `MICROSOFT_CLIENT_SECRET` et `MICROSOFT_TENANT_ID` (vides si `"microsoft"`
-   n'est pas dans `METHODES`), et retirer d'abord `"demo"`
-   de `METHODES`, qui refuse la production ; avec la brique contact : `CONTACT_DESTINATAIRE`).
+   n'est pas dans `METHODES`) ; avec la brique contact : `CONTACT_DESTINATAIRE`).
+   Une variable en `sync: false` laissée vide n'est pas créée : elle
+   s'ajoutera dans le tableau de bord le jour où elle sert.
    La création lance un premier déploiement de la tête de `main`, le seul qui
    ne passe pas par la CI.
 4. **Le déclencheur** : dans le service Render, *Settings → Deploy Hook*,
@@ -117,26 +121,29 @@ eu lieu.
 6. **GitHub** : protection de `main` avec le check `verifier` requis.
 7. **La première fusion suivante** : la CI déclenche et attend `/sante`. Ouvrir
    `<DEPLOIEMENT_URL>/sante` : le commit est celui de la fusion, la base `ok`.
-   **Puis l'adresse IP des visiteurs, sur une requête réelle** (essai à
-   venir). `IP_EN_TETE_CLIENT` vaut `cf-connecting-ip` sur la foi
-   d'un projet précédent : la documentation de Render ne dit pas quel en-tête
-   porte l'adresse. À vérifier, avec une brique qui limite par adresse (le
-   formulaire de contact) :
-   - deux messages envoyés depuis deux connexions (un ordinateur, un
-     téléphone en 4G) donnent deux empreintes différentes dans
-     `contact_envois`, et aucune ligne « sans-adresse » ;
-   - APRÈS ces envois (l'avertissement ne s'écrit qu'au premier passage),
-     les journaux du service ne montrent aucune ligne `[adresse-ip]` ;
-   - un envoi qui pose lui-même un `CF-Connecting-IP` forgé donne
-     l'empreinte de la vraie adresse, pas celle de l'adresse forgée.
-   Un écart se corrige dans `render.yaml` et dans le tableau de bord, et
-   s'écrit ici.
-   **Puis le certificat de la base** (essai à venir). `PGSSLMODE` vaut
-   `no-verify` : on ne sait pas encore si le certificat de la base Render se
-   vérifie. Retirer la variable dans le tableau de bord, redémarrer, ouvrir
-   `/sante` : la base `ok`, l'entrée de `render.yaml` part ; un certificat
-   refusé (journaux du service), `no-verify` se remet, ou `PGSSLROOTCERT`
-   reçoit le chemin du CA de Render s'il en publie un. Le résultat s'écrit ici.
+   Après les premières connexions, les journaux du service ne montrent
+   aucune ligne `[adresse-ip]`. Un job `deployer` en échec sur
+   `DEPLOIEMENT_DECLENCHEUR` : corriger le secret, puis relancer le job.
+   **Constaté à l'essai réel du 2026-11-05**, sur une appli de test
+   assemblée avec `comptes`, `mails` et `deploiement` :
+   - **adresse IP** : `cf-connecting-ip` porte l'adresse du visiteur, une
+     par connexion (un ordinateur et un téléphone en 5G : deux adresses). La
+     limite par adresse de la connexion par code a refusé la 21e demande de
+     l'heure. Cloudflare refuse lui-même une requête qui pose un
+     `CF-Connecting-IP` (403) ; `X-Forwarded-For` garde en tête ce que le
+     visiteur envoie. Les appareils d'un même réseau partagent une adresse :
+     README de la brique `comptes` ;
+   - **certificat de la base** : `PGSSLMODE` reste `no-verify`. La base
+     présente sur le réseau interne un certificat auto-signé, et Render ne
+     publie pas de CA pour lui. Sans la variable, le serveur démarre, mais
+     `/sante` répond « Certificat de la base refusé
+     (DEPTH_ZERO_SELF_SIGNED_CERT) » ; Render abandonne après 15 minutes de
+     health check et l'ancienne version reste en ligne ;
+   - **déclencheur faux** : le job `deployer` échoue sans rien déployer, et
+     la version en ligne reste ;
+   - **coût** : 7 $ par mois pour le service ; pour la base, 6 $ de calcul
+     plus le disque (0,30 $ par Go et par mois), hors plan de l'espace de
+     travail.
 8. **Le domaine** (`socle.md` de la skill `solstice-nouvelle-appli`) : TTL du
    CNAME baissé à 300 s, *Custom Domains* sur Render, CNAME chez le registraire,
    puis `DEPLOIEMENT_URL` mise à jour avec le domaine, puis `URL_PUBLIQUE`
@@ -171,8 +178,13 @@ Cinq choses sont propres à Render, et seulement cinq.
 | La configuration de l'hébergeur | `render.yaml`, entier | Celle du nouvel hébergeur, ou rien s'il se configure dans son tableau de bord. Garder ses exigences : région dans l'Union européenne, base qui n'expire pas, disque de base au plus petit qui s'agrandit seul (un disque ne se réduit pas), sonde sur `/sante`, auto-déploiement coupé, secrets générés ou saisis chez l'hébergeur, dépendances de production seules au démarrage, chaque variable de `.env.example` déclarée. |
 | Le déclenchement | Étape « Déclencher (adaptateur Render) » du job `deployer` de `ci.yml` | La commande de l'hébergeur (API ou CLI) qui met en ligne `$COMMIT`, avec son jeton ou son adresse dans le secret `DEPLOIEMENT_DECLENCHEUR`. Un refus de l'hébergeur ou une adresse muette s'écrit en `::error::` qui nomme ce secret : `tests/deploiement.test.ts` refuse `curl -f`, un `curl` qui ne lit pas le code HTTP, et une erreur qui ne nomme pas le secret. Renommer l'étape et la constante `ADAPTATEUR` de `tests/deploiement.test.ts`. |
 | La recopie du commit | `startCommand` de `render.yaml` | Poser `COMMIT_DEPLOYE` depuis la variable de l'hébergeur (`VERCEL_GIT_COMMIT_SHA`…), au démarrage ou au build. |
-| L'en-tête de l'adresse IP (avec la brique `comptes` ou `contact`) | `IP_EN_TETE_CLIENT` dans `render.yaml` | L'en-tête que pose le proxy du nouvel hébergeur, lu dans sa documentation puis vérifié sur une requête réelle (étape 7 ci-dessus). Jamais l'en-tête d'un service qui n'est plus devant l'appli : sans Cloudflare devant, `cf-connecting-ip` s'écrit à la main, et chacun choisit son adresse. Sans en-tête sûr, laisser la variable vide. |
+| L'en-tête de l'adresse IP (avec la brique `comptes` ou `contact`) | `IP_EN_TETE_CLIENT` dans `render.yaml` | L'en-tête que pose le proxy du nouvel hébergeur, lu dans sa documentation puis vérifié sur une requête réelle : deux connexions (un ordinateur, un téléphone en 4G) donnent deux adresses, les journaux ne montrent aucune ligne `[adresse-ip]`, et une requête qui pose elle-même l'en-tête ne choisit pas son adresse. Jamais l'en-tête d'un service qui n'est plus devant l'appli : sans Cloudflare devant, `cf-connecting-ip` s'écrit à la main, et chacun choisit son adresse. Sans en-tête sûr, laisser la variable vide. |
 | Le lieu de l'hébergeur, et ce qui se tient devant lui | `LIEUX_DEPLOIEMENT` et `SOUS_TRAITANTS_DEPLOIEMENT` de `src/briques/deploiement/confidentialite.ts` | Le pays et la région où le nouvel hébergeur traite les données, d'après sa configuration ; les services qu'il place devant le site (réseau de diffusion, protection contre les attaques), vérifiés sur une requête réelle, ou une liste vide. |
+
+Le certificat de la base se vérifie de même au premier déploiement : sans
+`PGSSLMODE`, `/sante` dit si la base répond ou si son certificat est refusé
+(journaux du service). Refusé : `PGSSLROOTCERT` reçoit le chemin du CA de
+l'hébergeur s'il en publie un, sinon `PGSSLMODE=no-verify`, comme chez Render.
 
 Puis réécrire, dans `tests/deploiement.test.ts`, le bloc « render.yaml :
 l'adaptateur Render » pour le nouveau fichier, le cas du lieu de

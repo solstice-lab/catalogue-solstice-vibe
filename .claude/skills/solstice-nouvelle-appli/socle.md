@@ -141,7 +141,9 @@ supprimée après 30 jours), base créée sur 1 Go avec agrandissement automatiq
 Chaque étape est réversible tant que la suivante n'a pas eu lieu. Les étapes humaines sont
 listées clic par clic dans le ticket, Claude ne les fait pas.
 
-1. L'appli sur sa branche, CI verte. Rien n'est en ligne.
+1. L'appli sur sa branche, CI verte. Rien n'est en ligne. Avec la brique comptes, le retrait
+   de `"demo"` de `METHODES` est fusionné sur `main` : la création du Blueprint déploie la
+   tête de `main`, et la démo refuse la production.
 2. **Humain** : les gestes du README de la brique déploiement : vérifier le nom du service
    avant le Blueprint (l'assembleur l'a écrit d'après `appli`), créer le Blueprint, saisir les variables `sync: false`, puis le secret
    `DEPLOIEMENT_DECLENCHEUR` et la variable `DEPLOIEMENT_URL` chez GitHub.

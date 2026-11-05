@@ -643,8 +643,8 @@ puis une répétition à blanc et un essai précèdent le premier envoi réel (s
 premier envoi réel » de son README). Avec la brique
 `comptes` : la connexion par code envoyé par e-mail est la méthode par défaut, en local le
 code se lit dans le terminal du serveur (`MAILS_FOURNISSEUR=console`) ; la démo **refuse
-la production** : retirer `"demo"` de `METHODES` (`src/config/comptes.ts`) avant la
-première mise en ligne, sinon le déploiement échoue ; `COMPTES_PREMIER_ADMIN` se déclare
+la production** : retirer `"demo"` de `METHODES` (`src/config/comptes.ts`), fusionné sur
+`main` avant la création du Blueprint, qui la déploie : sinon le déploiement échoue ; `COMPTES_PREMIER_ADMIN` se déclare
 chez l'hébergeur. Si le client veut se connecter avec Google (Workspace ou Gmail) :
 créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`,
 ajouter `"google"` à `METHODES` (déjà fait si la blueprint le déclare) et, pour un client Workspace, ses domaines à

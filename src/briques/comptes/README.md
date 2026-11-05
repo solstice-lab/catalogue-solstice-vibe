@@ -375,13 +375,14 @@ une valeur nulle, négative ou non entière.
 visiteur par `adresseDuVisiteur` (`src/lib/adresse-ip.ts`, partagé avec la
 brique contact, et retiré par l'assembleur sans l'une ni l'autre). L'en-tête de confiance se désigne par
 `IP_EN_TETE_CLIENT`, que `render.yaml` règle sur `cf-connecting-ip` : Render
-passe par Cloudflare, qui pose et écrase cet en-tête. Un en-tête lu sans le
+passe par Cloudflare, qui pose cet en-tête et refuse une requête qui l'envoie
+elle-même (essai réel du 2026-11-05, README de la brique déploiement, étape 7). Un en-tête lu sans le
 proxy qui le pose se forgerait : un autre hébergeur demande une autre valeur.
 Sans la variable, l'IP vaut `"local"` hors production. En production, sans la
 variable ou sans l'en-tête dans la requête, les limites par IP sautent (un
 avertissement au journal), puisqu'elles bloqueraient tout le monde d'un coup,
-et les limites par adresse restent. **À vérifier par un humain sur une requête réelle au premier
-déploiement.**
+et les limites par adresse restent. Chez un autre hébergeur, **à vérifier par
+un humain sur une requête réelle au premier déploiement**.
 
 En local (`MAILS_FOURNISSEUR=console`), le mail, et donc le code, s'affiche dans
 le terminal où tourne `npm run dev`. Une adresse doit être admise par `ENTREE`
