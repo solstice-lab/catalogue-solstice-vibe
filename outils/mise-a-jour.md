@@ -268,6 +268,12 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
   commit A' l'écrirait (commit A', version, une empreinte par fichier venu du catalogue dans
   la cible, y compris ceux que l'appli a retouchés ou supprimés). Il dit toujours ce que
   l'appli a reçu du catalogue, et l'opération suivante le reproduira à l'identique.
+  Au format 1, les briques déduites des unités sont ramenées aux choisies avant le rejeu
+  de A' (celles qu'une autre brique entraîne d'office au commit A' en sont retirées) :
+  `rgpd`, venue avec `comptes`, passe en `ajouteesDOffice` au lieu de `briques` (le cas
+  du 2026-11-05, appli d'essai de colocation), et le rapport le dit. Limite : une brique
+  demandée ET entraînée se lit comme d'office, le format 1 ne les distinguant pas ; une
+  appli déjà au format 2 n'est jamais recalculée.
 - `blueprint.md` : `commit_reference` devient A', comme l'écrit l'assembleur, et
   `briques_assemblees` reçoit les briques ajoutées (décision 5). Le reste est à l'appli :
   chaque brique arrivée s'y note, dans la session de l'appli, par sa ligne dans `briques`
@@ -481,7 +487,8 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   l'identique, car le nom donné nomme le service de `render.yaml` et l'en-tête remplit
   `navigation.ts`, `referencement.ts`, `mentions-legales.ts` et la configuration de
   `comptes`. L'outil rejoue l'en-tête par une blueprint qui n'a que ces champs.
-- **Le format 1, déduit** : les briques des unités, le paquet par `package.json`, Dependabot
+- **Le format 1, déduit** : les briques des unités (pour la cible, ramenées aux choisies :
+  « Le manifeste et la blueprint après l'opération »), le paquet par `package.json`, Dependabot
   par son fichier, la blueprint de l'appli à son `HEAD`, sans le `profil:` de son en-tête
   (ses briques sont déjà dans les unités), avec le paquet à `--nom` (il redonne
   le paquet et le nom du service de `render.yaml`). La blueprint minimale que l'assembleur
