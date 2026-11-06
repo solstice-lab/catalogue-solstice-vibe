@@ -1439,18 +1439,27 @@ const REGLAGES_DE_L_ENTETE = {
   },
 };
 
-function champsDeLEnteteIgnores({ manifeste, cible, catalogue, sha }) {
-  // Au format 1, le manifeste ne note pas l'en-tête : rien à comparer.
-  if (manifeste.format !== 2 || manifeste.assemblage.entete === null || !cible.has("src/config/comptes.ts")) return [];
-  let assembleur;
+// Les champs d'en-tête que l'assembleur d'un commit lit ; vide si le commit n'a pas l'assembleur ou la constante.
+function champsLusAuCommit(catalogue, sha) {
   try {
-    assembleur = git(catalogue, "show", `${sha}:outils/assembler.mjs`);
+    return champsDeLEnteteLus(git(catalogue, "show", `${sha}:outils/assembler.mjs`));
   } catch {
     return [];
   }
-  const lus = champsDeLEnteteLus(assembleur);
+}
+
+/*
+ * Seuls les champs que l'assembleur visé lit et que celui du commit d'origine ne
+ * lisait pas : l'appli a déjà traité les autres, les lui rappeler à chaque report
+ * serait du bruit. La personne le lit une fois, au report qui l'introduit.
+ */
+function champsDeLEnteteIgnores({ manifeste, cible, catalogue, shaOrigine, sha }) {
+  // Au format 1, le manifeste ne note pas l'en-tête : rien à comparer.
+  if (manifeste.format !== 2 || manifeste.assemblage.entete === null || !cible.has("src/config/comptes.ts")) return [];
+  const lus = champsLusAuCommit(catalogue, sha);
+  const lusAvant = champsLusAuCommit(catalogue, shaOrigine);
   return Object.entries(REGLAGES_DE_L_ENTETE)
-    .filter(([champ]) => lus.includes(champ) && !(champ in manifeste.assemblage.entete))
+    .filter(([champ]) => lus.includes(champ) && !lusAvant.includes(champ) && !(champ in manifeste.assemblage.entete))
     .map(([champ, { fichier, defaut }]) => ({ champ, fichier, defaut: defaut(texteDe(cible.get(fichier))) }));
 }
 
@@ -2163,7 +2172,13 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
         // Pas aRattacher : ces briques arrivent branchées sur le catalogue, leurs variables servent.
         aBrancher: aBrancher.aBrancher.map(({ brique }) => brique),
       }),
-      champsDeLEnteteIgnores: champsDeLEnteteIgnores({ manifeste, cible, catalogue: racineCatalogue, sha: shaCible }),
+      champsDeLEnteteIgnores: champsDeLEnteteIgnores({
+        manifeste,
+        cible,
+        catalogue: racineCatalogue,
+        shaOrigine,
+        sha: shaCible,
+      }),
       traitements: traitementsChanges(origine, cible, contenus),
       registre: !cible.has(REGISTRE)
         ? undefined
@@ -2343,7 +2358,7 @@ function rubriqueDeLEntete(resultat) {
   return [
     "## En-tête de la blueprint",
     "",
-    `L'assembleur au commit ${resultat.commitCible} lit ces champs de l'en-tête, que celui noté au manifeste n'a pas. L'en-tête est figé à l'assemblage : l'ajouter à ${code("blueprint.md")} après coup ne change rien aux opérations suivantes, et l'outil n'y rejoue pas un en-tête modifié. La valeur se règle dans l'appli :`,
+    `L'assembleur au commit ${resultat.commitCible} lit ces champs de l'en-tête, que l'assembleur de l'origine ne lisait pas et que celui noté au manifeste n'a pas. L'en-tête est figé à l'assemblage : l'ajouter à ${code("blueprint.md")} après coup ne change rien aux opérations suivantes, et l'outil n'y rejoue pas un en-tête modifié. La valeur se règle dans l'appli :`,
     "",
     ...resultat.champsDeLEnteteIgnores.map(
       ({ champ, fichier, defaut }) => `- ${code(champ)} : défaut appliqué, ${defaut} ; à régler dans ${code(fichier)}.`

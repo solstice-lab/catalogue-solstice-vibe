@@ -1311,38 +1311,81 @@ export const AUTRES_MAILS_ESSAI = [{ cle: "sous-traitant-bizarre", role: "Essai.
    * personne ne le disait.
    */
   describe("en-tête de la blueprint : un champ que l'assembleur visé lit et que l'en-tête rejoué n'a pas", () => {
+    /*
+     * Une origine dont l'assembleur ne lit pas personnes_par_reseau (le cas de l'appli
+     * d'essai, assemblée avant sa naissance), puis le commit visé qui le lit : le
+     * rapport est celui du report qui l'introduit. Le commit d'origine est un commit
+     * d'essai du catalogue qui retire le champ de la liste lue ; le visé la rétablit.
+     */
+    const SANS_LE_CHAMP = remplacer(['  "personnes_par_reseau",', "];"].join("\n"), "];");
+    function rapportDUnChampNe(briques: string[], entete: string) {
+      const sommet = git(catalogue, "rev-parse", "HEAD");
+      git(catalogue, "switch", "-q", "-c", "essai-champ-ne");
+      try {
+        ecrire(catalogue, "outils/assembler.mjs", SANS_LE_CHAMP);
+        git(catalogue, "commit", "-q", "-am", "Outils : essai d'un assembleur qui ne lit pas personnes_par_reseau");
+        const ancien = git(catalogue, "rev-parse", "--short", "HEAD");
+        const dossier = path.join(dossierTemporaire("appli-champ-ne-"), "essai-champ-ne");
+        assemblerAuCommitA({ sortie: dossier, briques, entete, commit: ancien });
+        publier(dossier);
+        git(catalogue, "revert", "--no-edit", "HEAD");
+        git(catalogue, "update-ref", "refs/remotes/origin/main", "HEAD");
+        const vers = git(catalogue, "rev-parse", "--short", "HEAD");
+        const texte = rapport(mettreAJour({ catalogue, appli: dossier, vers, aBlanc: true }));
+        return { dossier, texte };
+      } finally {
+        git(catalogue, "switch", "-q", "--discard-changes", "main");
+        git(catalogue, "branch", "-q", "-D", "essai-champ-ne");
+        git(catalogue, "update-ref", "refs/remotes/origin/main", sommet);
+      }
+    }
+
     it(
-      "nomme la clé, le défaut appliqué et le fichier où la valeur se règle ; une clé déjà dans l'en-tête n'y figure pas",
+      "nomme la clé, le défaut appliqué et le fichier où la valeur se règle, pour un champ que l'origine ne lisait pas ; ni ceux qu'elle lisait, ni ceux de l'en-tête",
       { timeout: 3 * REJEU },
       () => {
-        // L'appli d'essai déclare entree et methodes, pas role_par_defaut ni personnes_par_reseau.
-        const dossier = appliRetouchee(() => {});
-        publier(dossier);
-        const resultat = mettreAJour({ catalogue, appli: dossier, ajouter: ["journal"], aBlanc: true });
-        const texte = rapport(resultat);
+        // L'en-tête note entree et methodes ; role_par_defaut manque, mais l'origine le lisait déjà.
+        const { dossier, texte } = rapportDUnChampNe(
+          ["comptes", "mails"],
+          ["appli: Essai d'en-tête", "entree: ouverte", "methodes: [code-email]"].join("\n")
+        );
         const rubrique = rubriqueDe(texte, "En-tête de la blueprint") ?? "";
         expect(rubrique).toMatch(/`personnes_par_reseau`[^\n]*20[^\n]*`src\/config\/comptes\.ts`/);
-        expect(rubrique).toMatch(/`role_par_defaut`[^\n]*membre[^\n]*`src\/config\/acces\.ts`/);
+        expect(rubrique).not.toContain("`role_par_defaut`");
         expect(rubrique).not.toContain("`methodes`");
         expect(rubrique).not.toContain("`entree`");
-        // Dit une fois pour toutes que l'en-tête ne se rejoue pas, sans promettre un rejeu.
+        // Dit que l'en-tête ne se rejoue pas, sans promettre un rejeu.
         expect(rubrique).toMatch(/figé/);
         expect(texte.indexOf("## En-tête de la blueprint")).toBeGreaterThan(
           texte.indexOf("## Variables d'environnement")
         );
         rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
+      }
+    );
 
-        // Les quatre champs au manifeste : rien à dire.
-        const complete = path.join(dossierTemporaire("appli-entete-"), "essai-entete");
-        assemblerAuCommitA({
-          sortie: complete,
-          briques: ["comptes", "mails"],
-          entete:
-            "appli: Essai d'en-tête\nentree: ouverte\nrole_par_defaut: membre\nmethodes: [code-email]\npersonnes_par_reseau: 50",
-        });
-        publier(complete);
-        const autre = rapport(mettreAJour({ catalogue, appli: complete, ajouter: ["journal"], aBlanc: true }));
-        expect(autre).not.toContain("## En-tête de la blueprint");
+    it(
+      "ne dit rien d'un champ que l'origine lisait déjà, ni d'un champ que le commit visé ne lit pas, ni dans une appli sans comptes",
+      { timeout: 3 * REJEU },
+      () => {
+        // Origine et visé lisent tous deux les quatre champs : rien de neuf, même sans les avoir notés.
+        const dossier = appliRetouchee(() => {});
+        publier(dossier);
+        const meme = rapport(mettreAJour({ catalogue, appli: dossier, ajouter: ["journal"], aBlanc: true }));
+        expect(meme).not.toContain("## En-tête de la blueprint");
+
+        // Le commit visé ne lit pas le champ que l'origine lisait : rien non plus.
+        avecUnCommitDuCatalogue(
+          "Outils : essai d'un assembleur qui ne lit pas personnes_par_reseau",
+          () => ecrire(catalogue, "outils/assembler.mjs", SANS_LE_CHAMP),
+          (vers) => {
+            const texte = rapport(mettreAJour({ catalogue, appli: dossier, vers, aBlanc: true }));
+            expect(texte).not.toContain("## En-tête de la blueprint");
+          }
+        );
+
+        // Sans comptes, ni ENTREE ni LIMITES_PAR_RESEAU : le réglage n'a pas de fichier où se faire.
+        const { texte: sansComptes } = rapportDUnChampNe([], "appli: Essai sans comptes");
+        expect(sansComptes).not.toContain("## En-tête de la blueprint");
       }
     );
 
@@ -1378,32 +1421,6 @@ export const AUTRES_MAILS_ESSAI = [{ cle: "sous-traitant-bizarre", role: "Essai.
         });
         const manifeste = JSON.parse(fs.readFileSync(path.join(sortie, MANIFESTE), "utf-8"));
         expect(Object.keys(manifeste.assemblage.entete).sort()).toEqual([...lus].sort());
-      }
-    );
-
-    it(
-      "se tait quand l'assembleur du commit visé ne lit pas le champ, et quand l'appli n'a pas la brique comptes",
-      { timeout: 3 * REJEU },
-      () => {
-        const dossier = appliRetouchee(() => {});
-        publier(dossier);
-        avecUnCommitDuCatalogue(
-          "Outils : essai d'un assembleur qui ne lit pas personnes_par_reseau",
-          () => ecrire(catalogue, "outils/assembler.mjs", remplacer('  "personnes_par_reseau",\n];', "];")),
-          (vers) => {
-            const texte = rapport(mettreAJour({ catalogue, appli: dossier, vers, aBlanc: true }));
-            const rubrique = rubriqueDe(texte, "En-tête de la blueprint") ?? "";
-            expect(rubrique).not.toContain("personnes_par_reseau");
-            expect(rubrique).toContain("`role_par_defaut`");
-          }
-        );
-
-        // Sans comptes, ni ENTREE ni LIMITES_PAR_RESEAU : les réglages d'entrée n'ont pas de fichier où se régler.
-        const sansComptes = path.join(dossierTemporaire("appli-sans-comptes-"), "essai-sans-comptes");
-        assemblerAuCommitA({ sortie: sansComptes, briques: [] });
-        publier(sansComptes);
-        const autre = rapport(mettreAJour({ catalogue, appli: sansComptes, ajouter: ["mails"], aBlanc: true }));
-        expect(autre).not.toContain("## En-tête de la blueprint");
       }
     );
   });
@@ -1490,15 +1507,22 @@ export const AUTRES_MAILS_ESSAI = [{ cle: "sous-traitant-bizarre", role: "Essai.
 
 // Un assemblage direct au commit A, dans un worktree du catalogue à ce commit :
 // le catalogue de travail est plus loin.
-function assemblerAuCommitA(options: { sortie: string; briques: string[]; dependabot?: boolean; entete?: string }) {
+function assemblerAuCommitA(options: {
+  sortie: string;
+  briques: string[];
+  dependabot?: boolean;
+  entete?: string;
+  commit?: string;
+}) {
+  const commit = options.commit ?? commitA;
   const arbre = path.join(dossierTemporaire("catalogue-a-"), "catalogue");
-  git(catalogue, "worktree", "add", "--detach", "--quiet", arbre, commitA);
+  git(catalogue, "worktree", "add", "--detach", "--quiet", arbre, commit);
   try {
     lierNodeModules(arbre);
     assembler({
       source: arbre,
       sortie: options.sortie,
-      commit: commitA,
+      commit,
       briques: options.briques,
       dependabot: options.dependabot ?? false,
       blueprint: options.entete === undefined ? undefined : blueprint(options.entete),

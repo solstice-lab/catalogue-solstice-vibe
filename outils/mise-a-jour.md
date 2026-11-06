@@ -306,7 +306,7 @@ plus récent.
   `src/config/acces.ts` pour `ROLE_PAR_DEFAUT`). Le rapport le dit : quand l'assembleur du
   commit visé lit un réglage d'entrée (`entree`, `role_par_defaut`, `methodes`,
   `personnes_par_reseau`, d'après `CHAMPS_DE_L_ENTETE_LUS` de son `outils/assembler.mjs`)
-  que l'en-tête rejoué n'a pas, la rubrique « En-tête de la blueprint » nomme le champ, le
+  que l'assembleur du commit d'origine ne lisait pas et que l'en-tête rejoué n'a pas (la personne le lit une fois, au report qui l'introduit), la rubrique « En-tête de la blueprint » nomme le champ, le
   défaut que le catalogue laisse dans le fichier et le fichier à retoucher. Rien à dire
   pour une appli sans `comptes`, ni au format 1 du manifeste, qui ne note pas l'en-tête.
   À tenir à jour : la table champ, fichier, défaut de l'outil (`REGLAGES_DE_L_ENTETE` de
@@ -563,7 +563,7 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   commits de A à A' qui touchent un fichier du socle que le report change (un fichier que
   l'assembleur rend identique, comme le script de test de `package.json`, n'en fait pas
   venir), les variables nouvelles de `.env.example` et `render.yaml` (triées), les champs
-  d'en-tête que l'assembleur visé lit et que l'en-tête rejoué n'a pas (voir « Les variables
+  d'en-tête que l'assembleur visé lit, que l'origine ne lisait pas et que l'en-tête rejoué n'a pas (voir « Les variables
   et l'en-tête dans le rapport »), les traitements ajoutés, les durées de conservation et les
   sous-traitants nouveaux (repérés par la forme des entrées des `confidentialite.ts` de brique)
   et les fichiers dont le texte change, le registre RGPD, ce que la fusion
