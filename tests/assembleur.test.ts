@@ -1964,50 +1964,66 @@ describe("accueil de départ : l'entrée suit les briques gardées", () => {
   const AVEC_COMPTES = { briques: ["comptes", "mails"] };
   const SANS_RIEN = { briques: [] };
 
-  it("envoie, avec la brique espaces, vers l'espace de la personne ou vers « Créer ou rejoindre », lu en base à chaque requête", () => {
-    const dossier = assemblerEnTemporaire(AVEC_ESPACES).dossier;
-    const page = lireAssemble(dossier, "src/app/page.tsx");
-    expect(page).toContain("await entreeDeLEspace()");
-    expect(page).toContain('export const dynamic = "force-dynamic";');
-    expect(existeAssemble(dossier, "src/briques/espaces/accueil.ts")).toBe(true);
-    expect(existeAssemble(dossier, "tests/espaces-accueil.test.ts")).toBe(true);
-    expect(page).not.toContain("premiereEntree");
-  });
-
-  it("envoie, sans elle, vers le premier onglet que la personne peut ouvrir, avec comptes comme sans", () => {
-    for (const variante of [AVEC_COMPTES, SANS_RIEN]) {
-      const dossier = assemblerEnTemporaire(variante).dossier;
+  it(
+    "envoie, avec la brique espaces, vers l'espace de la personne ou vers « Créer ou rejoindre », lu en base à chaque requête",
+    { timeout: ENTIER },
+    () => {
+      const dossier = assemblerEnTemporaire(AVEC_ESPACES).dossier;
       const page = lireAssemble(dossier, "src/app/page.tsx");
-      expect(page, variante.briques.join("+")).toContain("await premiereEntree(NAVIGATION)");
-      expect(page, variante.briques.join("+")).not.toMatch(/espace|force-dynamic/i);
-      expect(existeAssemble(dossier, "src/briques/espaces/accueil.ts")).toBe(false);
-      expect(existeAssemble(dossier, "tests/espaces-accueil.test.ts")).toBe(false);
+      expect(page).toContain("await entreeDeLEspace()");
+      expect(page).toContain('export const dynamic = "force-dynamic";');
+      expect(existeAssemble(dossier, "src/briques/espaces/accueil.ts")).toBe(true);
+      expect(existeAssemble(dossier, "tests/espaces-accueil.test.ts")).toBe(true);
+      expect(page).not.toContain("premiereEntree");
     }
-  });
+  );
 
-  it("garde dans toute copie le composant d'accueil, que la page lit, et sa page au manifeste (la mise à jour la fusionne à trois, jamais écrasée, une fois l'accueil métier écrit)", () => {
-    for (const variante of [AVEC_ESPACES, AVEC_COMPTES, SANS_RIEN]) {
-      const dossier = assemblerEnTemporaire(variante).dossier;
-      expect(existeAssemble(dossier, "src/lib/accueil.tsx"), variante.briques.join("+")).toBe(true);
-      expect(existeAssemble(dossier, "tests/accueil.test.ts"), variante.briques.join("+")).toBe(true);
-      const manifeste = JSON.parse(lireAssemble(dossier, MANIFESTE)) as { fichiers: Record<string, unknown> };
-      expect(Object.keys(manifeste.fichiers)).toContain("src/app/page.tsx");
+  it(
+    "envoie, sans elle, vers le premier onglet que la personne peut ouvrir, avec comptes comme sans",
+    { timeout: ENTIER },
+    () => {
+      for (const variante of [AVEC_COMPTES, SANS_RIEN]) {
+        const dossier = assemblerEnTemporaire(variante).dossier;
+        const page = lireAssemble(dossier, "src/app/page.tsx");
+        expect(page, variante.briques.join("+")).toContain("await premiereEntree(NAVIGATION)");
+        expect(page, variante.briques.join("+")).not.toMatch(/espace|force-dynamic/i);
+        expect(existeAssemble(dossier, "src/briques/espaces/accueil.ts")).toBe(false);
+        expect(existeAssemble(dossier, "tests/espaces-accueil.test.ts")).toBe(false);
+      }
     }
-  });
+  );
+
+  it(
+    "garde dans toute copie le composant d'accueil, que la page lit, et sa page au manifeste (la mise à jour la fusionne à trois, jamais écrasée, une fois l'accueil métier écrit)",
+    { timeout: ENTIER },
+    () => {
+      for (const variante of [AVEC_ESPACES, AVEC_COMPTES, SANS_RIEN]) {
+        const dossier = assemblerEnTemporaire(variante).dossier;
+        expect(existeAssemble(dossier, "src/lib/accueil.tsx"), variante.briques.join("+")).toBe(true);
+        expect(existeAssemble(dossier, "tests/accueil.test.ts"), variante.briques.join("+")).toBe(true);
+        const manifeste = JSON.parse(lireAssemble(dossier, MANIFESTE)) as { fichiers: Record<string, unknown> };
+        expect(Object.keys(manifeste.fichiers)).toContain("src/app/page.tsx");
+      }
+    }
+  );
 
   // Relevé le 2026-11-05 : le commentaire de navigation.ts renvoyait à /contact et à
   // sa page dans une appli assemblée sans la brique contact.
-  it("ne renvoie plus à /contact dans la navigation d'une appli sans la brique contact, et y renvoie avec elle", () => {
-    for (const variante of [AVEC_COMPTES, AVEC_ESPACES, SANS_RIEN]) {
-      const navigation = lireAssemble(assemblerEnTemporaire(variante).dossier, "src/lib/navigation.ts");
-      expect(navigation, variante.briques.join("+")).not.toMatch(/contact/i);
+  it(
+    "ne renvoie plus à /contact dans la navigation d'une appli sans la brique contact, et y renvoie avec elle",
+    { timeout: ENTIER },
+    () => {
+      for (const variante of [AVEC_COMPTES, AVEC_ESPACES, SANS_RIEN]) {
+        const navigation = lireAssemble(assemblerEnTemporaire(variante).dossier, "src/lib/navigation.ts");
+        expect(navigation, variante.briques.join("+")).not.toMatch(/contact/i);
+      }
+      const avecContact = lireAssemble(
+        assemblerEnTemporaire({ briques: ["comptes", "mails", "contact"] }).dossier,
+        "src/lib/navigation.ts"
+      );
+      expect(avecContact).toContain("src/app/contact/page.tsx");
     }
-    const avecContact = lireAssemble(
-      assemblerEnTemporaire({ briques: ["comptes", "mails", "contact"] }).dossier,
-      "src/lib/navigation.ts"
-    );
-    expect(avecContact).toContain("src/app/contact/page.tsx");
-  });
+  );
 });
 
 // Trois points de départ pour le cadrage, que la skill creer-appli propose avant

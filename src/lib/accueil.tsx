@@ -13,7 +13,7 @@ import { nomRenseigne, REFERENCEMENT, type Referencement } from "@/lib/reference
 /*
  * L'accueil de départ d'une appli assemblée : son nom, sa description et un
  * appel à l'action, lus de ce que la blueprint a déjà fait écrire dans
- * NOM_APP et REFERENCEMENT (outils/assembler.mjs). Le 2026-11-05, l'essai
+ * NOM_APP et REFERENCEMENT (par l'assembleur). Le 2026-11-05, l'essai
  * tours-de-coloc montrait un onglet « Ma coloc » à côté d'un accueil qui disait
  * « Page d'accueil à écrire » : la première page qu'on voit disait qu'il
  * manquait quelque chose, alors que la blueprint savait déjà par où entrer.

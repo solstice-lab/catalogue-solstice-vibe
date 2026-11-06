@@ -26,8 +26,8 @@ const config = (champs: Partial<Referencement> = {}): Referencement => ({
 });
 
 const accueil: LienNavigation = { libelle: "Accueil", href: "/" };
-const mesDonnees: LienNavigation = { libelle: "Mes données", href: "/mes-donnees", visible: () => true };
-const comptes: LienNavigation = { libelle: "Comptes", href: "/comptes", visible: () => false };
+const mesDonnees: LienNavigation = { libelle: "Suivi", href: "/suivi", visible: () => true };
+const comptes: LienNavigation = { libelle: "Réglages", href: "/reglages", visible: () => false };
 const offre: LienNavigation = { libelle: "Notre offre", href: "/offre" };
 
 // Le menu d'un écran à gardes s'écrit en asynchrone (il interroge les droits de la
@@ -44,8 +44,8 @@ const BOUTON = /<a [^>]*class="sl-bouton[^"]*"[^>]*>/;
 describe("premiereEntree : où l'accueil envoie une appli sans espaces", () => {
   it("prend le premier onglet que la personne peut ouvrir, jamais l'accueil lui-même", async () => {
     expect(await premiereEntree([accueil, comptes, mesDonnees])).toEqual({
-      libelle: "Mes données",
-      href: "/mes-donnees",
+      libelle: "Suivi",
+      href: "/suivi",
     });
   });
 
@@ -55,8 +55,8 @@ describe("premiereEntree : où l'accueil envoie une appli sans espaces", () => {
   });
 
   it("attend un garde asynchrone, comme le menu", async () => {
-    const tard: LienNavigation = { libelle: "Suivi", href: "/suivi", visible: async () => true };
-    expect(await premiereEntree([accueil, tard])).toEqual({ libelle: "Suivi", href: "/suivi" });
+    const tard: LienNavigation = { libelle: "Agenda", href: "/agenda", visible: async () => true };
+    expect(await premiereEntree([accueil, tard])).toEqual({ libelle: "Agenda", href: "/agenda" });
   });
 });
 
@@ -65,13 +65,13 @@ describe("accueil de départ d'une appli à menu gardé (avec la brique comptes)
     const html = await rendu(
       AccueilDeDepart({
         navigation: [accueil, mesDonnees],
-        entree: { libelle: "Ma coloc", href: "/espace" },
+        entree: { libelle: "Ma coloc", href: "/mon-groupe" },
         config: config(),
       })
     );
     expect(html).toContain("Tours de coloc");
     expect(html).toContain("Qui passe l'aspirateur cette semaine, sans en discuter.");
-    expect(html).toMatch(/<a [^>]*class="sl-bouton[^"]*"[^>]*href="\/espace"[^>]*>Ma coloc<\/a>/);
+    expect(html).toMatch(/<a [^>]*class="sl-bouton[^"]*"[^>]*href="\/mon-groupe"[^>]*>Ma coloc<\/a>/);
     expect(html).not.toContain("Page d'accueil à écrire");
   });
 
