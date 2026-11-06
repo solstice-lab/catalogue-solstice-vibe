@@ -204,7 +204,8 @@ function commitDuCatalogue(catalogue, manifeste) {
  * les porte. Au format 1, ils se déduisent :
  *   - les briques : les unités du manifeste qui sont des briques au commit A. Une
  *     brique ajoutée d'office (rgpd avec comptes) se lit comme choisie, ce qui
- *     donne les mêmes fichiers ;
+ *     donne les mêmes fichiers (l'origine les rejoue toutes ; pour la cible,
+ *     briquesChoisies les ramène aux choisies) ;
  *   - le paquet : celui de package.json, où l'assembleur l'a reporté ;
  *   - Dependabot : la présence de son fichier au manifeste ;
  *   - la blueprint : celle de l'appli à son HEAD, dont l'assembleur relit
@@ -258,6 +259,40 @@ function reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit }) {
     paquet,
     deduits: true,
   };
+}
+
+/*
+ * Les briques déduites d'une appli au format 1 (toutes les unités), ramenées à celles
+ * qu'on a choisies : on retire celles qu'une autre brique du lot entraîne d'office
+ * (`entraine`, au commit rejoué). L'assembleur de la cible, redonné ce seul choix,
+ * écrit lui-même `ajouteesDOffice` : le cas du 2026-11-05, rgpd venue avec comptes,
+ * passait au format 2 en brique choisie, et l'information se perdait. Les fichiers
+ * sont les mêmes : son planifier remet ce qui est entraîné.
+ * Limite : le format 1 ne distingue pas une brique demandée ET entraînée (rgpd demandée
+ * avec comptes) d'une brique venue d'office : elle se lit comme d'office. Les
+ * définitions sont celles du commit visé : une brique que le commit A n'entraînait
+ * pas et qu'A' entraîne se lit de même. Un lot que ce calcul ne ramène pas à
+ * lui-même (entraînements en cercle) est rendu tel quel : le comportement d'avant.
+ */
+function briquesChoisies(briques, definitions) {
+  const entrainees = new Set();
+  const descendre = (depart) => {
+    const vues = new Set();
+    const pile = [...(definitions[depart]?.entraine ?? [])];
+    while (pile.length > 0) {
+      const nom = pile.pop();
+      if (vues.has(nom)) continue;
+      vues.add(nom);
+      pile.push(...(definitions[nom]?.entraine ?? []));
+    }
+    return vues;
+  };
+  for (const brique of briques) {
+    for (const nom of descendre(brique)) if (nom !== brique) entrainees.add(nom);
+  }
+  const choisies = briques.filter((nom) => !entrainees.has(nom));
+  const redonnees = new Set(choisies.flatMap((nom) => [nom, ...descendre(nom)]));
+  return briques.every((nom) => redonnees.has(nom)) ? choisies : briques;
 }
 
 // Un nom de paquet tel que l'assembleur l'écrit (nomDuPaquet d'outils/assembler.mjs) :
@@ -485,7 +520,7 @@ function rejouer({ catalogue, temporaire, nom, sha, commit, reglagesDe, controle
       );
     }
     const { briques: definitions, profils } = definitionsDuCommit(arbre);
-    const reglages = reglagesDe(Object.keys(definitions));
+    const reglages = reglagesDe(Object.keys(definitions), definitions);
     controler?.(definitions, reglages, profils);
     const prettier = installerPrettier({ catalogue, arbre, commit: sha });
     // Nommé comme le paquet : sans nom donné, l'assembleur tire le paquet du
@@ -2004,7 +2039,7 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
             nom: "cible",
             sha: shaCible,
             commit: commitCible,
-            reglagesDe: (briques) => {
+            reglagesDe: (briques, definitions) => {
               const inconnue = examen.reglages.briques.find((nom) => !briques.includes(nom));
               if (inconnue !== undefined) {
                 throw new ErreurMiseAJour(
@@ -2014,9 +2049,12 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
               }
               // B' : les briques choisies, plus les ajoutées ; l'assembleur rejoué
               // ajoute ce qu'elles entraînent, et son planifier vérifie ce qu'elles exigent.
-              return ajout
-                ? { ...examen.reglages, briques: [...examen.reglages.briques, ...ajouter] }
-                : examen.reglages;
+              // Au format 1, les briques déduites sont ramenées aux choisies (briquesChoisies) ;
+              // au format 2, le manifeste les dit déjà : jamais recalculées.
+              const choisies = examen.reglages.deduits
+                ? briquesChoisies(examen.reglages.briques, definitions)
+                : examen.reglages.briques;
+              return { ...examen.reglages, briques: ajout ? [...choisies, ...ajouter] : choisies };
             },
           });
 
@@ -2136,6 +2174,12 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
         manifesteCible.format === 2
           ? manifesteCible.assemblage.ajouteesDOffice.filter(({ nom }) => ajoutees.includes(nom))
           : ajoutees.filter((nom) => !reglagesCible.briques.includes(nom)).map((nom) => ({ nom, par: null })),
+      // Au passage du format 1 au format 2 : les briques que le manifeste de l'appli tenait pour
+      // choisies et que le manifeste écrit donne d'office (rgpd avec comptes) ; null sans conversion.
+      manifesteConverti:
+        manifeste.format === 1 && manifesteCible.format === 2
+          ? manifesteCible.assemblage.ajouteesDOffice.filter(({ nom }) => avant.includes(nom))
+          : null,
       commitOrigine,
       commitCible,
       branche: nomDeBranche,
@@ -2800,6 +2844,11 @@ export function rapport(resultat) {
     "## Manifeste et blueprint",
     "",
     `- ${code(MANIFESTE)} : celui de la cible, commit ${resultat.commitCible}, une empreinte par fichier venu du catalogue, retouché ou non.`,
+    ...(resultat.manifesteConverti?.length > 0
+      ? [
+          `- Manifeste converti du format 1 : briques d'office recalculées : ${resultat.manifesteConverti.map(({ nom, par }) => `${nom} (par ${par})`).join(", ")}.`,
+        ]
+      : []),
     resultat.blueprint === "réécrite"
       ? `- ${code("blueprint.md")} : ${code("commit_reference")} ${ajout ? "reste" : "passe à"} ${resultat.commitCible}${resultat.ajoutees.length > 0 ? `, ${code("briques_assemblees")} reçoit ${resultat.ajoutees.join(", ")}` : ""} ; le corps ne change pas.`
       : `- ${code("blueprint.md")} : non réécrite (voir plus bas).`,

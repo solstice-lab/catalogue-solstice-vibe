@@ -161,6 +161,7 @@ type Manifeste = {
   format: number;
   note: string;
   catalogue: { version: string; commit: string; commitComplet?: string };
+  assemblage?: { briques: string[]; ajouteesDOffice: { nom: string; par: string }[] };
   fichiers: Record<string, { unite: string; sha256: string }>;
 };
 
@@ -794,6 +795,60 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
       // Le verrou remplacé tient avec package.json fusionné : npm ci passe dans l'appli.
       // Sans les scripts d'installation, que ce test ne vérifie pas.
       execSync("npm ci --ignore-scripts --no-audit --no-fund", { cwd: dossier, stdio: ["ignore", "pipe", "pipe"] });
+    }
+  );
+
+  // Le cas du 2026-11-05 (appli d'essai de colocation) : au report d'une appli au
+  // format 1, rgpd, venue d'office avec comptes, passait dans les briques choisies
+  // du format 2 avec `ajouteesDOffice: []`, parce que les briques déduites des unités
+  // étaient toutes redonnées à l'assembleur de la cible comme choisies.
+  it(
+    "écrit, au report d'une appli au format 1, rgpd en brique venue d'office avec comptes et non en brique choisie",
+    { timeout: 2 * REJEU },
+    () => {
+      const dossier = appliRetouchee(enFormat1);
+      publier(dossier);
+      const resultat = mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: BRANCHE });
+      expect(resultat).toMatchObject({ format: 1, manifesteConverti: [{ nom: "rgpd", par: "comptes" }] });
+      // La personne voit ce qui a changé dans son manifeste.
+      expect(rapport(resultat)).toContain(
+        "Manifeste converti du format 1 : briques d'office recalculées : rgpd (par comptes)."
+      );
+      const ecrit = JSON.parse(fs.readFileSync(path.join(dossier, MANIFESTE), "utf-8"));
+      expect(ecrit.format).toBe(2);
+      expect([...ecrit.assemblage.briques].sort()).toEqual(["comptes", "mails"]);
+      expect(ecrit.assemblage.ajouteesDOffice).toEqual([{ nom: "rgpd", par: "comptes" }]);
+      // Les fichiers n'en changent pas : rgpd est toujours livrée, par l'assembleur de la cible.
+      expect(Object.values(ecrit.fichiers as Manifeste["fichiers"]).some(({ unite }) => unite === "rgpd")).toBe(true);
+      // Le manifeste écrit se rejoue : les briques choisies redonnent les mêmes empreintes.
+      git(dossier, "add", "-A");
+      git(dossier, "commit", "-q", "-m", "Reporter le catalogue");
+      const apres = examiner({ catalogue, appli: dossier });
+      expect(apres).toMatchObject({ format: 2, commit: commitVise, deduits: false });
+      expect([...apres.briques].sort()).toEqual(["comptes", "mails"]);
+    }
+  );
+
+  it(
+    "ne recalcule pas les briques d'une appli déjà au format 2 : son manifeste dit déjà lesquelles ont été choisies",
+    { timeout: 2 * REJEU },
+    () => {
+      // Un manifeste au format 2 qui donne rgpd pour choisie : ce que la personne a demandé, l'outil le garde.
+      const dossier = appliRetouchee((d) =>
+        reecrireLeManifeste(d, (manifeste) => {
+          if (!manifeste.assemblage) throw new Error("l'appli d'essai est au format 2 : le test est à reprendre.");
+          manifeste.assemblage.briques = ["comptes", "mails", "rgpd"];
+          manifeste.assemblage.ajouteesDOffice = [];
+        })
+      );
+      publier(dossier);
+      const resultat = mettreAJour({ catalogue, appli: dossier, vers: commitVise, branche: BRANCHE });
+      expect(resultat.manifesteConverti).toBeNull();
+      expect(rapport(resultat)).not.toContain("Manifeste converti");
+      const ecrit = JSON.parse(fs.readFileSync(path.join(dossier, MANIFESTE), "utf-8"));
+      expect(ecrit.format).toBe(2);
+      expect(ecrit.assemblage.briques).toEqual(["comptes", "mails", "rgpd"]);
+      expect(ecrit.assemblage.ajouteesDOffice).toEqual([]);
     }
   );
 
