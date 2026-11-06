@@ -1332,6 +1332,137 @@ function variablesNouvelles(origine, cible) {
   return nouvelles;
 }
 
+// Les variables qui ne servent qu'une méthode de connexion : sans elle dans METHODES de src/config/comptes.ts, la carte de /connexion n'existe pas.
+const METHODES_DES_VARIABLES = { google: /^GOOGLE_/, microsoft: /^MICROSOFT_/ };
+
+// La brique de chaque variable de .env.example, par les marqueurs « # Brique x (…) » et « # Fin de la brique x ».
+function briquesDesVariables(contenu) {
+  const brique = new Map();
+  let courante;
+  for (const ligne of texteDe(contenu).split(/\r?\n/)) {
+    const debut = /^# Brique (\S+) \(/.exec(ligne);
+    if (debut) courante = debut[1];
+    else if (/^# Fin de la brique /.test(ligne)) courante = undefined;
+    const nom = /^#?[ \t]*([A-Z][A-Z0-9_]*)=/.exec(ligne)?.[1];
+    if (nom !== undefined && courante !== undefined) brique.set(nom, courante);
+  }
+  return brique;
+}
+
+// Les briques que blueprint.md de l'appli note `branchement: à brancher` : rien d'elles ne tourne encore.
+function briquesNoteesABrancher(blueprint) {
+  const entete = /^---\r?\n([\s\S]*?)\r?\n---/.exec(blueprint)?.[1] ?? "";
+  return entete
+    .split(/^[ \t]*- brique:/m)
+    .slice(1)
+    .filter((entree) => /^[ \t]+branchement:[ \t]*["']?à brancher/m.test(entree))
+    .map((entree) => /^[ \t]*["']?([^\s"']+)/.exec(entree)?.[1])
+    .filter((nom) => nom !== undefined);
+}
+
+/*
+ * Ce qu'il y a à déclarer chez l'hébergeur parmi les variables nouvelles : pas
+ * celles d'une méthode que METHODES ne propose pas, pas celles d'une brique à
+ * brancher. Essai de tours-de-coloc : le rapport demandait MICROSOFT_* (METHODES
+ * sans microsoft) et NOTIFICATIONS_SECRET (brique non branchée), « si l'appli en
+ * avait besoin », et la vérification était laissée au lecteur. METHODES se lit
+ * dans l'appli d'abord, qui la règle ; sans elle, la variable se demande.
+ */
+function variablesAttendues({ nouvelles, cible, appli, aBrancher }) {
+  const methodes = /export const METHODES[^=]*=\s*\[([^\]]*)\]/.exec(
+    texteDe(appli.get("src/config/comptes.ts") ?? cible.get("src/config/comptes.ts"))
+  )?.[1];
+  const proposees = methodes === undefined ? undefined : [...methodes.matchAll(/"([^"]+)"/g)].map(([, nom]) => nom);
+  const brique = briquesDesVariables(cible.get(".env.example"));
+  const abranchees = new Set([...aBrancher, ...briquesNoteesABrancher(texteDe(appli.get("blueprint.md")))]);
+  const adeclarer = [];
+  const sansMethode = new Map();
+  const dansUneBrique = new Map();
+  for (const variable of nouvelles) {
+    const methode = Object.entries(METHODES_DES_VARIABLES).find(([, motif]) => motif.test(variable.nom))?.[0];
+    if (methode !== undefined && proposees !== undefined && !proposees.includes(methode)) {
+      sansMethode.set(methode, [...(sansMethode.get(methode) ?? []), variable.nom]);
+    } else if (abranchees.has(brique.get(variable.nom))) {
+      const nom = brique.get(variable.nom);
+      dansUneBrique.set(nom, [...(dansUneBrique.get(nom) ?? []), variable.nom]);
+    } else {
+      adeclarer.push(variable);
+    }
+  }
+  return {
+    variables: adeclarer,
+    variablesSansMethode: [...sansMethode].map(([methode, noms]) => ({ methode, noms })),
+    variablesDeBriquesABrancher: [...dansUneBrique].map(([nom, noms]) => ({ brique: nom, noms })),
+  };
+}
+
+// Les champs d'en-tête que le texte d'un outils/assembler.mjs déclare lus (CHAMPS_DE_L_ENTETE_LUS) ; vide si la forme de la constante change.
+export function champsDeLEnteteLus(texteDeLAssembleur) {
+  const liste = /const CHAMPS_DE_L_ENTETE_LUS = \[([\s\S]*?)\];/.exec(texteDeLAssembleur)?.[1] ?? "";
+  return [...liste.matchAll(/"([a-z_]+)"/g)].map(([, champ]) => champ);
+}
+
+/*
+ * Les réglages de l'en-tête de blueprint.md que l'assembleur du commit visé lit
+ * et que l'en-tête noté au manifeste n'a pas. L'en-tête est figé à l'assemblage :
+ * la clé ajoutée à la blueprint après coup ne se rejoue pas, et la valeur se règle
+ * dans un fichier de l'appli. Essai de tours-de-coloc : personnes_par_reseau, née
+ * après l'assemblage, ne se réglait que dans src/config/comptes.ts, et ni le
+ * rapport ni la note ne le disaient. Les champs lus se lisent dans le texte de
+ * l'assembleur visé (CHAMPS_DE_L_ENTETE_LUS), que l'outil ne peut pas importer
+ * sans l'exporter ; le défaut, dans le fichier de la cible, tel que l'assembleur
+ * le laisse sans réponse. Ces réglages n'existent que dans une appli avec comptes.
+ * Cette table (champ, fichier) est à tenir à jour à chaque nouveau champ de
+ * réglage de l'en-tête ; tests/mettre-a-jour.test.ts verrouille la lecture du
+ * texte contre ce que l'assembleur lit réellement.
+ */
+const REGLAGES_DE_L_ENTETE = {
+  entree: {
+    fichier: "src/config/comptes.ts",
+    defaut: (texte) =>
+      `ENTREE.ouverte reste à ${/^\s+ouverte: (true|false),/m.exec(texte)?.[1] ?? "sa valeur du fichier"}`,
+  },
+  role_par_defaut: {
+    fichier: "src/config/acces.ts",
+    defaut: (texte) =>
+      `ROLE_PAR_DEFAUT reste « ${/ROLE_PAR_DEFAUT: Role = "([^"]+)"/.exec(texte)?.[1] ?? "celui du fichier"} »`,
+  },
+  methodes: {
+    fichier: "src/config/comptes.ts",
+    defaut: (texte) =>
+      `METHODES reste ${/export const METHODES[^=]*=\s*(\[[^\]]*\])/.exec(texte)?.[1] ?? "celle du fichier"}`,
+  },
+  personnes_par_reseau: {
+    fichier: "src/config/comptes.ts",
+    defaut: (texte) =>
+      `LIMITES_PAR_RESEAU reste à ${/demandesParHeure: (\d+),/.exec(texte)?.[1] ?? "sa valeur du fichier"} personnes par heure`,
+  },
+};
+
+// Les champs d'en-tête que l'assembleur d'un commit lit ; vide si le commit n'a pas l'assembleur ou la constante.
+function champsLusAuCommit(catalogue, sha) {
+  try {
+    return champsDeLEnteteLus(git(catalogue, "show", `${sha}:outils/assembler.mjs`));
+  } catch {
+    return [];
+  }
+}
+
+/*
+ * Seuls les champs que l'assembleur visé lit et que celui du commit d'origine ne
+ * lisait pas : l'appli a déjà traité les autres, les lui rappeler à chaque report
+ * serait du bruit. La personne le lit une fois, au report qui l'introduit.
+ */
+function champsDeLEnteteIgnores({ manifeste, cible, catalogue, shaOrigine, sha }) {
+  // Au format 1, le manifeste ne note pas l'en-tête : rien à comparer.
+  if (manifeste.format !== 2 || manifeste.assemblage.entete === null || !cible.has("src/config/comptes.ts")) return [];
+  const lus = champsLusAuCommit(catalogue, sha);
+  const lusAvant = champsLusAuCommit(catalogue, shaOrigine);
+  return Object.entries(REGLAGES_DE_L_ENTETE)
+    .filter(([champ]) => lus.includes(champ) && !lusAvant.includes(champ) && !(champ in manifeste.assemblage.entete))
+    .map(([champ, { fichier, defaut }]) => ({ champ, fichier, defaut: defaut(texteDe(cible.get(fichier))) }));
+}
+
 /*
  * Ce que la politique de confidentialité demande à l'appli, dans les
  * src/briques/<brique>/confidentialite.ts : des traitements (leurs choix : base
@@ -1991,6 +2122,7 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
             )
           )
         : [];
+    const aBrancher = briquesABrancher(cible, ajoutees);
     const resultat = {
       appli: dossierAppli,
       paquet: examen.reglages.paquet,
@@ -2032,8 +2164,21 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
         pages: ajoutees.includes("comptes") ? pagesATrancher({ origine, cible, appli: contenus }) : [],
         ouvertsSupprimes: ajoutees.includes("comptes") ? ouvertsSupprimes({ origine, cible, appli: contenus }) : [],
       },
-      ...briquesABrancher(cible, ajoutees),
-      variables: variablesNouvelles(origine, cible),
+      ...aBrancher,
+      ...variablesAttendues({
+        nouvelles: variablesNouvelles(origine, cible),
+        cible,
+        appli: contenus,
+        // Pas aRattacher : ces briques arrivent branchées sur le catalogue, leurs variables servent.
+        aBrancher: aBrancher.aBrancher.map(({ brique }) => brique),
+      }),
+      champsDeLEnteteIgnores: champsDeLEnteteIgnores({
+        manifeste,
+        cible,
+        catalogue: racineCatalogue,
+        shaOrigine,
+        sha: shaCible,
+      }),
       traitements: traitementsChanges(origine, cible, contenus),
       registre: !cible.has(REGISTRE)
         ? undefined
@@ -2178,11 +2323,46 @@ function rubriqueDuSocle(resultat) {
 
 function rubriqueDesVariables(resultat) {
   const lignes = ["## Variables d'environnement", ""];
-  if (resultat.variables.length === 0) return [...lignes, "Aucune variable nouvelle.", ""];
+  const { variables, variablesSansMethode, variablesDeBriquesABrancher } = resultat;
+  const noms = (liste) => liste.map(code).join(", ");
+  const miseDeCote = [
+    ...variablesSansMethode.map(
+      ({ methode, noms: liste }) =>
+        `- Méthode « ${methode} » absente de ${code("METHODES")} (${code("src/config/comptes.ts")}), rien à déclarer : ${noms(liste)}. À déclarer le jour où elle y entre.`
+    ),
+    ...variablesDeBriquesABrancher.map(
+      ({ brique, noms: liste }) =>
+        `- Brique ${code(brique)} à brancher : rien à déclarer avant son branchement (${noms(liste)}).`
+    ),
+  ];
+  if (variables.length === 0 && miseDeCote.length === 0) return [...lignes, "Aucune variable nouvelle.", ""];
   return [
     ...lignes,
-    "Nouvelles, à déclarer chez l'hébergeur avant la fusion si l'appli en a besoin (le commentaire de leur fichier le dit) :",
-    ...resultat.variables.map(({ nom, chemin }) => `- ${code(nom)} (${code(chemin)})`),
+    ...(variables.length === 0
+      ? ["Aucune variable nouvelle à déclarer."]
+      : [
+          "Nouvelles, à déclarer chez l'hébergeur avant la fusion (le commentaire de leur fichier dit à quoi chacune sert) :",
+          ...variables.map(({ nom, chemin }) => `- ${code(nom)} (${code(chemin)})`),
+        ]),
+    ...(miseDeCote.length === 0 ? [] : ["", "Nouvelles aussi, mais sans objet pour l'instant :", ...miseDeCote]),
+    "",
+  ];
+}
+
+/*
+ * Les réglages d'en-tête que l'assembleur visé lit et que l'en-tête de l'appli,
+ * figé au manifeste, n'a pas : ils ne se rejouent pas, la valeur se règle à la main.
+ */
+function rubriqueDeLEntete(resultat) {
+  if (resultat.champsDeLEnteteIgnores.length === 0) return [];
+  return [
+    "## En-tête de la blueprint",
+    "",
+    `L'assembleur au commit ${resultat.commitCible} lit ces champs de l'en-tête, que l'assembleur de l'origine ne lisait pas et que celui noté au manifeste n'a pas. L'en-tête est figé à l'assemblage : l'ajouter à ${code("blueprint.md")} après coup ne change rien aux opérations suivantes, et l'outil n'y rejoue pas un en-tête modifié. La valeur se règle dans l'appli :`,
+    "",
+    ...resultat.champsDeLEnteteIgnores.map(
+      ({ champ, fichier, defaut }) => `- ${code(champ)} : défaut appliqué, ${defaut} ; à régler dans ${code(fichier)}.`
+    ),
     "",
   ];
 }
@@ -2612,6 +2792,7 @@ export function rapport(resultat) {
     ...(ajout ? [] : rubriqueDesJournaux(resultat)),
     ...(ajout ? [] : rubriqueDuSocle(resultat)),
     ...rubriqueDesVariables(resultat),
+    ...rubriqueDeLEntete(resultat),
     ...rubriqueDeLaConfidentialite(resultat),
     ...rubriqueDuRegistre(resultat),
     ...rubriqueDesMigrations(resultat),
