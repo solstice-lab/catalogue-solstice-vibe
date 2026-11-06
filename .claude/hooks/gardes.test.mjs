@@ -152,13 +152,12 @@ assert.match(rap(dans("src", "app", "page.tsx"), appli)[1], /src\/app\/page\.tsx
 passe(rap(dans("src", "app", "coloc", "page.tsx"), appli));
 passe(rap(dans("ADAPTATIONS.md"), appli));
 passe(rap(path.join(os.tmpdir(), "ailleurs.ts"), appli));
-// Le catalogue n'a pas de manifeste : la garde n'y rappelle jamais rien.
-passe(
-  rap(
-    fileURLToPath(new URL("../../src/app/page.tsx", import.meta.url)),
-    fileURLToPath(new URL("../..", import.meta.url))
-  )
-);
+// Un dépôt sans manifeste (le catalogue) : la garde n'y rappelle jamais rien.
+// Sur un dossier temporaire, pas sur la racine de ce dépôt : dans une appli
+// assemblée, cette racine a un manifeste, et le cas faisait échouer la CI dès le
+// premier commit (appli assemblée à la recette du catalogue, le 2026-11-06).
+const sansManifeste = fs.mkdtempSync(path.join(os.tmpdir(), "gardes-catalogue-"));
+passe(rap(path.join(sansManifeste, "src", "app", "page.tsx"), sansManifeste));
 // Un manifeste illisible ou d'une forme inattendue ne bloque rien et ne dit rien :
 // JSON cassé, octets qui ne sont pas de l'UTF-8, marque d'ordre en tête, autre
 // chose qu'un objet, liste de fichiers absente ou d'un autre type.
@@ -299,6 +298,7 @@ assert.equal(casseHook.stderr, "");
 
 fs.rmSync(appli, { recursive: true, force: true });
 fs.rmSync(illisibleAppli, { recursive: true, force: true });
+fs.rmSync(sansManifeste, { recursive: true, force: true });
 
 const refus = lancer({ tool_name: "Bash", tool_input: { command: "gh pr merge 42" } });
 assert.equal(refus.status, 0);
