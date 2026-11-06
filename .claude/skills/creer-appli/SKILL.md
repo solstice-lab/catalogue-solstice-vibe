@@ -799,8 +799,11 @@ catalogue, sur une copie locale de l'appli à son `origin/main` à jour :
 node outils/adaptations.mjs "<chemin absolu de l'appli>"
 ```
 
-Lecture seule, sans réseau : les fichiers du catalogue retouchés ou supprimés, chacun avec
-son diff et sa note, ou « sans note » (`--json` pour un autre outil). D'après la liste :
+Lecture seule, sans réseau hors `--rejouer` : les fichiers du catalogue retouchés ou supprimés, chacun avec
+son diff et sa note, ou « sans note » (`--json` pour un autre outil). Un diff dit « approché »
+(un fichier qu'une mise à jour a fusionné) devient exact avec `--rejouer`, qui rejoue
+l'assemblage noté au manifeste : un worktree temporaire du catalogue, Prettier, et le réseau
+pour un `npm ci` si le Prettier de ce commit n'est pas celui du catalogue. D'après la liste :
 
 1. **Une adaptation sans note** se note d'abord dans l'appli, avec la personne qui l'a faite :
    c'est la note qui dit « défaut du catalogue » ou « propre à l'appli », pas l'outil.

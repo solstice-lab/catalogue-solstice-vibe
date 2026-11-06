@@ -467,7 +467,7 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   conception
   (`mise-a-jour.md`), l'outil des adaptations (`adaptations.mjs`, en lecture seule : les
   fichiers venus du catalogue qu'une appli a retouchés, avec leur diff et leur note) et la
-  lecture du manifeste qu'il partage (`manifeste.mjs`), propres au catalogue : une appli
+  lecture du manifeste que `mettre-a-jour.mjs` et `adaptations.mjs` partagent (`manifeste.mjs`), propres au catalogue : une appli
   assemblée ne les reçoit pas.
 - `scripts/` — squelette des imports et correctifs de données : dry-run par
   défaut, `--confirmer` à la main ; `bases-locales.ts`, qui crée les bases locales (voir
