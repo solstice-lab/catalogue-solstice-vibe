@@ -43,9 +43,12 @@ brancher** sur ce module.
   étape 2). On peut y ajouter `mails` et `deploiement`, qui ne lisent pas la base. Un
   formulaire de contact (`contact`, avec `mails`) garde la base : le site reste sans
   connexion, mais n'est plus sans base.
-- **L'accueil** de toute appli assemblée est une carte « Page d'accueil à écrire »
-  (`src/app/page.tsx`) : le premier écran se décide avec le client, l'assembleur n'en
-  invente pas.
+- **L'accueil** de toute appli assemblée est un accueil de départ (`src/app/page.tsx`,
+  `src/lib/accueil.tsx`) : le `nom_affiche` et la `description` de l'en-tête, et un appel à
+  l'action (avec `espaces`, « Créer ou rejoindre » ou l'espace de la personne ; sinon le
+  premier onglet du menu ; un site sans onglet n'a que le nom et la description). Sans
+  `nom_affiche`, il redit « Page d'accueil à écrire ». L'accueil métier (« Cette semaine »)
+  se décide avec le client et se remplace par ticket : l'assembleur n'en invente pas.
 - Une entité du client (ce qu'il suit : contrats, équipements, demandes, autre chose)
   **ne s'obtient pas par l'assembleur**. Elle se construit après coup, par tickets, en
   copiant le patron `dossiers` ; la blueprint la décrit comme l'appli l'aura, avec son
@@ -72,7 +75,7 @@ les appelle pas.
 | `journal` | Le journal d'audit : qui a créé, modifié ou supprimé quoi, et quand, écrit dans la transaction de l'écriture, sans valeur de champ ; écran `/journal` et historique de fiche réservés à `journal.consulter` (l'admin). Branchée sur le patron `dossiers` et, avec `gestion-comptes`, sur les gestes de `/comptes` ; le module métier de l'appli s'y branche au besoin (README, « La brancher »). Exige `comptes` (donc `mails`). Conservation 12 mois, purge par la brique RGPD | `journal.ts`, `evenements.ts`, `TableauJournal.tsx`, `HistoriqueFiche.tsx`, `confidentialite.ts`, `donnees-personnelles.ts` |
 | `comptes` | La session en base, tout protégé par défaut (seules `/connexion`, `/sante`, `/mentions-legales`, `/confidentialite` et les adresses des robots sont ouvertes), la page `/connexion`, et les droits (`exiger`, `peut`, `visiblePour`) déclarés dans `src/config/acces.ts`. Qui entre se déclare dans `src/config/comptes.ts`. Méthodes : le code à 6 chiffres envoyé par e-mail (par défaut), le lien envoyé par e-mail (appli grand public seulement), Google (à ajouter à `METHODES` une fois l'application OAuth du client créée), Microsoft Entra ID (une fois l'application enregistrée dans le portail Azure ; un seul annuaire, celui du client, par défaut) et la démo, **refusée en production**. Exige `mails` ; fait garder `rgpd` d'office ; garde la base et la couche données du patron `dossiers` : c'est le départ de toute appli qui garde des données | `roles.ts`, `entree.ts`, `session.ts`, `retour.ts`, `protection.ts`, `code-email.ts`, `lien-email.ts`, `google.ts`, `microsoft.ts`, `parcours.ts`, `administration.ts`, `confidentialite.ts`, `donnees-personnelles.ts` |
 | `gestion-comptes` | Le niveau 3 des droits : l'écran `/comptes`, où un admin invite une adresse, change un rôle, désactive ou réactive un compte et ouvre l'accès à un domaine, sans toucher à la configuration. À prendre quand le client gère lui-même ses utilisateurs ; sinon, les niveaux 1 et 2 (`src/config/acces.ts`, `src/config/comptes.ts`) suffisent. Exige `comptes` ; arrive branchée. Avec un seul rôle dans `ROLES`, toute personne connectée administre les comptes : la blueprint le dit | `EcranComptes.tsx`, `domaine.ts` |
-| `espaces` | Des groupes de personnes (une coloc, une association, un club) : créer ou rejoindre un espace par un code, un lien ou une invitation par e-mail (plafonnée par espace et pour l'appli), rôles « gestionnaire » et « membre » renommables, dernier gestionnaire protégé, écrans « Créer ou rejoindre » et « Mon espace ». Surtout l'**isolation** : chaque module métier rattaché à un espace (colonne `espace_id`) lit et écrit par `exigerMonEspace()`, et un test-verrou refuse celui qui lirait sans lui. Un ou plusieurs espaces par compte et le vocabulaire se règlent dans `src/config/espaces.ts`. Exige `comptes` et `mails` ; arrive branchée, et le module métier s'y rattache (README, « La brancher »). Un module qui garde des données par membre (ordre de passage, demandes en attente) est prévenu de tout départ (parti, retiré, compte désactivé ou effacé) dans la transaction du geste, par un effet qu'il déclare dans `src/config/effets-espaces.ts`, plutôt que par un traitement à la lecture. L'invitation ne crée pas de compte : avec une entrée fermée, la blueprint dit comment l'adresse invitée est admise | `acces.ts`, `espaces.ts`, `invitations.ts`, `code.ts`, `reglages.ts`, `domaine.ts`, `EcranCreerOuRejoindre.tsx`, `EcranMonEspace.tsx`, `effets-comptes.ts`, `departs.ts`, `donnees-personnelles.ts`, `confidentialite.ts` |
+| `espaces` | Des groupes de personnes (une coloc, une association, un club) : créer ou rejoindre un espace par un code, un lien ou une invitation par e-mail (plafonnée par espace et pour l'appli), rôles « gestionnaire » et « membre » renommables, dernier gestionnaire protégé, écrans « Créer ou rejoindre » et « Mon espace ». Surtout l'**isolation** : chaque module métier rattaché à un espace (colonne `espace_id`) lit et écrit par `exigerMonEspace()`, et un test-verrou refuse celui qui lirait sans lui. Un ou plusieurs espaces par compte et le vocabulaire se règlent dans `src/config/espaces.ts`. Exige `comptes` et `mails` ; arrive branchée, et le module métier s'y rattache (README, « La brancher »). Un module qui garde des données par membre (ordre de passage, demandes en attente) est prévenu de tout départ (parti, retiré, compte désactivé ou effacé) dans la transaction du geste, par un effet qu'il déclare dans `src/config/effets-espaces.ts`, plutôt que par un traitement à la lecture. L'invitation ne crée pas de compte : avec une entrée fermée, la blueprint dit comment l'adresse invitée est admise | `acces.ts`, `accueil.ts`, `espaces.ts`, `invitations.ts`, `code.ts`, `reglages.ts`, `domaine.ts`, `EcranCreerOuRejoindre.tsx`, `EcranMonEspace.tsx`, `effets-comptes.ts`, `departs.ts`, `donnees-personnelles.ts`, `confidentialite.ts` |
 
 - Une brique peut en **exiger une autre** (`exige` dans `outils/modules.mjs`) : la
   nommer aussi dans `--briques`, l'assembleur refuse sinon. Seule exception, `entraine` :
@@ -97,8 +100,8 @@ les appelle pas.
 
 Toute appli assemblée garde : le kit `src/ui/` avec son thème de repli (la charte Solstice
 Lab) et la signature Solstice Lab du pied de page (obligatoire pour une livraison Solstice
-Lab, retirable par ticket sinon : `SKILL.md`, étape 1), l'accueil « Page
-d'accueil à écrire » (à remplacer par les premiers écrans réels, voir `CLAUDE.md` et la skill
+Lab, retirable par ticket sinon : `SKILL.md`, étape 1), l'accueil de
+départ, rempli depuis l'en-tête (à remplacer par les premiers écrans réels, voir `CLAUDE.md` et la skill
 `solstice-ui`), la page
 `/mentions-legales` et sa configuration `src/lib/mentions-legales.ts` (vide, statut « professionnel » d'office, à remplir), la
 page `/confidentialite` et sa configuration `src/lib/confidentialite.ts` (les traitements des

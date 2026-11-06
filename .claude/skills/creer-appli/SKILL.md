@@ -232,8 +232,8 @@ Règles de l'assembleur :
   d'office avec `comptes`, et il le dit.
 - `comptes` (avec `mails`) donne la base, les droits et la couche données du patron `dossiers`
   (ses écrans restent au catalogue) : c'est le départ de toute appli qui garde des données, dont le module métier
-  copiera `dossiers`. L'accueil de toute appli assemblée est une carte « Page d'accueil à
-  écrire » (`src/app/page.tsx`).
+  copiera `dossiers`. L'accueil de toute appli assemblée est un accueil de départ
+  (`src/app/page.tsx`) : nom, description et lien d'entrée lus de la blueprint.
 - **`rgpd` vient d'office avec `comptes`** (l'export et l'effacement des données d'une
   personne) : une appli qui a des comptes doit pouvoir répondre à une demande d'accès ou
   d'effacement. L'assembleur l'ajoute (`entraine` dans `outils/modules.mjs`) et le dit ; la
@@ -668,7 +668,8 @@ affiché, la description et le choix public ou fermé de `src/lib/referencement.
 écrits que s'ils sont dans l'en-tête de la blueprint : sinon `NOM_APP` garde sa valeur de
 remplacement et les titres disent « À compléter », site fermé aux moteurs ; les pages
 publiques du sitemap restent à ajouter dans tous les cas.
-L'accueil est une carte « Page d'accueil à écrire », et l'appli n'a aucun écran métier ni
+L'accueil est un accueil de départ, qui reprend ce nom et cette description (sans nom
+affiché, il redit « Page d'accueil à écrire »), et l'appli n'a aucun écran métier ni
 script de données : son module métier se construit par tickets, en copiant le patron
 `dossiers`, et les briques « à brancher » s'y branchent ensuite. Pour un site vitrine, écrire
 l'accueil et les pages vient juste après la vérification des valeurs écrites, les réglages, les mentions légales,

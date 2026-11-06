@@ -352,7 +352,7 @@ catalogue qui a des modifications non commitées, sauf avec
   node outils/assembler.mjs ../mon-portail --blueprint ../mon-portail-blueprint.md --briques espaces
   ```
 - `comptes` (avec `mails`) donne la base, la couche données du patron `dossiers`
-  et les droits, avec un accueil à écrire ; `contact` (avec `mails`) donne
+  et les droits, avec un accueil de départ (nom, description, lien d'entrée) ; `contact` (avec `mails`) donne
   la base pour la limite d'envois, sans connexion ; aucune brique ne livre les
   écrans du patron `dossiers` ; `rgpd` vient
   d'office avec `comptes`, `journal`, `gestion-comptes` et `espaces` s'y ajoutent. Une

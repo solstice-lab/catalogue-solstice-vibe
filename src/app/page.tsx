@@ -1,22 +1,24 @@
-import { AppLayout, Carte, EtatVide } from "@/ui";
-import { NAVIGATION, NOM_APP } from "@/lib/navigation";
+import { AccueilDeDepart } from "@/lib/accueil";
+import { NAVIGATION } from "@/lib/navigation";
 import { metadonneesDePage } from "@/lib/referencement";
+import { entreeDeLEspace } from "@/briques/espaces/accueil";
+
+// Brique espaces : l'espace de la personne se lit en base à chaque requête.
+export const dynamic = "force-dynamic";
+// Fin de la brique espaces.
 
 // Le nom du site seul pour titre (src/lib/referencement.ts).
 export function generateMetadata() {
   return metadonneesDePage({ chemin: "/" });
 }
 
-// L'accueil d'une appli dont le module métier reste à écrire : son contenu
-// prend la place de cette carte. Elle dit qu'il manque, plutôt qu'une page blanche qui
-// ressemblerait à une panne. Pour un site vitrine, la page se construit avec
-// PageVitrine, SectionVitrine et AppelAction (skill solstice-ui).
-export default function PageAccueil() {
-  return (
-    <AppLayout nom={NOM_APP} sousTitre="Accueil" navigation={NAVIGATION}>
-      <Carte titre="Accueil">
-        <EtatVide titre="Page d'accueil à écrire" description="Le contenu de cette page n'est pas encore écrit." />
-      </Carte>
-    </AppLayout>
-  );
+// L'accueil de départ : le nom, la description et l'entrée de l'appli, lus de
+// la blueprint (src/lib/accueil.tsx). Une appli le remplace par son accueil
+// métier, qui prend la place de cette page ; pour un site vitrine, la page se
+// construit avec PageVitrine, SectionVitrine et AppelAction (skill solstice-ui).
+export default async function PageAccueil() {
+  // Brique espaces : l'entrée de l'appli est son espace, ou le moyen d'en créer un.
+  const entree = await entreeDeLEspace();
+  // Fin de la brique espaces.
+  return <AccueilDeDepart navigation={NAVIGATION} entree={entree} />;
 }

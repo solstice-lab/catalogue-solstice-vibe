@@ -25,7 +25,8 @@ const APP = path.resolve(__dirname, "../src/app");
 // justifie ici, à la relecture ; une entrée dont le fichier a disparu fait
 // échouer le test, pour que la liste ne garde pas d'ouverture fantôme.
 const OUVERTS: Record<string, string> = {
-  "page.tsx": "l'accueil : une carte « à écrire », sans donnée de la base",
+  "page.tsx":
+    "l'accueil de départ : nom, description et lien d'entrée, sans donnée de la base (avec espaces, le lien dépend seulement de l'adhésion de la personne)",
   "kit/page.tsx": "la vitrine du kit, sur des données fictives",
   "kit/site-vitrine/page.tsx": "les composants de site vitrine du kit, sur un texte fictif",
   "mentions-legales/page.tsx": "obligation légale, lisible sans connexion",

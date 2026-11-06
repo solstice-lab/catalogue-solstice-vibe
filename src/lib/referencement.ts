@@ -62,7 +62,7 @@ export const REFERENCEMENT: Referencement = {
 const NOM_NON_RENSEIGNE = "NOM_APP";
 
 const renseigne = (texte: string) => texte.trim() !== "";
-const nomRenseigne = (config: Referencement) => renseigne(config.nom) && config.nom.trim() !== NOM_NON_RENSEIGNE;
+export const nomRenseigne = (config: Referencement) => renseigne(config.nom) && config.nom.trim() !== NOM_NON_RENSEIGNE;
 
 /**
  * L'adresse publique du site (variable URL_PUBLIQUE), ou null si elle est
