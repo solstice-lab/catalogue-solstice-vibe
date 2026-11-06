@@ -1333,23 +1333,135 @@ function variablesNouvelles(origine, cible) {
 }
 
 /*
- * Les traitements de la politique de confidentialité, dans les
- * src/briques/<brique>/confidentialite.ts de l'appli : ceux qui arrivent (une
- * clé neuve) et les fichiers dont le texte change.
+ * Ce que la politique de confidentialité demande à l'appli, dans les
+ * src/briques/<brique>/confidentialite.ts : des traitements (leurs choix : base
+ * légale, durée, destinataires, dans CONFIDENTIALITE.choix), des durées de
+ * conservation (que la brique propose et que le projet surcharge dans
+ * CONFIDENTIALITE.durees) et des sous-traitants (dont le projet écrit le lieu
+ * dans CONFIDENTIALITE.lieux). Trois choses distinctes, que la FORME de
+ * l'entrée sépare : « cle » suivie de « titre » est un traitement, de
+ * « donnee » une durée, de « nom » un sous-traitant. Le cas d'origine
+ * (2026-11-05, report de l'appli d'essai tours-de-coloc) : toute clé « cle: »
+ * neuve était prise pour un traitement, et sept des neuf à remplir dans les
+ * choix étaient six durées et un sous-traitant. Une entrée qu'aucune de ces
+ * formes ne reconnaît (autre ordre des champs, clé calculée) n'est jamais
+ * ignorée en silence : le rapport la dit « à vérifier à la main » (un repérage
+ * qui se tait ferait oublier un traitement, pire qu'un repérage qui en cite un
+ * de trop).
+ *
+ * N'est dit que ce qui demande quelque chose à CETTE appli : une entrée qu'une
+ * méthode de connexion absente de METHODES conditionne n'est pas lue
+ * (la page ne l'affiche pas), un lieu que le code établit (LIEUX_*) ou que
+ * l'appli a déjà rempli n'est pas à remplir.
  */
-function traitementsChanges(origine, cible) {
-  const cles = (contenu) =>
-    new Set([...texteDe(contenu).matchAll(/^[ \t]+cle: "([^"]+)",$/gm)].map((trouve) => trouve[1]));
-  const ajoutes = [];
-  const changes = [];
+const CLE_DE_CONFIDENTIALITE = /\bcle\s*:\s*(?:"([^"\n]*)"|'([^'\n]*)')?/g;
+const CHAMP_APRES_LA_CLE = /^\s*,(?:\s*\/\/[^\n]*|\s*\/\*[\s\S]*?\*\/)*\s*["']?(titre|donnee|nom)["']?\s*:/;
+const GENRES_DE_CONFIDENTIALITE = { titre: "traitement", donnee: "duree", nom: "lieu" };
+const CONFIDENTIALITE_DE_L_APPLI = "src/lib/confidentialite.ts";
+const CONFIG_DES_COMPTES = "src/config/comptes.ts";
+const UNITES_DE_DUREE = { heures: ["heure", "heures"], jours: ["jour", "jours"], mois: ["mois", "mois"] };
+const libelleDeDuree = (nombre, unite) => `${nombre} ${UNITES_DE_DUREE[unite][nombre === "1" ? 0 : 1]}`;
+
+// Les clés d'un objet littéral « { cle: "valeur", "autre-cle": "valeur" } », avec leur valeur.
+const pairesDe = (corps) =>
+  [...corps.matchAll(/(?:^|[\s,{])(?:([A-Za-z_]\w*)|["']([^"']+)["'])\s*:\s*["']([^"']*)["']/g)].map((trouve) => [
+    trouve[1] ?? trouve[2],
+    trouve[3],
+  ]);
+
+// Les méthodes que l'appli propose, ou undefined si METHODES ne se lit pas : rien n'est alors écarté.
+function methodesDeLAppli(appli, cible) {
+  const corps = /export const METHODES[^=]*=\s*\[([^\]]*)\]/.exec(
+    texteDe(appli.get(CONFIG_DES_COMPTES) ?? cible.get(CONFIG_DES_COMPTES))
+  )?.[1];
+  return corps === undefined ? undefined : [...corps.matchAll(/["']([^"']+)["']/g)].map((trouve) => trouve[1]);
+}
+
+// Les méthodes dont dépend chaque déclaration : « includes("google") ? [CONNEXION_GOOGLE] » conditionne CONNEXION_GOOGLE.
+function conditionsDesMethodes(texte) {
+  const conditions = new Map();
+  for (const trouve of texte.matchAll(/includes\(\s*["']([^"']+)["']\s*\)\s*\?\s*\[/g)) {
+    const debut = trouve.index + trouve[0].length;
+    let fin = debut;
+    for (let profondeur = 1; fin < texte.length && profondeur > 0; fin++) {
+      if (texte[fin] === "[") profondeur++;
+      if (texte[fin] === "]") profondeur--;
+    }
+    for (const [nom] of texte.slice(debut, fin).matchAll(/\b[A-Za-z_]\w*\b/g)) {
+      conditions.set(nom, [...(conditions.get(nom) ?? []), trouve[1]]);
+    }
+  }
+  return conditions;
+}
+
+// Les lieux que le code établit (« export const LIEUX_X = { cle: "lieu" } ») : à ne pas redemander.
+function lieuxDuCode(texte) {
+  return new Set(
+    [...texte.matchAll(/export const LIEUX_\w+[^=]*=\s*\{([^}]*)\}/g)].flatMap((trouve) =>
+      pairesDe(trouve[1]).map(([cle]) => cle)
+    )
+  );
+}
+
+// Les entrées d'un confidentialite.ts, dans l'ordre du fichier ; `visible` : aucune méthode absente ne la conditionne.
+function entreesDeConfidentialite(contenu, methodes) {
+  const texte = texteDe(contenu);
+  const conditions = conditionsDesMethodes(texte);
+  const trouvees = [...texte.matchAll(CLE_DE_CONFIDENTIALITE)].filter(
+    // Un « cle: » cité dans un commentaire n'est pas une entrée.
+    (trouve) => !/\/\/|\*/.test(texte.slice(texte.lastIndexOf("\n", trouve.index) + 1, trouve.index))
+  );
+  return trouvees.map((trouve, i) => {
+    const champ = CHAMP_APRES_LA_CLE.exec(texte.slice(trouve.index + trouve[0].length))?.[1];
+    const genre = champ === undefined ? "a-verifier" : GENRES_DE_CONFIDENTIALITE[champ];
+    const declarations = [...texte.slice(0, trouve.index).matchAll(/^(?:export\s+)?(?:const|function)\s+(\w+)/gm)];
+    const requises = conditions.get(declarations.at(-1)?.[1]) ?? [];
+    const corps = texte.slice(trouve.index, trouvees[i + 1]?.index ?? texte.length);
+    const duree = /\bduree\s*:\s*\{\s*(heures|jours|mois)\s*:\s*(\d+)\s*\}/.exec(corps);
+    return {
+      genre,
+      // Une clé qui n'est pas un texte (calculée) se cite telle qu'écrite.
+      cle: trouve[1] ?? trouve[2] ?? texte.slice(trouve.index, texte.indexOf("\n", trouve.index)).trim().slice(0, 60),
+      visible: methodes === undefined || requises.every((methode) => methodes.includes(methode)),
+      duree: genre === "duree" && duree ? libelleDeDuree(duree[2], duree[1]) : undefined,
+    };
+  });
+}
+
+function traitementsChanges(origine, cible, appli) {
+  const methodes = methodesDeLAppli(appli, cible);
+  const lieuxRemplis = new Set(
+    pairesDe(/\blieux: \{([^}]*)\}/.exec(texteDe(appli.get(CONFIDENTIALITE_DE_L_APPLI)))?.[1] ?? "")
+      .filter(([, lieu]) => lieu.trim() !== "")
+      .map(([cle]) => cle)
+  );
+  const resultat = { ajoutes: [], durees: [], lieux: [], aVerifier: [], changes: [] };
+  const rubriques = {
+    traitement: resultat.ajoutes,
+    duree: resultat.durees,
+    lieu: resultat.lieux,
+    "a-verifier": resultat.aVerifier,
+  };
+  const vus = new Set();
   for (const chemin of [...new Set([...origine.keys(), ...cible.keys()])].sort()) {
     if (!/^src\/briques\/[^/]+\/confidentialite\.ts$/.test(chemin) || !cible.has(chemin)) continue;
     if (egaux(origine.get(chemin), cible.get(chemin))) continue;
-    const avant = cles(origine.get(chemin));
-    for (const cle of cles(cible.get(chemin))) if (!avant.has(cle)) ajoutes.push({ cle, chemin });
-    changes.push(chemin);
+    // Un fichier absent de l'origine arrive entier : il est ajouté, il n'a pas « changé ».
+    if (origine.has(chemin)) resultat.changes.push(chemin);
+    const avant = new Set(
+      entreesDeConfidentialite(origine.get(chemin), undefined).map(({ genre, cle }) => `${genre} ${cle}`)
+    );
+    const connus = lieuxDuCode(texteDe(cible.get(chemin)));
+    // Une clé déclarée deux fois (la conservation des codes, partagée par le code et le lien) compte si une des déclarations est lue.
+    for (const entree of entreesDeConfidentialite(cible.get(chemin), methodes)) {
+      const identifiant = `${entree.genre} ${entree.cle}`;
+      if (!entree.visible || avant.has(identifiant) || vus.has(identifiant)) continue;
+      if (entree.genre === "lieu" && (connus.has(entree.cle) || lieuxRemplis.has(entree.cle))) continue;
+      vus.add(identifiant);
+      rubriques[entree.genre].push({ cle: entree.cle, chemin, ...(entree.duree ? { duree: entree.duree } : {}) });
+    }
   }
-  return { ajoutes, changes };
+  return resultat;
 }
 
 // Les dossiers qui mènent à un chemin, du plus haut au plus bas : « a/b/c » donne a, a/b.
@@ -1922,7 +2034,7 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
       },
       ...briquesABrancher(cible, ajoutees),
       variables: variablesNouvelles(origine, cible),
-      traitements: traitementsChanges(origine, cible),
+      traitements: traitementsChanges(origine, cible, contenus),
       registre: !cible.has(REGISTRE)
         ? undefined
         : egaux(origine.get(REGISTRE), cible.get(REGISTRE))
@@ -2076,15 +2188,34 @@ function rubriqueDesVariables(resultat) {
 }
 
 function rubriqueDeLaConfidentialite(resultat) {
-  const { ajoutes, changes } = resultat.traitements;
+  const { ajoutes, durees, lieux, aVerifier, changes } = resultat.traitements;
   const lignes = ["## Confidentialité", ""];
-  if (ajoutes.length === 0 && changes.length === 0) {
+  if (ajoutes.length + durees.length + lieux.length + aVerifier.length + changes.length === 0) {
     return [...lignes, "Aucun traitement ajouté ni changé : la politique publiée ne change pas.", ""];
   }
+  const citees = (entrees, detail) =>
+    entrees.map((entree) => `${code(entree.cle)} (${detail(entree)}${code(entree.chemin)})`).join(", ");
   if (ajoutes.length > 0) {
     lignes.push(
-      `- Traitements ajoutés, choix (base légale, durée, destinataires) à faire valider par le client puis à remplir dans ${code("CONFIDENTIALITE.choix")} : ${ajoutes.map(({ cle, chemin }) => `${code(cle)} (${code(chemin)})`).join(", ")}. L'outil n'en remplit aucun.`,
+      `- Traitements ajoutés, choix (base légale, durée, destinataires) à faire valider par le client puis à remplir dans ${code("CONFIDENTIALITE.choix")} : ${citees(ajoutes, () => "")}. L'outil n'en remplit aucun.`,
       "- Le registre des traitements du client, hors du code, est à tenir par lui : il reçoit ces traitements."
+    );
+  }
+  if (durees.length > 0) {
+    // Une durée n'est pas un traitement : elle n'a pas de ligne dans les choix.
+    lignes.push(
+      `- Durées de conservation nouvelles, proposées par la brique, à faire valider par le client (${code("dureesRevues")}) et à surcharger dans ${code("CONFIDENTIALITE.durees")} seulement si elle diffère, sous la clé de la durée : ${citees(durees, ({ duree }) => `${duree}, `)}.`
+    );
+  }
+  if (lieux.length > 0) {
+    // Un sous-traitant n'est pas un traitement non plus : son lieu se remplit à part.
+    lignes.push(
+      `- Sous-traitants nouveaux, lieu de traitement (garanties du transfert si hors de l'Union européenne) à faire valider par le client puis à remplir dans ${code("CONFIDENTIALITE.lieux")}, sous la clé du sous-traitant : ${citees(lieux, () => "")}.`
+    );
+  }
+  if (aVerifier.length > 0) {
+    lignes.push(
+      `- À vérifier à la main, entrées nouvelles dont la forme n'est pas reconnue (traitement, durée ou sous-traitant ?) : ${citees(aVerifier, () => "")}.`
     );
   }
   if (changes.length > 0) {
@@ -2400,7 +2531,7 @@ function rubriqueDeLaSuite(resultat) {
       ? "fusionner la PR, en sachant qu'elle rejoue les étapes ajoutées en production"
       : "fusionner la PR",
     ...(resultat.variables.length > 0 ? ["déclarer les variables nouvelles chez l'hébergeur"] : []),
-    ...(resultat.traitements.ajoutes.length + resultat.traitements.changes.length > 0
+    ...(Object.values(resultat.traitements).some((liste) => liste.length > 0)
       ? ["faire valider par le client les choix de confidentialité"]
       : []),
     ...(resultat.tokens
