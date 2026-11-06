@@ -1,4 +1,4 @@
-export { AppLayout, type LienNavigation } from "./AppLayout";
+export { AppLayout, liensVisibles, type LienNavigation } from "./AppLayout";
 export { AppelAction } from "./AppelAction";
 export { Badge } from "./Badge";
 export { Bouton } from "./Bouton";

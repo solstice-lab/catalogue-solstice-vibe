@@ -333,6 +333,14 @@ export const BRIQUES = {
         "tests/gardes-acces.test.ts",
         '"contact/page.tsx": "le formulaire de contact public, protégé par ses filtres anti-spam (brique contact)",'
       ),
+      // Le commentaire de la navigation citait /contact et sa page : sans la
+      // brique, il renvoyait à un fichier absent (relevé le 2026-11-05 sur
+      // l'essai tours-de-coloc). Il reste l'accueil.
+      remplace(
+        "src/lib/navigation.ts",
+        "seuls\n// /contact et l'accueil d'un site public puisent leurs liens ici, voir\n// src/app/contact/page.tsx et src/lib/accueil.tsx). Une",
+        "seul\n// l'accueil d'un site public puise ses liens ici, voir src/lib/accueil.tsx). Une"
+      ),
       // Ouverte sans session dans la brique comptes : sans elle, ces retraits
       // se sautent (leurs fichiers sont partis avec comptes).
       ligne("src/briques/comptes/protection.ts", "  // Brique contact : le formulaire public d'une vitrine."),
@@ -786,6 +794,7 @@ export const BRIQUES = {
       "src/config/effets-espaces.ts",
       "tests/aide-espaces.ts",
       "tests/espaces.test.ts",
+      "tests/espaces-accueil.test.ts",
       "tests/espaces-acces.test.ts",
       "tests/espaces-departs.test.ts",
       "tests/espaces-effets.test.ts",
@@ -814,6 +823,26 @@ export const BRIQUES = {
       ligne(
         "src/lib/navigation.ts",
         '{ libelle: majuscule(ESPACES.vocabulaire.mon), href: "/espace", visible: visiblePour("espaces.participer") },'
+      ),
+      // --- son entrée à l'accueil de départ : sans elle, le premier onglet que la
+      // personne peut ouvrir (src/lib/accueil.tsx). La page est un fichier de
+      // l'appli dès qu'elle l'écrit : l'assembleur ne la touche qu'à l'assemblage.
+      remplace(
+        "src/app/page.tsx",
+        'import { AccueilDeDepart } from "@/lib/accueil";',
+        'import { AccueilDeDepart, premiereEntree } from "@/lib/accueil";'
+      ),
+      ligne("src/app/page.tsx", 'import { entreeDeLEspace } from "@/briques/espaces/accueil";'),
+      bloc(
+        "src/app/page.tsx",
+        "// Brique espaces : l'espace de la personne se lit en base à chaque requête.",
+        "// Fin de la brique espaces."
+      ),
+      bloc(
+        "src/app/page.tsx",
+        "  // Brique espaces : l'entrée de l'appli est son espace, ou le moyen d'en créer un.",
+        "  // Fin de la brique espaces.",
+        "  const entree = await premiereEntree(NAVIGATION);"
       ),
       // --- son entrée du registre des effets de comptes
       ligne("src/config/effets-comptes.ts", 'import { EFFETS_ESPACES } from "@/briques/espaces/effets-comptes";'),

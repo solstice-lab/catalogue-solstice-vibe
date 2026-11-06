@@ -138,8 +138,8 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   (`src/lib/mentions-legales.ts` : seul le nom de l'hébergeur de Render est écrit), la
   politique de confidentialité (`src/lib/confidentialite.ts`) et les pages publiques du
   référencement (`src/lib/referencement.ts`),
-  thématiser, écrire l'accueil (une carte « Page d'accueil à écrire » dans toute appli
-  assemblée), écrire une entité ou un écran métier, retirer la signature Solstice Lab,
+  thématiser, écrire l'accueil métier (toute appli assemblée a un accueil de départ :
+  son nom, sa description et un lien d'entrée), écrire une entité ou un écran métier, retirer la signature Solstice Lab,
   écrire un script de données, écrire
   l'adaptateur d'un hébergeur autre que Render, déployer, créer une base,
   écrire des données, envoyer des mails, des comptes ou de l'authentification, mettre à jour une
@@ -159,7 +159,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   `VITRINE_DU_KIT` sont toujours retirés ; `/mentions-legales`
   et `/confidentialite`, toujours là, à remplir ; `/robots.txt`, `/sitemap.xml`,
   `/opengraph-image`, `/twitter-image`, remplis depuis `src/lib/referencement.ts` ; `/`,
-  la carte « Page d'accueil à écrire ») ; ou une page que l'appli écrira (l'accueil, les
+  l'accueil de départ : nom, description et lien d'entrée, lus de l'en-tête) ; ou une page que l'appli écrira (l'accueil métier, les
   écrans de chaque entité, les vues des briques à brancher, les pages d'un site vitrine),
   annoncée « à écrire » avec son ticket en section 9. Une page à écrire décrite comme
   livrée, ou une URL qui n'a aucune de ces origines : constat.

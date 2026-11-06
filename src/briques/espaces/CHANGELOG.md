@@ -66,3 +66,15 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : une durée de conservation qui n'est qu'un texte de la
   politique n'est tenue par rien ; déclarée par donnée, elle se purge et se
   vérifie.
+
+## 2026-11-06 · Entrée de l'accueil de départ · Ajout
+
+- **Ce qui change** : `accueil.ts` exporte `entreeDeLEspace()` (serveur
+  seulement) : `{ libelle, href }` vers l'espace de la personne (« Ma coloc »,
+  selon le vocabulaire) si elle en a un, vers « Créer ou rejoindre »
+  (`/espace/rejoindre`) sinon. L'assembleur l'appelle dans `src/app/page.tsx`.
+- **Appelant** : rien à changer. Une appli qui a remplacé son accueil peut
+  appeler `entreeDeLEspace()` pour son bouton d'entrée.
+- **Pourquoi** : l'essai tours-de-coloc montrait un onglet « Ma coloc » à côté
+  d'un accueil vide ; une personne sans coloc ne savait pas qu'il fallait
+  commencer par en créer une ou en rejoindre une.

@@ -12,8 +12,9 @@ import { ESPACES } from "@/config/espaces";
 //
 // La navigation vit en UN seul endroit : chaque écran d'outil la passe à
 // AppLayout, qui ne propose que les entrées dont le garde ouvre à la personne
-// courante (une page vitrine a ses propres liens, publics et sans garde ; seule
-// /contact d'un site public puise ses liens ici, voir src/app/contact/page.tsx). Une
+// courante (une page vitrine a ses propres liens, publics et sans garde ; seuls
+// /contact et l'accueil d'un site public puisent leurs liens ici, voir
+// src/app/contact/page.tsx et src/lib/accueil.tsx). Une
 // entrée masquée ne protège rien (voir briques/comptes/roles.ts) — retirer un lien n'est
 // jamais une mesure de sécurité, seulement de lisibilité. Toute entrée, hors
 // l'accueil, déclare son garde (tests/navigation.test.ts le verrouille).

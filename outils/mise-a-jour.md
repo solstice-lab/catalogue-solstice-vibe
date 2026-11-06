@@ -146,7 +146,7 @@ pas donnée pour sûre.
 selon les briques absentes : `migrations.ts`, `.env.example`, `render.yaml`,
 `src/lib/confidentialite.ts`, `src/config/donnees-personnelles.ts`, `src/config/acces.ts`,
 `src/config/effets-comptes.ts`,
-`src/lib/navigation.ts`, `src/proxy.ts`, `src/app/layout.tsx`, `src/app/globals.css`,
+`src/lib/navigation.ts`, `src/proxy.ts`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`,
 `src/lib/referencement.ts`, `vitest.config.ts`, `.github/workflows/ci.yml`,
 `package.json`, `CLAUDE.md` et plusieurs tests, entre autres. Le manifeste les marque de
 l'unité qui les possède, souvent `socle`, avec l'empreinte prise après les retraits et la

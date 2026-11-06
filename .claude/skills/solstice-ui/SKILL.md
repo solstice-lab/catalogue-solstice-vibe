@@ -54,13 +54,16 @@ Deux couches, à ne jamais mélanger :
 - Les deux squelettes posent le même pied de page (`PiedDePage`, interne au
   kit) : aucune page ne pose le sien.
 - À ce jour, les pages publiques livrées par le socle (`/mentions-legales`,
-  `/confidentialite`) et l'accueil d'une appli sans module métier restent sous
-  `AppLayout`. Dans un site vitrine, l'accueil se réécrit avec `PageVitrine` ;
-  les autres attendent leur propre passage. `/contact` (brique contact) choisit
+  `/confidentialite`) restent sous `AppLayout` ; les autres attendent leur propre
+  passage. L'accueil de départ (`src/lib/accueil.tsx`) choisit comme `/contact` :
+  `PageVitrine` sans la brique comptes, `AppLayout` avec (et sans nom renseigné,
+  son état vide reste sous `AppLayout`) ; l'accueil métier d'un site vitrine se
+  réécrit avec `PageVitrine`. `/contact` (brique contact) choisit
   seule : `PageVitrine` sans la brique comptes, `AppLayout` avec (README de la
-  brique, « Le squelette de la page »). C'est l'exception à « `PageVitrine`
-  pour ses pages publiques » ci-dessus : une appli avec comptes garde `AppLayout`
-  pour `/contact`, même si elle a d'autres pages publiques sous `PageVitrine`.
+  brique, « Le squelette de la page »). Pour `/contact` et l'accueil de départ,
+  c'est l'exception à « `PageVitrine` pour ses pages publiques » ci-dessus : une
+  appli avec comptes garde `AppLayout` pour `/contact`, même si elle a d'autres
+  pages publiques sous `PageVitrine`.
 - Démonstration : `/kit/site-vitrine`, liée depuis `/kit`.
 
 ## Règles de construction
