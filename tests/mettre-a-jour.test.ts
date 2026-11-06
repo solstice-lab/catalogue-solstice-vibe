@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { assembler } from "../outils/assembler.mjs";
 import {
   briquesEcarteesParLaFiche,
+  champsDeLEnteteLus,
   ErreurMiseAJour,
   examiner,
   lireLesEtapes,
@@ -1208,6 +1209,204 @@ export const AUTRES_MAILS_ESSAI = [{ cle: "sous-traitant-bizarre", role: "Essai.
       }
     }
   );
+
+  /*
+   * Ce que le rapport demande de déclarer chez l'hébergeur : seulement ce que
+   * l'appli utilise. Essai de tours-de-coloc : il demandait MICROSOFT_* alors que
+   * METHODES ne propose pas Microsoft, et NOTIFICATIONS_SECRET pour une brique
+   * pas encore branchée ; le « si l'appli en a besoin » laissait la vérification
+   * au lecteur.
+   */
+  describe("variables d'environnement : celles des méthodes proposées et des briques branchées", () => {
+    const AVEC_MICROSOFT = remplacer(
+      'METHODES: readonly MethodeDeConnexion[] = ["code-email", "demo"];',
+      'METHODES: readonly MethodeDeConnexion[] = ["code-email", "microsoft", "demo"];'
+    );
+    // Dans la section de la brique comptes, comme celles du catalogue ; hors section pour la troisième.
+    const variablesEnPlus = () => {
+      ecrire(
+        catalogue,
+        ".env.example",
+        remplacer("# Fin de la brique comptes.", "MICROSOFT_ESSAI=\n# Fin de la brique comptes.")
+      );
+      ecrire(
+        catalogue,
+        ".env.example",
+        remplacer("# Fin de la brique mails.", "MAILS_ESSAI=\n# Fin de la brique mails.")
+      );
+      ecrire(catalogue, ".env.example", (t) => `${t}\n# Hors de toute brique.\nESSAI_HORS_BRIQUE=\n`);
+    };
+    // Le mails de l'appli est noté à brancher dans son en-tête, comme le fait la session de l'appli.
+    const MAILS_A_BRANCHER = (t: string) =>
+      t.replace(/\n---\n/, "\nbriques:\n  - brique: mails\n    entite: aucune\n    branchement: à brancher\n---\n");
+
+    it(
+      "ne demande les variables d'une méthode que si METHODES la propose : MICROSOFT_* absentes sans microsoft, présentes avec",
+      { timeout: 3 * REJEU },
+      () => {
+        const sans = appliRetouchee(() => {});
+        publier(sans);
+        const avec = appliRetouchee((d) => ecrire(d, "src/config/comptes.ts", AVEC_MICROSOFT));
+        publier(avec);
+        avecUnCommitDuCatalogue("Comptes : essai de variables par méthode", variablesEnPlus, (vers) => {
+          const dites = rubriqueDe(
+            rapport(mettreAJour({ catalogue, appli: sans, vers, aBlanc: true })),
+            "Variables d'environnement"
+          );
+          expect(dites).not.toMatch(/^- `MICROSOFT_ESSAI` /m);
+          expect(dites).toMatch(/microsoft[^\n]*absente de `METHODES`[^\n]*`MICROSOFT_ESSAI`/);
+          expect(dites).toContain("`src/config/comptes.ts`");
+          // Ce qui n'est lié à aucune méthode ni brique se demande toujours.
+          expect(dites).toContain("`ESSAI_HORS_BRIQUE`");
+          rienNEstTouche(sans, git(sans, "rev-parse", "HEAD"));
+
+          const demandees = rubriqueDe(
+            rapport(mettreAJour({ catalogue, appli: avec, vers, aBlanc: true })),
+            "Variables d'environnement"
+          );
+          expect(demandees).toMatch(/^- `MICROSOFT_ESSAI` /m);
+          expect(demandees).not.toContain("absente de `METHODES`");
+        });
+      }
+    );
+
+    it(
+      "dit, pour une brique à brancher, qu'il n'y a rien à déclarer avant son branchement, et garde les autres",
+      { timeout: 3 * REJEU },
+      () => {
+        const dossier = appliRetouchee((d) => ecrire(d, "blueprint.md", MAILS_A_BRANCHER));
+        publier(dossier);
+        avecUnCommitDuCatalogue("Mails : essai de variables d'une brique à brancher", variablesEnPlus, (vers) => {
+          const resultat = mettreAJour({ catalogue, appli: dossier, vers, aBlanc: true });
+          const dites = rubriqueDe(rapport(resultat), "Variables d'environnement") ?? "";
+          expect(dites).not.toMatch(/^- `MAILS_ESSAI` /m);
+          expect(dites).toMatch(
+            /`mails`[^\n]*à brancher[^\n]*rien à déclarer avant son branchement[^\n]*`MAILS_ESSAI`/
+          );
+          expect(dites).toMatch(/^- `ESSAI_HORS_BRIQUE` /m);
+          rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
+        });
+      }
+    );
+
+    it(
+      "dit d'une brique qui arrive à brancher (notifications) qu'il n'y a rien à déclarer avant son branchement",
+      { timeout: 3 * REJEU },
+      () => {
+        const dossier = appliRetouchee(() => {});
+        publier(dossier);
+        const texte = rapport(mettreAJour({ catalogue, appli: dossier, ajouter: ["notifications"], aBlanc: true }));
+        const dites = rubriqueDe(texte, "Variables d'environnement") ?? "";
+        expect(dites).not.toMatch(/^- `NOTIFICATIONS_SECRET` /m);
+        expect(dites).toMatch(/`notifications`[^\n]*à brancher[^\n]*rien à déclarer avant son branchement/);
+        expect(dites).toContain("`NOTIFICATIONS_SECRET`");
+      }
+    );
+  });
+
+  /*
+   * L'en-tête de la blueprint est figé au manifeste : une clé ajoutée à la blueprint
+   * après coup ne se rejoue pas. Essai de tours-de-coloc : personnes_par_reseau, née
+   * après l'assemblage de l'appli, ne se réglait que dans src/config/comptes.ts, et
+   * personne ne le disait.
+   */
+  describe("en-tête de la blueprint : un champ que l'assembleur visé lit et que l'en-tête rejoué n'a pas", () => {
+    it(
+      "nomme la clé, le défaut appliqué et le fichier où la valeur se règle ; une clé déjà dans l'en-tête n'y figure pas",
+      { timeout: 3 * REJEU },
+      () => {
+        // L'appli d'essai déclare entree et methodes, pas role_par_defaut ni personnes_par_reseau.
+        const dossier = appliRetouchee(() => {});
+        publier(dossier);
+        const resultat = mettreAJour({ catalogue, appli: dossier, ajouter: ["journal"], aBlanc: true });
+        const texte = rapport(resultat);
+        const rubrique = rubriqueDe(texte, "En-tête de la blueprint") ?? "";
+        expect(rubrique).toMatch(/`personnes_par_reseau`[^\n]*20[^\n]*`src\/config\/comptes\.ts`/);
+        expect(rubrique).toMatch(/`role_par_defaut`[^\n]*membre[^\n]*`src\/config\/acces\.ts`/);
+        expect(rubrique).not.toContain("`methodes`");
+        expect(rubrique).not.toContain("`entree`");
+        // Dit une fois pour toutes que l'en-tête ne se rejoue pas, sans promettre un rejeu.
+        expect(rubrique).toMatch(/figé/);
+        expect(texte.indexOf("## En-tête de la blueprint")).toBeGreaterThan(
+          texte.indexOf("## Variables d'environnement")
+        );
+        rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
+
+        // Les quatre champs au manifeste : rien à dire.
+        const complete = path.join(dossierTemporaire("appli-entete-"), "essai-entete");
+        assemblerAuCommitA({
+          sortie: complete,
+          briques: ["comptes", "mails"],
+          entete:
+            "appli: Essai d'en-tête\nentree: ouverte\nrole_par_defaut: membre\nmethodes: [code-email]\npersonnes_par_reseau: 50",
+        });
+        publier(complete);
+        const autre = rapport(mettreAJour({ catalogue, appli: complete, ajouter: ["journal"], aBlanc: true }));
+        expect(autre).not.toContain("## En-tête de la blueprint");
+      }
+    );
+
+    /*
+     * Test-verrou : l'outil lit CHAMPS_DE_L_ENTETE_LUS dans le texte de l'assembleur
+     * visé, faute que celui-ci l'exporte. Si la forme de la constante change, la lecture
+     * rendrait une liste vide, et le rapport se tairait sans rien dire. Ici, ce que la
+     * lecture donne est comparé à ce que l'assembleur note vraiment au manifeste.
+     */
+    it(
+      "lit dans le texte de l'assembleur les mêmes champs d'en-tête que celui-ci note au manifeste",
+      { timeout: 3 * REJEU },
+      () => {
+        const lus = champsDeLEnteteLus(fs.readFileSync(path.join(SOURCE, "outils/assembler.mjs"), "utf-8"));
+        expect(lus).toEqual(expect.arrayContaining(["entree", "role_par_defaut", "methodes", "personnes_par_reseau"]));
+        const valeurs: Record<string, string> = {
+          appli: "Essai de verrou",
+          nom_affiche: '"Essai de verrou"',
+          description: "Essai du verrou",
+          site: "public",
+          entree: "ouverte",
+          role_par_defaut: "membre",
+          methodes: "[code-email]",
+          personnes_par_reseau: "50",
+        };
+        // Un champ lu que l'essai ne sait pas remplir : le compléter ici, avec une valeur que l'assembleur accepte.
+        expect(Object.keys(valeurs).sort()).toEqual([...lus].sort());
+        const sortie = path.join(dossierTemporaire("appli-verrou-"), "essai-verrou");
+        assemblerAuCommitA({
+          sortie,
+          briques: ["comptes", "mails"],
+          entete: lus.map((champ) => `${champ}: ${valeurs[champ]}`).join("\n"),
+        });
+        const manifeste = JSON.parse(fs.readFileSync(path.join(sortie, MANIFESTE), "utf-8"));
+        expect(Object.keys(manifeste.assemblage.entete).sort()).toEqual([...lus].sort());
+      }
+    );
+
+    it(
+      "se tait quand l'assembleur du commit visé ne lit pas le champ, et quand l'appli n'a pas la brique comptes",
+      { timeout: 3 * REJEU },
+      () => {
+        const dossier = appliRetouchee(() => {});
+        publier(dossier);
+        avecUnCommitDuCatalogue(
+          "Outils : essai d'un assembleur qui ne lit pas personnes_par_reseau",
+          () => ecrire(catalogue, "outils/assembler.mjs", remplacer('  "personnes_par_reseau",\n];', "];")),
+          (vers) => {
+            const texte = rapport(mettreAJour({ catalogue, appli: dossier, vers, aBlanc: true }));
+            const rubrique = rubriqueDe(texte, "En-tête de la blueprint") ?? "";
+            expect(rubrique).not.toContain("personnes_par_reseau");
+            expect(rubrique).toContain("`role_par_defaut`");
+          }
+        );
+
+        // Sans comptes, ni ENTREE ni LIMITES_PAR_RESEAU : les réglages d'entrée n'ont pas de fichier où se régler.
+        const sansComptes = path.join(dossierTemporaire("appli-sans-comptes-"), "essai-sans-comptes");
+        assemblerAuCommitA({ sortie: sansComptes, briques: [] });
+        publier(sansComptes);
+        const autre = rapport(mettreAJour({ catalogue, appli: sansComptes, ajouter: ["mails"], aBlanc: true }));
+        expect(autre).not.toContain("## En-tête de la blueprint");
+      }
+    );
+  });
 
   describe("refus en clair, avant tout rejeu", () => {
     it("refuse un catalogue aux modifications non commitées, quand il vise son HEAD", { timeout: REFUS }, () => {

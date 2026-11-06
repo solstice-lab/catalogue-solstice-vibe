@@ -273,6 +273,44 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
   chaque brique arrivée s'y note, dans la session de l'appli, par sa ligne dans `briques`
   de l'en-tête et sa ligne en section 3 ; une brique « à brancher » a en plus son ticket,
   repris en section 9 (`blueprint-modele.md` de `creer-appli`).
+- L'en-tête noté au manifeste est **figé à l'assemblage** : une clé ajoutée à `blueprint.md`
+  après coup ne se rejoue pas, et l'outil le dit dans le rapport quand le catalogue visé
+  lit un champ que cet en-tête n'a pas (« Les variables et l'en-tête dans le rapport »).
+
+## Les variables et l'en-tête dans le rapport
+
+Deux constats du 2026-11-05, sur l'appli d'essai tours-de-coloc, au report vers un commit
+plus récent.
+
+- **Les variables.** Le rapport demandait toutes les variables nouvelles « si l'appli en a
+  besoin » : `MICROSOFT_*` alors que `METHODES` ne proposait pas Microsoft,
+  `NOTIFICATIONS_SECRET` pour une brique pas encore branchée, la vérification restant au
+  lecteur. L'outil trie maintenant. Une variable `GOOGLE_*` ou `MICROSOFT_*` se demande
+  quand la méthode est dans `METHODES` (celui de `src/config/comptes.ts` de l'appli, à
+  défaut celui de la cible) ; sinon le rapport la met de côté, avec le fichier où la
+  méthode se déclare. Une variable d'une brique à brancher est mise de côté de même : rien
+  à déclarer avant son branchement. Sa brique est celle de la section `# Brique x` de
+  `.env.example` ; « à brancher » veut dire que la brique arrive sans appelant (section
+  « La brancher » de son README) ou que `blueprint.md` de l'appli la note
+  `branchement: à brancher`. Une variable que rien ne rattache à une méthode ou à une
+  brique se demande toujours. L'outil ne déclare rien à la place de l'appli.
+- **L'en-tête.** L'outil rejoue l'en-tête noté au manifeste, figé à l'assemblage, et ne
+  rejoue pas un en-tête modifié après coup : choix de conception, le rejeu doit redonner
+  les empreintes. Une clé ajoutée à `blueprint.md` après l'assemblage, comme
+  `personnes_par_reseau` (née le 2026-11-05), n'a donc aucun effet sur les opérations
+  suivantes ; sa valeur se règle dans le fichier de l'appli, comme une retouche
+  (`src/config/comptes.ts` pour `LIMITES_PAR_RESEAU`, `METHODES` et `ENTREE`,
+  `src/config/acces.ts` pour `ROLE_PAR_DEFAUT`). Le rapport le dit : quand l'assembleur du
+  commit visé lit un réglage d'entrée (`entree`, `role_par_defaut`, `methodes`,
+  `personnes_par_reseau`, d'après `CHAMPS_DE_L_ENTETE_LUS` de son `outils/assembler.mjs`)
+  que l'en-tête rejoué n'a pas, la rubrique « En-tête de la blueprint » nomme le champ, le
+  défaut que le catalogue laisse dans le fichier et le fichier à retoucher. Rien à dire
+  pour une appli sans `comptes`, ni au format 1 du manifeste, qui ne note pas l'en-tête.
+  À tenir à jour : la table champ, fichier, défaut de l'outil (`REGLAGES_DE_L_ENTETE` de
+  `outils/mettre-a-jour.mjs`) se complète à chaque nouveau champ de réglage ajouté à
+  `CHAMPS_DE_L_ENTETE_LUS`, sans quoi le rapport ne le dit pas. Un test lit cette constante
+  dans le texte de l'assembleur, qui ne l'exporte pas, et la compare à ce que l'assembleur
+  note au manifeste : si sa forme change, il casse au lieu de laisser le rapport muet.
 
 ## Les ajouts lourds : la base et `comptes`
 
@@ -352,8 +390,10 @@ Restent à un humain :
 
 - **fusionner** la PR de l'appli, en sachant ce que la fusion déclenche : déploiement, étapes
   de migration rejouées en production ;
-- **déclarer chez l'hébergeur** les variables nouvelles, que l'outil lit dans l'écart de
-  `.env.example` et de `render.yaml`, et les comptes et secrets d'une brique ajoutée (le
+- **déclarer chez l'hébergeur** les variables nouvelles que le rapport liste, lues dans
+  l'écart de `.env.example` et de `render.yaml` (« Les variables et l'en-tête dans le
+  rapport » : il met de côté celles d'une méthode absente de `METHODES` et d'une brique à
+  brancher), et les comptes et secrets d'une brique ajoutée (le
   secret et la tâche planifiée de `notifications`, le compte Resend de `mails`) ;
 - **faire valider par le client** les choix de confidentialité d'un traitement ajouté ou
   changé, les durées et les lieux de sous-traitants nouveaux ;
@@ -519,7 +559,8 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   tête : un titre dont le dernier segment commence par « Rupture »), les sujets des
   commits de A à A' qui touchent un fichier du socle que le report change (un fichier que
   l'assembleur rend identique, comme le script de test de `package.json`, n'en fait pas
-  venir), les variables nouvelles de `.env.example` et `render.yaml`, les traitements ajoutés, les durées de conservation et les
+  venir), les variables nouvelles de `.env.example` et `render.yaml` (triées, voir « Les variables et
+  l'en-tête dans le rapport »), les traitements ajoutés, les durées de conservation et les
   sous-traitants nouveaux (repérés par la forme des entrées des `confidentialite.ts` de brique)
   et les fichiers dont le texte change, le registre RGPD, ce que la fusion
   déclenche, le manifeste et la blueprint réécrits avec les avertissements, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans
