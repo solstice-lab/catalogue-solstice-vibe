@@ -222,15 +222,35 @@ durée, destinataires). L'outil ne remplit aucun choix : ils engagent le client 
 valider par lui, comme au cadrage (`creer-appli`, étape 1). La page `/confidentialite`
 signale les champs manquants. Le rapport liste :
 
-- les traitements ajoutés, dont les choix sont à faire valider par le client ;
+- les **traitements** ajoutés (`CONFIDENTIALITE.choix`), dont les choix sont à faire valider
+  par le client ;
+- les **durées de conservation** nouvelles (`CONFIDENTIALITE.durees`) : la brique en propose
+  une valeur, à valider avec le client (`dureesRevues`), que le projet ne surcharge que si
+  elle diffère ;
+- les **sous-traitants** nouveaux (`CONFIDENTIALITE.lieux`) : leur lieu de traitement, que le
+  code ne situe pas, est à remplir ; un sous-traitant que le code situe (`LIEUX_*` de la
+  brique) ou dont l'appli a déjà rempli le lieu n'est pas listé ;
 - les traitements dont le texte a changé entre A et A' (`src/briques/*/confidentialite.ts`) :
-  la politique publiée change, elle est à relire avec le client ;
+  la politique publiée change, elle est à relire avec le client. Un fichier absent de A
+  n'en fait pas partie : il arrive entier, il n'est qu'ajouté ;
 - la date de mise à jour de la politique (`miseAJour`), à changer avec l'un ou l'autre ;
 - une durée réglée dans un branchement (`conservationMois` de la brique notifications), qui
   doit redire la durée annoncée.
 
 Le registre des traitements du client lui-même, hors du code, est à tenir par lui : le
 rapport le rappelle dès qu'un traitement est ajouté.
+
+L'outil sépare les trois par la **forme** de l'entrée, pas par sa clé : une entrée `cle` suivie
+de `titre` est un traitement, de `donnee` une durée, de `nom` un sous-traitant. Au premier
+report réel (2026-11-05), toute clé neuve était prise pour un traitement : sept des neuf
+clés à remplir dans les choix étaient six durées et un sous-traitant. Une entrée que
+`methodes.includes("x") ? [NOM]` conditionne n'est pas lue si `x` n'est pas dans `METHODES`
+de l'appli (`src/config/comptes.ts`) : la page ne l'affiche pas, ses durées et ses
+sous-traitants non plus. Si `METHODES` ne se lit pas, rien n'est écarté : mieux vaut un traitement de trop à regarder qu'un oublié.
+Une entrée dont la forme n'est pas reconnue (un `cle` suivi d'autre chose que `titre`,
+`donnee` ou `nom`, ou dont la valeur n'est pas un texte) n'est jamais ignorée : le rapport la
+liste « à vérifier à la main ». Ce repérage lit le
+texte des fichiers, il ne les exécute pas : la page `/confidentialite` reste le contrôle (elle signale tout champ vide).
 
 ## Les dépendances npm
 
@@ -336,7 +356,7 @@ Restent à un humain :
   `.env.example` et de `render.yaml`, et les comptes et secrets d'une brique ajoutée (le
   secret et la tâche planifiée de `notifications`, le compte Resend de `mails`) ;
 - **faire valider par le client** les choix de confidentialité d'un traitement ajouté ou
-  changé ;
+  changé, les durées et les lieux de sous-traitants nouveaux ;
 - **valider le rendu** d'un écran changé : Claude ne lance ni serveur ni navigateur
   (`CLAUDE.md` §6) ;
 - **choisir la valeur du client** pour un token de thème que le catalogue ajoute :
@@ -499,8 +519,9 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   tête : un titre dont le dernier segment commence par « Rupture »), les sujets des
   commits de A à A' qui touchent un fichier du socle que le report change (un fichier que
   l'assembleur rend identique, comme le script de test de `package.json`, n'en fait pas
-  venir), les variables nouvelles de `.env.example` et `render.yaml`, les traitements ajoutés (une clé `cle` neuve dans un
-  `confidentialite.ts` de brique) ou changés, le registre RGPD, ce que la fusion
+  venir), les variables nouvelles de `.env.example` et `render.yaml`, les traitements ajoutés, les durées de conservation et les
+  sous-traitants nouveaux (repérés par la forme des entrées des `confidentialite.ts` de brique)
+  et les fichiers dont le texte change, le registre RGPD, ce que la fusion
   déclenche, le manifeste et la blueprint réécrits avec les avertissements, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans
   aucun fichier à reporter : il dit ce qu'elle a retouché, l'usage seul de la tranche 1.
 - **Les refus de la tranche 2**, avant toute écriture : le catalogue sans `origin/main` ;

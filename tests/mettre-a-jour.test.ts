@@ -836,6 +836,156 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
     }
   );
 
+  /*
+   * Le cas d'origine (2026-11-05, report de l'appli d'essai tours-de-coloc) : sept
+   * des neuf clés données à remplir dans CONFIDENTIALITE.choix n'étaient pas des
+   * traitements (six durées de conservation, un sous-traitant), et le repérage
+   * prenait toute clé « cle: » neuve. Ici le catalogue ajoute deux traitements
+   * (dont un que la méthode « sso », absente de METHODES, conditionne, avec sa
+   * durée et son sous-traitant), trois durées et deux sous-traitants (dont un
+   * dont le code connaît le lieu).
+   */
+  it(
+    "dit à part, au rapport, le traitement à choix, les durées à valider et le lieu à remplir : ni clé de durée ni sous-traitant dans les choix, rien pour une méthode que l'appli ne propose pas",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliDeLaTable();
+      const catalogueA = ["src/briques/comptes/confidentialite.ts", "src/briques/mails/confidentialite.ts"];
+      avecUnCommitDuCatalogue(
+        "Comptes, mails : essai de traitements, de durées et de sous-traitants",
+        () => {
+          // Les ajouts de la suite principale (un traitement d'essai) n'ont rien à faire ici.
+          git(catalogue, "checkout", commitA, "--", ...catalogueA);
+          ecrire(
+            catalogue,
+            catalogueA[0],
+            remplacer(
+              "\nconst CONNEXION_MICROSOFT = {",
+              `
+const CONNEXION_SSO = {
+  cle: "connexion-sso",
+  titre: "Connexion par l'identité de l'organisation",
+  finalite: "Essai.",
+  donnees: [],
+  personnes: "Personne.",
+  sousTraitants: [{ cle: "fournisseur-sso", nom: "Fournisseur", role: "Identité." }],
+  precisions: [],
+  conservation: [
+    {
+      cle: "sso-jetons",
+      donnee: "Jetons",
+      duree: { jours: 7 },
+      depart: "après l'émission",
+      purge: { table: "sso_jetons", colonne: "cree_le" },
+    },
+  ],
+};
+
+const CONNEXION_MICROSOFT = {`
+            )
+          );
+          ecrire(
+            catalogue,
+            catalogueA[0],
+            remplacer(
+              '    ...(methodes.includes("microsoft") ? [CONNEXION_MICROSOFT] : []),\n',
+              '    ...(methodes.includes("microsoft") ? [CONNEXION_MICROSOFT] : []),\n    ...(methodes.includes("sso") ? [CONNEXION_SSO] : []),\n'
+            )
+          );
+          ecrire(
+            catalogue,
+            catalogueA[0],
+            remplacer(
+              '      purge: { table: "sessions", colonne: "expire_le" },\n    },\n',
+              '      purge: { table: "sessions", colonne: "expire_le" },\n    },\n    {\n      cle: "comptes-invitations",\n      donnee: "Invitations",\n      duree: { mois: 3 },\n      depart: "après l\'envoi",\n      purge: { table: "invitations", colonne: "cree_le" },\n    },\n'
+            )
+          );
+          ecrire(
+            catalogue,
+            catalogueA[1],
+            remplacer(
+              "\n];",
+              `
+  {
+    cle: "mails-suivi",
+    titre: "Suivi des envois",
+    finalite: "Essai.",
+    donnees: [],
+    personnes: "Personne.",
+    sousTraitants: [
+      { cle: "suivi-livraison", nom: "Suiveur", role: "Suivi." },
+      { cle: "suivi-connu", nom: "Hébergeur du suivi", role: "Suivi." },
+    ],
+    precisions: [],
+    conservation: [
+      {
+        cle: "mails-suivi-envois",
+        donnee: "Envois suivis",
+        duree: { heures: 48 },
+        depart: "après l'envoi",
+        purge: { table: "mails_suivi", colonne: "cree_le" },
+      },
+      // Une écriture que le motif tolère : guillemets simples, espaces libres.
+      { cle : 'mails-suivi-retours' , donnee : 'Retours', duree : { mois : 1 }, depart : 'après le retour', purge : { horsBase : 'chez le prestataire' } },
+    ],
+  },
+];
+
+export const LIEUX_MAILS_ESSAI = { "suivi-connu": "Union européenne" };
+
+// Une entrée dont la forme n'est pas reconnue (le champ qui la dit manque) : à signaler, pas à taire.
+export const AUTRES_MAILS_ESSAI = [{ cle: "sous-traitant-bizarre", role: "Essai." }];`
+            )
+          );
+        },
+        (vers) => {
+          const texte = rapport(mettreAJour({ catalogue, appli: dossier, vers, aBlanc: true }));
+          const confidentialite = rubriqueDe(texte, "Confidentialité") ?? "";
+          // Ce que cite une ligne, après son « : » : ses clés, sans les champs ni les chemins.
+          const cles = (debut: RegExp) => {
+            const ligne = confidentialite.split("\n").find((l) => debut.test(l));
+            expect(ligne, `ligne ${debut}`).toBeDefined();
+            return [...ligne!.slice(ligne!.indexOf(" : ")).matchAll(/`([a-z][a-z-]*)`/g)].map(([, cle]) => cle);
+          };
+          expect(cles(/^- Traitements ajoutés/)).toEqual(["mails-suivi"]);
+          expect(cles(/^- Durées de conservation nouvelles/)).toEqual([
+            "comptes-invitations",
+            "mails-suivi-envois",
+            "mails-suivi-retours",
+          ]);
+          expect(cles(/^- Sous-traitants nouveaux/)).toEqual(["suivi-livraison"]);
+          // Ce que le repérage ne sait pas classer n'est pas ignoré en silence.
+          expect(cles(/^- À vérifier à la main/)).toEqual(["sous-traitant-bizarre"]);
+          // Le champ à remplir est dit à chaque rubrique.
+          expect(confidentialite).toMatch(/^- Traitements ajoutés[^\n]*`CONFIDENTIALITE\.choix`/m);
+          expect(confidentialite).toMatch(/^- Durées de conservation nouvelles[^\n]*`CONFIDENTIALITE\.durees`/m);
+          expect(confidentialite).toMatch(/^- Sous-traitants nouveaux[^\n]*`CONFIDENTIALITE\.lieux`/m);
+          expect(confidentialite).toMatch(/`comptes-invitations` \(3 mois,/);
+          expect(confidentialite).toMatch(/`mails-suivi-envois` \(48 heures,/);
+          // Rien de ce que la méthode absente apporte, nulle part.
+          expect(confidentialite).not.toMatch(/connexion-sso|fournisseur-sso|sso-jetons/);
+        }
+      );
+    }
+  );
+
+  it(
+    "ne dit pas « texte changé » d'un confidentialite.ts neuf, que la brique ajoutée apporte entier : il n'est qu'ajouté, avec ses durées",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliRetouchee(() => {});
+      publier(dossier);
+      const resultat = mettreAJour({ catalogue, appli: dossier, ajouter: ["journal"], aBlanc: true });
+      const confidentialite = rubriqueDe(rapport(resultat), "Confidentialité") ?? "";
+      expect(confidentialite).toMatch(
+        /^- Traitements ajoutés[^\n]*`journal` \(`src\/briques\/journal\/confidentialite\.ts`\)/m
+      );
+      expect(confidentialite).toMatch(/^- Durées de conservation nouvelles[^\n]*`journal` \(12 mois,/m);
+      expect(confidentialite).not.toMatch(/Texte changé/);
+      expect(resultat.traitements.changes).toEqual([]);
+    }
+  );
+
   it(
     "laisse un verrou retouché par l'appli et demande npm install au rapport, après quoi npm ci passe",
     { timeout: 900_000 },
