@@ -273,7 +273,7 @@ version changée au catalogue. `package-lock.json` ne se fusionne pas en texte :
   chaque brique arrivée s'y note, dans la session de l'appli, par sa ligne dans `briques`
   de l'en-tête et sa ligne en section 3 ; une brique « à brancher » a en plus son ticket,
   repris en section 9 (`blueprint-modele.md` de `creer-appli`).
-- L'en-tête noté au manifeste est **figé à l'assemblage** : une clé ajoutée à `blueprint.md`
+- Au format 2, l'en-tête noté au manifeste est **figé à l'assemblage** : une clé ajoutée à `blueprint.md`
   après coup ne se rejoue pas, et l'outil le dit dans le rapport quand le catalogue visé
   lit un champ que cet en-tête n'a pas (« Les variables et l'en-tête dans le rapport »).
 
@@ -290,13 +290,16 @@ plus récent.
   défaut celui de la cible) ; sinon le rapport la met de côté, avec le fichier où la
   méthode se déclare. Une variable d'une brique à brancher est mise de côté de même : rien
   à déclarer avant son branchement. Sa brique est celle de la section `# Brique x` de
-  `.env.example` ; « à brancher » veut dire que la brique arrive sans appelant (section
-  « La brancher » de son README) ou que `blueprint.md` de l'appli la note
+  `.env.example` ; « à brancher » veut dire, pour une brique que l'ajout apporte, que la
+  section « La brancher » de son README commence par « Tout se déclare côté appli » (une
+  brique branchée sur le patron `dossiers` arrive en service : ses variables se
+  déclarent) ; pour toute autre, que `blueprint.md` de l'appli la note
   `branchement: à brancher`. Une variable que rien ne rattache à une méthode ou à une
   brique se demande toujours. L'outil ne déclare rien à la place de l'appli.
-- **L'en-tête.** L'outil rejoue l'en-tête noté au manifeste, figé à l'assemblage, et ne
-  rejoue pas un en-tête modifié après coup : choix de conception, le rejeu doit redonner
-  les empreintes. Une clé ajoutée à `blueprint.md` après l'assemblage, comme
+- **L'en-tête.** Au format 2, l'outil rejoue l'en-tête noté au manifeste, figé à
+  l'assemblage, et ne rejoue pas un en-tête modifié après coup : choix de conception, le
+  rejeu doit redonner les empreintes (au format 1, qui ne note pas l'en-tête, il relit
+  celui de `blueprint.md` à son HEAD). Une clé ajoutée à `blueprint.md` après l'assemblage, comme
   `personnes_par_reseau` (née le 2026-11-05), n'a donc aucun effet sur les opérations
   suivantes ; sa valeur se règle dans le fichier de l'appli, comme une retouche
   (`src/config/comptes.ts` pour `LIMITES_PAR_RESEAU`, `METHODES` et `ENTREE`,
@@ -559,8 +562,9 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   tête : un titre dont le dernier segment commence par « Rupture »), les sujets des
   commits de A à A' qui touchent un fichier du socle que le report change (un fichier que
   l'assembleur rend identique, comme le script de test de `package.json`, n'en fait pas
-  venir), les variables nouvelles de `.env.example` et `render.yaml` (triées, voir « Les variables et
-  l'en-tête dans le rapport »), les traitements ajoutés, les durées de conservation et les
+  venir), les variables nouvelles de `.env.example` et `render.yaml` (triées), les champs
+  d'en-tête que l'assembleur visé lit et que l'en-tête rejoué n'a pas (voir « Les variables
+  et l'en-tête dans le rapport »), les traitements ajoutés, les durées de conservation et les
   sous-traitants nouveaux (repérés par la forme des entrées des `confidentialite.ts` de brique)
   et les fichiers dont le texte change, le registre RGPD, ce que la fusion
   déclenche, le manifeste et la blueprint réécrits avec les avertissements, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans

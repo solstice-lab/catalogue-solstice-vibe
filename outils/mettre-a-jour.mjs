@@ -2160,7 +2160,8 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
         nouvelles: variablesNouvelles(origine, cible),
         cible,
         appli: contenus,
-        aBrancher: [...aBrancher.aBrancher, ...aBrancher.aRattacher].map(({ brique }) => brique),
+        // Pas aRattacher : ces briques arrivent branchées sur le catalogue, leurs variables servent.
+        aBrancher: aBrancher.aBrancher.map(({ brique }) => brique),
       }),
       champsDeLEnteteIgnores: champsDeLEnteteIgnores({ manifeste, cible, catalogue: racineCatalogue, sha: shaCible }),
       traitements: traitementsChanges(origine, cible, contenus),
