@@ -1034,6 +1034,41 @@ function manifesteDEmpreintes(destination, { version, commit, commitComplet, ass
   return `${JSON.stringify(manifeste, null, 2)}\n`;
 }
 
+/*
+ * Le registre des adaptations de l'appli, livré vide avec son en-tête : à
+ * l'appli de le remplir, à chaque retouche d'un fichier venu du catalogue.
+ * Le 2026-11-05, les trois retouches de l'appli d'essai tours-de-coloc n'ont
+ * été remontées au catalogue qu'une fois vues à l'écran.
+ * Hors manifeste, comme NOTICE : c'est un fichier de l'appli, pas du catalogue.
+ * Il nomme l'outil sans son chemin : l'appli n'a pas outils/, et le verrou des
+ * renvois (tests/aide-assemblage.ts) refuse qu'elle le cite.
+ * La garde (.claude/hooks/gardes.mjs) et outils/adaptations.mjs en lisent les
+ * entrées : `## ` puis la ligne « Fichiers » ; le bloc de code n'en est pas une.
+ */
+const ADAPTATIONS = "ADAPTATIONS.md";
+const ENTETE_DES_ADAPTATIONS = [
+  "# Adaptations de l'appli",
+  "",
+  "Une entrée par retouche d'un fichier venu du catalogue (ceux de `catalogue.empreintes.json`) :",
+  "ce que l'assemblage a donné et que l'appli retire, remplit ou change. La garde de",
+  "`.claude/hooks/gardes.mjs` le rappelle à chaque écriture d'un tel fichier, tant qu'il n'est pas",
+  "noté ici. Depuis le catalogue, son outil `adaptations.mjs` liste ces fichiers avec leur diff et",
+  "leur note : chaque défaut du catalogue y devient un ticket du catalogue.",
+  "",
+  "Cinq lignes au plus par entrée, la plus récente en bas. Un dossier cité avec sa barre finale",
+  "(`src/app/exemples/`) couvre tout ce qu'il contient. « Propre à l'appli » : une évolution voulue par",
+  "l'appli, que le catalogue n'a pas à donner.",
+  "",
+  "```",
+  "## 2026-11-05",
+  "- Fichiers : `src/app/page.tsx`",
+  "- Ce qui change : l'accueil livré vide affiche les tours de la semaine.",
+  "- Pourquoi : l'accueil disait « Page d'accueil à écrire ».",
+  "- Nature : défaut du catalogue (ou : propre à l'appli)",
+  "```",
+  "",
+].join("\n");
+
 function blueprintParDefaut({ nom, commit, briques }) {
   return [
     "---",
@@ -1238,6 +1273,8 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   ecrits.push("blueprint.md");
   fs.writeFileSync(path.join(destination, "NOTICE"), contenuAvis);
   ecrits.push("NOTICE");
+  fs.writeFileSync(path.join(destination, ADAPTATIONS), ENTETE_DES_ADAPTATIONS);
+  ecrits.push(ADAPTATIONS);
   ecrits.push(MANIFESTE);
   if (contenuFiche !== undefined) {
     fs.writeFileSync(path.join(destination, "PROJET.md"), contenuFiche);

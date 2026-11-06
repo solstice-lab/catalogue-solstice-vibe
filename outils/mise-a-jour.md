@@ -54,8 +54,8 @@ Le manifeste prouve que la reproduction est exacte : les empreintes de l'origine
 doivent être **toutes** égales à celles du manifeste de l'appli. Au premier écart, l'outil
 s'arrête en nommant les fichiers : une fusion contre une origine fausse attribuerait à
 l'appli des retouches qu'elle n'a pas faites, ou l'inverse. Le manifeste ne couvre que les
-fichiers venus du catalogue : ni `NOTICE` ni `blueprint.md`, que l'assembleur écrit
-lui-même, n'y ont d'empreinte. L'origine de `NOTICE` n'est donc pas prouvée ; elle ne
+fichiers venus du catalogue : ni `NOTICE`, ni `ADAPTATIONS.md`, ni `blueprint.md`, que
+l'assembleur écrit lui-même, n'y ont d'empreinte. L'origine de `NOTICE` n'est donc pas prouvée ; elle ne
 dépend que de `LICENSE` et de la licence des polices au commit A.
 
 L'origine et la cible se lisent dans le commit que l'assembleur rejoué a fait, comme
@@ -75,7 +75,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 
 | Source | Ce qu'il en tire |
 | --- | --- |
-| `catalogue.empreintes.json` de l'appli | Le commit A (`catalogue.commit`, et `catalogue.commitComplet` au format 2) ; au format 2, les réglages de l'assemblage (`assemblage`, « Ce qui est outillé ») ; au format 1, des réglages déduits : les briques B, valeurs d'`unite` qui sont des clés de `BRIQUES` d'`outils/modules.mjs` au commit A, ni `socle`, ni `donnees` (que `planifier` refuse dans `--briques`), ni les unités partagées `patron-dossiers` et `adresse-ip` (chaque brique a au moins son dossier, donc une entrée) ; Dependabot, par la présence de `.github/dependabot.yml` ; l'empreinte de chaque fichier venu du catalogue, hors `NOTICE` et `blueprint.md`. |
+| `catalogue.empreintes.json` de l'appli | Le commit A (`catalogue.commit`, et `catalogue.commitComplet` au format 2) ; au format 2, les réglages de l'assemblage (`assemblage`, « Ce qui est outillé ») ; au format 1, des réglages déduits : les briques B, valeurs d'`unite` qui sont des clés de `BRIQUES` d'`outils/modules.mjs` au commit A, ni `socle`, ni `donnees` (que `planifier` refuse dans `--briques`), ni les unités partagées `patron-dossiers` et `adresse-ip` (chaque brique a au moins son dossier, donc une entrée) ; Dependabot, par la présence de `.github/dependabot.yml` ; l'empreinte de chaque fichier venu du catalogue, hors `NOTICE`, `ADAPTATIONS.md` et `blueprint.md`. |
 | `package.json` de l'appli | Au format 1, le nom du paquet, que l'assembleur y a reporté. Un nom changé depuis se voit à la vérification des empreintes (`package.json` et le verrou le portent). |
 | `blueprint.md` de l'appli | `commit_reference`, recoupé avec le manifeste ; un désaccord se signale. Au format 1, son en-tête, que l'assembleur rejoué relit (`appli`, nom affiché, description, site, entrée, rôle par défaut, méthodes de connexion, personnes par réseau), sauf la blueprint minimale qu'il écrit sans `--blueprint`. |
 | `PROJET.md` de l'appli (avec `--ajouter`) | Les briques ajoutées que la fiche écarte, avec leur raison, recopiées au rapport (« Ce qui est outillé », puce « L'ajout ») ; le reste de la fiche n'est jamais lu. |
@@ -318,6 +318,15 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    résolution des conflits listés, `npm install` si le verrou est à régénérer, les
    vérifications du `CLAUDE.md` de l'appli (§6), la relecture par sous-agents
    (`relecteur-migrations` dès qu'une étape est ajoutée), le commit, la PR avec le rapport.
+
+**Les adaptations, à chaque mise à jour** (« Ce qui est outillé ») : avant l'étape 2, sur le
+même `HEAD` de l'appli, `node outils/adaptations.mjs <dossier-de-l-appli>`. Avant le report,
+l'origine de chaque fichier est encore dans l'historique de l'appli : le diff est exact. D'après
+la liste, la session rédige les **brouillons de tickets du catalogue**, un par défaut et non un
+par fichier (les onze fichiers de `/kit` et du patron retirés font un ticket), chacun avec le
+cas réel daté et le diff qui le montre, et les remet à la personne qui pilote, qui les crée.
+Une adaptation « propre à l'appli » n'en donne pas. Une adaptation « sans note » se note d'abord
+dans l'appli, avec la personne qui l'a faite.
 
 Restent à un humain :
 
@@ -600,6 +609,35 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   dans `tests/mettre-a-jour.test.ts`, avec un assemblage direct au commit A pour comparer,
   le typecheck, les tests de l'appli sur une base de test neuve, et le rejeu des étapes
   version après version.
+- **Les adaptations de l'appli** (le 2026-11-05) : trois retouches de tours-de-coloc à des
+  fichiers venus du catalogue (`/kit` et les écrans du patron retirés, l'accueil livré vide
+  rempli, l'onglet de la coloc) n'étaient remontées au catalogue qu'une fois vues à
+  l'écran. Trois pièces, et le geste du « Circuit » :
+  - **le rappel** : dans une appli assemblée, la garde (`.claude/hooks/gardes.mjs`) laisse
+    passer toute écriture d'un fichier au manifeste et rappelle de la noter dans
+    `ADAPTATIONS.md`, tant qu'aucune entrée ne la couvre (son chemin, ou un dossier cité avec
+    sa barre finale). Un rappel, jamais un refus : le texte arrive dans le contexte de Claude
+    sans décision de permission. Le catalogue, sans manifeste, n'en reçoit aucun. Un
+    fichier écrit ou supprimé par une commande (`sed -i`, `Set-Content`, `rm`, `git rm`)
+    échappe à la garde, qui ne voit que les outils d'écriture : seul l'outil le voit ;
+  - **`ADAPTATIONS.md`**, que l'assembleur écrit vide avec son en-tête, hors manifeste comme
+    `NOTICE` : une entrée par adaptation, cinq lignes au plus (`## date`, `Fichiers`, ce qui
+    change, pourquoi, `Nature : défaut du catalogue` ou `propre à l'appli`) ;
+  - **`node outils/adaptations.mjs <appli> [--json]`**, en lecture seule, sans réseau : les
+    fichiers du manifeste retouchés ou supprimés au `HEAD` de l'appli, chacun avec son diff et
+    sa note, ou « sans note ». Le diff part de l'origine retrouvée par son empreinte : dans
+    l'historique de l'appli, sinon au catalogue au commit noté. Faute de quoi il est dit
+    **approché** (depuis le fichier du catalogue au commit noté) : un fichier qu'une mise à
+    jour a fusionné n'a jamais eu son origine commitée chez l'appli, et l'assembleur retouche
+    les fichiers que l'en-tête remplit. Sur tours-de-coloc, les quatre retouches d'avant le
+    ticket (`confidentialite.ts`, `mentions-legales.ts`, `referencement.ts`, `migrations.ts`)
+    sont de ce cas. L'origine exacte demanderait le rejeu de cet outil-ci, au prix d'un
+    worktree et de Prettier : à brancher une fois son code partagé. La lecture du manifeste
+    et la comparaison des empreintes sont dans `outils/manifeste.mjs`, repris de cet outil,
+    qui garde pour l'heure sa propre copie. Il traite aussi encore `ADAPTATIONS.md` comme un
+    fichier de l'assemblage : une appli qui l'aurait créé à la main avant de recevoir celui
+    du catalogue verrait le report refusé (fichier occupé), d'où l'entrée à lui ajouter dans
+    `HORS_DE_LA_TABLE`, avec le branchement.
 
 ## Décisions prises
 
