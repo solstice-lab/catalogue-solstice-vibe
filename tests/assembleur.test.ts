@@ -2626,13 +2626,14 @@ describe("brique données, gardée d'office", () => {
     expect(avecBase.retires.join(", ")).not.toContain("donnees");
   });
 
+  // src/app/page.tsx n'en est plus : sans la brique espaces, l'assembleur en retire
+  // l'entrée (voir « accueil de départ »), ce qui ne tient pas à la base.
   it("garde à l'identique, avec la base, ce que le socle sans base retouche (configuration de vitest, CI, modèle des variables)", () => {
     for (const chemin of [
       "vitest.config.ts",
       ".github/workflows/ci.yml",
       ".env.example",
       ".gitignore",
-      "src/app/page.tsx",
       "render.yaml",
     ]) {
       const original = fs.readFileSync(path.join(SOURCE, chemin));
