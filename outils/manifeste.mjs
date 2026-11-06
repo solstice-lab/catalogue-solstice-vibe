@@ -3,11 +3,10 @@
  * écrit par outils/assembler.mjs) : le lire au HEAD de l'appli, le vérifier, et
  * dire quels fichiers venus du catalogue l'appli a retouchés ou supprimés.
  *
- * Partagé entre les outils qui comparent l'appli au manifeste, pour qu'une
- * règle de lecture (un format de plus, une vérification) ne change pas d'un
- * côté seulement. Repris de outils/mettre-a-jour.mjs, qui garde encore sa propre
- * copie : son branchement ici est la suite prévue (outils/mise-a-jour.md, « Ce
- * qui est outillé », « Les adaptations de l'appli »).
+ * Partagé entre les outils qui comparent l'appli au manifeste
+ * (outils/adaptations.mjs, outils/mettre-a-jour.mjs), pour qu'une règle de
+ * lecture (un format de plus, une vérification) ne change pas d'un côté
+ * seulement : chacun en avait d'abord sa copie.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";

@@ -3,7 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { adaptations, ErreurAdaptations, rapport } from "../outils/adaptations.mjs";
+import { assembler } from "../outils/assembler.mjs";
 import { lireDesObjets } from "../outils/manifeste.mjs";
+import { mettreAJour } from "../outils/mettre-a-jour.mjs";
 import {
   assemblerEnTemporaire,
   dossierTemporaireVide,
@@ -41,6 +43,29 @@ const commiter = (dossier: string, message: string) => {
   gitDans(dossier, "add", "-A");
   gitDans(dossier, "commit", "-q", "-m", message);
 };
+
+/*
+ * Le catalogue de travail, fichiers non commités compris, en un commit A d'un
+ * dépôt neuf : le rejeu demande un commit, et la CI ne clone pas l'historique.
+ * node_modules est emprunté par un lien (même Prettier : pas de npm ci), que
+ * nettoyerLesAssemblages retire avant le dossier.
+ */
+function copieDuCatalogue() {
+  const dossier = dossierTemporaireVide();
+  const fichiers = gitDans(SOURCE, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+    .split("\0")
+    .filter((chemin) => chemin && fs.existsSync(path.join(SOURCE, chemin)));
+  for (const chemin of new Set(fichiers)) {
+    fs.mkdirSync(path.dirname(path.join(dossier, chemin)), { recursive: true });
+    fs.copyFileSync(path.join(SOURCE, chemin), path.join(dossier, chemin));
+  }
+  gitDans(dossier, "init", "-q", "-b", "main");
+  commiter(dossier, "Catalogue d'essai : commit A");
+  fs.symlinkSync(path.join(SOURCE, "node_modules"), path.join(dossier, "node_modules"), "junction");
+  // Un lien n'est pas visé par le motif « node_modules/ » de .gitignore.
+  fs.appendFileSync(path.join(dossier, ".git", "info", "exclude"), "node_modules\n");
+  return dossier;
+}
 
 const NOTE = [
   "",
@@ -164,6 +189,75 @@ describe("outils/adaptations.mjs", { timeout: ENTIER }, () => {
     const lus = lireDesObjets(SOURCE, ["HEAD:pas là/un fichier.ts", "HEAD:package.json"]);
     expect(lus[0]).toBeUndefined();
     expect(lus[1]?.toString("utf-8")).toBe(gitDans(SOURCE, "show", "HEAD:package.json") + "\n");
+  });
+
+  // Le cas de tours-de-coloc (2026-11-05) : quatre fichiers fusionnés par une
+  // mise à jour, dont l'origine exacte n'était dans aucun commit de l'appli, et
+  // un diff approché de plus de 300 lignes pour migrations.ts, presque toutes
+  // dues aux étapes que l'assembleur retire. Une vraie mise à jour ici : le
+  // rejeu demande un commit du catalogue, que l'assemblage de test n'a pas.
+  it(
+    "avec --rejouer, donne le diff exact d'un fichier fusionné par une mise à jour, que l'historique de l'appli n'a jamais eu",
+    { timeout: 900_000 },
+    () => {
+      const catalogue = copieDuCatalogue();
+      const commitA = gitDans(catalogue, "rev-parse", "--short", "HEAD");
+      const appli = path.join(dossierTemporaireVide(), "essai-rejeu");
+      assembler({ source: catalogue, sortie: appli, commit: commitA, briques: [] });
+      const NAVIGATION = "src/lib/navigation.ts";
+      ecrire(appli, NAVIGATION, (texte) => `${texte}// Retouche de l'appli.\n`);
+      commiter(appli, "Appli : une retouche du menu");
+      gitDans(appli, "update-ref", "refs/remotes/origin/main", "HEAD");
+
+      ecrire(catalogue, NAVIGATION, (texte) => `// Évolution du catalogue, en tête.\n${texte}`);
+      commiter(catalogue, "Catalogue d'essai : commit A'");
+      gitDans(catalogue, "update-ref", "refs/remotes/origin/main", "HEAD");
+      const vers = gitDans(catalogue, "rev-parse", "--short", "HEAD");
+      const reporte = mettreAJour({ catalogue, appli, vers, branche: "feature/reporter-catalogue" });
+      expect(reporte.fichiers.fusionnes).toEqual([NAVIGATION]);
+      commiter(appli, "Catalogue : report");
+
+      // Sans le rejeu : depuis le fichier du catalogue, que l'assembleur retouche (briques absentes).
+      const approche = adaptations({ catalogue, appli }).adaptations;
+      expect(approche.map(({ chemin }) => chemin)).toEqual([NAVIGATION]);
+      expect(approche[0].origine).toMatchObject({ source: "catalogue", exacte: false });
+
+      const resultat = adaptations({ catalogue, appli, rejouer: true });
+      expect(resultat.avertissements).toEqual([]);
+      const [navigation] = resultat.adaptations;
+      expect(navigation.origine).toMatchObject({ source: "rejeu", exacte: true });
+      // Le diff exact n'a que la retouche de l'appli : ni l'évolution du catalogue, fusionnée, ni les retraits de l'assembleur.
+      const lignesChangees = (navigation.diff ?? "")
+        .split("\n")
+        .filter((ligne) => /^[+-]/.test(ligne) && !/^(\+\+\+|---) /.test(ligne));
+      expect(lignesChangees).toEqual(["+// Retouche de l'appli."]);
+      expect(rapport(resultat)).toMatch(/Origine prise dans l'assemblage rejoué au commit/);
+      expect(approche[0].diff?.split("\n").length).toBeGreaterThan(navigation.diff?.split("\n").length ?? 0);
+
+      // Lecture seule : l'appli reste à son HEAD, et le worktree du rejeu est retiré du catalogue.
+      expect(gitDans(appli, "status", "--porcelain")).toBe("");
+      expect(gitDans(catalogue, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+    }
+  );
+
+  it("avec --rejouer, dit en avertissement un rejeu qui échoue et garde les diffs approchés", () => {
+    const appli = copieDeLAppli(assemble);
+    ecrire(appli, "package.json", (texte) => texte.replace('"private": true', '"private": false'));
+    gitDans(appli, "checkout", "-q", "--orphan", "reprise");
+    commiter(appli, "Appli : historique repris");
+
+    // L'assemblage de test note un commit inventé (COMMIT_DE_TEST) : le rejeu le refuse.
+    const resultat = adaptations({ catalogue: SOURCE, appli, rejouer: true });
+    expect(resultat.avertissements.join("\n")).toMatch(
+      /rejeu de l'assemblage a échoué, les diffs restent approchés : /
+    );
+    expect(resultat.adaptations[0].origine).toMatchObject({ source: "catalogue", exacte: false });
+    // Le rapport ne conseille pas l'option qui vient d'échouer.
+    expect(rapport(resultat)).toMatch(/Diff approché/);
+    expect(rapport(resultat)).not.toMatch(/--rejouer donne/);
+    expect(rapport(adaptations({ catalogue: SOURCE, appli }))).toMatch(/--rejouer donne l'origine exacte/);
+
+    expect(() => adaptations({ appli, rejouer: true })).toThrow(ErreurAdaptations);
   });
 
   it("refuse en le disant un dossier qui n'est pas une appli assemblée", () => {

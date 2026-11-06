@@ -29,13 +29,22 @@
  * n'est pas celui du catalogue.
  */
 import { execFileSync, execSync, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { ADAPTATIONS } from "../.claude/hooks/gardes.mjs";
 import { environnementDeGit } from "./assembler.mjs";
+import {
+  contenusDuCommit,
+  ecartsAuManifeste,
+  empreinte,
+  empreintesDuManifeste,
+  ErreurManifeste,
+  MANIFESTE,
+  manifesteDe,
+} from "./manifeste.mjs";
 
 export class ErreurMiseAJour extends Error {
   constructor(message) {
@@ -43,8 +52,6 @@ export class ErreurMiseAJour extends Error {
     this.name = "ErreurMiseAJour";
   }
 }
-
-const MANIFESTE = "catalogue.empreintes.json";
 
 // Les unités du manifeste qui ne se donnent pas à --briques : le socle, la
 // base (que l'assembleur garde d'office et refuse dans --briques) et les unités
@@ -62,44 +69,17 @@ function git(dossier, ...args) {
   });
 }
 
-const empreinte = (contenu) => createHash("sha256").update(contenu).digest("hex");
-
-/*
- * Le contenu de chaque fichier d'un commit, tel que git l'enregistre : celui
- * dont le manifeste a pris l'empreinte. Le disque d'un poste Windows peut
- * porter des fins de ligne CRLF que git ne voit pas.
- */
-function contenusDuCommit(depot, commit = "HEAD") {
-  const entrees = git(depot, "ls-tree", "-r", "-z", commit)
-    .split("\0")
-    .filter(Boolean)
-    .map((ligne) => {
-      // Au premier « \t » seulement : un chemin peut en contenir un.
-      const tabulation = ligne.indexOf("\t");
-      const [, type, objet] = ligne.slice(0, tabulation).split(" ");
-      return { chemin: ligne.slice(tabulation + 1), type, objet };
-    })
-    .filter(({ type }) => type === "blob");
-  const sortie = execFileSync("git", ["-C", depot, "cat-file", "--batch"], {
-    input: entrees.map(({ objet }) => `${objet}\n`).join(""),
-    env: environnementDeGit(),
-    maxBuffer: 1024 * 1024 * 1024,
-  });
-  const contenus = new Map();
-  let curseur = 0;
-  for (const { chemin } of entrees) {
-    // « <objet> blob <taille> », puis le contenu, puis un saut de ligne.
-    const finEntete = sortie.indexOf(0x0a, curseur);
-    const taille = Number(sortie.toString("latin1", curseur, finEntete).split(" ")[2]);
-    contenus.set(chemin, sortie.subarray(finEntete + 1, finEntete + 1 + taille));
-    curseur = finEntete + 1 + taille + 1;
-  }
-  return contenus;
-}
-
 // ---------------------------------------------------------------- l'appli
 
-function lireLAppli(appli) {
+/*
+ * L'appli à son HEAD, et son manifeste vérifié. La lecture et ce que tout outil
+ * exige du manifeste viennent d'outils/manifeste.mjs, partagé avec
+ * outils/adaptations.mjs : une règle de lecture (un format de plus) ne change
+ * pas d'un côté seulement. Ses refus se disent ici comme ceux de l'outil.
+ * `propre` : la mise à jour exige un arbre propre ; le rejeu seul de l'origine
+ * (origineRejouee, pour outils/adaptations.mjs --rejouer) ne lit que le HEAD.
+ */
+function lireLAppli(appli, { propre = true } = {}) {
   if (!fs.existsSync(appli) || !fs.statSync(appli).isDirectory()) {
     throw new ErreurMiseAJour(`« ${appli} » n'est pas un dossier : donner le dossier de l'appli assemblée.`);
   }
@@ -114,7 +94,7 @@ function lireLAppli(appli) {
       `« ${appli} » n'est pas la racine de son dépôt git (« ${racine} ») : donner la racine de l'appli.`
     );
   }
-  if (git(appli, "status", "--porcelain").trim() !== "") {
+  if (propre && git(appli, "status", "--porcelain").trim() !== "") {
     throw new ErreurMiseAJour(
       `L'arbre de l'appli n'est pas propre : l'outil lit son HEAD, et ce qui n'est pas commité n'y serait pas. ` +
         "Commiter ou mettre de côté (git status dans l'appli), puis relancer."
@@ -129,34 +109,23 @@ function lireLAppli(appli) {
   }
   let manifeste;
   try {
-    manifeste = JSON.parse(contenus.get(MANIFESTE).toString("utf-8"));
+    manifeste = manifesteDe(contenus);
   } catch (erreur) {
-    throw new ErreurMiseAJour(`${MANIFESTE} de l'appli n'est pas du JSON lisible : ${erreur.message}`);
+    if (erreur instanceof ErreurManifeste) throw new ErreurMiseAJour(erreur.message);
+    throw erreur;
   }
-  verifierLeManifeste(manifeste);
+  verifierLeRejeu(manifeste);
   return { contenus, manifeste };
 }
 
 const illisible = (quoi) =>
   new ErreurMiseAJour(`${MANIFESTE} de l'appli est illisible : ${quoi}. Il a été retouché à la main ?`);
 
-function verifierLeManifeste(manifeste) {
-  if (typeof manifeste !== "object" || manifeste === null || Array.isArray(manifeste)) throw illisible("pas un objet");
-  if (manifeste.format !== 1 && manifeste.format !== 2) {
-    throw new ErreurMiseAJour(
-      `${MANIFESTE} de l'appli est au format ${manifeste.format}, que cet outil ne lit pas (formats 1 et 2) : ` +
-        "mettre le catalogue à jour (git pull), puis relancer."
-    );
-  }
-  if (typeof manifeste.catalogue !== "object" || manifeste.catalogue === null) throw illisible("pas de catalogue");
+// Ce que le rejeu exige en plus des empreintes (verifierLesEmpreintes
+// d'outils/manifeste.mjs) : un commit sans « +arbre-modifie », et au format 2 le
+// commit complet et les réglages. Que le commit existe, commitDuCatalogue le dit.
+function verifierLeRejeu(manifeste) {
   const commit = manifeste.catalogue.commit;
-  if (typeof commit !== "string" || commit === "") throw illisible("pas de catalogue.commit");
-  if (typeof manifeste.fichiers !== "object" || manifeste.fichiers === null) throw illisible("pas de fichiers");
-  for (const [chemin, entree] of Object.entries(manifeste.fichiers)) {
-    if (typeof entree?.unite !== "string" || !/^[0-9a-f]{64}$/.test(entree?.sha256 ?? "")) {
-      throw illisible(`l'entrée de ${chemin} n'a pas d'unité ou d'empreinte sha256`);
-    }
-  }
   if (commit.includes("+arbre-modifie")) {
     throw new ErreurMiseAJour(
       `L'appli a été assemblée depuis un catalogue aux modifications non commitées (commit ${commit}) : ` +
@@ -441,7 +410,7 @@ function rejouerLAssembleur({ arbre, sortie, commit, reglages }) {
 }
 
 // Ce qui sépare l'origine rejouée du manifeste de l'appli, fichier par fichier.
-function ecartsAuManifeste(duManifeste, rejoues) {
+function ecartsDeLOrigineRejouee(duManifeste, rejoues) {
   const ecarts = [];
   for (const chemin of [...new Set([...Object.keys(duManifeste), ...Object.keys(rejoues)])].sort()) {
     const attendu = duManifeste[chemin];
@@ -557,7 +526,7 @@ function examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha,
   });
 
   const rejoue = JSON.parse(origine.get(MANIFESTE).toString("utf-8"));
-  const ecarts = ecartsAuManifeste(manifeste.fichiers, rejoue.fichiers);
+  const ecarts = ecartsDeLOrigineRejouee(manifeste.fichiers, rejoue.fichiers);
   if (ecarts.length > 0) {
     const nommes = ecarts.slice(0, ECARTS_NOMMES).map((ecart) => `  - ${ecart}`);
     if (ecarts.length > ECARTS_NOMMES) nommes.push(`  - et ${ecarts.length - ECARTS_NOMMES} autres`);
@@ -570,15 +539,9 @@ function examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha,
 
   // NOTICE, que l'assembleur écrit lui-même, n'a pas d'empreinte au manifeste :
   // l'appli est jugée intacte si elle égale l'origine rejouée.
-  const attendus = Object.entries(manifeste.fichiers).map(([chemin, { sha256 }]) => [chemin, sha256]);
+  const attendus = empreintesDuManifeste(manifeste);
   if (origine.has("NOTICE")) attendus.push(["NOTICE", empreinte(origine.get("NOTICE"))]);
-  const retouches = [];
-  const supprimes = [];
-  for (const [chemin, sha256] of attendus) {
-    const contenu = contenus.get(chemin);
-    if (contenu === undefined) supprimes.push(chemin);
-    else if (empreinte(contenu) !== sha256) retouches.push(chemin);
-  }
+  const { retouches, supprimes } = ecartsAuManifeste(contenus, attendus);
 
   const avertissements = [];
   const reference = champDeLaBlueprint(contenus, "commit_reference");
@@ -602,8 +565,8 @@ function examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha,
       dependabot: reglages.dependabot,
       prettier,
       fichiers: Object.keys(manifeste.fichiers).length,
-      retouches: retouches.sort(),
-      supprimes: supprimes.sort(),
+      retouches,
+      supprimes,
       avertissements,
     },
   };
@@ -627,6 +590,25 @@ export function examiner({ catalogue, appli }) {
   const sha = commitDuCatalogue(racineCatalogue, lecture.manifeste);
   return avecUnDossierTemporaire(
     (temporaire) => examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha }).resultat
+  );
+}
+
+/**
+ * L'origine de l'appli, rejouée au commit de son manifeste et vérifiée contre
+ * ses empreintes : chaque fichier tel que l'assemblage, ou la dernière mise à
+ * jour, l'a donné. Pour outils/adaptations.mjs --rejouer : un fichier fusionné
+ * par une mise à jour n'a jamais eu cette version commitée chez l'appli. Lit le
+ * HEAD de l'appli, arbre propre ou non ; n'y écrit rien.
+ * @param {{ catalogue: string, appli: string }} options
+ * @returns {Map<string, Buffer>}
+ */
+export function origineRejouee({ catalogue, appli }) {
+  const dossierAppli = path.resolve(appli);
+  const racineCatalogue = path.resolve(catalogue);
+  const lecture = lireLAppli(dossierAppli, { propre: false });
+  const sha = commitDuCatalogue(racineCatalogue, lecture.manifeste);
+  return avecUnDossierTemporaire(
+    (temporaire) => examinerDans(temporaire, { racineCatalogue, dossierAppli, lecture, sha }).origine
   );
 }
 
@@ -725,8 +707,11 @@ function verifierLaBranche(appli, branche) {
 // ---------------------------------------------------------------- chaque fichier
 
 // Ont leur propre traitement : l'en-tête de la blueprint est réécrit, le
-// manifeste remplacé par celui de la cible.
-const HORS_DE_LA_TABLE = new Set(["blueprint.md", MANIFESTE]);
+// manifeste remplacé par celui de la cible. ADAPTATIONS.md est à l'appli, comme
+// blueprint.md : seulement créé à son arrivée, quand l'appli ne l'a pas (mettreAJour).
+// Par la table, celui qu'une appli d'avant son arrivée écrit à la main (le rappel
+// de la garde l'y pousse) aurait fait refuser le report (fichier occupé).
+const HORS_DE_LA_TABLE = new Set(["blueprint.md", MANIFESTE, ADAPTATIONS]);
 const VERROU = "package-lock.json";
 // Une fusion de texte placerait les étapes au mauvais rang (« Les migrations » de la note).
 const FICHIER_MIGRATIONS = "src/lib/db/migrations.ts";
@@ -2096,6 +2081,16 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
       const { contenu, liste } = migrations.ecriture;
       ecritures.set(FICHIER_MIGRATIONS, contenu);
       fichiers[liste] = [...fichiers[liste], FICHIER_MIGRATIONS].sort();
+    }
+    // Hors de la table : celui de l'appli n'est jamais réécrit ni supprimé. À son
+    // arrivée (absent de l'origine), l'appli qui ne l'a pas reçoit l'en-tête de la
+    // cible ; celle qui l'avait reçu et l'a supprimé le reste, comme un fichier
+    // « supprimé par l'appli ». Son nom à la casse près compte : un disque Windows
+    // ou macOS ne distingue pas adaptations.md, que l'écriture écraserait.
+    const dejaLa = [...contenus.keys()].some((chemin) => chemin.toLowerCase() === ADAPTATIONS.toLowerCase());
+    if (cible.has(ADAPTATIONS) && !origine.has(ADAPTATIONS) && !dejaLa) {
+      ecritures.set(ADAPTATIONS, cible.get(ADAPTATIONS));
+      fichiers.ajoutes = [...fichiers.ajoutes, ADAPTATIONS].sort();
     }
 
     const manifesteCible = JSON.parse(cible.get(MANIFESTE).toString("utf-8"));

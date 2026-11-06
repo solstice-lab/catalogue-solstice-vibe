@@ -1480,6 +1480,76 @@ export const AUTRES_MAILS_ESSAI = [{ cle: "sous-traitant-bizarre", role: "Essai.
     );
   });
 
+  // ADAPTATIONS.md est à l'appli, comme blueprint.md. Passé par la table, celui
+  // qu'une appli d'avant son arrivée écrit à la main (le rappel de la garde l'y
+  // pousse ; tours-de-coloc, assemblée avant, en était là le 2026-11-05) faisait
+  // refuser le report vers un commit qui le donne : fichier occupé.
+  it(
+    "laisse ADAPTATIONS.md à l'appli : celui qu'elle a écrit avant son arrivée reste intact, sans refus ; sans lui, elle reçoit l'en-tête de la cible",
+    { timeout: 5 * REJEU },
+    () => {
+      const ecriture =
+        "  fs.writeFileSync(path.join(destination, ADAPTATIONS), ENTETE_DES_ADAPTATIONS);\n  ecrits.push(ADAPTATIONS);\n";
+      avecUnCommitDuCatalogue(
+        "Catalogue d'essai : l'assembleur d'avant ADAPTATIONS.md",
+        () => ecrire(catalogue, "outils/assembler.mjs", remplacer(ecriture, "")),
+        (avant) => {
+          const assemblee = path.join(dossierTemporaire("appli-avant-adaptations-"), "essai-adaptations");
+          // assemblerAuCommitA appelle l'assembleur du jour, importé par ce test : l'appli
+          // d'avant se simule en lui retirant le fichier, seule différence avec l'assembleur
+          // du commit `avant`. Le rejeu de l'origine, lui, prend l'assembleur de ce commit.
+          assemblerAuCommitA({ sortie: assemblee, briques: [], commit: avant });
+          fs.rmSync(path.join(assemblee, "ADAPTATIONS.md"));
+          git(assemblee, "commit", "-q", "-am", "Appli d'essai : assemblée avant ADAPTATIONS.md");
+
+          git(catalogue, "checkout", "HEAD~1", "--", "outils/assembler.mjs");
+          git(catalogue, "commit", "-q", "-m", "Catalogue d'essai : ADAPTATIONS.md arrive");
+          git(catalogue, "update-ref", "refs/remotes/origin/main", "HEAD");
+          const vers = git(catalogue, "rev-parse", "--short", "HEAD");
+
+          const notes =
+            "# Nos adaptations\n\n## 2026-11-06\n- Fichiers : `src/app/page.tsx`\n- Nature : propre à l'appli\n";
+          const avecSesNotes = appliRetouchee(
+            (d) => fs.writeFileSync(path.join(d, "ADAPTATIONS.md"), notes),
+            assemblee
+          );
+          publier(avecSesNotes);
+          const resultat = mettreAJour({ catalogue, appli: avecSesNotes, vers, branche: BRANCHE });
+          expect(fs.readFileSync(path.join(avecSesNotes, "ADAPTATIONS.md"), "utf-8")).toBe(notes);
+          expect(Object.values(resultat.fichiers).flat()).not.toContain("ADAPTATIONS.md");
+          expect(git(avecSesNotes, "status", "--porcelain")).not.toMatch(/ADAPTATIONS\.md/);
+
+          const sansNotes = appliRetouchee(() => {}, assemblee);
+          publier(sansNotes);
+          const recu = mettreAJour({ catalogue, appli: sansNotes, vers, branche: BRANCHE });
+          expect(recu.fichiers.ajoutes).toEqual(["ADAPTATIONS.md"]);
+          // L'en-tête de la cible, tel que l'assembleur l'écrit dans toute appli assemblée depuis.
+          expect(fs.readFileSync(path.join(sansNotes, "ADAPTATIONS.md"), "utf-8")).toBe(
+            fs.readFileSync(path.join(appli, "ADAPTATIONS.md"), "utf-8")
+          );
+          expect(rubriqueDe(rapport(recu), "Fichiers")).toMatch(/ADAPTATIONS\.md/);
+
+          // À la casse près : un disque Windows ou macOS ne distingue pas les deux noms, l'écriture écraserait le sien.
+          const enMinuscules = appliRetouchee(
+            (d) => fs.writeFileSync(path.join(d, "adaptations.md"), notes),
+            assemblee
+          );
+          publier(enMinuscules);
+          const casse = mettreAJour({ catalogue, appli: enMinuscules, vers, branche: BRANCHE });
+          expect(Object.values(casse.fichiers).flat()).not.toContain("ADAPTATIONS.md");
+          expect(fs.readFileSync(path.join(enMinuscules, "adaptations.md"), "utf-8")).toBe(notes);
+
+          // Reçu à l'assemblage puis supprimé par l'appli : il n'arrive pas, il ne revient pas.
+          const supprime = appliRetouchee((d) => fs.rmSync(path.join(d, "ADAPTATIONS.md")));
+          publier(supprime);
+          const sansRetour = mettreAJour({ catalogue, appli: supprime, vers, branche: BRANCHE });
+          expect(Object.values(sansRetour.fichiers).flat()).not.toContain("ADAPTATIONS.md");
+          expect(fs.existsSync(path.join(supprime, "ADAPTATIONS.md"))).toBe(false);
+        }
+      );
+    }
+  );
+
   describe("refus en clair, avant tout rejeu", () => {
     it("refuse un catalogue aux modifications non commitées, quand il vise son HEAD", { timeout: REFUS }, () => {
       const dossier = appliRetouchee(() => {});

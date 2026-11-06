@@ -107,6 +107,12 @@ Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 Les fichiers que l'appli a créés, absents de l'origine comme de la cible, ne sont jamais
 lus ni touchés. `PROJET.md` est à l'appli, jamais écrit (un ajout n'y lit que les briques
 écartées, plus bas) ; `blueprint.md` aussi, hors deux champs de son en-tête (plus bas).
+`ADAPTATIONS.md` aussi, hors de la table : jamais réécrit ni supprimé. À son arrivée (la
+cible le donne, l'origine non : appli assemblée avant le 2026-11-05), l'appli qui ne l'a pas,
+à la casse près, le reçoit avec l'en-tête de la cible, listé « ajouté » ; celle qui l'avait
+reçu et l'a supprimé le reste. Celui qu'une appli d'avant son arrivée a écrit à la main, le
+rappel de la garde l'y poussant, reste tel quel : par la table, il aurait fait refuser le
+report (un fichier neuf de la cible au chemin d'un fichier de l'appli).
 Pour les autres :
 
 | De l'origine à la cible | Dans l'appli | Ce que fait l'outil |
@@ -132,7 +138,7 @@ la fusion à trois, ou crée un conflit si l'appli a retouché la ligne. La couc
 `NOTICE` suit la même table, sans empreinte au manifeste : l'appli est jugée intacte si
 elle égale l'origine rejouée. Ont un traitement propre, dit dans les sections suivantes :
 `src/lib/db/migrations.ts`, `src/lib/db/schema.sql`, `package-lock.json`,
-`catalogue.empreintes.json` et l'en-tête de `blueprint.md`.
+`catalogue.empreintes.json` et l'en-tête de `blueprint.md` ; `ADAPTATIONS.md`, ci-dessus.
 
 Un conflit ne se tranche pas dans l'outil : les marqueurs restent, et la session ouverte
 dans l'appli les résout (« Le circuit »). `git diff --check` les attrape dans tout fichier,
@@ -388,7 +394,8 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
 
 **Les adaptations, à chaque mise à jour** (« Ce qui est outillé ») : avant l'étape 2, sur le
 même `HEAD` de l'appli, `node outils/adaptations.mjs <dossier-de-l-appli>`. Avant le report,
-l'origine de chaque fichier est encore dans l'historique de l'appli : le diff est exact. D'après
+l'origine de chaque fichier est encore dans l'historique de l'appli : le diff est exact. Après un
+report fusionné, celle des fichiers fusionnés n'y est plus : `--rejouer` la redonne. D'après
 la liste, la session rédige les **brouillons de tickets du catalogue**, un par défaut et non un
 par fichier (les onze fichiers de `/kit` et du patron retirés font un ticket), chacun avec le
 cas réel daté et le diff qui le montre, et les remet à la personne qui pilote, qui les crée.
@@ -696,21 +703,24 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   - **`ADAPTATIONS.md`**, que l'assembleur écrit vide avec son en-tête, hors manifeste comme
     `NOTICE` : une entrée par adaptation, cinq lignes au plus (`## date`, `Fichiers`, ce qui
     change, pourquoi, `Nature : défaut du catalogue` ou `propre à l'appli`) ;
-  - **`node outils/adaptations.mjs <appli> [--json]`**, en lecture seule, sans réseau : les
+  - **`node outils/adaptations.mjs <appli> [--json] [--rejouer]`**, en lecture seule : les
     fichiers du manifeste retouchés ou supprimés au `HEAD` de l'appli, chacun avec son diff et
     sa note, ou « sans note ». Le diff part de l'origine retrouvée par son empreinte : dans
     l'historique de l'appli, sinon au catalogue au commit noté. Faute de quoi il est dit
     **approché** (depuis le fichier du catalogue au commit noté) : un fichier qu'une mise à
     jour a fusionné n'a jamais eu son origine commitée chez l'appli, et l'assembleur retouche
-    les fichiers que l'en-tête remplit. Sur tours-de-coloc, les quatre retouches d'avant le
-    ticket (`confidentialite.ts`, `mentions-legales.ts`, `referencement.ts`, `migrations.ts`)
-    sont de ce cas. L'origine exacte demanderait le rejeu de cet outil-ci, au prix d'un
-    worktree et de Prettier : à brancher une fois son code partagé. La lecture du manifeste
-    et la comparaison des empreintes sont dans `outils/manifeste.mjs`, repris de cet outil,
-    qui garde pour l'heure sa propre copie. Il traite aussi encore `ADAPTATIONS.md` comme un
-    fichier de l'assemblage : une appli qui l'aurait créé à la main avant de recevoir celui
-    du catalogue verrait le report refusé (fichier occupé), d'où l'entrée à lui ajouter dans
-    `HORS_DE_LA_TABLE`, avec le branchement.
+    les fichiers que l'en-tête remplit. Sur tours-de-coloc, les quatre fichiers retouchés
+    (`confidentialite.ts`, `mentions-legales.ts`, `referencement.ts`, `migrations.ts`) sont
+    de ce cas, et le diff approché de `migrations.ts` passait 300 lignes, presque toutes dues
+    aux étapes que l'assembleur retire. **`--rejouer`** donne alors l'origine exacte : l'outil
+    rejoue l'assemblage noté au manifeste comme cet outil-ci (`origineRejouee`), au prix d'un
+    worktree temporaire du catalogue et de Prettier, et d'un `npm ci` (le réseau) si le
+    Prettier de ce commit n'est pas celui du catalogue. Un rejeu qui échoue (commit absent du
+    catalogue, empreintes qui ne se retrouvent pas) se dit en avertissement, et les diffs
+    restent approchés. Sans l'option, ni rejeu ni réseau. La lecture du manifeste et la
+    comparaison des empreintes sont dans `outils/manifeste.mjs`, que les deux outils
+    partagent : cet outil-ci n'y ajoute que ce que le rejeu exige (les réglages du format 2,
+    pas de `+arbre-modifie`), et ses refus gardent ses mots.
 
 ## Décisions prises
 
