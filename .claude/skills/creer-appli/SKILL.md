@@ -415,7 +415,13 @@ dans le premier commit que l'assembleur a fait, faute de branche avant lui : c'e
 l'adaptation, pour une appli assemblée, de « premier commit de la branche du premier
 ticket » (§3). Le reste est le premier ticket de l'appli, dans une session ouverte **dans
 ce dossier**, avec `solstice-livrer`, le socle prêt pour la prod (`solstice-nouvelle-appli`
-§4, `socle.md`) et le découpage en tickets (§5).
+§4, `socle.md`) et le découpage en tickets (§5). La session s'ouvre dans ce dossier pour
+y charger le `CLAUDE.md` et les gardes de l'appli. Le rappel de `ADAPTATIONS.md` remonte
+depuis le fichier écrit jusqu'au manifeste `catalogue.empreintes.json`, et non depuis le
+dossier de la session : avec le `gardes.mjs` à jour de l'appli, une retouche faite depuis une
+session ouverte ailleurs est rappelée aussi. La consigne d'ouvrir la session dans le dossier
+reste. Cas d'origine : à la recette du 2026-11-06, une session ouverte dans le catalogue a
+retouché deux fichiers du manifeste de l'appli, sans aucun rappel.
 
 À l'essai du 2026-10-21, trois des quatre commandes données à l'humain ont échoué au premier
 essai : écrites en bash pour une personne sous PowerShell, aucune n'était suivie d'une
