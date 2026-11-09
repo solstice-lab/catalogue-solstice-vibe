@@ -133,7 +133,12 @@ export const BRIQUES = {
   },
   calendrier: {
     exige: ["donnees"],
-    fichiers: ["src/briques/calendrier/", "tests/calendrier-calcul.test.ts", "tests/calendrier-isolement.test.ts"],
+    fichiers: [
+      "src/briques/calendrier/",
+      "tests/calendrier-calcul.test.ts",
+      "tests/calendrier-isolement.test.ts",
+      "tests/calendrier-requete.test.ts",
+    ],
     retraits: [],
   },
   validation: {
