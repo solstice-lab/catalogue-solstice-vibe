@@ -370,8 +370,8 @@ export const BRIQUES = {
   // La session en base, la protection des routes, /connexion et
   // les droits (exiger, peut, visiblePour). src/config/acces.ts, comptes.ts et
   // effets-comptes.ts sont les fichiers que l'appli remplit, mais ils importent les types de la
-  // brique : ils partent avec elle. Les écrans du patron dossiers l'exigent,
-  // chacune de leurs pages appelant exiger (PATRON_DOSSIERS).
+  // brique : ils partent avec elle. Les écrans du patron dossiers, qui restent
+  // au catalogue (PATRON_DOSSIERS), l'exigent : chacune de leurs pages appelle exiger.
   comptes: {
     // `connexion` : la brique qui porte la connexion, donc l'entrée que
     // l'en-tête de la blueprint règle (remplissagesDeLEntree). Une blueprint qui
@@ -565,8 +565,9 @@ export const BRIQUES = {
   // comptes ; l'écran /journal et l'historique se gardent par ses droits.
   journal: {
     exige: ["donnees", "comptes"],
-    // Branchée sur le patron dossiers, que la brique comptes garde,
-    // et, avec gestion-comptes, sur les gestes de /comptes.
+    // Branchée, avec gestion-comptes, sur les gestes de /comptes, et au
+    // catalogue sur le patron dossiers (journal-dossiers.test.ts, que
+    // PATRON_DONNEES emporte).
     fichiers: [
       "src/briques/journal/",
       "src/app/journal/",
@@ -601,7 +602,8 @@ export const BRIQUES = {
       ligne("src/app/dossiers/[slug]/page.tsx", 'import { HistoriqueFiche } from "@/briques/journal/HistoriqueFiche";'),
       ligne("src/app/dossiers/[slug]/page.tsx", '<HistoriqueFiche entite="dossiers" entiteId={dossier.id} />'),
       // --- les écritures des dossiers redeviennent de simples requêtes, sans
-      // transaction ni trace (la couche données reste avec la base)
+      // transaction ni trace (le fichier ne reste qu'avec patronDonnees, voir
+      // PATRON_DONNEES : sans, ces retraits se sautent)
       remplace(
         "src/lib/db/dossiers.ts",
         'import { query, queryOne, transaction } from "./client";',
@@ -956,20 +958,69 @@ export const ADRESSE_IP = {
 // à lire dans le catalogue et à copier, jamais livré à une appli. Le cas : le
 // 2026-11-05, l'essai tours-de-coloc a reçu ces écrans et leur entrée
 // « Dossiers » au menu, et la personne qui l'a vu a demandé ce que c'était.
-// Retirés de toute copie, avec ou sans la brique comptes. La couche données du
-// patron (dossiers.ts, dossiers-domaine.ts, l'import d'exemple, la table) reste
-// avec la base : la retirer d'une appli déjà en ligne serait une étape de
-// migration, et les briques journal, rgpd et les tests d'isolement s'y branchent.
+// Retirés de toute copie, avec ou sans la brique comptes. Sa couche données
+// suit (PATRON_DONNEES).
 export const PATRON_DOSSIERS = {
   // Son test passe par les server actions de ces écrans (bornes, doublon de référence).
   fichiers: ["src/app/dossiers/", "tests/dossiers-bornes.test.ts"],
   retraits: [
-    // Ses droits (src/config/acces.ts) n'ont rien à retirer : acces.ts part
-    // avec la brique comptes, et le droit reste la référence des briques à
-    // brancher (leurs README le citent).
+    // Son droit part avec la couche données (PATRON_DONNEES).
     ligne(
       "src/lib/navigation.ts",
       '{ libelle: "Dossiers", href: "/dossiers", visible: visiblePour("dossiers.acceder") },'
+    ),
+  ],
+};
+
+// La couche données du patron dossiers : sa table, son module, son domaine et
+// son droit, ses slugs, son import d'exemple. Retirée de toute copie neuve
+// depuis le 2026-11-09 : sans ses écrans, l'appli materiotheque gardait une
+// table vide, un module que rien n'appelait et un droit dossiers.acceder que sa
+// blueprint devait citer sans usage. Elle se lit au catalogue public, avec les
+// écrans (CLAUDE.md §3), et les README des briques à brancher y renvoient.
+// Retirer la table d'une appli déjà en ligne serait une étape de migration, que
+// le rejeu casserait chez celle qui l'a supprimée : l'assembleur la garde quand
+// on le lui demande (`patronDonnees`), ce que fait outils/mettre-a-jour.mjs pour
+// une appli qui l'a reçue (outils/mise-a-jour.md).
+//   emporte : les fichiers d'une autre unité qui partent aussi avec celle-ci. Le
+//             test du journal branché sur le patron est à la brique journal, et
+//             n'a d'objet qu'avec les deux.
+export const PATRON_DONNEES = {
+  fichiers: ["src/lib/db/dossiers.ts", "src/lib/dossiers-domaine.ts", "scripts/exemple-import.ts"],
+  emporte: ["tests/journal-dossiers.test.ts"],
+  retraits: [
+    // --- la table et son étape (la base de l'appli n'a jamais eu ni l'une ni l'autre)
+    bloc(
+      "src/lib/db/schema.sql",
+      "-- migration.\n\n-- Module d'exemple « dossiers »",
+      "  created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);",
+      "-- migration."
+    ),
+    bloc(
+      "src/lib/db/migrations.ts",
+      "  {\n    // Modèle d'étape : le champ notes",
+      "ADD COLUMN IF NOT EXISTS notes TEXT;`);\n    },\n  },"
+    ),
+    bloc(
+      "tests/migrations.test.ts",
+      '  it("livrent les colonnes nées en migration même sur une base neuve (dossiers.notes',
+      FIN_IT
+    ),
+    // --- son droit (acces.ts part avec la brique comptes : sans elle, ces
+    // retraits se sautent)
+    ligne("src/config/acces.ts", 'import { ACTIONS_DOSSIERS } from "@/lib/dossiers-domaine";'),
+    ligne("src/config/acces.ts", "  ...ACTIONS_DOSSIERS,"),
+    ligne("src/config/acces.ts", '  "dossiers.acceder": ["membre", "admin"],'),
+    // --- sa ligne du registre de l'export (brique rgpd ; sans elle, le
+    // registre part, ce retrait se saute)
+    bloc("src/config/donnees-personnelles.ts", '  {\n    quoi: "Dossiers",', "  },"),
+    // --- ses segments réservés et ses fabricants de slug et de chemin ; le
+    // reste de slug.ts sert à tout module
+    ligne("src/lib/slug.ts", '  dossiers: new Set(["nouveau", "modifier"]),'),
+    bloc(
+      "src/lib/slug.ts",
+      "// La référence seule est trop opaque et le client seul trop ambigu : le slug",
+      "  return `/dossiers/${slugDossier(dossier)}`;\n}"
     ),
   ],
 };
@@ -1038,19 +1089,17 @@ export const DONNEES = {
     "src/lib/db/bornes.ts",
     "src/lib/db/migrations.ts",
     "src/lib/db/schema.sql",
-    "src/lib/db/dossiers.ts",
     // Le SELECT 1 de /sante ; la route, elle, reste au socle.
     "src/lib/db/sante.ts",
     "tests/sante-base.test.ts",
-    // Le patron des modules métier (CLAUDE.md §3) : l'appli le copie pour
-    // chaque module métier qu'elle écrit, et il lit la base. Ses écrans sont
-    // dans PATRON_DOSSIERS.
-    "src/lib/dossiers-domaine.ts",
+    // Ce que tout module métier écrit sur le patron dossiers (CLAUDE.md §3)
+    // réutilise : slugs, fusion et clés d'un import, squelette des scripts de
+    // données. Le patron lui-même reste au catalogue (PATRON_DOSSIERS,
+    // PATRON_DONNEES).
     "src/lib/slug.ts",
     "src/lib/import-fusion.ts",
     "src/lib/cle-rapprochement.ts",
     "scripts/lib/cli.ts",
-    "scripts/exemple-import.ts",
     "docker-compose.yml",
     "scripts/bases-locales.ts",
     "scripts/lib/bases-locales.ts",
