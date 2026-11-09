@@ -208,6 +208,24 @@ describe("brique contact : limite d'envois en base, par adresse IP et au total",
     expect(mailsCaptures()).toEqual([]);
   });
 
+  // Audit du 2026-11-09 : quelques adresses, ou une production sans adresse
+  // lisible, saturaient le plafond sans que rien ne le dise ; les visiteurs
+  // lisaient « Réessayez dans une heure » et le client ne recevait plus rien.
+  it("le dit au journal une fois, quand le message qui atteint le plafond global passe, sans nom, adresse, IP ni message : de quoi relever PLAFOND_GLOBAL si ce sont de vrais visiteurs", async () => {
+    const avertissement = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await query(`INSERT INTO contact_envois (empreinte) SELECT 'autre-' || n FROM generate_series(1, $1::int) AS n`, [
+      PLAFOND_GLOBAL - 2,
+    ]);
+    expect(await traiterMessageContact(saisie(), depuis("203.0.113.1"))).toEqual(SUCCES);
+    expect(avertissement).not.toHaveBeenCalled();
+    expect(await traiterMessageContact(saisie(), depuis("203.0.113.2"))).toEqual(SUCCES);
+    for (let rang = 0; rang < 3; rang++) await traiterMessageContact(saisie(), depuis(`203.0.113.${10 + rang}`));
+    expect(avertissement).toHaveBeenCalledTimes(1);
+    const message = avertissement.mock.calls[0].map(String).join(" ");
+    expect(message).toMatch(new RegExp(`Brique contact : .*plafond.*${PLAFOND_GLOBAL}.*PLAFOND_GLOBAL`));
+    for (const donnee of ["203.0.113", "Camille", "camille@exemple.fr", "devis"]) expect(message).not.toContain(donnee);
+  });
+
   it("ne compte que les envois de l'heure écoulée, et efface les traces plus anciennes", async () => {
     await query(
       `INSERT INTO contact_envois (empreinte, recu_le) SELECT 'ancienne-' || n, now() - interval '2 hours' FROM generate_series(1, $1::int) AS n`,
