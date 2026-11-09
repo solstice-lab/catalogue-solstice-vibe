@@ -36,9 +36,9 @@ sessions et les codes sont en base, et le code part par e-mail. Chaque module
 l'exige aussi, puisque chacune de ses pages appelle `exiger`.
 
 Elle se branche sur le socle et non sur un module (`sansModule: true`). Sans
-module, elle garde donc la base et la couche données du patron `dossiers`, d'où
-partira le premier module d'une appli sur mesure (ses écrans restent au
-catalogue). Une appli sans la brique n'a ni module,
+module, elle garde donc la base, où s'écrira le premier module d'une appli sur
+mesure, sur le patron `dossiers` lu au catalogue public (sa couche données et
+ses écrans y restent). Une appli sans la brique n'a ni module,
 ni base, ni droits, ni protection des routes : c'est un site vitrine. Son
 `src/proxy.ts` ne pose que la CSP.
 

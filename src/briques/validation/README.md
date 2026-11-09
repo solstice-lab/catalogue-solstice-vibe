@@ -143,10 +143,13 @@ qui change pour l'appelant, raison.
 ## La brancher
 
 Tout se déclare côté appli, jamais dans la brique. L'exemple suit le patron
-`dossiers` du catalogue (`src/app/dossiers/`, CLAUDE.md §3) : une proposition
-de **nouveau dossier** (venue d'un formulaire public, d'un rescan ou d'un
-fichier), que la personne habilitée accepte, ce qui crée le dossier, ou
-refuse. Une entité réelle remplace les noms ; la forme reste la même.
+`dossiers` (CLAUDE.md §3), qui se lit dans le catalogue public
+(`src/lib/db/dossiers.ts` du dépôt `solstice-lab/catalogue-solstice-vibe`),
+pas dans l'appli : l'appli branche à sa place son propre module écrit sur ce
+patron (sa table, son droit, ses fonctions de données). Dans l'exemple, une
+proposition de **nouveau dossier** (venue d'un formulaire public, d'un rescan
+ou d'un fichier), que la personne habilitée accepte, ce qui crée le dossier,
+ou refuse. Une entité réelle remplace les noms ; la forme reste la même.
 
 1. **La liaison**, `src/lib/validation-dossiers.ts` : un type par sorte de
    proposition, avec son rendu, sa revérification et son applicateur.
@@ -206,13 +209,14 @@ refuse. Une entité réelle remplace les noms ; la forme reste la même.
    };
    ```
 
-   Deux adaptations côté appli que l'exemple suppose : l'action
-   `dossiers.decider` s'ajoute à `ACTIONS_DOSSIERS` (`src/lib/dossiers-domaine.ts`)
-   et à `DROITS` (`src/config/acces.ts`) ; et `creerDossier` de
-   `src/lib/db/dossiers.ts` reçoit le client de la transaction en dernier
-   paramètre (type `Transaction` de la brique), que le patron du catalogue ne
-   prend pas encore : l'ajouter, facultatif, avec `query`/`queryOne` du socle
-   par défaut.
+   Deux adaptations du module de l'appli que l'exemple suppose : l'action
+   `dossiers.decider` s'ajoute à ses actions (`ACTIONS_DOSSIERS` de
+   `src/lib/dossiers-domaine.ts` dans le patron) et à `DROITS`
+   (`src/config/acces.ts`) ; et sa fonction de création (`creerDossier` de
+   `src/lib/db/dossiers.ts` dans le patron) reçoit le client de la transaction
+   en dernier paramètre (type `Transaction` de la brique), que le patron du
+   catalogue ne prend pas encore : l'ajouter, facultatif, avec
+   `query`/`queryOne` du socle par défaut.
 
 2. **Proposer**, depuis une server action ou un script de l'appli, avec une
    clé qui identifie la source (la référence, ici) : reproposer la même clé

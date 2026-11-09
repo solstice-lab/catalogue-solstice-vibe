@@ -77,11 +77,14 @@ qui change pour l'appelant, raison.
 ## La brancher sur une entité
 
 Tout se déclare côté appli, jamais dans la brique. L'exemple suit le patron
-`dossiers` du catalogue (`src/app/dossiers/`, CLAUDE.md §3) : sa table
-`dossiers` porte `id`, `reference`, `client` et une colonne `echeance` de type
-`date`, et `cheminDossier` de `src/lib/slug.ts` donne le chemin de sa fiche.
-Le calendrier montre alors les échéances du mois. Une entité réelle remplace
-les noms ; la forme reste la même.
+`dossiers` (CLAUDE.md §3), qui se lit dans le catalogue public
+(`src/lib/db/dossiers.ts` du dépôt `solstice-lab/catalogue-solstice-vibe`),
+pas dans l'appli : l'appli branche à sa place son propre module écrit sur ce
+patron (sa table, son droit, son chemin de fiche, ses fonctions de données).
+Dans l'exemple, la table `dossiers` porte `id`, `reference`, `client` et une
+colonne `echeance` de type `date`, et `cheminDossier` de `src/lib/slug.ts`
+donne le chemin de sa fiche. Le calendrier montre alors les échéances du mois.
+Une entité réelle remplace les noms ; la forme reste la même.
 
 1. **La liaison**, `src/lib/calendrier-dossiers.ts` :
 

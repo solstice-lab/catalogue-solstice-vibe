@@ -241,19 +241,19 @@ Règles de l'assembleur :
     responsable technique du projet trancher.
 - **La base vient avec les briques qui la lisent.** `comptes`, `contact`, `rgpd`,
   `journal`, `gestion-comptes`, `espaces`, `echeances`, `calendrier`, `validation`,
-  `import-lot` et `notifications` exigent la brique `donnees` (base, migrations, couche données du patron
-  `dossiers`), que l'assembleur garde d'office dès qu'une brique gardée l'exige : ne pas la
+  `import-lot` et `notifications` exigent la brique `donnees` (base, migrations, squelette des scripts de
+  données), que l'assembleur garde d'office dès qu'une brique gardée l'exige : ne pas la
   nommer. Sans aucune d'elles, l'appli n'a pas de base ; la recevoir plus tard est un ajout
-  lourd (ci-dessous). Les
-  écrans du patron `dossiers` ne viennent jamais : le catalogue les garde, à lire et à copier.
+  lourd (ci-dessous). Le
+  patron `dossiers` ne vient jamais, ni ses écrans ni sa couche données : le catalogue le garde, à lire et à copier.
 - Une brique peut en exiger une autre : l'assembleur refuse de la garder sans elle et
   nomme l'option à ajouter. **`comptes`, `contact` et `notifications` exigent `mails`**
   (le code de connexion part par e-mail : nommer `comptes,mails`) ; **`rgpd`, `journal` et
   `gestion-comptes` exigent `comptes`**, et **`espaces` exige `comptes` et `mails`**. Il
   n'ajoute rien en silence : seule `rgpd` vient
   d'office avec `comptes`, et il le dit.
-- `comptes` (avec `mails`) donne la base, les droits et la couche données du patron `dossiers`
-  (ses écrans restent au catalogue) : c'est le départ de toute appli qui garde des données, dont le module métier
+- `comptes` (avec `mails`) donne la base et les droits (le patron `dossiers` reste au
+  catalogue, écrans et couche données) : c'est le départ de toute appli qui garde des données, dont le module métier
   copiera `dossiers`. L'accueil de toute appli assemblée est un accueil de départ
   (`src/app/page.tsx`) : nom, description et lien d'entrée lus de la blueprint.
 - **`rgpd` vient d'office avec `comptes`** (l'export et l'effacement des données d'une
@@ -409,8 +409,8 @@ Relire la sortie : la ligne « Assemblé : … » (nombre de fichiers, commit), 
 ligne « Profil : … », qui redit les briques du profil puis celles de `--briques`, la ligne
 « Ajouté d'office : rgpd (avec comptes). » quand `comptes` est choisi sans `rgpd`, et la ligne
 « Retiré : … », qui doit contenir tout ce qui n'a été ni choisi ni ajouté d'office : chaque
-brique non choisie, `partagée patron-dossiers` et `partagée vitrine-du-kit` toujours (ni les écrans du patron
-ni `/kit` ne sont livrés), `partagée adresse-ip` quand ni `comptes` ni `contact` ne l'est, et `brique donnees` quand aucune brique
+brique non choisie, `partagée patron-dossiers`, `partagée patron-donnees` et `partagée vitrine-du-kit` toujours (ni le
+patron, écrans et couche données, ni `/kit` ne sont livrés), `partagée adresse-ip` quand ni `comptes` ni `contact` ne l'est, et `brique donnees` quand aucune brique
 gardée ne lit la base. Une brique choisie qui y figure est une anomalie : arrêter. La ligne
 « Dependabot : » (absente de « Retiré : », qui ne liste que des unités) doit redire la fiche (étape 1) ;
 le premier commit la reprend. La ligne

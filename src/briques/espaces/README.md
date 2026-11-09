@@ -202,8 +202,10 @@ raison.
 
 L'assembleur branche la brique (pages, droit, menu, registres). Ce qui reste à
 l'appli, c'est chaque module métier dont les fiches appartiennent à un espace.
-Il copie le patron `dossiers` (`CLAUDE.md` §3), avec trois différences, et
-une quatrième s'il garde des données par membre :
+Il copie le patron `dossiers` (`CLAUDE.md` §3), qui se lit dans le catalogue
+public (`src/lib/db/dossiers.ts` du dépôt
+`solstice-lab/catalogue-solstice-vibe`), pas dans l'appli, avec trois
+différences, et une quatrième s'il garde des données par membre :
 
 1. **Sa table** a `espace_id INTEGER NOT NULL REFERENCES espaces (id)` et un
    index qui commence par `espace_id`. Une référence unique l'est par espace

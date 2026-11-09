@@ -35,8 +35,11 @@ responsable du projet.
     d'exemption, et `tests/journal.test.ts` vérifie que cette durée ne se
     purge jamais au passage d'une requête.
 
-Elle est branchée sur le patron `dossiers` : création, modification, suppression
-unitaire et en lot (une ligne par dossier). C'est le modèle qu'un module copie.
+Au catalogue, elle est branchée sur le patron `dossiers` : création,
+modification, suppression unitaire et en lot (une ligne par dossier). C'est le
+modèle qu'un module copie. Une appli neuve ne reçoit pas ce patron : le journal
+n'y trace d'abord que les gestes de `/comptes` ci-dessous, et son module métier
+s'y branche sur ce modèle, lu au catalogue public.
 
 Elle trace aussi les gestes de l'écran `/comptes` (brique gestion-comptes) :
 inviter une adresse, changer un rôle, désactiver ou réactiver un compte
@@ -75,9 +78,10 @@ Un compte s'y désigne par « compte n°12 », jamais par son adresse.
   transaction qu'il reçoit.
 - **Les écritures sans session** (un script d'import, une tâche planifiée) :
   `auteurCourant` lève faute de personne connectée, et l'écriture n'a pas lieu.
-  Un script qui écrit des dossiers par `creerDossier` échoue donc tant que le
-  journal y est branché. La trace d'un import (une ligne par lot, un auteur
-  « script » nommé) est à cadrer avec le premier import réel.
+  Un script qui écrit par une fonction tracée (`creerDossier` dans le patron)
+  échoue donc tant que le journal y est branché. La trace d'un import (une
+  ligne par lot, un auteur « script » nommé) est à cadrer avec le premier
+  import réel.
 - **Les modules métier d'une appli** et les imports en lot : branchés au
   besoin réel du client, sur le modèle des dossiers.
 
@@ -135,10 +139,12 @@ aussi les étapes `journal_audit` de `src/lib/db/migrations.ts` (la table, puis 
 `src/lib/confidentialite.ts` (le traitement et ses choix) et de
 `src/config/donnees-personnelles.ts` (la source de l'export) avec son cas de
 `tests/rgpd-export.test.ts`, sa ligne du nettoyage des comptes de
-`tests/aide-comptes.ts`, l'historique de la fiche dossier, et rend aux écritures de `src/lib/db/dossiers.ts` leurs simples
-requêtes, sans transaction ni trace. Il retire enfin la trace que les actions
-de `src/app/comptes/actions.ts` passent à l'administration des comptes, son
-entrée de `src/config/effets-comptes.ts`, et le cas de
+`tests/aide-comptes.ts` et, dans une appli qui a reçu le patron `dossiers`,
+l'historique de la fiche dossier, et rend aux écritures de son
+`src/lib/db/dossiers.ts` leurs simples requêtes, sans transaction ni trace. Il
+retire enfin la trace que les actions de `src/app/comptes/actions.ts` passent
+à l'administration des comptes, son entrée de `src/config/effets-comptes.ts`,
+et le cas de
 `tests/rgpd-routes.test.ts` qui trace l'effacement.
 
 La table naît par l'étape « journal_audit : … » de `src/lib/db/migrations.ts`,
@@ -183,7 +189,8 @@ la pull request qui le fait : date, ce qui change pour l'appelant, raison.
 
 ## La brancher
 
-Sur le modèle de `src/lib/db/dossiers.ts` :
+Sur le modèle de `src/lib/db/dossiers.ts`, qui se lit dans le catalogue public
+(dépôt `solstice-lab/catalogue-solstice-vibe`), pas dans une appli neuve :
 
 1. La server action garde `exiger(action)` en première ligne : c'est elle qui
    établit la personne. Rien d'autre ne change dans l'action.
