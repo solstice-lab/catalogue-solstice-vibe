@@ -208,6 +208,34 @@ existant.
 Retour arrière : *Revert* sur la PR, qui repart par la CI. Il ne défait pas
 une migration déjà appliquée.
 
+## Tout dépend de `NODE_ENV=production`
+
+Les protections de production ne valent que si l'appli tourne avec
+`NODE_ENV=production`, ce que `next build` et `next start` (le `startCommand`)
+posent d'eux-mêmes. Une recette servie autrement, `next dev` sur un serveur ou
+un `NODE_ENV` réglé à une autre valeur chez l'hébergeur, les perd toutes d'un
+coup, sans message qui le dise (audit du 2026-11-09). **Ne jamais régler
+`NODE_ENV` à la main chez l'hébergeur** : `render.yaml` ne la pose pas
+(« ne pose pas NODE_ENV »), et une préproduction se distingue par d'autres
+variables que celle-ci.
+
+Ce qui en dépend, selon les briques gardées :
+
+| Protection | Où | Hors production |
+| --- | --- | --- |
+| HSTS | `next.config.ts` | Pas d'en-tête : le navigateur accepte le site en HTTP. |
+| CSP sans `'unsafe-eval'` | `src/proxy.ts` | En `development`, `eval` est permis aux scripts. |
+| Base distante jointe en clair refusée (`PGSSLMODE=disable`) | `src/lib/db/client.ts` (brique données) | Le mot de passe et les données peuvent circuler en clair. |
+| Adresse du visiteur lue dans `IP_EN_TETE_CLIENT` | `src/lib/adresse-ip.ts` (briques comptes, contact) | Toutes les adresses valent « local » : un seul compteur pour toutes les limites par IP. |
+| Cookies `__Host-` et `Secure` (session, parcours Google et Microsoft) ; `Secure` seul pour l'espace choisi | `jeton.ts`, `session.ts`, `parcours.ts` (brique comptes), `acces.ts` (brique espaces) | Les cookies partent aussi en HTTP, et un sous-domaine peut poser ceux de la connexion. |
+| Démo refusée, démarrage refusé sans `IP_EN_TETE_CLIENT` | `methodes.ts` (brique comptes) | La démo laisse n'importe qui jouer l'admin ; l'absence d'en-tête passe. |
+| Lien de connexion bâti sur `URL_PUBLIQUE` | `lien-email.ts` (brique comptes) | Le lien se bâtit sur l'en-tête `Host` de la requête, que le demandeur choisit. |
+| Mails refusés sans fournisseur, jamais écrits au journal | `envoi.ts`, `local.ts` (brique mails) | Sans `MAILS_FOURNISSEUR`, chaque mail (codes de connexion compris) s'écrit dans le journal. |
+| Vitrine du kit en 404 (catalogue hébergé seulement) | `protection.ts` (brique comptes) | Servie à tout cookie bien signé, même d'une session révoquée. |
+
+Une commande lancée à la main (`npx tsx scripts/…`) tourne sans
+`NODE_ENV` : ces gardes ne la couvrent pas.
+
 ## Déployer ailleurs
 
 Cinq choses sont propres à Render, et seulement cinq.
@@ -224,6 +252,12 @@ Le certificat de la base se vérifie de même au premier déploiement : sans
 `PGSSLMODE`, `/sante` dit si la base répond ou si son certificat est refusé
 (journaux du service). Refusé : `PGSSLROOTCERT` reçoit le chemin du CA de
 l'hébergeur s'il en publie un, sinon `PGSSLMODE=no-verify`, comme chez Render.
+
+La base se joint en direct, jamais par un pgbouncer en mode transaction : le
+rejeu du schéma au démarrage se fait sous un verrou consultatif de session
+(`src/lib/db/client.ts`), que pgbouncer prendrait et relâcherait sur deux
+connexions différentes. Le verrou resterait pris, et chaque démarrage suivant
+l'attendrait sans fin. Render joint sa base en direct.
 
 Puis réécrire, dans `tests/deploiement.test.ts`, le bloc « render.yaml :
 l'adaptateur Render » pour le nouveau fichier, le cas du lieu de

@@ -165,4 +165,23 @@ describe("docker-compose.yml", () => {
     expect(compose).toMatch(/-\s*donnees:\/var\/lib\/postgresql\s*$/m);
     expect(compose).toMatch(/^volumes:\s*\n\s+donnees:\s*\n\s+name:\s*solstice-postgres-donnees\s*$/m);
   });
+
+  // Audit du 2026-11-09 : « postgres:18 » est une étiquette, que l'éditeur de
+  // l'image déplace à chaque reconstruction ; le poste et la CI tiraient ce
+  // qu'elle désignait ce jour-là. Épinglée par digest (celui de la liste de
+  // manifestes, multi-plateforme), l'image ne change que par une PR relue.
+  it("épingle l'image Postgres par digest, la même que la CI (une étiquette se déplace sans PR)", () => {
+    const ci = fs.readFileSync(path.join(process.cwd(), ".github/workflows/ci.yml"), "utf-8");
+    const image = imageEpinglee(compose.match(/^\s*image:\s*(\S+)/m)?.[1]);
+    expect(image, "image du compose").not.toBeNull();
+    expect(imageEpinglee(ci.match(/^\s*IMAGE:\s*(\S+)/m)?.[1]), "IMAGE de ci.yml").toBe(image);
+    // Cas fautifs : une étiquette seule, un digest tronqué.
+    expect(imageEpinglee("postgres:18")).toBeNull();
+    expect(imageEpinglee(`postgres:18@sha256:${"a".repeat(63)}`)).toBeNull();
+  });
 });
+
+// L'image si elle est épinglée par digest (postgres:<majeure>@sha256:<64 hex>), null sinon.
+function imageEpinglee(image: string | undefined): string | null {
+  return image !== undefined && /^postgres:\d+@sha256:[0-9a-f]{64}$/.test(image) ? image : null;
+}

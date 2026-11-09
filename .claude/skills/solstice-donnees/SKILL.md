@@ -15,7 +15,10 @@ est citée quand elle existe.
   au chargement : le build passe sans `DATABASE_URL`, c'est la première
   requête qui lève si elle manque. L'initialisation (schema.sql puis
   migrations) se joue aussi à la première requête et un échec d'init n'est
-  jamais mis en cache — la requête suivante retente.
+  jamais mis en cache — la requête suivante retente. Elle se joue sous un
+  verrou consultatif Postgres (`VERROU_DU_REJEU`) : deux instances qui
+  démarrent ensemble levaient « already exists » sur un `CREATE … IF NOT
+  EXISTS` concurrent ; la seconde attend désormais la première.
 - **Le certificat de la base se vérifie par défaut** (`optionsSsl()` de
   `client.ts`) : par les CA que Node reconnaît, ou par celui dont `PGSSLROOTCERT`
   donne le chemin. `PGSSLMODE=disable` en local (pas de SSL), **refusé en
@@ -249,8 +252,8 @@ après, tsx le passe au script comme argument et le fichier n'est pas lu.
   cas d'origine entre parenthèses — pas « ça marche », mais « ce qui ne doit
   jamais se reproduire ».
 - La CI a son propre Postgres jetable (conteneur de l'étape « Démarrer
-  Postgres », version dans sa variable `IMAGE`), à aligner sur la version de
-  la prod.
+  Postgres », image épinglée par digest dans sa variable `IMAGE`, la même que
+  `docker-compose.yml` ; `ci.yml` dit comment la renouveler), alignée sur la prod.
 - Une connexion à la prod pour « regarder » passe par une variable saisie
   sans écho, jamais une URL collée : l'historique du shell la garde, et les
   gardes du harnais refusent une URL distante avec mot de passe.

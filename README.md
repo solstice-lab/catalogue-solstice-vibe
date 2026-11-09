@@ -13,7 +13,8 @@ dépôt, où s'écrit ensuite son module métier.
 Le dépôt est entretenu par l'équipe Solstice Lab et n'accepte pas de pull
 request extérieure : un problème se signale par un ticket, une faille par
 [`SECURITY.md`](SECURITY.md), et [`CONTRIBUTING.md`](CONTRIBUTING.md) est le
-mode d'emploi de l'équipe.
+mode d'emploi de l'équipe. Les échanges suivent le
+[code de conduite](CODE_OF_CONDUCT.md).
 
 ## Démarrage rapide
 
@@ -314,7 +315,8 @@ fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md` (s'il existe)
 `outils/`, ni la skill `creer-appli` et l'agent
 `relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues, de l'outil de mise à jour et de
 l'outil des adaptations, ni le test des renvois de `docs/cicatrices.md`, ni
-le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`
+le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
+`CODE_OF_CONDUCT.md`
 et les modèles de ticket et de PR (liste `EXCLUS_DU_CATALOGUE` de
 `outils/modules.mjs`).
 Il écrit `blueprint.md` à la racine, avec le commit de référence du catalogue (celui du dépôt au
@@ -461,7 +463,10 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   avec la brique données, état de la base (`src/lib/db/sante.ts`), 503 si elle
   ne répond pas.
 - `src/app/kit/` — la vitrine du kit, hors navigation, pour vérifier une
-  thématisation. Au catalogue seulement : l'assembleur ne la livre à aucune appli.
+  thématisation. Au catalogue seulement : l'assembleur ne la livre à aucune appli,
+  et le catalogue ne la sert pas en production (`next start`, en ligne comme en
+  local : 404 depuis le proxy, `ROUTES_HORS_PRODUCTION` de
+  `src/briques/comptes/protection.ts`) ; elle se regarde sous `npm run dev`.
 - `src/app/mentions-legales/` — les mentions légales (LCEN), ouvertes sans
   connexion, remplies depuis `src/lib/mentions-legales.ts`.
 - `src/app/confidentialite/` — la politique de confidentialité (RGPD,

@@ -233,11 +233,11 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
 ### E. Renvois que l'appli du client ne peut pas suivre **(client)**
 
 L'appli assemblée n'a ni le `README.md` du catalogue, ni `LICENSE`, `CONTRIBUTING.md`,
-`SECURITY.md`, ni `outils/`, ni la skill `creer-appli`, ni cet agent
+`SECURITY.md`, `CODE_OF_CONDUCT.md`, ni `outils/`, ni la skill `creer-appli`, ni cet agent
 (`EXCLUS_DU_CATALOGUE`).
 Chercher dans la blueprint (`Grep`) :
 `README.md` hors d'un chemin de brique (`src/briques/<brique>/README.md` existe), `LICENSE`,
-`CONTRIBUTING.md`, `SECURITY.md`, `outils/`,
+`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `outils/`,
 `creer-appli`, `relecteur-blueprint`, `assembler.mjs`. Chaque occurrence est un
 constat (le catalogue se cite par son nom et son commit de référence ; la fiche du client est
 son propre `PROJET.md`, copié par l'assembleur avec `--fiche`). Vérifier aussi que chaque chemin cité

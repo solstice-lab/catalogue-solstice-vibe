@@ -176,11 +176,13 @@ Une entité réelle remplace les noms ; la forme reste la même.
    veille et un le lendemain, puis vérifier que
    `lireEvenements(CALENDRIER_DOSSIERS, "aaaa-mm")` rend les deux premiers
    avec le libellé, le détail et le lien attendus, et pas les deux autres. Les
-   tests de la brique couvrent le calcul (`tests/calendrier-calcul.test.ts`)
-   et l'isolement ; la lecture en base, bornes du mois comprises, n'est
-   vérifiée que par le test d'un branchement. Le branchement de la GMAO, banc
-   d'essai de la brique avant son retrait du catalogue, la vérifiait sur une
-   vue ; c'est à refaire dans chaque appli.
+   tests de la brique couvrent le calcul (`tests/calendrier-calcul.test.ts`),
+   l'isolement, et la lecture en base sur une table d'essai
+   (`tests/calendrier-requete.test.ts` : bornes du mois, tri, date en texte,
+   gardes) ; ils ne disent rien de la table, de la vue ni des fonctions de
+   l'appli. Le branchement de la GMAO, banc d'essai de la brique avant son
+   retrait du catalogue, se vérifiait ainsi sur une vue ; c'est à refaire dans
+   chaque appli.
 
 ## Ce qu'on configure
 

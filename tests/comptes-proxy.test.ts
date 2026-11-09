@@ -199,6 +199,45 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
     }
   });
 
+  // Audit du 2026-11-09 : la vitrine du kit n'a pas de garde par exiger, et le
+  // proxy ne lit pas la base. Un cookie bien signé dont la session était
+  // révoquée l'ouvrait donc en production, avec le menu entier de l'appli. Un
+  // jeton signé sans session en base est, pour le proxy, ce cookie révoqué.
+  // L'assembleur retire la vitrine de toute appli, et ces deux tests avec elle.
+  it("ne sert pas la vitrine du kit en production, avec ou sans cookie, même signé d'une session révoquée : 404", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("IP_EN_TETE_CLIENT", "cf-connecting-ip");
+    poserLesMethodes(["code-email"]);
+    try {
+      // Encodé, le chemin échappait à la comparaison et retombait sur la seule
+      // vérification de la signature (relecture du 2026-11-09).
+      for (const chemin of ["/kit", "/kit/site-vitrine", "/kit?vue=sombre", "/%6Bit", "/kit%2Fsite-vitrine"]) {
+        for (const enTetes of [{}, avecCookie(signer(nouveauJeton()))]) {
+          const reponse = proxy(requete(chemin, enTetes));
+          expect(reponse.status, chemin).toBe(404);
+          expect(versLaConnexion(reponse), chemin).toBeNull();
+        }
+      }
+      // Une route qui ne fait que commencer pareil reste une route comme les autres.
+      expect(versLaConnexion(proxy(requete("/kitx")))).not.toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+      poserLesMethodes(null);
+    }
+  });
+
+  it("sert la vitrine du kit hors production, derrière le même cookie signé qu'avant", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      expect(versLaConnexion(proxy(requete("/kit")))).not.toBeNull();
+      const reponse = proxy(requete("/kit", avecCookie(signer(nouveauJeton()))));
+      expect(reponse.status).toBe(200);
+      expect(reponse.headers.get("content-security-policy")).toBeTruthy();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("n'ouvre pas une route qui ne fait que commencer comme une route ouverte", () => {
     for (const chemin of [
       "/connexionx",

@@ -17,7 +17,7 @@ const SCHEMA_PATH = path.join(process.cwd(), "src", "lib", "db", "schema.sql");
 
 declare global {
   var __slPool: Pool | undefined;
-  var __slInitPromise: Promise<void> | undefined;
+  var __slInitialisationDuProcessus: Promise<void> | undefined;
 }
 
 function creerPool(): Pool {
@@ -168,18 +168,54 @@ function obtenirPool(): Pool {
   return pool;
 }
 
+// La clé du verrou consultatif qui sérialise le rejeu entre instances. Fixe :
+// toutes les instances d'une appli doivent prendre la même. Un verrou
+// consultatif vaut pour une base, pas pour le serveur : deux applis sur le même
+// Postgres ne s'attendent pas.
+const VERROU_DU_REJEU = "schema-et-migrations:rejeu";
+
 // Schéma initial (bases neuves) puis migrations (toutes les bases), dans cet
 // ordre. Exportée pour le test qui verrouille l'idempotence : rejouée deux
 // fois, elle ne doit rien casser.
+//
+// Sous verrou : deux instances qui démarrent ensemble rejouaient le schéma en
+// même temps, et un CREATE … IF NOT EXISTS concurrent levait « already
+// exists » (doublon dans pg_type), l'instance perdante ne démarrait pas (audit
+// du 2026-11-09 ; les tests l'avaient vécu sur une base commune à leurs
+// workers). La seconde attend la première, puis rejoue sur une base à jour.
+// Verrou de session, pas de transaction : le rejeu se fait hors transaction,
+// et une étape qui plante ne doit pas défaire les précédentes. Il est tenu
+// par une connexion à part, relâché dans tous les cas ; si elle tombe,
+// Postgres le relâche avec elle.
 export async function appliquerSchemaEtMigrations(): Promise<void> {
   const schema = fs.readFileSync(SCHEMA_PATH, "utf-8");
-  await obtenirPool().query(schema);
-  await appliquerMigrations(obtenirPool());
+  const pool = obtenirPool();
+  const connexion = await pool.connect();
+  // Un verrou qui n'a pas pu se rendre (ou se prendre) : la connexion est
+  // détruite plutôt que rendue au pool, et Postgres le relâche avec elle.
+  // L'erreur d'une étape reste celle qui remonte, avec son nom.
+  let rendu = false;
+  try {
+    await connexion.query("SELECT pg_advisory_lock(hashtext($1))", [VERROU_DU_REJEU]);
+    try {
+      await pool.query(schema);
+      await appliquerMigrations(pool);
+    } finally {
+      rendu = await connexion.query("SELECT pg_advisory_unlock(hashtext($1))", [VERROU_DU_REJEU]).then(
+        () => true,
+        () => false
+      );
+    }
+  } finally {
+    connexion.release(!rendu);
+  }
 }
 
 // L'initialisation ne doit être lancée qu'une seule fois par process, et
 // toute requête doit attendre qu'elle soit terminée : on mémorise la
-// promesse plutôt qu'un simple booléen.
+// promesse plutôt qu'un simple booléen. Sur globalThis et non dans le module :
+// Next peut charger ce fichier plusieurs fois dans un même process
+// (rechargement à chaud, bundles distincts), et chaque copie la relancerait.
 //
 // IMPORTANT : on ne met JAMAIS en cache un échec. Si l'init échoue (migration
 // bancale, base momentanément injoignable au démarrage…), on remet la
@@ -187,21 +223,21 @@ export async function appliquerSchemaEtMigrations(): Promise<void> {
 // promesse rejetée resterait mémorisée et toutes les requêtes suivantes
 // retomberaient sur la même erreur jusqu'au redémarrage du process — un
 // incident transitoire ne se rétablirait pas tout seul (leçon d'un projet précédent).
-function getInitPromise(): Promise<void> {
-  if (!globalThis.__slInitPromise) {
-    globalThis.__slInitPromise = appliquerSchemaEtMigrations().catch((erreur) => {
-      globalThis.__slInitPromise = undefined;
+function initialisationDuProcessus(): Promise<void> {
+  if (!globalThis.__slInitialisationDuProcessus) {
+    globalThis.__slInitialisationDuProcessus = appliquerSchemaEtMigrations().catch((erreur) => {
+      globalThis.__slInitialisationDuProcessus = undefined;
       throw erreurDeCertificatTraduite(erreur);
     });
   }
-  return globalThis.__slInitPromise;
+  return globalThis.__slInitialisationDuProcessus;
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(
   texte: string,
   params: unknown[] = []
 ): Promise<T[]> {
-  await getInitPromise();
+  await initialisationDuProcessus();
   const resultat = await obtenirPool().query<T>(texte, params);
   return resultat.rows;
 }
@@ -235,7 +271,7 @@ export type ExecuteurSql = { query: typeof query };
 export async function transaction<T>(
   fn: (client: { query: typeof query; queryOne: typeof queryOne }) => Promise<T>
 ): Promise<T> {
-  await getInitPromise();
+  await initialisationDuProcessus();
   const client = await obtenirPool().connect();
   try {
     await client.query("BEGIN");

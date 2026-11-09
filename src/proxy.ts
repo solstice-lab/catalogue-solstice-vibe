@@ -40,7 +40,8 @@ function politiqueDeContenu(nonce: string): string {
 
 export function proxy(requete: NextRequest): NextResponse {
   // Brique comptes : sans session, la requête part vers /connexion. Une
-  // redirection n'exécute aucun script, elle n'a pas besoin de la CSP.
+  // redirection (ou le 404 d'une route hors production) n'exécute aucun
+  // script, elle n'a pas besoin de la CSP.
   const refus = protegerLaRoute(requete);
   if (refus) return refus;
   // Fin de la brique comptes.

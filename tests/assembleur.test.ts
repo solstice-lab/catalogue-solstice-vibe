@@ -268,6 +268,7 @@ const CATALOGUE = [
   "LICENSE",
   "CONTRIBUTING.md",
   "SECURITY.md",
+  "CODE_OF_CONDUCT.md",
   ".github/ISSUE_TEMPLATE/anomalie.md",
   ".github/ISSUE_TEMPLATE/demande.md",
   ".github/ISSUE_TEMPLATE/config.yml",
@@ -2611,13 +2612,31 @@ describe("Dependabot : retiré par défaut, gardé sur option", () => {
     expect(existeAssemble(assemblerEnTemporaire(variante).dossier, FICHIER)).toBe(false);
   });
 
-  it("est dans l'appli assemblée avec l'option, identique à celui du catalogue", () => {
-    const avec = assemblerEnTemporaire(variante, { dependabot: true });
+  it("est dans l'appli assemblée avec l'option, identique à celui du catalogue quand elle a la base", () => {
+    const avec = assemblerEnTemporaire({ briques: ["echeances"] }, { dependabot: true });
     expect(fs.readFileSync(path.join(avec.dossier, FICHIER)).equals(fs.readFileSync(path.join(SOURCE, FICHIER)))).toBe(
       true
     );
     expect(gitDans(avec.dossier, "ls-files", FICHIER)).toBe(FICHIER);
     expect(gitDans(avec.dossier, "log", "-1", "--format=%B")).toMatch(/^Dependabot : gardé.$/m);
+  });
+
+  // Sans la base, pas de docker-compose.yml : Dependabot signalerait à chaque
+  // passage un fichier introuvable. L'entrée de l'image Postgres part avec la
+  // base, le reste du fichier ne change pas.
+  it("perd, sans la base, la surveillance de l'image Postgres du compose, et rien d'autre", () => {
+    const avec = assemblerEnTemporaire(variante, { dependabot: true });
+    const assemble = lireAssemble(avec.dossier, FICHIER);
+    expect(existeAssemble(avec.dossier, "docker-compose.yml")).toBe(false);
+    expect(assemble).not.toMatch(/docker-compose|postgres/i);
+    const ecosystemes = (texte: string) => texte.match(/package-ecosystem: "[\w-]+"/g);
+    expect(ecosystemes(assemble)).toEqual(['package-ecosystem: "github-actions"', 'package-ecosystem: "npm"']);
+    const catalogue = fs.readFileSync(path.join(SOURCE, FICHIER), "utf-8");
+    expect(ecosystemes(catalogue)).toEqual([
+      'package-ecosystem: "github-actions"',
+      'package-ecosystem: "docker-compose"',
+      'package-ecosystem: "npm"',
+    ]);
   });
 
   it("ne change rien d'autre à l'appli : le reste des fichiers est le même avec et sans l'option", () => {

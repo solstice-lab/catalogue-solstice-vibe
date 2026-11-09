@@ -75,7 +75,12 @@ jobs:
             -e POSTGRES_USER=appli -e POSTGRES_PASSWORD=appli -e POSTGRES_DB=appli_test \
             "$IMAGE" > "$RUNNER_TEMP/postgres.log" 2>&1 &
         env:
-          IMAGE: postgres:18 # aligner sur la version de la base de prod du projet
+          # Par digest, celui de la liste de manifestes (multi-plateforme) : une
+          # étiquette se déplace à chaque reconstruction de l'image, sans PR. Le même
+          # que docker-compose.yml, que Dependabot renouvelle : recopier son digest ici
+          # et dans tout autre workflow qui démarre Postgres (tests/bases-locales.test.ts). À la main :
+          # docker buildx imagetools inspect postgres:18, ligne Digest.
+          IMAGE: postgres:18@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42 # aligner sur la version de la base de prod du projet
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

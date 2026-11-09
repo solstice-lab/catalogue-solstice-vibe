@@ -88,7 +88,7 @@ CI, gardes de Claude, mise en ligne avec la brique déploiement) ; le reste est
   **Postgres jetable de la même version que la prod**), build (construction de l'image si l'appli tourne en
   Docker : un binaire qui marchait en Docker local a refusé de démarrer sur Render).
 - `permissions: contents: read`, actions épinglées par SHA complet, version en commentaire.
-- `.github/dependabot.yml` (`github-actions` et `npm`, chaque semaine) est **optionnel** : une
+- `.github/dependabot.yml` (`github-actions`, `npm` et, avec la brique données, l'image Postgres du compose, chaque semaine) est **optionnel** : une
   appli assemblée ne l'a que si quelqu'un l'entretient après la livraison (réponse notée dans
   la rubrique « Entretien après livraison » de `PROJET.md`). Sans personne pour fusionner,
   il ouvrait une PR par semaine qui restait sans réponse. Sans lui, un SHA épinglé ne bouge
