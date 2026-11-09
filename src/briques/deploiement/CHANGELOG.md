@@ -123,3 +123,25 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   15 Go, le défaut de Render sans `diskSizeGB` : 4,50 $ par mois de disque
   vide, tant que la base existe. Sur 1 Go sans agrandissement automatique, une base
   pleine est suspendue par Render.
+
+## 2026-11-09 · Environnement `production` et `PGSSLMODE=disable` · Rupture
+
+- **Ce qui change** : le job `deployer` de `ci.yml` déclare
+  `environment: production`, et le secret `DEPLOIEMENT_DECLENCHEUR` a vocation
+  à vivre dans cet environnement. Le client de la base
+  (`src/lib/db/client.ts`) refuse `PGSSLMODE=disable` quand `NODE_ENV` vaut
+  `production` et que l'hôte de `DATABASE_URL` n'est pas local (de même pour un
+  `sslmode=disable` écrit dans l'URL) : une erreur à
+  la première requête, `/sante` comprise, qui dit quoi poser.
+- **Appelant** : une appli déjà en ligne crée l'environnement `production`
+  (*Settings → Environments*) avec ses relecteurs obligatoires AVANT de
+  fusionner : GitHub le crée sinon au premier passage, sans relecteur. Son
+  secret de dépôt reste lu tant que l'environnement n'en a pas un de même nom ;
+  le déplacer dans l'environnement (README, geste 4). Une appli qui déclarait
+  `PGSSLMODE=disable` chez son hébergeur le retire, ou le remplace par
+  `no-verify` en connaissance de cause, avant la fusion : sinon le déploiement
+  échoue au health check et l'ancienne version reste en ligne.
+- **Pourquoi** : audit de sécurité du 2026-11-09. Sans environnement, aucun
+  relecteur ne pouvait s'interposer avant la mise en ligne ; et un
+  `.env.local` recopié chez l'hébergeur faisait circuler le mot de passe et
+  les données en clair, sans une ligne au journal.

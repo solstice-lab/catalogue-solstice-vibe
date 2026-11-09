@@ -73,8 +73,9 @@ Corriger, puis rejouer **toutes** les vérifications.
 - CI verte : dire que la PR est prête. **Un humain fusionne**, en squash.
 - Après le déploiement : `/sante` (voir le socle de la skill `solstice-nouvelle-appli`)
   renvoie le commit de la fusion si `COMMIT_DEPLOYE` est posée (au démarrage par la brique
-  déploiement, ou à la main chez l'hébergeur sans elle), « inconnu » sinon. Avec cette brique, le
-  job `deployer` de la CI l'a déjà attendu.
+  déploiement, ou à la main chez l'hébergeur sans elle), « inconnu » sinon. Avec cette brique, une
+  fois le déploiement approuvé par un relecteur de `production`, le job `deployer` de la CI
+  l'a déjà attendu.
 - Annuler, c'est un *Revert* sur la PR. Il ne défait pas une migration déjà appliquée : le
   dire si la PR en contenait une.
 
