@@ -1,6 +1,6 @@
 import { query, queryOne, transaction } from "./client";
 import { estIdentifiantNumerique, slugDossier } from "@/lib/slug";
-import type { Dossier, StatutDossier } from "@/lib/dossiers-domaine";
+import { estIdDossier, type Dossier, type StatutDossier } from "@/lib/dossiers-domaine";
 // Brique journal : chaque écriture des dossiers se trace dans sa transaction.
 import { champsModifies } from "@/briques/journal/evenements";
 import { auteurCourant, journaliser } from "@/briques/journal/journal";
@@ -29,7 +29,10 @@ export async function listerDossiers(): Promise<Dossier[]> {
 // module à fort volume ajouterait une colonne slug indexée via une migration.
 export async function lireDossierParIdentifiant(identifiant: string): Promise<Dossier | undefined> {
   if (estIdentifiantNumerique(identifiant)) {
-    return queryOne<Dossier>(`SELECT ${COLONNES} FROM dossiers WHERE id = $1`, [Number(identifiant)]);
+    // Hors de l'INTEGER de la base (« /dossiers/99999999999 »), elle lèverait : un 404, pas la page d'erreur.
+    const id = Number(identifiant);
+    if (!estIdDossier(id)) return undefined;
+    return queryOne<Dossier>(`SELECT ${COLONNES} FROM dossiers WHERE id = $1`, [id]);
   }
   const dossiers = await query<Dossier>(`SELECT ${COLONNES} FROM dossiers ORDER BY id`);
   return dossiers.find((dossier) => slugDossier(dossier) === identifiant);
