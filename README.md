@@ -73,14 +73,16 @@ cadrage à la livraison, « Démarrer un projet client ».
 
 `.claude/settings.json` est suivi dans le dépôt et branche un hook
 `PreToolUse` : quiconque ouvre le dépôt dans Claude Code le reçoit. Avant
-chaque commande (Bash, PowerShell) et chaque écriture de fichier (Write, Edit,
+chaque commande (Bash, PowerShell, terminal de l'appli de bureau) et chaque écriture de fichier (Write, Edit,
 MultiEdit, NotebookEdit) de Claude, Claude Code lance
 `node .claude/hooks/gardes.mjs`, qui lit la commande ou le fichier visé, sans
-dépendance ni réseau, et refuse : écrire un `.env*` (hors `.env.example`), une
-URL de base distante avec mot de passe (dans une commande ou un fichier),
-`git add -f`, `--confirmer`, `gh pr merge` (et la fusion par `gh api`), `git push --force`
-(`--force-with-lease` passe) et `--no-verify` sur `git commit` et `git push`. Il ne touche pas aux commandes que
-vous tapez vous-même. En session interactive, Claude Code ne lance les hooks
+dépendance ni réseau, et refuse : écrire un `.env*` (hors `.env.example`), `.envrc` ou `.npmrc`, un
+mot de passe de base distante dans une commande, une URL de base distante avec mot de passe dans un fichier,
+`git add -f`, `--confirmer`, la fusion d'une PR (`gh pr merge` ou l'API), `git push --force`
+(`--force-with-lease` passe) et `--no-verify`, y compris confiés à un interpréteur (`sh -c`,
+`pwsh -Command`, heredoc exécuté). Il arrête l'inadvertance d'une session, pas qui veut passer :
+la barrière réelle est la protection de `main` et l'absence de secrets de production sur le poste.
+Il ne touche pas aux commandes que vous tapez vous-même. En session interactive, Claude Code ne lance les hooks
 d'un dossier qu'une fois sa demande de confiance acceptée ; en `claude -p`, ils
 tournent d'office.
 
@@ -491,9 +493,9 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   catalogue, une appli assemblée ne le reçoit pas).
 - `.claude/settings.json` + `.claude/hooks/gardes.mjs` — refusent à Claude
   (voir « Claude Code : un hook s'applique d'office ») :
-  écrire un `.env*` (hors `.env.example`), une URL de base distante avec mot de passe,
-  `git add -f`, `--confirmer`, `gh pr merge` (et la fusion par `gh api`), `git push --force`
-  (`--force-with-lease` passe), `--no-verify` sur `git commit` et `git push`. Testés par
+  écrire un `.env*` (hors `.env.example`), `.envrc` ou `.npmrc`, un secret de base distante,
+  `git add -f`, `--confirmer`, la fusion d'une PR, `git push --force`
+  (`--force-with-lease` passe), les hooks git sautés. Testés par
   `node .claude/hooks/gardes.test.mjs` (lancé par la CI). Le hook demande
   Node sur le poste.
 - `CLAUDE.md` — les règles du harnais, lues par Claude à chaque session.
