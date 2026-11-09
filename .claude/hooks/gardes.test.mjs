@@ -418,6 +418,15 @@ assert.deepEqual(
   [{ titre: "2026-11-05", chemins: ["src/app/page.tsx", "src/app/exemples/"], nature: "défaut du catalogue" }]
 );
 
+// Le fichier qu'une mise à jour ramène à la version du catalogue (materiotheque,
+// 2026-11-06, noté à la main) : sa nature se lit, et le rapport de mise à jour la cite.
+assert.deepEqual(
+  entreesDesAdaptations(
+    "## 2026-11-09\n- Fichiers : `src/lib/date-iso.ts`\n- Ce qui change : repris du catalogue.\n- Nature : Retour au catalogue\n"
+  ).map(({ nature }) => nature),
+  ["retour au catalogue"]
+);
+
 // Une note écrite autrement que le modèle compte quand même : champ en gras,
 // liste sur plusieurs lignes, dossier sans barre finale, barres obliques
 // inverses, apostrophe typographique. Mal lue, elle ferait revenir le rappel à

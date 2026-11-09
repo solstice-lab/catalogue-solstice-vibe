@@ -7,6 +7,7 @@ import { assembler } from "../outils/assembler.mjs";
 import {
   briquesEcarteesParLaFiche,
   champsDeLEnteteLus,
+  ecartDeLaCible,
   ErreurMiseAJour,
   examiner,
   lireLesEtapes,
@@ -944,6 +945,91 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
       expect(texte).toMatch(/À blanc : rien n'est écrit dans l'appli\./);
       // À blanc : ni branche, ni fichier.
       rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
+    }
+  );
+
+  /*
+   * Le cas d'origine (2026-11-06, report du catalogue dans materiotheque) : l'appli
+   * avait corrigé chez elle le test des gardes, noté « défaut du catalogue » dans
+   * ADAPTATIONS.md ; le catalogue a corrigé le même défaut, et le report a listé le
+   * fichier « en conflit » pour une ligne de commentaire, sans rien dire de la note.
+   * Ici, date-iso.ts rejoue ce cas (l'appli et le catalogue y ajoutent chacun une
+   * ligne de commentaire en fin), comptes.ts porte un réglage propre à l'appli, et
+   * navigation.ts n'est pas noté.
+   */
+  it(
+    "cite, pour chaque fichier fusionné ou en conflit, sa note d'ADAPTATIONS.md, et pour un « défaut du catalogue » conseille de comparer avec la cible et de noter le retour",
+    { timeout: REJEU },
+    () => {
+      const dossier = appliRetouchee((d) => {
+        ecrire(d, "src/lib/date-iso.ts", (t) => `${t}// Correction de l'appli, le défaut du catalogue.\n`);
+        ecrire(d, "src/config/comptes.ts", remplacer("demandesParHeure: 20,", "demandesParHeure: 100,"));
+        ecrire(d, "src/lib/navigation.ts", (t) => `${t}// Retouche de l'appli, en fin.\n`);
+        ecrire(
+          d,
+          "ADAPTATIONS.md",
+          (t) =>
+            `${t}\n## 2026-11-06 · la validation des dates\n- Fichiers : \`src/lib/date-iso.ts\`\n- Ce qui change : le défaut corrigé.\n- Nature : défaut du catalogue\n` +
+            `\n## 2026-11-06 · les limites par réseau\n- Fichiers : \`src/config/comptes.ts\`\n- Ce qui change : cent demandes par heure.\n- Nature : propre à l'appli\n`
+        );
+      });
+      publier(dossier);
+      const resultat = mettreAJour({ catalogue, appli: dossier, vers: commitVise, aBlanc: true });
+      expect(resultat.fichiers.enConflit).toContain("src/lib/date-iso.ts");
+      expect(resultat.fichiers.fusionnes).toEqual(
+        expect.arrayContaining(["src/config/comptes.ts", "src/lib/navigation.ts"])
+      );
+      expect(resultat.adaptationsDesFusions).toEqual(
+        expect.arrayContaining([
+          {
+            chemin: "src/lib/date-iso.ts",
+            note: { titre: "2026-11-06 · la validation des dates", nature: "défaut du catalogue" },
+            ecart: "commentaires",
+          },
+          {
+            chemin: "src/config/comptes.ts",
+            note: { titre: "2026-11-06 · les limites par réseau", nature: "propre à l'appli" },
+            ecart: null,
+          },
+          { chemin: "src/lib/navigation.ts", note: null, ecart: "commentaires" },
+        ])
+      );
+
+      const fichiers = rubriqueDe(rapport(resultat), "Fichiers") ?? "";
+      const ligneDe = (chemin: string) =>
+        fichiers.split("\n").find((ligne) => ligne.startsWith(`- \`${chemin}\``)) ?? "";
+      expect(ligneDe("src/lib/date-iso.ts")).toContain(
+        "note « 2026-11-06 · la validation des dates », défaut du catalogue"
+      );
+      expect(ligneDe("src/lib/date-iso.ts")).toContain(
+        "la cible corrige peut-être ce défaut : comparer, et prendre la cible si elle suffit"
+      );
+      expect(ligneDe("src/lib/date-iso.ts")).toContain("ne diffèrent que par des commentaires");
+      expect(ligneDe("src/config/comptes.ts")).toContain(
+        "note « 2026-11-06 · les limites par réseau », propre à l'appli"
+      );
+      expect(ligneDe("src/config/comptes.ts")).not.toMatch(/comparer|commentaires/);
+      expect(ligneDe("src/lib/navigation.ts")).toContain("sans note dans `ADAPTATIONS.md`");
+      expect(ligneDe("src/lib/navigation.ts")).not.toContain("comparer");
+      // Le retour du fichier à la version du catalogue se note, comme l'en-tête d'ADAPTATIONS.md le prévoit.
+      expect(fichiers).toContain("retour au catalogue");
+      expect(fichiers).toContain(commitVise);
+      expect(fichiers).not.toContain("n'a pas d'");
+      rienNEstTouche(dossier, git(dossier, "rev-parse", "HEAD"));
+
+      // Une appli sans le registre (assemblée avant lui) : « sans note » ne se répète
+      // pas sur chaque fichier, l'absence du registre se dit une fois.
+      const sansRegistre = appliRetouchee((d) => fs.rmSync(path.join(d, "ADAPTATIONS.md")), dossier);
+      publier(sansRegistre);
+      const sansNotes = rubriqueDe(
+        rapport(mettreAJour({ catalogue, appli: sansRegistre, vers: commitVise, aBlanc: true })),
+        "Fichiers"
+      );
+      expect(sansNotes).toContain("L'appli n'a pas d'`ADAPTATIONS.md`");
+      expect(sansNotes).not.toContain("sans note");
+      expect(sansNotes).toMatch(
+        /- `src\/lib\/navigation\.ts` : L'appli et la cible ne diffèrent que par des commentaires\./
+      );
     }
   );
 
@@ -2398,6 +2484,35 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
         rienNEstTouche(publiee, head);
       }
     );
+  });
+});
+
+// La comparaison ligne à ligne qui dit, au rapport, qu'une fusion ou un conflit
+// ne tient qu'à des commentaires (materiotheque, 2026-11-06 : une ligne de
+// commentaire). Prudente : au moindre doute, une ligne compte pour du code.
+describe("mettre-a-jour : l'appli et la cible ne diffèrent que par des commentaires", () => {
+  const ecart = (chemin: string, appli: string, cible: string) =>
+    ecartDeLaCible(chemin, Buffer.from(appli), Buffer.from(cible));
+
+  it("voit des commentaires seuls dans un fichier de code, lignes vides et fins de ligne mises à part", () => {
+    expect(ecart("a.ts", "const a = 1;\n", "const a = 1;\n")).toBe("aucun");
+    expect(ecart("a.mjs", "// appli\nconst a = 1;\n", "/*\n * cible\n */\nconst a = 1;\n\n")).toBe("commentaires");
+    expect(ecart("a.css", "a {\n  color: red;\n}\n", "/* cible */\na {\n  color: red;\n}\n")).toBe("commentaires");
+    expect(ecart("a.ts", "const a = 1;\r\n", "const a = 1; \n// cible\n")).toBe("commentaires");
+  });
+
+  it("compte pour du code une ligne qui en porte après un commentaire, un retrait changé, une méthode génératrice, et `//` en CSS", () => {
+    expect(ecart("a.ts", "const a = 1;\n", "const a = 2;\n")).toBeNull();
+    expect(ecart("a.ts", "f();\n", "/* x */ g();\nf();\n")).toBeNull();
+    expect(ecart("a.ts", "const t = `\n  a\n`;\n", "const t = `\n    a\n`;\n")).toBeNull();
+    expect(ecart("a.ts", "class A {}\n", "class A {\n*entrees() {}\n}\n")).toBeNull();
+    expect(ecart("a.css", "a {}\n", "// pas un commentaire\na {}\n")).toBeNull();
+  });
+
+  it("ne juge pas un fichier dont il ne connaît pas les commentaires", () => {
+    expect(ecart("README.md", "# Titre\n", "# Titre\n\nUne phrase.\n")).toBeNull();
+    expect(ecart("render.yaml", "a: 1\n", "# note\na: 1\n")).toBeNull();
+    expect(ecart("README.md", "# Titre\n", "# Titre\n")).toBe("aucun");
   });
 });
 

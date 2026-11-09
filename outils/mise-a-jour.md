@@ -79,6 +79,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | `package.json` de l'appli | Au format 1, le nom du paquet, que l'assembleur y a reporté. Un nom changé depuis se voit à la vérification des empreintes (`package.json` et le verrou le portent). |
 | `blueprint.md` de l'appli | `commit_reference`, recoupé avec le manifeste ; un désaccord se signale. Au format 1, son en-tête, que l'assembleur rejoué relit (`appli`, nom affiché, description, site, entrée, rôle par défaut, méthodes de connexion, personnes par réseau), sauf la blueprint minimale qu'il écrit sans `--blueprint`. |
 | `PROJET.md` de l'appli (avec `--ajouter`) | Les briques ajoutées que la fiche écarte, avec leur raison, recopiées au rapport (« Ce qui est outillé », puce « L'ajout ») ; le reste de la fiche n'est jamais lu. |
+| `ADAPTATIONS.md` de l'appli | La note qui couvre chaque fichier fusionné ou en conflit, et sa nature, citées au rapport (« Ce qu'il fait de chaque fichier ») ; lu comme la garde le lit, jamais écrit. |
 | L'appli, à son `HEAD` | Le contenu de chaque fichier tel que git l'enregistre, comme le manifeste, pas le disque. L'arbre doit être propre. |
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
@@ -150,6 +151,24 @@ dans l'appli les résout (« Le circuit »). `git diff --check` les attrape dans
 typecheck et build dans le code. Une fusion « sans conflit » peut être fausse sur le fond
 (deux changements compatibles en texte, pas en logique) : elle est listée pour relecture,
 pas donnée pour sûre.
+
+Chaque fichier fusionné ou en conflit, `migrations.ts` compris, a été retouché par l'appli :
+le rapport cite la note d'`ADAPTATIONS.md` qui le couvre (la plus récente, lue comme la garde
+la lit), avec sa nature, ou dit « sans note » ; une appli sans `ADAPTATIONS.md` (assemblée
+avant lui) le voit dit une fois. Pour un « défaut du catalogue », il ajoute que la cible
+corrige peut-être ce défaut : comparer, et prendre la cible si elle suffit. Il dit aussi quand
+l'appli avait déjà la version de la cible, ou quand les deux ne diffèrent que par des
+commentaires (lignes de commentaire entières et lignes vides, dans un fichier JavaScript ou
+TypeScript, `//` et `/* */`, ou CSS, `/* */` seul ; ailleurs, l'outil ne juge pas ; un retrait
+changé compte, et une ligne de gabarit multiligne qui ressemble à un commentaire passe pour
+un : le rapport conseille de comparer, il ne tranche pas). Le cas du 2026-11-06 :
+materiotheque avait corrigé chez elle le test des gardes, noté « défaut du catalogue » ; le
+catalogue a corrigé le même défaut, et le report a listé le fichier « en conflit » pour une
+ligne de commentaire, sans rien dire de la note. Un fichier repris tel que la cible le donne
+revient au catalogue : la session le note dans `ADAPTATIONS.md`, une entrée de plus en bas
+qui le cite sur sa ligne « Fichiers » (« Nature : retour au catalogue », avec le commit A'),
+comme l'en-tête du fichier le prévoit ; l'entrée d'origine reste. La garde lit cette nature
+comme les deux autres. L'outil n'écrit jamais dans `ADAPTATIONS.md`.
 
 ## Les fichiers partagés du socle
 
@@ -393,7 +412,9 @@ Le circuit suit `solstice-livrer` : le ticket d'abord, puis une branche depuis u
    de l'arbre suivi : il ne part pas au prochain `git add`. Il ne touche ni `main`, ni le
    remote, ni aucune base, ni aucun `.env*`.
 3. **Dans une session ouverte dans ce worktree de l'appli**, avec `solstice-livrer` : la
-   résolution des conflits listés, `npm install` si le verrou est à régénérer, les
+   résolution des conflits listés (un fichier noté « défaut du catalogue » se compare
+   d'abord à la cible ; repris tel quel, son retour se note dans `ADAPTATIONS.md`),
+   `npm install` si le verrou est à régénérer, les
    vérifications du `CLAUDE.md` de l'appli (§6), la relecture par sous-agents
    (`relecteur-migrations` dès qu'une étape est ajoutée), le commit, la PR avec le rapport.
 
@@ -575,7 +596,9 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   l'origine, que l'appli n'a nulle part ailleurs. Le manifeste écrit est celui de la cible ;
   l'en-tête de `blueprint.md` reçoit `commit_reference` et, si des briques arrivent,
   `briques_assemblees`.
-- **Le rapport** : les fichiers par sort, ceux que l'appli a retouchés ou supprimés et que
+- **Le rapport** : les fichiers par sort, chaque fichier fusionné ou en conflit avec la note
+  d'`ADAPTATIONS.md` qui le couvre et ce qui le sépare de la cible (« Ce qu'il fait de
+  chaque fichier »), ceux que l'appli a retouchés ou supprimés et que
   le catalogue ne change pas, les dépendances npm, les entrées neuves des `CHANGELOG.md`
   des briques reçues (les sections « ## » de la cible absentes de l'origine, ruptures en
   tête : un titre dont le dernier segment commence par « Rupture »), les sujets des
