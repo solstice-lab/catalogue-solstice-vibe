@@ -4,7 +4,8 @@
 contribution extérieure.** Chacun peut l'utiliser, le copier et le modifier
 chez soi, sous licence MIT ; une pull request venue d'ailleurs est fermée sans
 être relue. Un problème se signale par un ticket, une faille de sécurité par la
-voie privée de [SECURITY.md](SECURITY.md). La suite est le mode d'emploi de
+voie privée de [SECURITY.md](SECURITY.md). Les échanges suivent le
+[code de conduite](CODE_OF_CONDUCT.md). La suite est le mode d'emploi de
 l'équipe.
 
 **In short (English).** This repository is the catalogue Solstice Lab uses to
@@ -14,7 +15,8 @@ its own business module on the `dossiers` pattern. It is
 MIT-licensed: anyone may use, copy and modify it. It is maintained by the
 Solstice Lab team only and does not accept outside contributions: pull requests
 from outside the team are closed without review. Report a problem by opening an
-issue, in English or French; report a vulnerability privately (SECURITY.md).
+issue, in English or French; report a vulnerability privately (SECURITY.md). Exchanges follow
+CODE_OF_CONDUCT.md.
 Code, comments, commit messages and UI strings are in French, on purpose; the
 team is French-speaking and clients read the code. The rest of this document is
 the team's working guide: an issue first, a branch, tests before code, a

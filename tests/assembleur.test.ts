@@ -263,6 +263,7 @@ const CATALOGUE = [
   "LICENSE",
   "CONTRIBUTING.md",
   "SECURITY.md",
+  "CODE_OF_CONDUCT.md",
   ".github/ISSUE_TEMPLATE/anomalie.md",
   ".github/ISSUE_TEMPLATE/demande.md",
   ".github/ISSUE_TEMPLATE/config.yml",

@@ -13,7 +13,8 @@ dépôt, où s'écrit ensuite son module métier.
 Le dépôt est entretenu par l'équipe Solstice Lab et n'accepte pas de pull
 request extérieure : un problème se signale par un ticket, une faille par
 [`SECURITY.md`](SECURITY.md), et [`CONTRIBUTING.md`](CONTRIBUTING.md) est le
-mode d'emploi de l'équipe.
+mode d'emploi de l'équipe. Les échanges suivent le
+[code de conduite](CODE_OF_CONDUCT.md).
 
 ## Démarrage rapide
 
@@ -314,7 +315,8 @@ fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md` (s'il existe)
 `outils/`, ni la skill `creer-appli` et l'agent
 `relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues, de l'outil de mise à jour et de
 l'outil des adaptations, ni le test des renvois de `docs/cicatrices.md`, ni
-le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`
+le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
+`CODE_OF_CONDUCT.md`
 et les modèles de ticket et de PR (liste `EXCLUS_DU_CATALOGUE` de
 `outils/modules.mjs`).
 Il écrit `blueprint.md` à la racine, avec le commit de référence du catalogue (celui du dépôt au

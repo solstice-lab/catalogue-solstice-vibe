@@ -86,11 +86,12 @@ export const EXCLUS_DU_CATALOGUE = [
   // La licence et les fichiers de communauté du dépôt public : le client
   // reçoit une livraison sous son contrat, pas la MIT du catalogue (le texte
   // de celle-ci part dans le NOTICE que l'assembleur écrit, comme son avis
-  // l'exige), et CONTRIBUTING.md décrit le circuit du catalogue, pas celui de
-  // son appli.
+  // l'exige), CONTRIBUTING.md décrit le circuit du catalogue, pas celui de
+  // son appli, et CODE_OF_CONDUCT.md renvoie aux mainteneurs du catalogue.
   "LICENSE",
   "CONTRIBUTING.md",
   "SECURITY.md",
+  "CODE_OF_CONDUCT.md",
   ".github/ISSUE_TEMPLATE/",
   ".github/pull_request_template.md",
   // Réservé aux captures d'écran du README du catalogue (absent de l'appli :
