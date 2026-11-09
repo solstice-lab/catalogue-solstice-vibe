@@ -105,7 +105,8 @@ CI, gardes de Claude, mise en ligne avec la brique déploiement) ; le reste est
   sans checkout, le suivait vers un dossier absent et le déploiement n'était jamais appelé.
 - Le job `deployer` (brique déploiement, `src/briques/deploiement/README.md`), sur un push
   de `main` seulement, après `verifier` : il déclenche le commit vérifié chez l'hébergeur,
-  puis attend de le lire sur `/sante`. Le `ref` compte : sans lui, Render construit la tête
+  puis attend de le lire sur `/sante`. Il déclare l'environnement GitHub `production` : suspendu
+  jusqu'à l'approbation de ses relecteurs obligatoires. Le `ref` compte : sans lui, Render construit la tête
   de `main` au moment de l'appel, pas le commit vérifié.
 
 ## GitHub
@@ -145,9 +146,10 @@ listées clic par clic dans le ticket, Claude ne les fait pas.
    de `"demo"` de `METHODES` est fusionné sur `main` : la création du Blueprint déploie la
    tête de `main`, et la démo refuse la production.
 2. **Humain** : les gestes du README de la brique déploiement : vérifier le nom du service
-   avant le Blueprint (l'assembleur l'a écrit d'après `appli`), créer le Blueprint, saisir les variables `sync: false`, puis le secret
-   `DEPLOIEMENT_DECLENCHEUR` et la variable `DEPLOIEMENT_URL` chez GitHub.
-3. Fusion : la CI déploie et attend `/sante`.
+   avant le Blueprint (l'assembleur l'a écrit d'après `appli`), créer le Blueprint, saisir les variables `sync: false`, puis l'environnement GitHub `production` avec ses relecteurs obligatoires, le secret
+   `DEPLOIEMENT_DECLENCHEUR` (dans cet environnement) et la variable `DEPLOIEMENT_URL` chez GitHub.
+3. Fusion : la CI vérifie, un relecteur de `production` approuve le déploiement (*Review
+   deployments*), puis la CI déclenche et attend `/sante`.
 4. **Humain** : le domaine. Baisser d'abord le TTL du CNAME à 300 s (retour arrière rapide),
    puis *Custom Domains* sur Render, puis le CNAME chez le registrar, puis `DEPLOIEMENT_URL`,
    puis `URL_PUBLIQUE` (`https://<domaine>`) sur le service.
