@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { estBaseDeTest, nomsDesBases, urlLocale } from "./scripts/lib/bases-locales";
 
@@ -58,14 +59,23 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
-    // Simule next/headers (cookies de la requête) pour tous les tests.
-    setupFiles: ["tests/setup.ts"],
-    // Chaque fichier de test qui interroge la base rejoue schéma + migrations contre
-    // la même base locale : deux fichiers de test en parallèle font courir
-    // deux migrations en même temps, l'une échoue sur « already exists »
-    // (constat sur un projet précédent : instable en parallèle,
-    // systématiquement vert en série).
-    fileParallelism: false,
+    setupFiles: [
+      // Chaque worker sur sa propre base, avant toute requête (premier de la liste).
+      "tests/base-du-worker.ts",
+      // Simule next/headers (cookies de la requête) pour tous les tests.
+      "tests/setup.ts",
+    ],
+    // Fichiers en parallèle, une base par worker : chaque fichier qui
+    // interroge la base rejoue schéma et migrations puis vide les tables, et
+    // sur une base commune deux fichiers en parallèle échouaient sur
+    // « already exists » (constat sur un projet précédent). En série, la
+    // suite durait 6 min 30 sur un poste à 4 cœurs (2026-11-09).
+    // tests/bases-des-workers.ts crée <base>_w1 à <base>_w<maxWorkers> et
+    // les supprime à la fin. Au plus 4 workers : le Postgres du poste, partagé
+    // par toutes les applis et les sessions parallèles, accepte 100 connexions,
+    // et chaque worker ouvre son pool.
+    globalSetup: ["tests/bases-des-workers.ts"],
+    maxWorkers: Math.max(1, Math.min(4, os.availableParallelism() - 1)),
   },
   resolve: {
     alias: {

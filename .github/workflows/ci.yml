@@ -165,9 +165,9 @@ jobs:
           cat "$RUNNER_TEMP/postgres.log"; docker logs postgres; exit 1
 
       - name: Tests
-        # vitest.config.ts force fileParallelism: false — deux fichiers en
-        # parallèle rejoueraient deux migrations sur la même base et l'une
-        # échouerait sur « already exists ».
+        # Fichiers en parallèle, une base par worker : tests/bases-des-workers.ts
+        # crée appli_test_w1… à côté d'appli_test (l'utilisateur appli de
+        # l'image en a le droit) et les supprime à la fin.
         run: npm test
 
       - name: Build
