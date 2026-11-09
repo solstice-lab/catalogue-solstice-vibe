@@ -73,6 +73,12 @@ export const ANNUAIRES_MICROSOFT: AnnuairesMicrosoft = "un-seul";
 // des codes à la chaîne, elle ne se retire pas (refusée au démarrage). Les
 // limites par adresse e-mail parlent d'une seule personne et restent celles de
 // la brique.
+//
+// envoisParHeure, facultatif, s'ajoute ici pour régler le plafond des demandes
+// de code ou de lien de toute l'appli, toutes adresses et IP confondues : 300
+// sans lui, ou demandesParHeure si elle est plus haute
+// (ENVOIS_PAR_HEURE_PAR_DEFAUT, qui dit pourquoi), à relever pour une appli
+// grand public. Un entier d'au moins 1 lui aussi.
 export const LIMITES_PAR_RESEAU: LimitesParReseau = {
   demandesParHeure: 20,
   codesFauxParHeure: 30,

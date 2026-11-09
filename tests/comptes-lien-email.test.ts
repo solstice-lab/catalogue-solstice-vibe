@@ -296,6 +296,26 @@ describe("qui reçoit un lien : la réponse ne dit pas qui a un compte", { timeo
     expect(await demander("encore-une@client.example", IP_B)).toBe("envoye");
   });
 
+  // Audit du 2026-11-09 : rien ne plafonnait les mails de connexion de toute
+  // l'appli. Le lien le partage avec le code, sans quoi une appli qui propose
+  // les deux méthodes doublerait ce qu'elle fait partir dans l'heure.
+  it("partage le plafond de toute l'appli avec le code : au plafond, la réponse ordinaire, sans lien envoyé", async () => {
+    const limites = LIMITES_PAR_RESEAU as { envoisParHeure?: number };
+    limites.envoisParHeure = 2;
+    try {
+      expect(await demanderUnCode("autre@client.example", IP_B, planifier, OUVERTE)).toBe("envoye");
+      expect(await demander(ADMISE, IP_A)).toBe("envoye");
+      await lancerLesEnvois();
+      expect(mailsCaptures()).toHaveLength(2);
+      viderMailsCaptures();
+      expect(await demander("nouvelle@client.example", "192.0.2.1", OUVERTE)).toBe("envoye");
+      await lancerLesEnvois();
+      expect(mailsCaptures()).toEqual([]);
+    } finally {
+      delete limites.envoisParHeure;
+    }
+  });
+
   it("ne met l'adresse en clair ni dans le lien ni en base, ni le jeton en base", async () => {
     const jeton = await recevoirUnLien();
     const lien = dernierLienRecu().href;

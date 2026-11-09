@@ -60,7 +60,7 @@ describe("adresse IP du visiteur : l'en-tête de l'hébergeur, et lui seul", () 
     expect(adresseDuVisiteur(new Headers({ "x-forwarded-for": "198.51.100.1" }))).toBe("local");
   });
 
-  it("ne donne aucune adresse en production sans en-tête configuré, et l'avertit une seule fois : un compte commun à tous les visiteurs serait un déni de service", async () => {
+  it("ne donne aucune adresse en production sans en-tête configuré, et l'avertit une seule fois : l'appelant décide (le contact laisse sa limite, la connexion refuse de démarrer)", async () => {
     vi.resetModules();
     const { adresseDuVisiteur: lire } = await import("../src/lib/adresse-ip");
     vi.stubEnv("IP_EN_TETE_CLIENT", "");

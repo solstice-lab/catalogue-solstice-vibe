@@ -647,7 +647,8 @@ premier envoi réel » de son README). Avec la brique
 code se lit dans le terminal du serveur (`MAILS_FOURNISSEUR=console`) ; la démo **refuse
 la production** : retirer `"demo"` de `METHODES` (`src/config/comptes.ts`), fusionné sur
 `main` avant la création du Blueprint, qui la déploie : sinon le déploiement échoue ; `COMPTES_PREMIER_ADMIN` se déclare
-chez l'hébergeur. Si le client veut se connecter avec Google (Workspace ou Gmail) :
+chez l'hébergeur ; `IP_EN_TETE_CLIENT` aussi, hors Render (`render.yaml` la règle) : avec le
+code ou le lien, sans elle, le déploiement échoue. Si le client veut se connecter avec Google (Workspace ou Gmail) :
 créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`,
 ajouter `"google"` à `METHODES` (déjà fait si la blueprint le déclare) et, pour un client Workspace, ses domaines à
 `DOMAINES_GOOGLE_WORKSPACE` (section « La connexion avec Google » du README de la

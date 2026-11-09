@@ -25,7 +25,10 @@ ajouter à `METHODES` une fois l'application OAuth du client créée ; Microsoft
 **La démo refuse de démarrer en production.** Tant qu'elle est dans `METHODES`,
 le proxy répond en erreur à toute requête, `/sante` comprise : la sonde de
 l'hébergeur échoue, et le déploiement avec elle. Retirer `"demo"` de `METHODES`
-avant toute mise en ligne.
+avant toute mise en ligne. **De même sans `IP_EN_TETE_CLIENT` en production**,
+avec le code ou le lien dans `METHODES` :
+sans elle, les limites par adresse IP ne voient pas qui demande un code (voir
+« L'adresse IP derrière l'hébergeur ») ; `render.yaml` la règle pour Render.
 
 La brique exige la brique données et la brique mails (`exige: ["donnees",
 "mails"]` dans la liste de l'assembleur du catalogue) : les comptes, les
@@ -330,7 +333,22 @@ une minute ; « Changer d'adresse » recommence.
   - une IP, toutes adresses confondues : vingt par heure, réglable
     (`LIMITES_PAR_RESEAU`, voir plus bas) ;
   - une adresse, toutes IP confondues : dix par heure, ce qui borne les essais à
-    trente par heure et par adresse.
+    trente par heure et par adresse ;
+  - toute l'appli, toutes adresses et IP confondues : trois cents par heure
+    (ou `demandesParHeure`, si elle est plus haute), réglable (`envoisParHeure` de `LIMITES_PAR_RESEAU`, facultatif). Les limites
+    précédentes ne bornent pas qui dispose de beaucoup d'IP : il faisait partir
+    autant de mails qu'il voulait au nom de l'appli (coût d'envoi, réputation de
+    l'expéditeur) et remplissait la table des demandes (audit du 2026-11-09). Le
+    plafond compte les demandes acceptées, qu'un mail parte ou non : l'admission
+    ne se lit qu'après la réponse. Atteint, la demande reçoit la réponse
+    ordinaire, celle d'une adresse inconnue, et rien ne s'écrit ni ne part ; le
+    journal le dit, sans adresse ni IP, quand la demande qui le remplit passe
+    (sous un plafond tenu plein, à chaque place reprise : au plus le plafond par
+    heure). Son prix, accepté : qui dispose de beaucoup d'IP peut l'épuiser avec
+    des adresses quelconques et retarder toutes les connexions jusqu'à une heure.
+    Trois cents, parce qu'une session dure trente jours : une appli interne de
+    quelques centaines de personnes n'en voit pas autant se connecter dans la
+    même heure. Une appli grand public le relève.
 
   Les limites par adresse e-mail (cinq depuis une IP, dix sur toutes les IP) sont
   fixes : elles parlent d'une seule personne.
@@ -378,10 +396,18 @@ brique contact, et retiré par l'assembleur sans l'une ni l'autre). L'en-tête d
 passe par Cloudflare, qui pose cet en-tête et refuse une requête qui l'envoie
 elle-même (essai réel du 2026-11-05, README de la brique déploiement, étape 7). Un en-tête lu sans le
 proxy qui le pose se forgerait : un autre hébergeur demande une autre valeur.
-Sans la variable, l'IP vaut `"local"` hors production. En production, sans la
-variable ou sans l'en-tête dans la requête, les limites par IP sautent (un
-avertissement au journal), puisqu'elles bloqueraient tout le monde d'un coup,
-et les limites par adresse restent. Chez un autre hébergeur, **à vérifier par
+Sans la variable, l'IP vaut `"local"` hors production. **En production, avec le
+code ou le lien dans `METHODES`, la variable est obligatoire** : sans elle, le proxy répond en erreur à toute
+requête, `/sante` comprise, comme pour la démo, et le déploiement échoue.
+Les limites par IP sautaient jusque-là, avec un seul avertissement au journal :
+un tiers invalidait chaque code reçu par une adresse visée (trois saisies
+fausses par minute) et savait, à « expiré » contre « incorrect », qui demandait
+un code à l'instant (audit du 2026-11-09). Variable réglée mais en-tête absent
+d'une requête (proxy mal réglé, requête qui le contourne) : la requête compte
+sur une adresse partagée, avec toutes celles qui arrivent sans adresse, aux
+limites de `LIMITES_PAR_RESEAU`, et le serveur l'avertit une fois. Un proxy qui
+perd l'en-tête bloque alors vite tout le monde : cela se voit et se corrige, là
+où l'absence de limite ne se voyait pas. Chez un autre hébergeur, **à vérifier par
 un humain sur une requête réelle au premier déploiement**.
 
 En local (`MAILS_FOURNISSEUR=console`), le mail, et donc le code, s'affiche dans
@@ -407,6 +433,11 @@ Pièges verrouillés dans `tests/comptes-code-email.test.ts` :
 | Les limites ne tiennent qu'en mémoire, ou par adresse seule | les cas de « limites de demandes, en base, par adresse et par adresse IP », dont les demandes simultanées |
 | Un code rejoué, expiré ou deviné ; les codes des autres invalidés ou sondés | « vérification du code : expiré, déjà utilisé ou faux ne connecte pas », dont la limite des saisies fausses par IP |
 | Le code ou l'adresse en clair dans la base | « ne garde en base ni le code, ni l'adresse, ni l'IP » |
+| Aucune limite par IP quand l'adresse ne se lit pas | les deux cas « sans adresse IP lisible en production » |
+| Des mails sans fin depuis beaucoup d'IP | « plafond de toute l'appli : codes et liens par heure, toutes adresses et IP confondues » |
+
+Le refus de démarrer sans `IP_EN_TETE_CLIENT` en production est verrouillé dans
+`tests/comptes-proxy.test.ts`, `/sante` comprise.
 
 ## La connexion par lien envoyé par e-mail
 
@@ -799,7 +830,7 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `EcranConnexion.tsx` | `EcranConnexion({ retour, erreur? })` | Le contenu de `/connexion`, que la page entoure de `AppLayout`. `erreur` reçoit le paramètre `erreur` de l'adresse, tel quel : seul un code de refus de Google ou de Microsoft connu affiche un message. |
 | `EcranLien.tsx` | `EcranLien({ jeton?, retour, erreur? })` | Le contenu de `/connexion/lien`, où mène le lien de connexion du mail, que la page entoure de `AppLayout`. Son rendu ne fait que lire si le lien vaut encore : il montre l'adresse et le bouton « Me connecter », dont l'envoi (POST) connecte, ou la demande d'un nouveau lien. `retour` arrive filtré (`cheminDeRetour`). Sans lien valable, le message du lien expiré, quelle que soit l'`erreur` ; `acces` et `limite`, seuls codes reconnus en plus, donnent une alerte fixe. Page introuvable sans `"lien-email"` dans `METHODES`. |
 | `BandeauSession.tsx` | `BandeauSession` | Placé dans `src/app/layout.tsx`. |
-| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"lien-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`), `LimitesParReseau` (`demandesParHeure`, `codesFauxParHeure`) ; classe `ErreurComptes` ; `refuserDesLimitesParReseauInvalides(limites?)` → `LimitesParReseau` | Les types de `src/config/comptes.ts`. `refuserDesLimitesParReseauInvalides` lève `ErreurComptes` pour une limite qui n'est pas un entier d'au moins 1 ; le proxy l'appelle à chaque requête, avec les deux gardes de démarrage (démo, entrée ouverte), et la brique à chaque demande ou saisie. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
+| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"lien-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`), `LimitesParReseau` (`demandesParHeure`, `codesFauxParHeure`, `envoisParHeure` facultatif) ; `ENVOIS_PAR_HEURE_PAR_DEFAUT` (300) ; classe `ErreurComptes` ; `refuserDesLimitesParReseauInvalides(limites?)` → `Required<LimitesParReseau>` ; `refuserLaProductionSansEnTeteIp()` | Les types de `src/config/comptes.ts`. `refuserDesLimitesParReseauInvalides` lève `ErreurComptes` pour une limite qui n'est pas un entier d'au moins 1, et rend les limites avec `envoisParHeure` à `ENVOIS_PAR_HEURE_PAR_DEFAUT` (ou à `demandesParHeure`, si elle est plus haute) quand l'appli ne le règle pas ; le proxy l'appelle à chaque requête, avec les gardes de démarrage (démo, `IP_EN_TETE_CLIENT` en production, entrée ouverte), et la brique à chaque demande ou saisie. `refuserLaProductionSansEnTeteIp` lève `ErreurComptes` en production quand `IP_EN_TETE_CLIENT` est vide et que `METHODES` propose le code ou le lien. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
 | `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code`, `connexion-lien`, `connexion-google` et `connexion-microsoft`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code, par lien, avec Google et avec Microsoft n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et du lien, et la vie du cookie de parcours de Google et de Microsoft sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. Chaque traitement déclare sa `conservation`, à valider avec le client : le compte 24 mois après la dernière connexion (clé `comptes-inactifs`, compté par le script de purge de la brique rgpd, effacé à la main), les sessions un jour après leur expiration (`sessions`), les demandes et saisies de code ou de lien une heure (`codes-connexion`, `codes-connexion-essais`, déclarées par le lien seulement quand le code n'est pas proposé), purgées par la brique rgpd ; les connexions avec Google et avec Microsoft n'en déclarent pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
 | `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code ou de lien se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse, auteur)` : le compte s'anonymise (`anonymiserLeCompte`, au nom de `auteur`, l'admin qui efface), sessions et demandes de code ou de lien sont supprimées. |
 | `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine`, `ouverte` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
@@ -826,11 +857,13 @@ utilise. Les autres exports servent aux fichiers de la brique ou
   - `ANNUAIRES_MICROSOFT`, `"un-seul"` (l'annuaire du client, `MICROSOFT_TENANT_ID`,
     le défaut) ou `"tous"` (tout annuaire, et les comptes personnels si
     l'enregistrement de l'application les accepte) ;
-  - `LIMITES_PAR_RESEAU`, `{ demandesParHeure, codesFauxParHeure }` : les limites par
+  - `LIMITES_PAR_RESEAU`, `{ demandesParHeure, codesFauxParHeure, envoisParHeure? }` : les limites par
     adresse IP de la connexion par code ou lien, sur une heure (« Un réseau entier
     compte pour une adresse », plus haut). `{ 20, 30 }` par défaut ; des entiers d'au
     moins 1, sans quoi l'appli refuse de démarrer. Les limites par adresse e-mail ne
-    se règlent pas.
+    se règlent pas. `envoisParHeure`, facultatif, y règle le plafond de toute l'appli
+    (300 sans lui, ou `demandesParHeure` si elle est plus haute), à relever pour une
+    appli grand public.
 - `src/config/effets-comptes.ts` : `EFFETS_COMPTES`, une entrée par unité qui
   réagit à un compte désactivé, réactivé ou effacé (le journal d'audit et les
   espaces, si l'appli les a, y sont déjà).
@@ -892,6 +925,7 @@ redirect(cheminDeRetour(retour));
 | `MICROSOFT_TENANT_ID` | L'ID de l'annuaire (tenant) du client, un GUID. Seulement avec `ANNUAIRES_MICROSOFT = "un-seul"`. | Comme pour `MICROSOFT_CLIENT_ID` ; un nom de domaine compte pour absent. |
 | `URL_PUBLIQUE` | L'adresse publique du site, en `https` et sans chemin, la variable du socle (`src/lib/referencement.ts`). Avec `"lien-email"` dans `METHODES`, l'adresse où mène le lien du mail, en production. | En production, la carte du lien de `/connexion` dit qu'elle manque, et aucun lien ne part. Hors production, l'hôte de la requête. |
 | `COMPTES_PREMIER_ADMIN` | L'adresse du premier admin. Elle ne sert qu'au premier démarrage : une fois un admin passé, elle n'en refait pas. | Personne n'entre en `ROLE_ADMIN` sans être listé dans `src/config/comptes.ts`. |
+| `IP_EN_TETE_CLIENT` | L'en-tête où le proxy de l'hébergeur pose l'adresse du visiteur (`src/lib/adresse-ip.ts`) ; Render : `cf-connecting-ip`, déjà dans `render.yaml`. **Obligatoire en production** avec `"code-email"` ou `"lien-email"` dans `METHODES`. | En production, le proxy répond en erreur à toute requête, `/sante` comprise. Hors production, l'adresse vaut `"local"`. |
 
 La connexion par code, comme celle par lien, envoie par la brique mails : ses variables
 (`MAILS_FOURNISSEUR`, `MAILS_EXPEDITEUR`, `RESEND_API_KEY`) sont à régler chez

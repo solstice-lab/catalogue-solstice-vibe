@@ -64,7 +64,8 @@ services:
       # L'adresse IP du visiteur (src/lib/adresse-ip.ts) : Render passe par
       # Cloudflare, qui pose CF-Connecting-IP et refuse une requête qui
       # l'envoie elle-même (essai réel du 2026-11-05). X-Forwarded-For garde
-      # ce que le visiteur envoie : jamais lui.
+      # ce que le visiteur envoie : jamais lui. Avec la brique comptes, l'appli
+      # refuse de démarrer sans elle, /sante comprise.
       - key: IP_EN_TETE_CLIENT
         value: cf-connecting-ip
       # Brique comptes (src/briques/comptes/).
