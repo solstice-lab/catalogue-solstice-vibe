@@ -120,6 +120,175 @@ passe(ecr("/repo/src/env.ts", "export const x = 1;"));
 refuse(ecr("/repo/scripts/import.ts", `const url = "${distante}";`));
 passe(ecr("/repo/docs/local.md", "postgresql://postgres:postgres@localhost:5434/app_dev"));
 passe(ecr("/repo/src/db.ts", "const url = process.env.DATABASE_URL;"));
+// .ENV est le même fichier que .env sous Windows ; .envrc et .npmrc portent
+// eux aussi des secrets (variables chargées par direnv, jeton du registre npm).
+refuse(ecr("/repo/.ENV", "X=1"));
+refuse(ecr("C:\\repo\\.Env.Local", "X=1"));
+refuse(ecr("/repo/.envrc", "export X=1"));
+refuse(ecr("/repo/.npmrc", "//registry.npmjs.org/:_authToken=x"));
+passe(ecr("/repo/.env.EXAMPLE", "X="));
+passe(ecr("/repo/src/.env.d.ts", "declare const x: string;"));
+
+// --- Contournements reproduits à l'audit du 2026-11-09 ---
+// Le garde ne lisait que le premier mot de chaque commande simple : le même
+// geste confié à un interpréteur, à un lanceur ou à un heredoc passait.
+
+const encodee = (texte) => Buffer.from(texte, "utf16le").toString("base64");
+for (const interdite of [
+  "gh pr merge 42 --squash",
+  "git push -f origin fix/x",
+  "git commit -n -m x",
+  "git add -f .env.local",
+  "npx tsx scripts/import.ts --confirmer",
+]) {
+  refuse(cmd(`sh -c '${interdite}'`));
+  refuse(cmd(`bash -c "${interdite}"`));
+  refuse(cmd(`bash -lc "${interdite}"`));
+  refuse(cmd(`pwsh -Command "${interdite}"`));
+  refuse(cmd(`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "${interdite}"`));
+  refuse(cmd(`pwsh -EncodedCommand ${encodee(interdite)}`));
+  refuse(cmd(`cmd /c "${interdite}"`));
+  refuse(cmd(`Invoke-Expression '${interdite}'`));
+  refuse(cmd(`iex '${interdite}'`));
+  refuse(cmd(`eval '${interdite}'`));
+  refuse(cmd(`echo '${interdite}' | bash`));
+  refuse(cmd(`'${interdite}' | Invoke-Expression`));
+  refuse(cmd(`bash <<< '${interdite}'`));
+  refuse(cmd(`bash <<'EOF'\n${interdite}\nEOF`));
+  refuse(cmd(`cat <<'EOF' | sh\n${interdite}\nEOF`));
+  refuse(cmd(`Invoke-Expression @'\n${interdite}\n'@`));
+  refuse(cmd(`@'\n${interdite}\n'@ | Invoke-Expression`));
+  refuse(cmd(`echo "$(${interdite})"`));
+  refuse(cmd(`(${interdite})`));
+  refuse(cmd(`Invoke-Command -ScriptBlock { ${interdite} }`));
+  refuse(cmd(`sudo -E ${interdite}`));
+  refuse(cmd(`node -e "require('child_process').execSync('${interdite}')"`));
+  refuse(cmd(`bash -c "pwsh -Command '${interdite}'"`));
+}
+refuse(cmd("echo 42 | xargs gh pr merge"));
+refuse(cmd("echo 42 | xargs -I {} gh pr merge {} --squash"));
+refuse(cmd("npx gh pr merge 42"));
+refuse(cmd("npm exec -- gh pr merge 42"));
+refuse(cmd("Start-Process gh -ArgumentList 'pr merge 42'"));
+refuse(cmd("Start-Process -FilePath gh -ArgumentList 'pr','merge','42' -Wait"));
+refuse(cmd("Start-Process git 'push --force'"));
+refuse(cmd(`python -c "import subprocess; subprocess.run(['gh', 'pr', 'merge', '42'])"`));
+// Le texte d'un consommateur connu (message de commit, corps de PR, fichier)
+// reste du texte : seul l'hôte du heredoc décide.
+passe(cmd("git commit -F - <<'EOF'\nGardes : refuser gh pr merge, git push --force et --confirmer\nEOF"));
+passe(cmd(`gh pr create --title "Gardes" --body "$(cat <<'EOF'\nRefuse gh pr merge 42 et --confirmer\nEOF\n)"`));
+passe(cmd("gh pr create --title Gardes --body-file - <<'EOF'\ngh pr merge 42\nEOF"));
+passe(cmd("git commit -m @'\nGardes : gh pr merge est refusé\n'@"));
+passe(cmd("cat > notes.md <<'EOF'\ngh pr merge 42\nEOF"));
+passe(cmd(`node -e "console.log('gh pr merge 42')"`));
+passe(cmd('bash -c "npm run lint && npm run typecheck"'));
+passe(cmd("pwsh -File scripts/verifier.ps1"));
+
+// --confirmer cherché dans le code n'est pas --confirmer lancé.
+passe(cmd("grep -rn -- --confirmer scripts/"));
+passe(cmd("rg -- --confirmer"));
+passe(cmd("git log -S '--confirmer'"));
+passe(cmd("Select-String -Path scripts\\*.ts -Pattern '--confirmer'"));
+passe(cmd("git ls-files | xargs grep -l -- --confirmer"));
+refuse(cmd("grep -q x f && npx tsx scripts/import.ts --confirmer"));
+
+// Un .env écrit par une commande, et non par Write ou Edit.
+for (const ecriture of [
+  "cp .env.example .env.local",
+  "copy .env.example .env.local",
+  "Copy-Item .env.example -Destination .env.local",
+  "echo A=1 > .env.local",
+  "echo A=1 >> app/.env",
+  "echo A=1>.env.local",
+  "printf 'A=1' | tee .env.local",
+  "printf 'A=1' | tee -a .env",
+  "Set-Content .env.local 'A=1'",
+  "Set-Content -Path .env.local -Value 'A=1'",
+  "'A=1' | Out-File -FilePath .env.local",
+  "Add-Content .env 'A=1'",
+  "mv .env.local.bak .env.local",
+  "Move-Item .env.bak .env",
+  "Rename-Item x.txt .env.local",
+  "New-Item .env.local -Value 'A=1'",
+  "sed -i 's/A=1/A=2/' .env.local",
+  "touch .env.local",
+  `node -e "require('fs').writeFileSync('.env','A=1')"`,
+  `python -c "open('.env.local', 'w').write('A=1')"`,
+  "[IO.File]::WriteAllText('.env.local', 'A=1')",
+  "echo A=1 > .ENV",
+  "echo 'use nix' > .envrc",
+  "echo '//registry.npmjs.org/:_authToken=x' > .npmrc",
+  "cat > .env.local <<'EOF'\nA=1\nEOF",
+  'bash -c "echo A=1 > .env.local"',
+])
+  refuse(cmd(ecriture));
+passe(cmd("cat .env.local"));
+passe(cmd("Get-Content .env.example"));
+passe(cmd("git diff -- .env.example"));
+passe(cmd("echo 'export {};' > src/.env.d.ts"));
+passe(cmd("echo x > environnement.txt"));
+passe(cmd(`node -e "require('dotenv').config({ path: '.env.local' })"`));
+
+// git : plomberie de git add -f, abréviations d'options, hooks détournés.
+refuse(cmd("git update-index --add .env.local"));
+refuse(cmd("git update-index --add --cacheinfo 100644,abc,.env"));
+refuse(cmd("git add --forc .env.local"));
+refuse(cmd("git push --forc origin fix/x"));
+refuse(cmd("git commit --no-verif -m x"));
+refuse(cmd("git commit --no-ver -m x"));
+refuse(cmd("git push --no-verif"));
+refuse(cmd("git -c core.hooksPath=/dev/null commit -m x"));
+refuse(cmd("git -c core.hookspath=NUL push origin fix/x"));
+refuse(cmd("git merge --no-verify fix/x"));
+refuse(cmd("git rebase --no-verify origin/main"));
+refuse(cmd("git am --no-verify < correctif.patch"));
+refuse(cmd("git pull --no-verify"));
+passe(cmd("git update-index --refresh"));
+passe(cmd("git -c core.quotepath=off commit -m x"));
+passe(cmd("git merge --no-ff fix/x"));
+passe(cmd("git rebase -n origin/main"));
+passe(cmd("git push --force-with-lease origin fix/x"));
+passe(cmd("git config core.hooksPath .husky"));
+
+// Fusion par l'API : GraphQL, REST en PUT, depuis gh ou un client HTTP.
+const mutation = (nom) => `mutation { ${nom}(input: {pullRequestId: "PR_x"}) { clientMutationId } }`;
+refuse(cmd(`gh api graphql -f query='${mutation("mergePullRequest")}'`));
+refuse(cmd(`gh api graphql -f query='${mutation("enablePullRequestAutoMerge")}'`));
+refuse(cmd(`gh api graphql -F query=@- <<'EOF'\n${mutation("mergePullRequest")}\nEOF`));
+refuse(cmd("gh api --method PUT repos/o/r/pulls/42/merge -f merge_method=squash"));
+refuse(cmd("gh api -XPUT repos/o/r/pulls/42/merge"));
+refuse(cmd('curl -X PUT -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/o/r/pulls/42/merge'));
+refuse(cmd("curl --request PUT https://api.github.com/repos/o/r/pulls/42/merge"));
+refuse(cmd("Invoke-RestMethod -Method Put -Uri https://api.github.com/repos/o/r/pulls/42/merge"));
+refuse(
+  cmd(`curl https://api.github.com/graphql -d '{"query":"${mutation("mergePullRequest").replace(/"/g, '\\"')}"}'`)
+);
+// En GET, l'API dit seulement si la PR est fusionnée.
+passe(cmd("gh api repos/o/r/pulls/42/merge"));
+passe(cmd("curl -s https://api.github.com/repos/o/r/pulls/42/merge"));
+passe(cmd("gh api graphql -f query='{ viewer { login } }'"));
+passe(cmd("gh pr view 42 --json mergeable"));
+
+// Mot de passe de base hors de la forme scheme://user:pass@host. Coupés en deux
+// comme plus haut, pour que le garde n'en refuse pas l'écriture ici.
+refuse(cmd("PGPASSWORD=secret psql -h dpg-x.render.com -U u db"));
+refuse(cmd("$env:PGPASSWORD = 'secret'; psql -h dpg-x.render.com -U u db"));
+refuse(cmd("PGHOST=dpg-x.render.com PGPASSWORD=secret psql -U u db"));
+refuse(cmd("psql 'host=dpg-x.render.com password=secret dbname=db'"));
+refuse(cmd("psql 'postgresql://u" + "@dpg-x.render.com/db?sslmode=require&password=secret'"));
+refuse(cmd("psql postgresql://:secret" + "@dpg-x.render.com/db"));
+refuse(cmd("mysql -h db.example.com -u root -psecret app"));
+refuse(cmd("mysql --host=db.example.com --password=secret app"));
+refuse(ecr("/repo/x.ts", "postgresql://:secret" + "@dpg-x.render.com/db"));
+refuse(ecr("/repo/x.ts", "postgresql://u" + "@dpg-x.render.com/db?password=secret"));
+passe(cmd("PGPASSWORD=postgres psql -h localhost -U postgres app_test"));
+passe(cmd("PGPASSWORD=postgres psql -U postgres app_test"));
+passe(cmd('PGPASSWORD="$MOT_DE_PASSE" psql -h dpg-x.render.com -U u db'));
+passe(cmd("psql 'host=localhost password=postgres dbname=app_test'"));
+passe(cmd("psql 'postgresql://u" + "@localhost/db?password=postgres'"));
+passe(cmd("psql -h dpg-x.render.com -U u db")); // sans mot de passe : psql le demande
+passe(cmd("mysql -u root -psecret app")); // la machine locale, comme pour les URL
+passe(cmd("find . -name '*.ts' -print"));
 
 // --- Adaptations d'une appli assemblée : un rappel, jamais un refus ---
 // Le 2026-11-05, sur l'appli d'essai tours-de-coloc, trois retouches de fichiers
@@ -308,9 +477,31 @@ const accord = lancer({ tool_name: "Write", tool_input: { file_path: "/repo/a.ts
 assert.equal(accord.status, 0);
 assert.equal(accord.stdout, "");
 
-// Une entrée illisible ne bloque rien : le hook ne doit jamais empêcher de travailler par accident.
+// La commande se lit quel que soit l'outil : le terminal de l'appli de bureau
+// lance des commandes comme Bash (audit du 2026-11-09).
+const terminal = lancer({ tool_name: "mcp__terminal__run_in_terminal", tool_input: { command: "gh pr merge 42" } });
+assert.equal(JSON.parse(terminal.stdout).hookSpecificOutput.permissionDecision, "deny");
+const reglages = JSON.parse(fs.readFileSync(new URL("../settings.json", import.meta.url), "utf8"));
+const matcher = new RegExp(`^(?:${reglages.hooks.PreToolUse[0].matcher})$`);
+for (const outil of [
+  "Bash",
+  "PowerShell",
+  "Write",
+  "Edit",
+  "MultiEdit",
+  "NotebookEdit",
+  "mcp__terminal__run_in_terminal",
+])
+  assert.ok(matcher.test(outil), `settings.json ne branche pas le garde sur ${outil}`);
+
+// Une entrée illisible bloque (code 2, motif sur stderr) : laisser passer, c'est
+// laisser passer sans regarder la commande.
 const illisible = spawnSync(process.execPath, [script], { input: "pas du json", encoding: "utf8" });
-assert.equal(illisible.status, 0);
+assert.equal(illisible.status, 2);
 assert.equal(illisible.stdout, "");
+assert.match(illisible.stderr, /illisible/);
+const sansCommande = lancer({ tool_name: "Bash", tool_input: {} });
+assert.equal(sansCommande.status, 2);
+assert.match(sansCommande.stderr, /illisible/);
 
 console.log("Gardes : tous les cas passent.");

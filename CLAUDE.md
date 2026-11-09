@@ -92,8 +92,7 @@ données, **charger la skill `solstice-donnees`**. Les règles courtes :
   changement structurel entrepris au passage. Si un changement structurel
   semble nécessaire, escalader vers la personne responsable technique du
   projet plutôt que le faire.
-- Une demande = un changement. Pas de corrections sans rapport groupées dans
-  un même commit.
+- Une demande = un changement : pas de corrections sans rapport dans un même commit.
 
 ## 6. Vérifier avant de livrer
 
@@ -137,12 +136,13 @@ navigateur : la personne qui pilote le projet vérifie elle-même le rendu.
 
 ## 8. Gardes de Claude
 
-`.claude/settings.json` branche `.claude/hooks/gardes.mjs` avant chaque commande et
-chaque écriture. Il refuse : écrire un `.env*` (hors `.env.example`), une URL de base
-distante avec mot de passe (commande ou fichier), `git add -f`, `--confirmer`,
-`gh pr merge`, `git push --force` (`--force-with-lease` passe), `--no-verify` (commit,
-push). Un refus ne se contourne pas : dire à l'humain quoi taper. Un garde qui bloque
-à tort se corrige par un cas dans `.claude/hooks/gardes.test.mjs` (lancé par la CI).
+`.claude/settings.json` branche `.claude/hooks/gardes.mjs` avant chaque commande et chaque
+écriture. Il refuse, même confiés à un interpréteur : écrire un `.env*` (hors `.env.example`),
+`.envrc` ou `.npmrc`, un mot de passe de base distante, `git add -f`, `--confirmer`, la fusion
+d'une PR (`gh pr merge`, API), `git push --force` (`--force-with-lease` passe), `--no-verify`.
+Il arrête l'inadvertance d'une session, pas qui veut passer : la barrière réelle est le ruleset
+GitHub de `main` et l'absence de secrets de prod sur le poste. Un refus ne se cherche pas de
+détour : dire à l'humain quoi taper. Un garde qui bloque à tort se corrige par un cas de test.
 
 ## 9. Entretien de ce fichier
 

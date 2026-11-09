@@ -77,9 +77,10 @@ skill `solstice-livrer`, mais rien n'oblige à passer par Claude pour travailler
 Qui ouvre le dépôt dans Claude Code reçoit d'office le hook `PreToolUse` de
 `.claude/settings.json` : avant chaque commande et chaque écriture de fichier
 de Claude, `.claude/hooks/gardes.mjs` refuse d'écrire un `.env*` (hors
-`.env.example`) ou une URL de base distante avec mot de passe, ainsi que
-`git add -f`, `--confirmer`, `gh pr merge`, `git push --force` (`--force-with-lease`
-passe) et `--no-verify` sur `git commit` et `git push`. Pour s'en passer sur son poste :
+`.env.example`), `.envrc`, `.npmrc` ou un mot de passe de base distante, ainsi que
+`git add -f`, `--confirmer`, la fusion d'une PR, `git push --force` (`--force-with-lease`
+passe) et `--no-verify`, y compris confiés à un interpréteur. Il arrête l'inadvertance,
+pas qui veut passer : `SECURITY.md` dit où est la barrière réelle. Pour s'en passer sur son poste :
 `{ "disableAllHooks": true }` dans `.claude/settings.local.json`, ignoré par
 git. Ce réglage coupe tous les hooks, pas seulement celui-ci ; le README
 (« Claude Code : un hook s'applique d'office ») donne le détail.

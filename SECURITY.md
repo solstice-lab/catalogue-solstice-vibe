@@ -33,8 +33,17 @@ comment nous joindre en privé.
 ## Ce qui est concerné
 
 Le contenu de ce dépôt : le socle et les briques, l'assembleur
-(`outils/`), la CI, ainsi que les gardes et les consignes de `.claude/` (par
-exemple un garde qui laisserait passer une écriture de secret).
+(`outils/`), la CI, ainsi que les gardes et les consignes de `.claude/`.
+
+Les gardes (`.claude/hooks/gardes.mjs`) arrêtent l'inadvertance d'une session
+Claude : écrire un secret, fusionner, forcer un envoi, sauter les hooks git, y
+compris par un interpréteur ou une API. Ce ne sont pas une barrière de
+sécurité : une commande assez détournée (alias git, script écrit puis lancé)
+leur échappe. La barrière réelle est la protection de `main` sur GitHub (pull
+request, CI et fusion par un humain) et l'absence de secrets de production sur
+le poste de travail. Un geste courant qu'un garde laisse passer se corrige par
+une pull request ordinaire, avec son cas de test ; une faille de ces barrières
+réelles se signale ici, en privé.
 
 Ne relèvent pas de ce dépôt :
 
