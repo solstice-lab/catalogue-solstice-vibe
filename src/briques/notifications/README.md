@@ -143,7 +143,7 @@ ne connaît pas la brique échéances : le lien entre les deux se fait côté ap
 Hors du dossier : les tests `tests/notifications*.test.ts`, l'étape des tables
 `notifications_envois` et `notifications_lancements` en fin de
 `src/lib/db/migrations.ts` (jamais dans `schema.sql`), les variables dans
-`.env.example` et `render.yaml`, et ses lignes de `src/lib/confidentialite.ts`
+`.env.example` et (avec la brique déploiement) `render.yaml`, et ses lignes de `src/lib/confidentialite.ts`
 et `src/config/donnees-personnelles.ts` (sa source de l'export et de l'effacement, et
 `notifications_lancements` parmi les tables sans donnée personnelle).
 L'assembleur retire tout cela quand une copie ne garde pas la brique, comme
@@ -361,7 +361,7 @@ réelle remplace les noms ; la forme reste la même.
 
    | | Où | Rôle | Sur une recette |
    | --- | --- | --- | --- |
-   | Celle du service | Variable d'environnement chez l'hébergeur (`render.yaml`, `sync: false`) | L'adresse publique de l'appli : elle ouvre aux moteurs un site déclaré public (`src/lib/referencement.ts`) et sert de base aux liens des courriels. | **Vide** (brique déploiement, geste 3) : une recette reste fermée aux moteurs. |
+   | Celle du service | Variable d'environnement chez l'hébergeur (avec la brique déploiement, `render.yaml`, `sync: false`) | L'adresse publique de l'appli : elle ouvre aux moteurs un site déclaré public (`src/lib/referencement.ts`) et sert de base aux liens des courriels. | **Vide** (brique déploiement, geste 3) : une recette reste fermée aux moteurs. |
    | Celle de la tâche | Variable de dépôt GitHub (*Settings → Secrets and variables → Actions → Variables*) | L'adresse que la tâche appelle. **Obligatoire pour que la tâche envoie**. | **Posée**, à l'adresse du service de recette : c'est elle qui arme la tâche, sans rien ouvrir aux moteurs. |
 
    Sans la variable de dépôt, la tâche **se tait sans échouer** : l'exécution

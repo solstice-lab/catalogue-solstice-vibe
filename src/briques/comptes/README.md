@@ -28,7 +28,7 @@ l'hébergeur échoue, et le déploiement avec elle. Retirer `"demo"` de `METHODE
 avant toute mise en ligne. **De même sans `IP_EN_TETE_CLIENT` en production**,
 avec le code ou le lien dans `METHODES` :
 sans elle, les limites par adresse IP ne voient pas qui demande un code (voir
-« L'adresse IP derrière l'hébergeur ») ; `render.yaml` la règle pour Render.
+« L'adresse IP derrière l'hébergeur ») ; avec la brique déploiement, `render.yaml` la règle pour Render.
 
 La brique exige la brique données et la brique mails (`exige: ["donnees",
 "mails"]` dans la liste de l'assembleur du catalogue) : les comptes, les
@@ -357,7 +357,7 @@ L'assembleur ne retire aucune dépendance : `package-lock.json` ne suivrait plus
 L'assembleur retire aussi, sans elle, les étapes `utilisateurs, sessions`,
 `codes_connexion` et `utilisateurs.gere_par_l_appli, domaines_admis` de
 `src/lib/db/migrations.ts`, son bloc de `src/proxy.ts`, de
-`.env.example` et de `render.yaml`, et son bandeau du layout. Il remet `"/"`
+`.env.example` et (avec la brique déploiement) de `render.yaml`, et son bandeau du layout. Il remet `"/"`
 dans `pagesPubliques` de `src/lib/referencement.ts`, où l'accueil redevient
 public, et retire de `tests/referencement.test.ts` le verrou « jamais une page
 derrière connexion ».
@@ -461,7 +461,8 @@ une valeur nulle, négative ou non entière.
 **L'adresse IP derrière l'hébergeur.** Les limites par IP lisent l'adresse du
 visiteur par `adresseDuVisiteur` (`src/lib/adresse-ip.ts`, partagé avec la
 brique contact, et retiré par l'assembleur sans l'une ni l'autre). L'en-tête de confiance se désigne par
-`IP_EN_TETE_CLIENT`, que `render.yaml` règle sur `cf-connecting-ip` : Render
+`IP_EN_TETE_CLIENT`, que `render.yaml` (brique déploiement) règle sur
+`cf-connecting-ip` ; sans la brique déploiement, la déclarer chez l'hébergeur : Render
 passe par Cloudflare, qui pose cet en-tête et refuse une requête qui l'envoie
 elle-même (essai réel du 2026-11-05, README de la brique déploiement, étape 7). Un en-tête lu sans le
 proxy qui le pose se forgerait : un autre hébergeur demande une autre valeur.
@@ -720,7 +721,8 @@ relus le 2026-10-23 (menu « Google Auth Platform »).
    ranger dans le gestionnaire de secrets de l'équipe, jamais dans le dépôt. S'il
    est perdu, en ajouter un autre (**Add secret**).
 6. Déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env.local` en local,
-   et chez l'hébergeur dans le tableau de bord (`sync: false` dans `render.yaml`).
+   et chez l'hébergeur dans le tableau de bord (avec la brique déploiement,
+   `sync: false` dans `render.yaml`).
 7. Dans `src/config/comptes.ts` :
    - ajouter `"google"` à `METHODES`, en premier si c'est la méthode principale du
      client ;
@@ -869,7 +871,7 @@ mêmes écrans sous *Identity → Applications → App registrations*.
    qui interdit le consentement des utilisateurs le demande à son administrateur.
 8. Déclarer `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` et `MICROSOFT_TENANT_ID`
    dans `.env.local` en local, et chez l'hébergeur dans le tableau de bord
-   (`sync: false` dans `render.yaml`). Avec `"tous"`, `MICROSOFT_TENANT_ID` peut rester
+   (avec la brique déploiement, `sync: false` dans `render.yaml`). Avec `"tous"`, `MICROSOFT_TENANT_ID` peut rester
    vide.
 9. Dans `src/config/comptes.ts` :
    - ajouter `"microsoft"` à `METHODES`, en premier si c'est la méthode principale ;
@@ -1007,15 +1009,15 @@ redirect(cheminDeRetour(retour));
 
 | Variable | Valeur | Sans elle |
 | --- | --- | --- |
-| `AUTH_SECRET` | 32 caractères au moins, aléatoires, propres à chaque appli et à chaque environnement. **Secret** : généré par l'hébergeur (`render.yaml`), dans `.env.local` en local, jamais dans le dépôt. | Toute connexion échoue, et le proxy refuse tout cookie, en nommant la variable. |
+| `AUTH_SECRET` | 32 caractères au moins, aléatoires, propres à chaque appli et à chaque environnement. **Secret** : généré par l'hébergeur (`render.yaml`, avec la brique déploiement ; sans elle, saisi chez lui), dans `.env.local` en local, jamais dans le dépôt. | Toute connexion échoue, et le proxy refuse tout cookie, en nommant la variable. |
 | `GOOGLE_CLIENT_ID` | L'ID client OAuth de l'appli, créé dans la console Google Cloud du client (voir « La connexion avec Google »). Seulement avec `"google"` dans `METHODES`. | La carte Google de `/connexion` dit qu'elle manque. Les autres méthodes restent là. |
-| `GOOGLE_CLIENT_SECRET` | Son secret. **Secret** : saisi à la main chez l'hébergeur (`sync: false`), dans `.env.local` en local, jamais dans le dépôt. | Comme pour `GOOGLE_CLIENT_ID`. |
+| `GOOGLE_CLIENT_SECRET` | Son secret. **Secret** : saisi à la main chez l'hébergeur (`sync: false` dans `render.yaml`, avec la brique déploiement), dans `.env.local` en local, jamais dans le dépôt. | Comme pour `GOOGLE_CLIENT_ID`. |
 | `MICROSOFT_CLIENT_ID` | L'ID d'application (client) de l'enregistrement fait dans le portail Azure (voir « La connexion avec Microsoft »). Seulement avec `"microsoft"` dans `METHODES`. | La carte Microsoft de `/connexion` dit qu'elle est à renseigner. Les autres méthodes restent là. |
-| `MICROSOFT_CLIENT_SECRET` | Sa valeur de secret client. **Secret** : saisi à la main chez l'hébergeur (`sync: false`), dans `.env.local` en local, jamais dans le dépôt. Expire (24 mois au plus). | Comme pour `MICROSOFT_CLIENT_ID`. |
+| `MICROSOFT_CLIENT_SECRET` | Sa valeur de secret client. **Secret** : saisi à la main chez l'hébergeur (`sync: false` dans `render.yaml`, avec la brique déploiement), dans `.env.local` en local, jamais dans le dépôt. Expire (24 mois au plus). | Comme pour `MICROSOFT_CLIENT_ID`. |
 | `MICROSOFT_TENANT_ID` | L'ID de l'annuaire (tenant) du client, un GUID. Seulement avec `ANNUAIRES_MICROSOFT = "un-seul"`. | Comme pour `MICROSOFT_CLIENT_ID` ; un nom de domaine compte pour absent. |
 | `URL_PUBLIQUE` | L'adresse publique du site, en `https` et sans chemin, la variable du socle (`src/lib/referencement.ts`). Avec `"lien-email"` dans `METHODES`, l'adresse où mène le lien du mail, en production. | En production, la carte du lien de `/connexion` dit qu'elle manque, et aucun lien ne part. Hors production, l'hôte de la requête. |
 | `COMPTES_PREMIER_ADMIN` | L'adresse du premier admin. Elle ne sert qu'au premier démarrage : une fois un admin passé, elle n'en refait pas. | Personne n'entre en `ROLE_ADMIN` sans être listé dans `src/config/comptes.ts`. |
-| `IP_EN_TETE_CLIENT` | L'en-tête où le proxy de l'hébergeur pose l'adresse du visiteur (`src/lib/adresse-ip.ts`) ; Render : `cf-connecting-ip`, déjà dans `render.yaml`. **Obligatoire en production** avec `"code-email"` ou `"lien-email"` dans `METHODES`. | En production, le proxy répond en erreur à toute requête, `/sante` comprise. Hors production, l'adresse vaut `"local"`. |
+| `IP_EN_TETE_CLIENT` | L'en-tête où le proxy de l'hébergeur pose l'adresse du visiteur (`src/lib/adresse-ip.ts`) ; Render : `cf-connecting-ip`, que `render.yaml` règle avec la brique déploiement (sans la brique, à déclarer chez l'hébergeur). **Obligatoire en production** avec `"code-email"` ou `"lien-email"` dans `METHODES`. | En production, le proxy répond en erreur à toute requête, `/sante` comprise. Hors production, l'adresse vaut `"local"`. |
 
 La connexion par code, comme celle par lien, envoie par la brique mails : ses variables
 (`MAILS_FOURNISSEUR`, `MAILS_EXPEDITEUR`, `RESEND_API_KEY`) sont à régler chez
