@@ -79,8 +79,8 @@ CI, gardes de Claude, mise en ligne avec la brique déploiement) ; le reste est
   puis corrigée y devient une ligne.
 - `.claude/` du harnais conservé tel quel : skills, agents relecteurs et gardes
   (`settings.json` + `hooks/gardes.mjs`). Un projet qui les retire perd les refus
-  automatiques (secret versé, `--confirmer`, `gh pr merge`, `git push --force`,
-  `--no-verify` sur `git commit` et `git push`).
+  automatiques (secret versé, `.envrc` et `.npmrc` compris, `--confirmer`, fusion d'une
+  PR, `git push --force`, hooks git sautés).
 
 ## La CI (`.github/workflows/ci.yml`)
 
