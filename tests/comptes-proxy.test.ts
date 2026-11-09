@@ -171,6 +171,20 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
     }
   });
 
+  it("n'exige pas IP_EN_TETE_CLIENT en production quand ni le code ni le lien ne sont proposés : Google et Microsoft ne lisent pas l'adresse IP", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("IP_EN_TETE_CLIENT", "");
+    poserLesMethodes(["google", "microsoft"]);
+    try {
+      expect(versLaConnexion(proxy(requete("/sante")))).toBeNull();
+      poserLesMethodes(["google", "lien-email"]);
+      expect(() => proxy(requete("/sante"))).toThrow(/IP_EN_TETE_CLIENT/);
+    } finally {
+      vi.unstubAllEnvs();
+      poserLesMethodes(null);
+    }
+  });
+
   it("sert /sante en production une fois la démo retirée des méthodes et l'en-tête de l'adresse IP réglé : les gestes d'avant la mise en ligne suffisent", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("IP_EN_TETE_CLIENT", "cf-connecting-ip");

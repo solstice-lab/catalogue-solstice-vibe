@@ -48,8 +48,8 @@ export function adresseDuVisiteur(enTetes: Pick<Headers, "get">): string | null 
   if (process.env.NODE_ENV !== "production") return "local";
   avertirUneFois(
     nom === ""
-      ? "IP_EN_TETE_CLIENT n'est pas renseignée : l'adresse du visiteur ne se lit pas, et les limites par adresse IP ne la distinguent plus. La régler à l'en-tête où le proxy de l'hébergeur pose l'adresse du visiteur (Render : cf-connecting-ip)."
-      : `L'en-tête « ${nom} » (IP_EN_TETE_CLIENT) manque à la requête : l'adresse du visiteur ne se lit pas, et les limites par adresse IP ne la distinguent plus. Vérifier l'en-tête que pose le proxy de l'hébergeur.`
+      ? "IP_EN_TETE_CLIENT n'est pas renseignée : l'adresse du visiteur ne se lit pas, et chaque limite par adresse IP le traite comme le dit le README de sa brique. La régler à l'en-tête où le proxy de l'hébergeur pose l'adresse du visiteur (Render : cf-connecting-ip)."
+      : `L'en-tête « ${nom} » (IP_EN_TETE_CLIENT) manque à la requête : l'adresse du visiteur ne se lit pas, et chaque limite par adresse IP le traite comme le dit le README de sa brique. Vérifier l'en-tête que pose le proxy de l'hébergeur.`
   );
   return null;
 }

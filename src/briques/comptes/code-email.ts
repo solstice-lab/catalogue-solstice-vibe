@@ -205,9 +205,10 @@ export async function enregistrerUneDemande(
     const appli = await client.queryOne<{ n: number }>("SELECT count(*)::int AS n FROM codes_connexion");
     const dejaAcceptees = appli?.n ?? 0;
     if (dejaAcceptees >= limites.envoisParHeure) return "plafond";
-    // Quand la demande qui remplit le plafond passe, une fois, sans donnée
-    // personnelle : les suivantes n'écrivent rien, et un journal à chacune
-    // grossirait sans fin.
+    // Quand la demande qui remplit le plafond passe, sans donnée personnelle :
+    // les refusées n'écrivent rien et ne butent sur aucune limite par IP, un
+    // journal à chacune grossirait sans fin. Sous un plafond tenu plein, chaque
+    // place reprise le redit : au plus le plafond lui-même, par heure.
     if (dejaAcceptees + 1 === limites.envoisParHeure) {
       console.warn(
         `Brique comptes : le plafond de ${limites.envoisParHeure} demandes de code ou de lien par heure, toutes adresses et IP confondues, est atteint. Jusqu'à ce qu'une place se libère, les demandes reçoivent la réponse habituelle sans qu'aucun mail parte. Si ce sont de vraies connexions, relever envoisParHeure de LIMITES_PAR_RESEAU (src/config/comptes.ts).`

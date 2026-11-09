@@ -42,7 +42,8 @@ export type LimitesParReseau = {
   // Les saisies fausses de code ou de lien d'une IP, toutes adresses confondues.
   codesFauxParHeure: number;
   // Les demandes de code ou de lien de toute l'appli, toutes adresses et IP
-  // confondues. Facultatif : ENVOIS_PAR_HEURE_PAR_DEFAUT sans lui, pour qu'une
+  // confondues. Facultatif : ENVOIS_PAR_HEURE_PAR_DEFAUT sans lui (ou
+  // demandesParHeure, si elle est plus haute), pour qu'une
   // appli assemblée avant ce plafond le reçoive sans retoucher sa configuration.
   envoisParHeure?: number;
 };
@@ -72,7 +73,7 @@ export class ErreurComptes extends Error {
 // Une limite à 0 refuserait toute demande depuis toute IP, et une limite qui
 // n'en est plus une (Infinity, NaN) retirerait ce qui arrête un poste qui demande
 // des codes à la chaîne : coût d'envoi et réputation de l'expéditeur. Appelé
-// par le proxy comme les deux gardes ci-dessous, et par la brique à chaque
+// par le proxy comme les gardes ci-dessous, et par la brique à chaque
 // lecture : l'appli refuse de démarrer au lieu de refuser, sans un mot, tout le
 // monde.
 export function refuserDesLimitesParReseauInvalides(
@@ -80,10 +81,16 @@ export function refuserDesLimitesParReseauInvalides(
 ): Required<LimitesParReseau> {
   // Les clés nommées : une clé absente ferait de la comparaison « >= undefined »
   // une limite qui ne refuse jamais, sans un mot. Le plafond absent prend son
-  // défaut ; présent, il se vérifie comme les autres.
+  // défaut, jamais sous demandesParHeure : l'assembleur règle celle-ci depuis
+  // la blueprint (400 personnes par réseau), pas le plafond, qui aurait
+  // refusé un seul réseau avant sa propre limite. Présent, il se vérifie comme
+  // les autres, et l'appli qui le règle plus bas le veut ainsi.
   const completes = {
     ...limites,
-    envoisParHeure: limites.envoisParHeure === undefined ? ENVOIS_PAR_HEURE_PAR_DEFAUT : limites.envoisParHeure,
+    envoisParHeure:
+      limites.envoisParHeure === undefined
+        ? Math.max(ENVOIS_PAR_HEURE_PAR_DEFAUT, limites.demandesParHeure)
+        : limites.envoisParHeure,
   };
   for (const nom of ["demandesParHeure", "codesFauxParHeure", "envoisParHeure"] as const) {
     const valeur: unknown = completes[nom];
@@ -115,8 +122,10 @@ export function refuserLaDemoEnProduction(): void {
 // l'instant (« expiré » contre « incorrect »), avec un seul avertissement au
 // journal (audit du 2026-11-09). Appelé par le proxy comme la démo, /sante
 // comprise : le déploiement échoue au lieu d'une appli en ligne sans limite.
+// Seulement avec le code ou le lien : Google et Microsoft ne lisent pas l'IP.
 export function refuserLaProductionSansEnTeteIp(): void {
-  if (process.env.NODE_ENV === "production" && (process.env.IP_EN_TETE_CLIENT ?? "").trim() === "") {
+  const lisentLIp = METHODES.includes("code-email") || METHODES.includes("lien-email");
+  if (lisentLIp && process.env.NODE_ENV === "production" && (process.env.IP_EN_TETE_CLIENT ?? "").trim() === "") {
     throw new ErreurComptes(
       "IP_EN_TETE_CLIENT est obligatoire en production : sans elle, les limites par adresse IP de la connexion ne voient pas qui demande. La déclarer chez l'hébergeur, à l'en-tête où son proxy pose l'adresse du visiteur (Render : cf-connecting-ip, déjà dans render.yaml)."
     );

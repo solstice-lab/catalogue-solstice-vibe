@@ -76,8 +76,9 @@ export const ANNUAIRES_MICROSOFT: AnnuairesMicrosoft = "un-seul";
 //
 // envoisParHeure, facultatif, s'ajoute ici pour régler le plafond des demandes
 // de code ou de lien de toute l'appli, toutes adresses et IP confondues : 300
-// sans lui (ENVOIS_PAR_HEURE_PAR_DEFAUT, qui dit pourquoi), à relever pour une
-// appli grand public. Un entier d'au moins 1 lui aussi.
+// sans lui, ou demandesParHeure si elle est plus haute
+// (ENVOIS_PAR_HEURE_PAR_DEFAUT, qui dit pourquoi), à relever pour une appli
+// grand public. Un entier d'au moins 1 lui aussi.
 export const LIMITES_PAR_RESEAU: LimitesParReseau = {
   demandesParHeure: 20,
   codesFauxParHeure: 30,

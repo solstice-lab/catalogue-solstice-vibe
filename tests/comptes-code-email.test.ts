@@ -211,6 +211,12 @@ describe("limites par réseau : lues du réglage de l'appli, jamais retirées", 
     expect(
       refuserDesLimitesParReseauInvalides({ demandesParHeure: 100, codesFauxParHeure: 150, envoisParHeure: 1_000 })
     ).toMatchObject({ envoisParHeure: 1_000 });
+    // L'assembleur règle demandesParHeure depuis la blueprint (400 personnes par
+    // réseau), pas le plafond : son défaut refuserait un seul réseau avant sa
+    // propre limite.
+    expect(refuserDesLimitesParReseauInvalides({ demandesParHeure: 400, codesFauxParHeure: 600 })).toMatchObject({
+      envoisParHeure: 400,
+    });
     for (const refusee of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, null, "300"]) {
       expect(
         () =>
@@ -229,62 +235,68 @@ describe("limites par réseau : lues du réglage de l'appli, jamais retirées", 
 // dispose de beaucoup d'IP. Rien ne plafonnait les codes et liens que l'appli
 // fait partir en une heure, contrairement aux invitations d'espaces (plafond
 // par espace et global) : coût d'envoi, réputation de l'expéditeur.
-describe("plafond de toute l'appli : codes et liens par heure, toutes adresses et IP confondues", { timeout: 30_000 }, () => {
-  it("au plafond, répond comme à une adresse inconnue, sans rien écrire ni envoyer : la réponse ne dit rien de l'adresse", async () => {
-    reglages.limites.envoisParHeure = 2;
-    expect(await demander(ADMISE, IP_A)).toBe("envoye");
-    expect(await demander("autre@client.example", IP_B)).toBe("envoye");
-    await lancerLesEnvois();
-    viderMailsCaptures();
+describe(
+  "plafond de toute l'appli : codes et liens par heure, toutes adresses et IP confondues",
+  { timeout: 30_000 },
+  () => {
+    it("au plafond, répond comme à une adresse inconnue, sans rien écrire ni envoyer : la réponse ne dit rien de l'adresse", async () => {
+      reglages.limites.envoisParHeure = 2;
+      expect(await demander(ADMISE, IP_A)).toBe("envoye");
+      expect(await demander("autre@client.example", IP_B)).toBe("envoye");
+      await lancerLesEnvois();
+      viderMailsCaptures();
 
-    expect(await demander("encore@client.example", "192.0.2.1")).toBe("envoye");
-    expect(await demander(ADMISE, "192.0.2.2")).toBe("envoye");
-    await lancerLesEnvois();
-    expect(mailsCaptures()).toEqual([]);
-    expect(await query("SELECT 1 FROM codes_connexion")).toHaveLength(2);
-  });
+      expect(await demander("encore@client.example", "192.0.2.1")).toBe("envoye");
+      expect(await demander(ADMISE, "192.0.2.2")).toBe("envoye");
+      await lancerLesEnvois();
+      expect(mailsCaptures()).toEqual([]);
+      expect(await query("SELECT 1 FROM codes_connexion")).toHaveLength(2);
+    });
 
-  it("libère une place quand une demande a plus d'une heure : le plafond se compte sur l'heure glissante", async () => {
-    reglages.limites.envoisParHeure = 1;
-    expect(await demander(ADMISE, IP_A)).toBe("envoye");
-    await vieillir(61);
-    expect(await recevoirUnCode(ADMISE, IP_B)).toMatch(/^\d{6}$/);
-  });
+    it("libère une place quand une demande a plus d'une heure : le plafond se compte sur l'heure glissante", async () => {
+      reglages.limites.envoisParHeure = 1;
+      expect(await demander(ADMISE, IP_A)).toBe("envoye");
+      await vieillir(61);
+      expect(await recevoirUnCode(ADMISE, IP_B)).toMatch(/^\d{6}$/);
+    });
 
-  it("ne laisse passer qu'une demande parmi plusieurs simultanées, de réseaux différents, à une place du plafond : le plafond se lit sous verrou", async () => {
-    reglages.limites.envoisParHeure = 3;
-    await demander("avant1@client.example", "192.0.2.1");
-    await demander("avant2@client.example", "192.0.2.2");
-    await Promise.all(Array.from({ length: 5 }, (_, i) => demander(`simultanee${i}@client.example`, `198.51.100.${i}`)));
-    expect(await query("SELECT 1 FROM codes_connexion")).toHaveLength(3);
-  });
+    it("ne laisse passer qu'une demande parmi plusieurs simultanées, de réseaux différents, à une place du plafond : le plafond se lit sous verrou", async () => {
+      reglages.limites.envoisParHeure = 3;
+      await demander("avant1@client.example", "192.0.2.1");
+      await demander("avant2@client.example", "192.0.2.2");
+      await Promise.all(
+        Array.from({ length: 5 }, (_, i) => demander(`simultanee${i}@client.example`, `198.51.100.${i}`))
+      );
+      expect(await query("SELECT 1 FROM codes_connexion")).toHaveLength(3);
+    });
 
-  it("le dit au journal une fois, quand la demande qui l'atteint passe, sans adresse ni IP : de quoi relever le réglage si ce sont de vraies connexions", async () => {
-    const avertissement = vi.spyOn(console, "warn").mockImplementation(() => {});
-    reglages.limites.envoisParHeure = 2;
-    await demander(ADMISE, IP_A);
-    expect(avertissement).not.toHaveBeenCalled();
-    await demander("autre@client.example", IP_B);
-    for (let i = 0; i < 3; i++) await demander(`apres${i}@client.example`, `192.0.2.${i}`);
-    expect(avertissement).toHaveBeenCalledTimes(1);
-    const message = avertissement.mock.calls[0].map(String).join(" ");
-    expect(message).toMatch(/Brique comptes : .*plafond.*2.*envoisParHeure/);
-    for (const donnee of [ADMISE, "autre@client.example", IP_A, IP_B]) expect(message).not.toContain(donnee);
-  });
+    it("le dit au journal une fois, quand la demande qui l'atteint passe, sans adresse ni IP : de quoi relever le réglage si ce sont de vraies connexions", async () => {
+      const avertissement = vi.spyOn(console, "warn").mockImplementation(() => {});
+      reglages.limites.envoisParHeure = 2;
+      await demander(ADMISE, IP_A);
+      expect(avertissement).not.toHaveBeenCalled();
+      await demander("autre@client.example", IP_B);
+      for (let i = 0; i < 3; i++) await demander(`apres${i}@client.example`, `192.0.2.${i}`);
+      expect(avertissement).toHaveBeenCalledTimes(1);
+      const message = avertissement.mock.calls[0].map(String).join(" ");
+      expect(message).toMatch(/Brique comptes : .*plafond.*2.*envoisParHeure/);
+      for (const donnee of [ADMISE, "autre@client.example", IP_A, IP_B]) expect(message).not.toContain(donnee);
+    });
 
-  it("donne, au plafond, le même état de l'action qu'une demande ordinaire", async () => {
-    reglages.limites.envoisParHeure = 1;
-    const formulaire = (email: string) => {
-      const donnees = new FormData();
-      donnees.set("email", email);
-      return donnees;
-    };
-    const ordinaire = await demanderCodeAction({}, formulaire(ADMISE));
-    const auPlafond = await demanderCodeAction({}, formulaire("autre@client.example"));
-    expect(auPlafond.erreur).toBeUndefined();
-    expect(Object.keys(auPlafond).sort()).toEqual(Object.keys(ordinaire).sort());
-  });
-});
+    it("donne, au plafond, le même état de l'action qu'une demande ordinaire", async () => {
+      reglages.limites.envoisParHeure = 1;
+      const formulaire = (email: string) => {
+        const donnees = new FormData();
+        donnees.set("email", email);
+        return donnees;
+      };
+      const ordinaire = await demanderCodeAction({}, formulaire(ADMISE));
+      const auPlafond = await demanderCodeAction({}, formulaire("autre@client.example"));
+      expect(auPlafond.erreur).toBeUndefined();
+      expect(Object.keys(auPlafond).sort()).toEqual(Object.keys(ordinaire).sort());
+    });
+  }
+);
 
 describe("demande d'un code : la réponse ne dit pas qui a un compte", () => {
   it("répond avant l'envoi, qui part après la réponse : attendre l'envoi rendait la réponse plus lente pour une adresse connue (projet précédent)", async () => {

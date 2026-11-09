@@ -24,7 +24,9 @@ async function proxyEnProduction(): Promise<typeof proxy> {
   vi.stubEnv("NODE_ENV", "production");
   vi.resetModules();
   // Brique comptes : sa méthode démo refuse la production dès le proxy
-  // (src/proxy.ts) ; la CSP de production se lit sur une appli sans démo.
+  // (src/proxy.ts) ; la CSP de production se lit sur une appli sans démo, et
+  // avec l'en-tête de l'adresse IP réglé, que la connexion exige en production.
+  vi.stubEnv("IP_EN_TETE_CLIENT", "cf-connecting-ip");
   vi.doMock("../src/config/comptes", async (original) => ({
     ...(await original<typeof import("../src/config/comptes")>()),
     METHODES: [],
