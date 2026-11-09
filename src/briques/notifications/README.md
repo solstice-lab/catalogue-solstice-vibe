@@ -50,6 +50,22 @@ ne connaît pas la brique échéances : le lien entre les deux se fait côté ap
   journaux d'accès de l'hébergeur. Seul un corps vide vaut le mode réel : un
   corps qui ne nomme pas son mode (`{ "Mode": "a-blanc" }`) est une répétition
   mal tapée, refusée plutôt qu'envoyée pour de vrai.
+
+  **Ce que le mode essai expose.** Il envoie vers une adresse d'essai, pas vers
+  des adresses inventées : les destinataires prévus sont les vrais. Outre la
+  ligne qui les nomme dans le mail d'essai, le rapport que renvoie la route, en
+  essai comme à blanc, liste une ligne par notification avec cette adresse
+  réelle (seul le mode réel n'en renvoie aucune). Trois conséquences :
+  - **à qui donner l'adresse d'essai** : une adresse de l'équipe qui répète,
+    jamais celle d'un tiers, car qui la lit voit les adresses réelles des
+    responsables d'un vrai récapitulatif ;
+  - **ne pas journaliser le rapport tel quel** : un écran, un journal
+    d'application ou de tâche planifiée qui l'affiche ou l'écrit les garde, et
+    un dépôt public montre à tous les journaux de GitHub Actions. L'appel à la
+    main (PowerShell ci-dessous) se lit dans le terminal, sans le coller dans
+    un ticket ni un message ;
+  - **la tâche planifiée n'appelle que le mode réel**, dont la réponse ne
+    contient que des comptes.
 - **Un journal des envois** (table `notifications_envois`) : une ligne par
   mail, réel ou d'essai, réussi ou non, avec le jour d'envoi du client, le
   destinataire, l'objet, le résultat et l'erreur éventuelle (celle de la brique
@@ -111,7 +127,8 @@ ne connaît pas la brique échéances : le lien entre les deux se fait côté ap
   en mode réel, elle ne donne que des comptes (envoyés, en échec, sans
   destinataire). Les journaux de la tâche (GitHub Actions) peuvent être lus
   par d'autres que l'équipe, un dépôt public les montre à tous. Les modes à
-  blanc et essai, appelés à la main, listent destinataires et objets.
+  blanc et essai, appelés à la main, listent destinataires et objets : adresses
+  réelles à ne pas journaliser (« Ce que le mode essai expose », plus haut).
 
 ## Les fichiers
 
