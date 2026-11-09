@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { estBaseDeTest, ligneEnvLocal, nomsDesBases } from "../scripts/lib/bases-locales";
+import { baseDuWorker, estBaseDeTest, ligneEnvLocal, nomsDesBases } from "../scripts/lib/bases-locales";
 
 /*
  * La base locale du poste. Un jour, Docker était arrêté,
@@ -68,6 +68,28 @@ describe("nom d'une base de test", () => {
     const bases = nomsDesBases("@client/Suivi-Contrats");
     expect(estBaseDeTest(bases.test)).toBe(true);
     expect(estBaseDeTest(bases.dev)).toBe(false);
+  });
+
+  it("donne à chaque worker de vitest sa base, jamais celle d'une session parallèle (catalogue_test_3 est la base dédiée du ticket 3, que le worker 3 aurait vidée)", () => {
+    expect(baseDuWorker("appli_test", 1)).toBe("appli_test_w1");
+    expect(baseDuWorker("appli_test_121", 3)).toBe("appli_test_121_w3");
+    for (const base of ["appli_test", "appli_test_121"]) {
+      for (const numero of [1, 2, 3, 4, 12]) {
+        expect(estBaseDeTest(baseDuWorker(base, numero)), `${base} ${numero}`).toBe(false);
+      }
+    }
+  });
+
+  it("refuse une base de worker que Postgres tronquerait (deux workers sur la même base) ou un numéro de worker absent", () => {
+    expect(() => baseDuWorker(`${"a".repeat(57)}_test`, 1)).toThrow(/63/);
+    expect(() => baseDuWorker("appli_test", Number(undefined))).toThrow(/VITEST_POOL_ID/);
+    expect(() => baseDuWorker("appli_test", 0)).toThrow(/VITEST_POOL_ID/);
+  });
+
+  it("le worker en cours vise sa propre base, pas celle passée à npm test (les fichiers en parallèle se videraient la base)", () => {
+    const base = decodeURIComponent(new URL(process.env.DATABASE_URL as string).pathname.slice(1));
+    expect(base).toMatch(/_w\d+$/);
+    expect(base).toBe(baseDuWorker(base.replace(/_w\d+$/, ""), Number(process.env.VITEST_POOL_ID)));
   });
 
   it("vitest.config.ts refuse de démarrer sur la base de dev locale, nomme la base lue et dit quoi taper", () => {

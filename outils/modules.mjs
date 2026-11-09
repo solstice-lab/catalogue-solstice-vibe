@@ -471,8 +471,8 @@ export const BRIQUES = {
         "// La navigation vit en UN seul endroit : chaque écran d'outil la passe à AppLayout."
       ),
       // Le fichier de préparation des tests part avec la brique.
-      ligne("vitest.config.ts", "    // Simule next/headers (cookies de la requête) pour tous les tests."),
-      ligne("vitest.config.ts", '    setupFiles: ["tests/setup.ts"],'),
+      ligne("vitest.config.ts", "      // Simule next/headers (cookies de la requête) pour tous les tests."),
+      ligne("vitest.config.ts", '      "tests/setup.ts",'),
       // Sans connexion, aucune page n'est derrière : le verrou n'a plus d'objet,
       // et l'accueil, public, revient au sitemap.
       ligne("tests/referencement.test.ts", 'import { estOuverte } from "@/briques/comptes/protection";'),
@@ -1061,6 +1061,9 @@ export const DONNEES = {
     "tests/import-fusion.test.ts",
     "tests/bases-locales.test.ts",
     "tests/slug.test.ts",
+    // Une base par worker de vitest : sans base, rien à créer ni à viser.
+    "tests/bases-des-workers.ts",
+    "tests/base-du-worker.ts",
   ],
   retraits: [
     // --- /sante : sans base, la réponse d'une base non configurée, toujours 200
@@ -1086,19 +1089,26 @@ export const DONNEES = {
       'vi.mock("@/lib/db/client", () => {',
       '  throw new Error("La page de confidentialité importe la base");\n});'
     ),
-    // --- tests : sans base, ni DATABASE_URL exigé ni tests en série
+    // --- tests : sans base, ni DATABASE_URL exigé ni base par worker
     ligne("vitest.config.ts", 'import fs from "node:fs";'),
+    ligne("vitest.config.ts", 'import os from "node:os";'),
     ligne("vitest.config.ts", 'import { estBaseDeTest, nomsDesBases, urlLocale } from "./scripts/lib/bases-locales";'),
     bloc("vitest.config.ts", "/*\n * GARDE ANTI-PROD", "      commandeDesTests()\n  );\n}"),
-    bloc("vitest.config.ts", "    // Chaque fichier de test qui interroge la base", "    fileParallelism: false,"),
+    ligne("vitest.config.ts", "      // Chaque worker sur sa propre base, avant toute requête (premier de la liste)."),
+    ligne("vitest.config.ts", '      "tests/base-du-worker.ts",'),
+    bloc(
+      "vitest.config.ts",
+      "    // Fichiers en parallèle, une base par worker",
+      "    maxWorkers: Math.max(1, Math.min(4, os.availableParallelism() - 1)),"
+    ),
     // --- CI : ni Postgres ni variables de base
     bloc(".github/workflows/ci.yml", "      - name: Démarrer Postgres", "          IMAGE: postgres:"),
     bloc(".github/workflows/ci.yml", "      - name: Attendre Postgres", "docker logs postgres; exit 1"),
     bloc(".github/workflows/ci.yml", "    env:\n      # Requis par les tests seulement", "      PGSSLMODE: disable"),
     bloc(
       ".github/workflows/ci.yml",
-      "        # vitest.config.ts force fileParallelism: false",
-      "        # échouerait sur « already exists »."
+      "        # Fichiers en parallèle, une base par worker : tests/bases-des-workers.ts",
+      "        # l'image en a le droit) et les supprime à la fin."
     ),
     bloc(
       ".github/workflows/ci.yml",
@@ -1142,7 +1152,7 @@ export const RETRAITS_DU_SOCLE = [
   // fichiers qu'elle n'a pas.
   remplace(
     "package.json",
-    '"test": "vitest run --exclude tests/assembleur.test.ts --exclude tests/mettre-a-jour.test.ts",\n    "test:assembleur": "vitest run tests/assembleur.test.ts tests/mettre-a-jour.test.ts"',
+    '"test": "vitest run --exclude tests/assembleur.test.ts --exclude tests/mettre-a-jour.test.ts",\n    "test:assembleur": "vitest run --no-file-parallelism tests/assembleur.test.ts tests/mettre-a-jour.test.ts"',
     '"test": "vitest run"'
   ),
   ligne(

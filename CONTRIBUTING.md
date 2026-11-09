@@ -101,9 +101,12 @@ passe la nuit sur main.
 La brique données (Postgres) a des tests qui **vident la base qu'ils visent**.
 Ils exigent donc une base locale jetable : `vitest.config.ts` refuse toute
 `DATABASE_URL` hors de la machine, et toute base dont le nom ne finit pas par
-`_test` ou `_test_<n>`. Cela ne se contourne pas.
+`_test` ou `_test_<n>`. Cela ne se contourne pas. Les fichiers de tests
+tournent en parallèle, chaque worker sur sa base `<base>_w<k>` (`k` : numéro du
+worker), créée à côté de la base de test et supprimée à la fin.
 
-Deux `npm test` simultanés sur la même base se perturbent (blocages, table
+Deux lancements de tests simultanés sur la même base, `npm test` comme
+`npm run test:assembleur`, se perturbent (blocages, table
 supprimée sous les pieds de l'autre : 29 échecs un jour où deux lancements se
 sont croisés). Chaque personne, chaque session, chaque branche en parallèle a
 donc sa **propre base**, `<nom>_test_<n>`, avec `n` le numéro du ticket. La
