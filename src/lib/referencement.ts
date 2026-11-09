@@ -148,6 +148,17 @@ export const descriptionAffichee = (config: Referencement = REFERENCEMENT) =>
  */
 export function metadonneesRacine(config: Referencement = REFERENCEMENT): Metadata {
   const nom = nomAffiche(config);
+  // Sans adresse de base, Next absolutise l'image de opengraph-image.tsx avec
+  // http://localhost:<PORT> : recette materiotheque sur Render, URL_PUBLIQUE
+  // vide comme le README de déploiement le recommande, og:image et
+  // twitter:image sortaient en localhost:10000, le port interne de
+  // l'hébergeur. Un lien partagé n'avait pas d'image et rien ne le disait.
+  // Une liste d'images posée (vide) à ce niveau empêche Next d'y mettre
+  // celle du fichier : pas d'image vaut mieux qu'une adresse fausse, et
+  // URL_PUBLIQUE reste facultative sur une recette. Écarté : une base tirée
+  // de la requête (headers()), qui rendrait dynamiques toutes les pages.
+  // Hors production, localhost est la bonne adresse : rien n'est changé.
+  const sansImage = process.env.NODE_ENV === "production" && urlPublique() === null;
   return {
     ...(urlPublique() && { metadataBase: urlPublique() }),
     title: { template: `%s · ${nom}`, default: nom },
@@ -160,8 +171,9 @@ export function metadonneesRacine(config: Referencement = REFERENCEMENT): Metada
     // aperçu. L'image vient de opengraph-image.tsx et twitter-image.tsx, et
     // Next ne la garde que si la page ne pose pas son propre openGraph (il
     // remplacerait celui-ci en entier : constaté au curl, sans og:image).
-    openGraph: { siteName: nom, locale: config.localePartage, type: "website" },
-    twitter: { card: "summary_large_image" },
+    // Sans adresse publique en production, aucune image (voir sansImage).
+    openGraph: { siteName: nom, locale: config.localePartage, type: "website", ...(sansImage && { images: [] }) },
+    twitter: sansImage ? { images: [] } : { card: "summary_large_image" },
   };
 }
 
