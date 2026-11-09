@@ -335,8 +335,14 @@ réelle remplace les noms ; la forme reste la même.
              URL: ${{ vars.URL_PUBLIQUE }}
              SECRET: ${{ secrets.NOTIFICATIONS_SECRET }}
            run: |
-             if [ -z "$URL" ] || [ -z "$SECRET" ]; then
-               echo "URL_PUBLIQUE ou NOTIFICATIONS_SECRET absent : rien n'est armé, rien n'a été appelé."
+             # Une annotation « warning » : elle se lit sur la page de
+             # l'exécution, sans ouvrir le journal, et ne fait pas échouer.
+             if [ -z "$URL" ]; then
+               echo "::warning::Variable de dépôt URL_PUBLIQUE absente : rien n'est armé, rien n'a été appelé."
+               exit 0
+             fi
+             if [ -z "$SECRET" ]; then
+               echo "::warning::Secret NOTIFICATIONS_SECRET absent : rien n'est armé, rien n'a été appelé."
                exit 0
              fi
              # Corps vide : mode réel. En mode réel, la réponse ne contient
@@ -350,6 +356,27 @@ réelle remplace les noms ; la forme reste la même.
 
    Un secret faux ou une route absente font échouer `curl` (401, 404), donc la
    tâche : c'est voulu, une route qui ne répond plus se voit.
+
+   **Les deux `URL_PUBLIQUE`** ne sont pas la même variable, et se confondent :
+
+   | | Où | Rôle | Sur une recette |
+   | --- | --- | --- | --- |
+   | Celle du service | Variable d'environnement chez l'hébergeur (`render.yaml`, `sync: false`) | L'adresse publique de l'appli : elle ouvre le site aux moteurs (`src/lib/referencement.ts`) et sert de base aux liens des courriels. | **Vide** (brique déploiement, geste 3) : une recette reste fermée aux moteurs. |
+   | Celle de la tâche | Variable de dépôt GitHub (*Settings → Secrets and variables → Actions → Variables*) | L'adresse que la tâche appelle. **Obligatoire pour que la tâche envoie**. | **Posée**, à l'adresse du service de recette : c'est elle qui arme la tâche, sans rien ouvrir aux moteurs. |
+
+   Sans la variable de dépôt, la tâche **se tait sans échouer** : l'exécution
+   est verte, aucun rappel ne part et personne n'est prévenu. Seule une
+   annotation « rien n'est armé » sur la page de l'exécution le dit (le
+   code ci-dessus la pose). À la recette du 2026-11-06, la blueprint
+   prévoyait un rappel quotidien sans cette variable, que le relecteur de
+   blueprint a dû ramener : la consigne du README de la brique déploiement,
+   « laisser `URL_PUBLIQUE` vide », ne vise que celle du service. Après le
+   premier jour d'envoi attendu, ouvrir l'onglet *Actions* : une exécution
+   « Notifications » qui porte cette annotation est une tâche qui ne sert à
+   rien.
+
+   La tâche tourne en UTC : une heure promise « à Paris » s'écrit avec son
+   écart (7 h 30 en hiver, 8 h 30 en été pour 6 h 30 UTC).
 
 5. **Les gestes humains**, que le code ne fait pas :
 
@@ -381,7 +408,7 @@ Invoke-RestMethod -Method Post -Uri "https://appli.exemple.fr/api/notifications/
 | --- | --- | --- |
 | Secret de la route | `NOTIFICATIONS_SECRET`, chez l'hébergeur et dans les secrets GitHub de la tâche. **Secret** : jamais dans le dépôt | une longue chaîne aléatoire |
 | Adresses permises en essai | `NOTIFICATIONS_ADRESSES_ESSAI`, séparées par des virgules. Vide : le mode essai refuse tout | les adresses de l'équipe qui répète |
-| Adresse de l'appli pour la tâche planifiée | variable de dépôt GitHub `URL_PUBLIQUE` | `https://appli.exemple.fr` |
+| Adresse de l'appli pour la tâche planifiée | variable de dépôt GitHub `URL_PUBLIQUE`, **pas celle du service** (« Les deux `URL_PUBLIQUE` ») | `https://appli.exemple.fr` |
 | Clé et expéditeur | `RESEND_API_KEY`, `MAILS_EXPEDITEUR`, `MAILS_FOURNISSEUR` : brique mails | voir son README |
 | Jours d'envoi | `jours` de `routeNotifications` | `["lundi"]` |
 | Durée de conservation du journal | `conservationMois` de `routeNotifications` | 12 (défaut) |

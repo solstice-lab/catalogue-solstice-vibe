@@ -64,7 +64,8 @@ demander ce que le code ou le `CLAUDE.md` tranchent déjà.
   ni publicité, ni vente) peut ne publier que le nom et l'adresse de son hébergeur, s'il lui
   a communiqué son identité (art. 6, III, 2) : ne demander alors que la confirmation de
   cette communication ; le courriel des droits se demande au bloc suivant. Les demander
-  dès le cadrage : faute de réponse, la mise en ligne attend. L'hébergeur ne se demande pas au client : la personne qui
+  dès le cadrage : faute de réponse, la mise en ligne publique attend (l'instance de
+  recette fait exception, ci-dessous). L'hébergeur ne se demande pas au client : la personne qui
   mène le cadrage le renseigne d'après l'hébergement retenu.
 - La politique de confidentialité (RGPD, art. 13), obligatoire dès que le site traite des
   données personnelles, c'est-à-dire toujours (l'hébergeur reçoit l'adresse IP des
@@ -74,7 +75,25 @@ demander ce que le code ou le `CLAUDE.md` tranchent déjà.
   l'appli gardera. Ces choix engagent le client : ni Claude ni la personne
   qui mène le cadrage ne les proposent (seule exception, la durée des données
   qu'une brique déclare, proposée par le catalogue, à valider de même), ils sont « à faire valider » par lui (son conseil ou son délégué) tant qu'il ne les
-  a pas donnés, et la mise en ligne attend.
+  a pas donnés, et la mise en ligne publique attend.
+- **Une instance de recette** peut se mettre en ligne avant les mentions légales et la
+  politique de confidentialité du client, à deux conditions qui la séparent d'une mise en
+  ligne publique : elle est **fermée aux moteurs** (site fermé, ou service sans
+  `URL_PUBLIQUE` : `noindex` et `robots.txt` qui interdit tout, `socle.md`), et **aucun vrai
+  membre n'y entre** (l'accès se limite à l'équipe du projet : `COMPTES_PREMIER_ADMIN`, une
+  liste d'adresses). Ses pages affichent alors « À compléter ». Cas d'origine : à la
+  recette du 2026-11-06, pour une association dont l'identité n'était pas encore connue,
+  rien dans le code ne distinguait cette instance d'une mise en ligne publique et rien
+  n'empêchait le déploiement ; « pas de membre réel avant les mentions » ne tenait que par
+  écrit. La règle s'écrit donc : dans la fiche, en question ouverte (le client, **avant le
+  premier utilisateur réel**), et dans le ticket qui remplit les mentions et la politique,
+  qui porte « avant le premier utilisateur réel » à la place de « avant la mise en ligne ».
+  Ce ticket est le préalable de l'ouverture à de vrais membres, du domaine et du passage
+  en `site: public`, pas du déploiement : le code ne bloque jamais sur des mentions
+  incomplètes. Proposer, s'il y a
+  lieu, un bandeau « instance de recette » tant que les mentions sont incomplètes, pour que
+  personne ne prenne l'instance pour le site définitif (un composant à construire dans
+  `src/ui/`, un ticket de plus) ; le client peut le refuser.
 - Quelqu'un entretiendra-t-il l'appli après la livraison (mises à jour des dépendances et des
   actions de la CI, correctifs de sécurité) ? Qui, et à quel rythme ? Recommandation : non
   tant que personne n'est nommé. Sans personne, Dependabot ouvrait une PR par semaine que

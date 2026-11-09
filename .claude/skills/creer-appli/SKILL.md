@@ -128,6 +128,16 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
     brique, « Déployer ailleurs »). C'est un ticket de la section 9.
   - Les comptes chez l'hébergeur, et chez Resend si la brique `mails` est gardée,
     s'ouvrent au nom de la personne qui livre ou au nom du client : le demander.
+  - **Avec la brique `mails` : un domaine d'envoi est-il déjà vérifié chez Resend ?** Sans
+    lui, Resend n'envoie qu'au propriétaire de son compte (README de `mails`, section
+    « Resend ») : avec `comptes`, personne d'autre ne reçoit son code, donc ne se connecte.
+    Le dire au client avec cette conséquence. Sans domaine vérifié, `COMPTES_PREMIER_ADMIN`
+    est l'adresse du propriétaire du compte Resend (donc le compte s'ouvre au nom de
+    quelqu'un qui peut recevoir ce courriel : à fixer avec la question précédente),
+    `NOTIFICATIONS_ADRESSES_ESSAI` ne peut viser que lui, et la vérification du domaine
+    devient une question ouverte, avec qui la fait et avant quel premier utilisateur réel.
+    Cas d'origine : à la recette du 2026-11-06, la question n'a été posée qu'à la main, puis
+    ramenée par le relecteur de blueprint.
   - Les réponses vont dans le bloc « La mise en ligne » de la fiche. L'hébergeur retenu
     renseigne aussi les mentions légales (question suivante) : avec la brique `deploiement`,
     l'assembleur y écrit le nom de Render (« Render Services, Inc. »), pas son adresse ni
@@ -333,7 +343,7 @@ référencement (`description:`, `site:`), le nom du service et de la base de `r
 (d'après `appli:` ou `--nom`, avec la brique `deploiement` ; le nom du dossier de sortie n'en est pas un) et le nom de l'hébergeur des
 mentions légales (avec cette brique), puis, avec la brique `comptes`, l'entrée (`entree:`,
 `role_par_defaut:`, `methodes:` : `ouverte` de `ENTREE`, `ROLE_PAR_DEFAUT` et `METHODES`,
-où `"demo"` reste en dernier pour le local ; `personnes_par_reseau:` : `LIMITES_PAR_RESEAU`). Un champ absent de l'en-tête laisse sa valeur de
+où `"demo"` reste en dernier, jusqu'à la PR de la section 9 qui la retire ; `personnes_par_reseau:` : `LIMITES_PAR_RESEAU`). Un champ absent de l'en-tête laisse sa valeur de
 remplacement. Rien de ce qui engage la personne n'est rempli. `node outils/assembler.mjs --aide`
 rappelle les options.
 
@@ -452,8 +462,21 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
      protection**, en connaissance de cause (la CI tourne, mais ne bloque pas la fusion :
      la discipline repose sur la personne qui fusionne). Ne rien décider à sa place ; noter
      son choix dans le message de l'étape 5.3.
+
+   Avec la brique `deploiement`, le même forfait décide de la barrière humaine avant la mise
+   en ligne : le job `deployer` de `ci.yml` déclare l'environnement GitHub `production`
+   (README de la brique, geste 4), et sur un dépôt **privé** les relecteurs obligatoires d'un
+   environnement demandent eux aussi un plan GitHub payant (Pro, Team ou Enterprise). Sur un
+   forfait gratuit, la ligne ne bloque rien : le déploiement part à la fusion, sans
+   approbation, comme avant. **Le dire au client au moment du choix de la visibilité et du
+   forfait, à côté de la protection de `main`**, dans le même message et avec les mêmes
+   options (dépôt public, forfait payant, ou privé sans l'une ni l'autre barrière) : l'un
+   des deux ne va pas sans l'autre sur un dépôt privé gratuit. Cas d'origine : la brique
+   déploiement a ajouté cet environnement le 2026-11-09 ; avant, chaque push de `main`
+   mettait en ligne sans que personne n'ait rien approuvé.
 4. **Annoncer** en un message le propriétaire, le nom, la visibilité (avec ce qu'elle permet de
-   la protection de `main`) et la commande exacte,
+   la protection de `main`, et de la barrière de `production` avec `deploiement`) et la
+   commande exacte,
    chemin **absolu** dans `--source` :
 
    ```powershell
@@ -461,8 +484,10 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
    ```
 
    Sans `--source`, le dépôt naît vide et non relié au dossier (essai du 2026-10-21, vu
-   seulement au ticket suivant). Attendre le oui ; une réponse qui change l'un des quatre
-   éléments appelle une nouvelle annonce.
+   seulement au ticket suivant). Annoncer dans le même message, sous le même oui, les
+   réglages de l'étape 6 (fusion en squash seulement ; avec `deploiement`, l'environnement
+   `production`, son relecteur et la commande). Attendre le oui ; une réponse qui change l'un
+   des quatre éléments appelle une nouvelle annonce.
 5. **Vérifier**, une fois la commande passée :
    - `git -C "<dossier>" remote get-url origin` répond l'URL de `<proprietaire>/<nom>` ;
    - `git -C "<dossier>" fetch origin`, puis `git -C "<dossier>" rev-parse HEAD origin/main`
@@ -472,13 +497,63 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
    Ne supprimer aucun dépôt ; la commande de rattrapage (`git -C "<dossier>" remote add
    origin <url>`, puis `git -C "<dossier>" push -u origin main`) s'annonce et attend un oui,
    comme la première.
+6. **Régler le dépôt, tout de suite après la création**, avant qu'une branche de ticket y
+   soit poussée et avant la première mise en ligne.
+   - **La fusion en squash seulement** (`solstice-livrer` §6 : un humain fusionne, en
+     squash). Le réglage est possible sur tout forfait, y compris là où la protection de
+     `main` ne l'est pas, et ne s'y substitue pas. Cas d'origine : à la recette du
+     2026-11-06, dépôt privé d'une organisation au forfait gratuit, sans protection de
+     `main`, les trois PR ont été fusionnées par un commit de fusion : rien ne réglait la
+     méthode du dépôt.
+
+     ```powershell
+     gh repo edit <proprietaire>/<nom> --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false
+     ```
+
+     Vérifier, doit afficher `squashMergeAllowed` à `true`, `mergeCommitAllowed` et
+     `rebaseMergeAllowed` à `false` :
+
+     ```powershell
+     gh repo view <proprietaire>/<nom> --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed
+     ```
+
+   - **Avec la brique `deploiement`, l'environnement `production` et son relecteur
+     obligatoire**, créés avant la première mise en ligne : un environnement absent est créé
+     par GitHub au premier passage du job `deployer`, sans relecteur, donc sans barrière.
+     Le relecteur est la personne qui pilote ou le client, à faire dire au cadrage : le client
+     doit avoir accès au dépôt, et son identifiant numérique se lit par `gh api users/<login> --jq .id`
+     (la commande suivante pose la personne connectée à `gh`). **Seulement si l'étape 3 a établi que
+     la barrière est possible** : sur un dépôt privé du forfait gratuit, ne pas la lancer, la
+     barrière manque (dit au client à l'étape 3, et dans le message de l'étape 5.3), et le
+     déploiement part à la fusion.
+
+     ```powershell
+     $moi = gh api user --jq .id
+     '{"reviewers":[{"type":"User","id":' + $moi + '}]}' | gh api --method PUT repos/<proprietaire>/<nom>/environments/production --input -
+     ```
+
+     Vérifier, doit afficher le compte du relecteur (une réponse vide : pas de relecteur,
+     rapporter tel quel, sans réessayer en boucle) :
+
+     ```powershell
+     gh api repos/<proprietaire>/<nom>/environments/production --jq '.protection_rules[] | select(.type == "required_reviewers") | .reviewers[].reviewer.login'
+     ```
+
+     Le secret de déploiement (`DEPLOIEMENT_DECLENCHEUR`) s'y range, jamais au niveau du
+     dépôt, mais plus tard : il n'existe qu'une fois le service créé chez l'hébergeur, et se
+     tape par l'humain (`gh secret set DEPLOIEMENT_DECLENCHEUR --env production`, geste 4 du
+     README de la brique), ou par *Settings → Environments → production* sur GitHub ; la
+     commande de l'étape 5.3 le rappelle. Les mêmes clics remplacent la commande
+     `gh api` : *Settings → Environments → New environment*, nom `production`, *Required
+     reviewers*.
 
 ### 5.3 Ce que l'humain tape
 
 Claude remet un message court : où est le dossier, le commit de référence, les briques
 gardées et retirées, l'URL du dépôt distant et sa visibilité (avec, si le dépôt est privé sans
-protection de `main`, la phrase qui le dit : le choix de l'étape 5.2 n'est pas à retrouver
-dans la conversation), puis la liste suivante ; une fois l'appli lancée, les tickets de la section 9 se créent à l'étape 6. Les
+protection de `main` ou, avec `deploiement`, sans barrière de `production`, la phrase qui le
+dit : le choix de l'étape 5.2 n'est pas à retrouver dans la conversation ; et ce que l'étape 6
+a réglé, fusion en squash et environnement `production`, avec son relecteur), puis la liste suivante ; une fois l'appli lancée, les tickets de la section 9 se créent à l'étape 6. Les
 commandes sont **une par bloc**, chacune suivie de sa vérification et de ce qu'elle doit
 afficher, dans le shell du poste de la personne : **PowerShell** sous Windows (ci-dessous),
 **bash ou zsh** sous macOS et Linux (leurs équivalents en 5.4). Claude demande le système
@@ -636,18 +711,24 @@ commandes de la base locale. Sans elle, les étapes 2 et 3 n'ont pas lieu.
    Sans la base, la même forme avec `base` à `non-configuree`.
 
 À dire aussi, sans le faire : déployer reste à l'humain, chez l'hébergeur noté dans la fiche
-(étape 1) ; avec la brique `deploiement`, les gestes sont dans son README, et un hébergeur
+(étape 1) ; avec la brique `deploiement`, les gestes sont dans son README (son secret de
+déploiement se range dans l'environnement `production` créé à l'étape 5.2, `gh secret set
+DEPLOIEMENT_DECLENCHEUR --env production`, jamais au niveau du dépôt), et un hébergeur
 autre que Render attend d'abord son adaptateur (ticket de la section 9). Si la brique
 `mails` est gardée : compte Resend au nom décidé au cadrage, domaine d'envoi vérifié et
-variables chez l'hébergeur, voir la section « Resend » de son README. Si la brique
+variables chez l'hébergeur, voir la section « Resend » de son README ; sans domaine vérifié,
+seul le propriétaire du compte reçoit les courriels, et `COMPTES_PREMIER_ADMIN` est son adresse. Si la brique
 `notifications` est gardée : elle arrive à brancher ; une fois branchée, son secret et ses
 adresses d'essai se déclarent chez l'hébergeur et dans les secrets de la tâche planifiée,
 puis une répétition à blanc et un essai précèdent le premier envoi réel (section « Avant le
 premier envoi réel » de son README). Avec la brique
 `comptes` : la connexion par code envoyé par e-mail est la méthode par défaut, en local le
 code se lit dans le terminal du serveur (`MAILS_FOURNISSEUR=console`) ; la démo **refuse
-la production** : retirer `"demo"` de `METHODES` (`src/config/comptes.ts`), fusionné sur
-`main` avant la création du Blueprint, qui la déploie : sinon le déploiement échoue ; `COMPTES_PREMIER_ADMIN` se déclare
+la production**, et l'assembleur la garde même si `methodes:` ne la liste pas : retirer
+`"demo"` de `METHODES` (`src/config/comptes.ts`) est la **première PR fusionnée**, avant la
+création du Blueprint, qui déploie `main` : sinon le déploiement échoue. L'étape de mise en
+ligne de la section 9 en dépend (« Bloqué par »), et le retrait la retire aussi en local : la
+connexion locale passe alors par la méthode déclarée, le code lu dans le terminal du serveur ; `COMPTES_PREMIER_ADMIN` se déclare
 chez l'hébergeur ; `IP_EN_TETE_CLIENT` aussi, hors Render (`render.yaml` la règle) : avec le
 code ou le lien, sans elle, le déploiement échoue. Si le client veut se connecter avec Google (Workspace ou Gmail) :
 créer son application OAuth, déclarer `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`,

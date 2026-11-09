@@ -133,6 +133,13 @@ La langue du HTML (`lang`) est `LOCALE` de `src/lib/format.ts`.
   création du Blueprint). Les quotas du forfait et les
   conditions du mode d'essai de Resend sont à lire dans sa documentation avant
   le premier envoi réel.
+- **Sans domaine d'envoi vérifié, seul le propriétaire du compte Resend reçoit
+  les courriels** : avec la brique comptes, personne d'autre ne reçoit son code,
+  donc personne d'autre ne se connecte, et `NOTIFICATIONS_ADRESSES_ESSAI` ne
+  peut viser que cette adresse. À demander avant la mise en ligne : un domaine
+  est-il vérifié ? Sinon, l'adresse du propriétaire du compte est la seule
+  qui entre (`COMPTES_PREMIER_ADMIN`), jusqu'à la vérification. Cas d'origine : à la
+  recette du 2026-11-06, la question n'a été posée qu'à la main.
 - **Politique de confidentialité** : Resend y figure en sous-traitant. La
   région du compte, le lieu de traitement qui s'en déduit et les garanties
   d'un transfert hors de l'Union européenne vont dans `CONFIDENTIALITE.lieux`
