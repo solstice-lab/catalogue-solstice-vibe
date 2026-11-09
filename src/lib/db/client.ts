@@ -17,7 +17,7 @@ const SCHEMA_PATH = path.join(process.cwd(), "src", "lib", "db", "schema.sql");
 
 declare global {
   var __slPool: Pool | undefined;
-  var __slInitPromise: Promise<void> | undefined;
+  var __slInitialisationDuProcessus: Promise<void> | undefined;
 }
 
 function creerPool(): Pool {
@@ -213,7 +213,9 @@ export async function appliquerSchemaEtMigrations(): Promise<void> {
 
 // L'initialisation ne doit être lancée qu'une seule fois par process, et
 // toute requête doit attendre qu'elle soit terminée : on mémorise la
-// promesse plutôt qu'un simple booléen.
+// promesse plutôt qu'un simple booléen. Sur globalThis et non dans le module :
+// Next peut charger ce fichier plusieurs fois dans un même process
+// (rechargement à chaud, bundles distincts), et chaque copie la relancerait.
 //
 // IMPORTANT : on ne met JAMAIS en cache un échec. Si l'init échoue (migration
 // bancale, base momentanément injoignable au démarrage…), on remet la
@@ -221,21 +223,21 @@ export async function appliquerSchemaEtMigrations(): Promise<void> {
 // promesse rejetée resterait mémorisée et toutes les requêtes suivantes
 // retomberaient sur la même erreur jusqu'au redémarrage du process — un
 // incident transitoire ne se rétablirait pas tout seul (leçon d'un projet précédent).
-function getInitPromise(): Promise<void> {
-  if (!globalThis.__slInitPromise) {
-    globalThis.__slInitPromise = appliquerSchemaEtMigrations().catch((erreur) => {
-      globalThis.__slInitPromise = undefined;
+function initialisationDuProcessus(): Promise<void> {
+  if (!globalThis.__slInitialisationDuProcessus) {
+    globalThis.__slInitialisationDuProcessus = appliquerSchemaEtMigrations().catch((erreur) => {
+      globalThis.__slInitialisationDuProcessus = undefined;
       throw erreurDeCertificatTraduite(erreur);
     });
   }
-  return globalThis.__slInitPromise;
+  return globalThis.__slInitialisationDuProcessus;
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(
   texte: string,
   params: unknown[] = []
 ): Promise<T[]> {
-  await getInitPromise();
+  await initialisationDuProcessus();
   const resultat = await obtenirPool().query<T>(texte, params);
   return resultat.rows;
 }
@@ -269,7 +271,7 @@ export type ExecuteurSql = { query: typeof query };
 export async function transaction<T>(
   fn: (client: { query: typeof query; queryOne: typeof queryOne }) => Promise<T>
 ): Promise<T> {
-  await getInitPromise();
+  await initialisationDuProcessus();
   const client = await obtenirPool().connect();
   try {
     await client.query("BEGIN");

@@ -9,13 +9,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const urlDesTests = process.env.DATABASE_URL;
 let poolDesAutresTests: typeof globalThis.__slPool;
-let initDesAutresTests: typeof globalThis.__slInitPromise;
+let initDesAutresTests: typeof globalThis.__slInitialisationDuProcessus;
 
 beforeEach(() => {
   poolDesAutresTests = globalThis.__slPool;
-  initDesAutresTests = globalThis.__slInitPromise;
+  initDesAutresTests = globalThis.__slInitialisationDuProcessus;
   globalThis.__slPool = undefined;
-  globalThis.__slInitPromise = undefined;
+  globalThis.__slInitialisationDuProcessus = undefined;
   delete process.env.DATABASE_URL;
   vi.resetModules();
 });
@@ -26,7 +26,7 @@ afterEach(async () => {
   else process.env.DATABASE_URL = urlDesTests;
   await globalThis.__slPool?.end();
   globalThis.__slPool = poolDesAutresTests;
-  globalThis.__slInitPromise = initDesAutresTests;
+  globalThis.__slInitialisationDuProcessus = initDesAutresTests;
 });
 
 describe("client de base : pool créé à la première requête", () => {

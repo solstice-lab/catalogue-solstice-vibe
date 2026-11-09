@@ -183,14 +183,14 @@ describe("client de base : au démarrage, le pool vérifie et le refus se tradui
   const VARIABLES = ["DATABASE_URL", "PGSSLMODE", "PGSSLROOTCERT"] as const;
   let environnement: Record<string, string | undefined>;
   let poolDesAutresTests: typeof globalThis.__slPool;
-  let initDesAutresTests: typeof globalThis.__slInitPromise;
+  let initDesAutresTests: typeof globalThis.__slInitialisationDuProcessus;
 
   beforeEach(() => {
     environnement = Object.fromEntries(VARIABLES.map((nom) => [nom, process.env[nom]]));
     poolDesAutresTests = globalThis.__slPool;
-    initDesAutresTests = globalThis.__slInitPromise;
+    initDesAutresTests = globalThis.__slInitialisationDuProcessus;
     globalThis.__slPool = undefined;
-    globalThis.__slInitPromise = undefined;
+    globalThis.__slInitialisationDuProcessus = undefined;
     optionsDesPools.length = 0;
     vi.resetModules();
   });
@@ -203,7 +203,7 @@ describe("client de base : au démarrage, le pool vérifie et le refus se tradui
     }
     vi.unstubAllEnvs();
     globalThis.__slPool = poolDesAutresTests;
-    globalThis.__slInitPromise = initDesAutresTests;
+    globalThis.__slInitialisationDuProcessus = initDesAutresTests;
   });
 
   it("sans PGSSLMODE, le pool reçoit la vérification, et un certificat refusé à l'initialisation nomme PGSSLROOTCERT", async () => {
