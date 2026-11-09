@@ -127,7 +127,7 @@ describe("isolation entre espaces : un module rattaché à un espace ne lit sa t
       lecturesHorsAcces(`import type { ExecuteurSql } from "@/lib/db/client";\nconst x = "FROM taches";`, tables)
     ).toEqual([]);
     expect(
-      lecturesHorsAcces(`import { query } from "@/lib/db/client";\nquery("SELECT * FROM dossiers");`, tables)
+      lecturesHorsAcces(`import { query } from "@/lib/db/client";\nquery("SELECT * FROM categories");`, tables)
     ).toEqual([]);
   });
 });

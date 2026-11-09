@@ -123,10 +123,14 @@ describe("verrou : chaque script de données appelle modeEcriture() avant d'affi
   });
 
   it("vaut pour tous les scripts de scripts/ qui touchent la base", () => {
-    const scriptsDeDonnees = readdirSync(DOSSIER_SCRIPTS)
-      .filter((nom) => nom.endsWith(".ts"))
-      .filter((nom) => toucheLaBase(readFileSync(path.join(DOSSIER_SCRIPTS, nom), "utf-8")));
-    expect(scriptsDeDonnees.length).toBeGreaterThan(0);
+    const scripts = readdirSync(DOSSIER_SCRIPTS).filter((nom) => nom.endsWith(".ts"));
+    // Sans script lu, le verrou passerait sans rien vérifier. Un script de
+    // données, lui, peut manquer : une appli assemblée sans la brique rgpd n'en
+    // reçoit aucun (l'import d'exemple reste au catalogue) avant d'écrire le sien.
+    expect(scripts.length).toBeGreaterThan(0);
+    const scriptsDeDonnees = scripts.filter((nom) =>
+      toucheLaBase(readFileSync(path.join(DOSSIER_SCRIPTS, nom), "utf-8"))
+    );
     const fautifs = scriptsDeDonnees.filter(
       (nom) => !annonceSaBaseEnTete(readFileSync(path.join(DOSSIER_SCRIPTS, nom), "utf-8"))
     );
