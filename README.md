@@ -261,8 +261,8 @@ partagé par toutes les applis du poste ; ses données vivent dans le volume
 `<appli>_test` (nom de `package.json`) s'ils manquent, puis affiche la ligne
 `DATABASE_URL` à mettre dans `.env.local` et la commande des tests : il ne
 l'écrit pas, c'est à coller. `npm test` fait tourner les fichiers de tests en
-parallèle, chaque worker sur sa propre base, `<appli>_test_w1` à
-`<appli>_test_w4` au plus, qu'il crée à côté de la base de test et supprime à
+parallèle, chaque worker sur sa propre base, `<base de test>_w1` à
+`<base de test>_w4` au plus, qu'il crée à côté de la base de test et supprime à
 la fin (`tests/bases-des-workers.ts`).
 
 PowerShell :

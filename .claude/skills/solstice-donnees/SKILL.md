@@ -236,8 +236,8 @@ après, tsx le passe au script comme argument et le fichier n'est pas lu.
   `scripts/bases-locales.ts` ne crée pas ces bases-là.
 - Lancement :
   `DATABASE_URL=postgresql://postgres@localhost:5433/<appli>_test PGSSLMODE=disable npm test`
-  Les fichiers tournent en parallèle, chaque worker sur sa base `<appli>_test_w<n>`
-  (`tests/bases-des-workers.ts` les crée et les supprime à la fin) : un test ne
+  Les fichiers tournent en parallèle, chaque worker sur sa base `<base de test>_w<k>`
+  (`k` : numéro du worker ; `tests/bases-des-workers.ts` les crée et les supprime à la fin) : un test ne
   compte jamais sur ce qu'un autre fichier a laissé en base.
 - Les intitulés de tests énoncent la RÈGLE qu'ils verrouillent et citent le
   cas d'origine entre parenthèses — pas « ça marche », mais « ce qui ne doit

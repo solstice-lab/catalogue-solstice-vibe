@@ -20,7 +20,9 @@
  *
  * Les CREATE DATABASE passent par query(), la seule porte vers la base : la
  * première requête applique schéma et migrations à la base de DATABASE_URL,
- * une base de test que le garde de vitest.config.ts a déjà acceptée.
+ * une base de test que le garde de vitest.config.ts a déjà acceptée. Une
+ * migration cassée arrête donc la suite ici, avant tout test, sur l'erreur de
+ * la migration plutôt que sur l'échec de tests/migrations.test.ts.
  */
 import type { TestProject } from "vitest/node";
 import { query } from "../src/lib/db/client";
@@ -54,16 +56,28 @@ export default async function preparerLesBasesDesWorkers(projet: TestProject) {
     )
   );
   for (const nom of bases) {
-    if (!existantes.has(nom)) await query(`CREATE DATABASE ${identifiant(nom)}`);
+    if (existantes.has(nom)) continue;
+    try {
+      await query(`CREATE DATABASE ${identifiant(nom)}`);
+    } catch (erreur) {
+      // Le teardown n'est pas encore rendu : sans ce ménage, les bases déjà
+      // créées resteraient sur le poste.
+      await supprimer(bases);
+      throw erreur;
+    }
   }
   projet.provide("urlDeLaBaseDeTest", url);
 
   return async () => {
-    // WITH (FORCE) : un worker arrêté en plein test peut laisser une connexion.
-    for (const nom of bases) await query(`DROP DATABASE IF EXISTS ${identifiant(nom)} WITH (FORCE)`);
+    await supprimer(bases);
     // Ouvert, le pool de ce processus retenait vitest dix secondes après la
     // fin (« close timed out after 10000ms »). client.ts le garde sur
     // globalThis hors production : c'est le seul accès sans toucher au client.
     await globalThis.__slPool?.end();
   };
+}
+
+// WITH (FORCE) : un worker arrêté en plein test peut laisser une connexion.
+async function supprimer(bases: string[]): Promise<void> {
+  for (const nom of bases) await query(`DROP DATABASE IF EXISTS ${identifiant(nom)} WITH (FORCE)`);
 }

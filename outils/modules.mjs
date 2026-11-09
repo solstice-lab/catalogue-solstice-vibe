@@ -1086,7 +1086,7 @@ export const DONNEES = {
       'vi.mock("@/lib/db/client", () => {',
       '  throw new Error("La page de confidentialité importe la base");\n});'
     ),
-    // --- tests : sans base, ni DATABASE_URL exigé ni tests en série
+    // --- tests : sans base, ni DATABASE_URL exigé ni base par worker
     ligne("vitest.config.ts", 'import fs from "node:fs";'),
     ligne("vitest.config.ts", 'import os from "node:os";'),
     ligne("vitest.config.ts", 'import { estBaseDeTest, nomsDesBases, urlLocale } from "./scripts/lib/bases-locales";'),
@@ -1149,7 +1149,7 @@ export const RETRAITS_DU_SOCLE = [
   // fichiers qu'elle n'a pas.
   remplace(
     "package.json",
-    '"test": "vitest run --exclude tests/assembleur.test.ts --exclude tests/mettre-a-jour.test.ts",\n    "test:assembleur": "vitest run tests/assembleur.test.ts tests/mettre-a-jour.test.ts"',
+    '"test": "vitest run --exclude tests/assembleur.test.ts --exclude tests/mettre-a-jour.test.ts",\n    "test:assembleur": "vitest run --no-file-parallelism tests/assembleur.test.ts tests/mettre-a-jour.test.ts"',
     '"test": "vitest run"'
   ),
   ligne(
