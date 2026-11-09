@@ -180,8 +180,16 @@ eu lieu.
    puis `DEPLOIEMENT_URL` mise à jour avec le domaine, puis `URL_PUBLIQUE`
    (`https://<domaine>`) dans les variables du service.
 9. **Les mentions légales** : le nom de l'hébergeur (Render Services, Inc.)
-   est écrit par l'assembleur dans `src/lib/mentions-legales.ts` ; son adresse
-   et son téléphone se recopient de sa page de mentions légales. La politique de confidentialité
+   est écrit par l'assembleur dans `src/lib/mentions-legales.ts`, pas son adresse
+   ni son téléphone, que la LCEN demande aussi (le téléphone, à un éditeur
+   professionnel) : Render ne les publie pas sur son site
+   (relevé du 2026-11-06 pour materiotheque : ni ses conditions, ni sa politique de
+   confidentialité, ni ses pages contact et « about », qui ne donnent que « headquartered
+   in San Francisco »). La source est la facture ou le DPA du compte Render qui héberge
+   l'appli (Dashboard → Billing, ou Account Settings) : à relever pour chaque appli, avec
+   la date du relevé en commentaire à côté de la valeur. Tant qu'ils manquent,
+   `/mentions-legales` affiche « Non renseigné » et signale les mentions incomplètes ;
+   jamais d'adresse supposée. La politique de confidentialité
    (`/confidentialite`) le reprend, avec son lieu, la région de Francfort.
    Render est une société américaine : les garanties d'accès aux données
    depuis les États-Unis sont à faire valider par le client. Cloudflare est

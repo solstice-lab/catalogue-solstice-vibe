@@ -92,7 +92,9 @@ briques:
     engage la personne ne passe par l'en-tête : statut de l'éditeur, éditeur, courriel des droits, bases
     légales, durées, coordonnées de l'hébergeur restent « À compléter ». Avec la brique
     `deploiement`, le nom de l'hébergeur (Render Services, Inc.) est écrit dans les
-    mentions légales ; son adresse et son téléphone, non.
+    mentions légales ; son adresse et son téléphone, non : Render ne les publie pas sur son
+    site, ils se relèvent sur la facture ou le DPA du compte Render (Dashboard → Billing, ou
+    Account Settings), datés, et `/mentions-legales` affiche « Non renseigné » d'ici là.
 - `entree`, `role_par_defaut`, `methodes`, `personnes_par_reseau` : l'entrée tranchée au cadrage (`solstice-nouvelle-appli`
   §1, « Les accès »), que l'assembleur écrit dans `src/config/comptes.ts` et
   `src/config/acces.ts`. **Seulement avec la brique `comptes`** : déclarés sans elle, ils

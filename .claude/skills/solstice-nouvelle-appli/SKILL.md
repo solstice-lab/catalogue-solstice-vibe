@@ -138,7 +138,8 @@ commit de la branche du premier ticket. Contenu :
   Les valeurs se recopient dans `src/lib/mentions-legales.ts` (`statutEditeur`, valeur
   `"professionnel"` ou `"particulier"`, et `identiteCommuniqueeALHebergeur` pour un particulier ; avec la brique
   `deploiement`, l'assembleur y a déjà écrit le nom de l'hébergeur : adresse et
-  téléphone restent à recopier), que la page
+  téléphone restent à relever, pour Render sur la facture ou le DPA du compte, qui ne les
+  publie pas sur son site), que la page
   `/mentions-legales` affiche ;
 - pour une nouvelle appli aussi, une rubrique **Confidentialité** : le courriel où exercer
   ses droits, le délégué à la protection des données s'il y en a un, l'autorité de contrôle,
