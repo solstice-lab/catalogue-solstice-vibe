@@ -93,7 +93,7 @@ grand INTEGER, importable côté client), `@/lib/cle-rapprochement`
 et `@/lib/import-fusion` (la règle de fusion `valeurRetenue` et le parseur CSV,
 déplacés de `scripts/lib/cli.ts`, qui les ré-exporte), et, pour ses écrans,
 `@/ui`, `@/lib/format`, React et Next (`next/navigation`, `next/cache`) ;
-`exceljs` dans `lecture.ts` seulement. Jamais `@/briques/comptes/roles` : la brique ne
+`exceljs` et `jszip` dans `lecture.ts` seulement. Jamais `@/briques/comptes/roles` : la brique ne
 connaît pas les droits. `tests/import-lot-isolement.test.ts` le verrouille par
 une liste blanche, prouvée par un cas fautif qu'il doit attraper.
 Une brique n'importe une autre brique que si elle la déclare dans son `exige`

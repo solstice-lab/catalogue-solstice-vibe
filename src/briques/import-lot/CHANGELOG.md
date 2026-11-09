@@ -128,7 +128,8 @@ la brique a servi aux commandes telle que livrée
 - **Ce qui change** : `lireFichier` refuse un .xlsx dont l'archive dépasse
   100 Mo une fois décompressée (`OCTETS_DECOMPRESSES_MAX`, toutes feuilles
   comprises) par une `ErreurFichier` qui dit de le découper. Un classeur
-  légitime sous 10 Mo envoyés, de 50 000 lignes de 20 colonnes, reste lu.
+  de 50 000 lignes de 20 colonnes (5 Mo envoyés, 55 Mo décompressés) reste
+  lu : mesuré à la main, pas dans la suite, qui y passerait 26 s.
   Nouvelle dépendance directe : `jszip`, déjà présente sous `exceljs`.
 - **Appelant** : rien à changer. Les symboles publics sont les mêmes ; seul un
   fichier qui aurait dépassé 100 Mo décompressé, auparavant lu (ou fatal pour

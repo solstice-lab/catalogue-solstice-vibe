@@ -163,6 +163,8 @@ export const BRIQUES = {
   },
   "import-lot": {
     exige: ["donnees"],
+    // jszip : que lecture.ts l'importe. exceljs reste, src/ui/exporterTableau.ts s'en sert.
+    dependances: ["jszip"],
     fichiers: [
       "src/briques/import-lot/",
       "tests/import-lot.test.ts",

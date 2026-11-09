@@ -52,7 +52,7 @@ export async function lireFichier(octets: Uint8Array): Promise<Lecture> {
   throw new ErreurFichier("Format de fichier non reconnu : envoyer un classeur .xlsx ou un CSV encodé en UTF-8.");
 }
 
-// internalStream est documentée par jszip mais absente de ses typings.
+// internalStream existe dans jszip (lib/zipObject.js) mais pas dans ses typings.
 type FluxJszip = {
   on(evenement: "data", gestionnaire: (morceau: Uint8Array) => void): FluxJszip;
   on(evenement: "error", gestionnaire: (erreur: Error) => void): FluxJszip;
