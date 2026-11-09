@@ -774,6 +774,15 @@ export function verifierEcriture(chemin, contenu) {
 // commande (sed -i, Set-Content, rm, git rm) échappe au rappel : l'outil des
 // adaptations du catalogue (adaptations.mjs), lancé depuis le catalogue, le
 // retrouve. L'appli n'a pas l'outillage du catalogue, d'où le nom sans son chemin.
+//
+// Le manifeste se cherche en remontant depuis le fichier écrit, et non dans le
+// dossier de la session. Le 2026-11-06, la recette de materiotheque s'est faite
+// d'une seule session ouverte dans le catalogue, qui écrivait aussi dans
+// l'appli : les retouches de gardes.test.mjs et de src/config/comptes.ts, tous
+// deux au manifeste, n'ont rien rappelé, la racine vue étant celle du
+// catalogue, sans manifeste. La recherche s'arrête au premier dépôt git
+// rencontré (dossier .git, ou fichier .git d'un worktree) : un parcours de
+// dossiers, sans lancer git, car la garde tourne avant chaque écriture.
 
 const MANIFESTE = "catalogue.empreintes.json";
 export const ADAPTATIONS = "ADAPTATIONS.md";
@@ -830,6 +839,23 @@ function cleDuManifeste(fichiers, relatif) {
   return Object.keys(fichiers).find((cle) => cle.toLowerCase() === minuscules);
 }
 
+/**
+ * La racine de l'appli qui contient ce fichier : le dossier le plus proche, en
+ * remontant, qui porte un manifeste, sans dépasser le dépôt git du fichier.
+ * Null si aucun. Le fichier, et même son dossier, peuvent ne pas exister
+ * encore (une écriture qui crée l'arbre).
+ */
+export function racineDeLApplication(chemin) {
+  let dossier = path.dirname(path.resolve(chemin));
+  for (;;) {
+    if (fs.existsSync(path.join(dossier, MANIFESTE))) return dossier;
+    if (fs.existsSync(path.join(dossier, ".git"))) return null;
+    const parent = path.dirname(dossier);
+    if (parent === dossier) return null;
+    dossier = parent;
+  }
+}
+
 // Lu à chaque appel : deux petits fichiers, quelques millisecondes, loin du
 // délai de 10 s de settings.json. Tout ce qui ne se lit pas laisse passer sans
 // un mot : un rappel ne doit jamais gêner le travail.
@@ -864,9 +890,11 @@ export function rappelDAdaptation(chemin, racine) {
 
 // Le rappel n'arrête jamais une écriture, même sur un cas que ses tests n'ont
 // pas prévu : une exception s'y tait, là où un refus des gardes, lui, compte.
-function rappelSansRisque(chemin, racine) {
+function rappelSansRisque(chemin, dossierDeSession) {
   try {
-    return rappelDAdaptation(chemin, racine);
+    // Un chemin relatif se lit depuis le dossier de la session.
+    const absolu = path.resolve(dossierDeSession, chemin);
+    return rappelDAdaptation(absolu, racineDeLApplication(absolu));
   } catch {
     return null;
   }
@@ -915,10 +943,11 @@ async function principal() {
     return bloquer(`entrée du hook illisible : ${outil} sans commande.`);
   } else {
     const chemin = entree.file_path ?? entree.notebook_path ?? "";
-    // La racine de l'appli : celle que Claude Code donne au hook, sinon deux
-    // niveaux au-dessus de ce script (.claude/hooks/).
-    const racine = process.env.CLAUDE_PROJECT_DIR || fileURLToPath(new URL("../..", import.meta.url));
-    verdict = verifierEcriture(chemin, contenuEcrit(entree)) ?? rappelSansRisque(chemin, racine);
+    // Le dossier de la session : celui que Claude Code donne au hook, sinon
+    // deux niveaux au-dessus de ce script (.claude/hooks/). Il ne sert qu'à
+    // lire un chemin relatif : la racine de l'appli se cherche depuis le fichier.
+    const dossierDeSession = process.env.CLAUDE_PROJECT_DIR || fileURLToPath(new URL("../..", import.meta.url));
+    verdict = verifierEcriture(chemin, contenuEcrit(entree)) ?? rappelSansRisque(chemin, dossierDeSession);
   }
   if (!verdict) return;
 

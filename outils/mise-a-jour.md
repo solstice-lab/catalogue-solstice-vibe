@@ -700,7 +700,9 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
     passer toute écriture d'un fichier au manifeste et rappelle de la noter dans
     `ADAPTATIONS.md`, tant qu'aucune entrée ne la couvre (son chemin, ou un dossier cité avec
     sa barre finale). Un rappel, jamais un refus : le texte arrive dans le contexte de Claude
-    sans décision de permission. Le catalogue, sans manifeste, n'en reçoit aucun. Un
+    sans décision de permission. Le manifeste se cherche depuis le fichier écrit (jusqu'au premier dépôt git), pas depuis
+    le dossier de la session : une session ouverte dans le catalogue qui écrit dans une appli
+    reçoit le rappel. Le catalogue, sans manifeste, n'en reçoit aucun. Un
     fichier écrit ou supprimé par une commande (`sed -i`, `Set-Content`, `rm`, `git rm`)
     échappe à la garde, qui ne voit que les outils d'écriture : seul l'outil le voit ;
   - **`ADAPTATIONS.md`**, que l'assembleur écrit vide avec son en-tête, hors manifeste comme

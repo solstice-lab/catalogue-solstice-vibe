@@ -169,6 +169,37 @@ describe("métadonnées", () => {
     expect(meta.metadataBase).toBeUndefined();
   });
 
+  // Recette materiotheque sur Render, URL_PUBLIQUE vide comme le README de
+  // déploiement le recommande : og:image et twitter:image sortaient en
+  // http://localhost:10000/…, le port interne de l'hébergeur. Sans adresse
+  // de base, Next complète l'image de opengraph-image.tsx avec localhost ;
+  // une liste d'images posée (vide) à la racine l'en empêche.
+  it.each([
+    ["absente", ""],
+    ["invalide (en http)", "http://www.exemple.test"],
+  ])("en production, avec une URL_PUBLIQUE %s, la racine ne pose aucune image de partage", (_cas, url) => {
+    enLigne(url);
+    const meta = metadonneesRacine(COMPLET);
+    expect(meta.openGraph).toHaveProperty("images", []);
+    expect(meta.twitter).toEqual({ images: [] });
+  });
+
+  // Une carte « grande image » sans image serait une carte vide : sans
+  // image, Next retombe sur la carte simple.
+  it("sans image, la carte de réseau social n'est pas déclarée grande image", () => {
+    enLigne("");
+    expect(metadonneesRacine(COMPLET).twitter).not.toHaveProperty("card");
+  });
+
+  // En développement, localhost est la bonne adresse : l'aperçu reste lisible
+  // pour qui contrôle l'image en local.
+  it("hors production, l'image de partage reste celle de Next", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const meta = metadonneesRacine(COMPLET);
+    expect(meta.openGraph).not.toHaveProperty("images");
+    expect(meta.twitter).toEqual({ card: "summary_large_image" });
+  });
+
   // Posé à la racine, le canonique s'hériterait sur toutes les pages, qui
   // désigneraient alors toutes l'accueil comme leur adresse de référence.
   it("la racine ne pose jamais d'adresse canonique", () => {
