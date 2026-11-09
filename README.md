@@ -21,7 +21,7 @@ Il faut git, avec une identité configurée (`user.name`, `user.email` :
 l'assembleur commite l'appli), Node 24 ou plus, npm 11.16 ou plus (raisons dans
 « Démarrer en local ») et, pour une appli avec base, Docker lancé (Docker
 Desktop sous Windows et macOS). Les commandes sont les mêmes sous PowerShell et
-sous bash.
+sous bash, sauf la copie de `.env.example`, donnée sous les deux formes.
 
 Cloner le catalogue et assembler une appli à côté, ici avec la connexion
 (`comptes`, qui exige `mails`) et les échéances :
@@ -42,13 +42,28 @@ docker compose up -d --wait
 npx tsx scripts/bases-locales.ts
 ```
 
-Pour lancer cette appli (`.env.local`, `npm run dev`), voir « Démarrer en
-local ». Sans brique, `node outils/assembler.mjs ../mon-site` donne un site sans
+Copier le modèle des variables en `.env.local`, y remplacer `DATABASE_URL` par la
+ligne qu'affiche `bases-locales.ts` (et, avec `comptes`, remplir `AUTH_SECRET` :
+la commande est dans `.env.example`), puis lancer l'appli. Cette copie
+diffère d'un shell à l'autre. PowerShell :
+
+```powershell
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+bash :
+
+```bash
+cp .env.example .env.local
+npm run dev
+```
+
+L'accueil est sur http://localhost:3000 ; le détail est dans « Démarrer en local ».
+Sans brique, `node outils/assembler.mjs ../mon-site` donne un site sans
 base : ni Docker ni `.env.local`, `npm ci` puis `npm run dev` dans `../mon-site`.
 Pour choisir les briques, voir « Briques » ; pour mener un projet client du
 cadrage à la livraison, « Démarrer un projet client ».
-
-<!-- Capture d'écran d'une appli assemblée, à ajouter : docs/captures/appli-assemblee.png -->
 
 ## Statut du projet
 
@@ -116,8 +131,9 @@ un `CHANGELOG.md` ; ses tests sont dans `tests/`, sur leurs propres tables. Une
 brique ne se conçoit pas dans le vide : elle naît dans une vraie appli, puis
 s'extrait vers le catalogue quand une deuxième en a besoin (les échéances sont
 nées dans une appli de suivi de contrats, puis ont servi à une maintenance
-préventive et à des demandes d'achat ; ces trois applis de test ont été le banc
-d'essai des briques, hors du catalogue depuis).
+préventive et à des demandes d'achat ; ces trois applis de test (contrats, GMAO,
+demandes d'achat) ont été le banc d'essai des briques, hors du catalogue depuis ;
+une quatrième, `tours-de-coloc`, a servi d'essai à `espaces` et à `gestion-comptes`).
 
 Un seul dépôt catalogue, un dépôt par appli assemblée : chaque brique
 n'existe qu'une fois, et le client ne reçoit que ce qu'il a choisi. La skill
@@ -289,13 +305,12 @@ l'arrêter d'abord.
 
 `outils/assembler.mjs` lit le dépôt tel quel et copie le socle et les briques
 choisies vers un dossier vide hors du catalogue, et rien de ce qui
-fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md`,
+fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md` (s'il existe),
 `outils/`, ni la skill `creer-appli` et l'agent
 `relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues, de l'outil de mise à jour et de
-l'outil des adaptations, ni
+l'outil des adaptations, ni le test des renvois de `docs/cicatrices.md`, ni
 le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`
-et les modèles de ticket et de PR, ni les captures du README, `docs/captures/`
-(liste `EXCLUS_DU_CATALOGUE` de
+et les modèles de ticket et de PR (liste `EXCLUS_DU_CATALOGUE` de
 `outils/modules.mjs`).
 Il écrit `blueprint.md` à la racine, avec le commit de référence du catalogue (celui du dépôt au
 moment de la commande) ; `--blueprint` en donne une existante, dont seul le
@@ -315,7 +330,9 @@ forme et tel que git l'enregistre. `node outils/mettre-a-jour.mjs <appli>` le
 lit : il rejoue l'assemblage d'origine au commit du manifeste, vérifie qu'il en redonne les
 empreintes, rejoue l'assemblage au commit visé du catalogue, puis reporte l'écart dans
 l'appli, sur une branche neuve et sans commit, en fusionnant à trois les fichiers qu'elle a
-retouchés ; `--a-blanc` donne le rapport sans rien écrire. Les étapes de migration neuves
+retouchés ; `--vers <commit>` vise un autre commit de `origin/main` que le HEAD du catalogue,
+`--branche <nom>` nomme la branche neuve (sinon `feature/reporter-catalogue-<commit visé>`),
+`--a-blanc` donne le rapport sans rien écrire ; `--aide` les détaille tous. Les étapes de migration neuves
 s'ajoutent en fin de la liste de l'appli, après les siennes ; il s'arrête si une étape
 reçue change au catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe
 déjà, ou si `schema.sql` change entre les deux commits (note `outils/mise-a-jour.md`).
@@ -468,7 +485,8 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   brique) et sa note de
   conception
   (`mise-a-jour.md`), l'outil des adaptations (`adaptations.mjs`, en lecture seule : les
-  fichiers venus du catalogue qu'une appli a retouchés, avec leur diff et leur note) et la
+  fichiers venus du catalogue qu'une appli a retouchés, avec leur diff et leur note ; `--json`
+  pour les outils suivants, `--rejouer` pour un diff exact, voir son `--aide`) et la
   lecture du manifeste que `mettre-a-jour.mjs` et `adaptations.mjs` partagent (`manifeste.mjs`), propres au catalogue : une appli
   assemblée ne les reçoit pas.
 - `scripts/` — squelette des imports et correctifs de données : dry-run par

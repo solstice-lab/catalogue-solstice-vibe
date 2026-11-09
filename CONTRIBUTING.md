@@ -58,7 +58,8 @@ même langue ; un ticket en anglais est lu et reçoit une réponse.
    rapport groupés dans la même PR (`CLAUDE.md`, section 5). Un ticket trop gros
    pour être relu d'un coup se découpe.
 2. **Une branche** `<type>/<slug>` (`feature`, `fix`, `docs`) depuis un `main` à
-   jour.
+   jour. Une session Claude garde le préfixe `claude/` que son worktree donne à sa
+   branche (`claude/<nom>-<suffixe>`) : on ne la renomme pas.
 3. **Le test d'abord** quand un comportement change : il échoue, puis le code
    le fait passer. Son intitulé énonce la règle qu'il verrouille.
 4. **Une PR relue** : elle renvoie au ticket, dit les vérifications lancées, qui

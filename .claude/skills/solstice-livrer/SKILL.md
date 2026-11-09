@@ -18,7 +18,7 @@ personne fusionne. GitHub protège `main`, les gardes du harnais
   bout en bout (base, logique, écran, tests), vérifiable à l'écran en une fois, avec
   « Bloqué par #n ». Faire valider le découpage, puis `gh issue create`.
 - Branche `<type>/<slug>` (`feature`, `fix`, `docs`) depuis un `origin/main` à jour.
-  **Une session Claude = un worktree.**
+  **Une session Claude = un worktree** : sa branche `claude/…` garde son nom d'app.
 - **Plan** de quelques lignes, accord avant d'écrire. Une demande = un changement : pas de
   refactor ni de correction sans rapport au passage (`CLAUDE.md` §5).
 
@@ -80,4 +80,6 @@ Corriger, puis rejouer **toutes** les vérifications.
 
 **Ce qu'un humain fait seul** : tout ce qui touche la prod (fusion, hébergeur, DNS,
 secrets, `--confirmer`, restauration). Claude prépare et dit quoi taper. Une URL de prod
-ne se colle jamais en clair : variable saisie sans écho (`read -rs DATABASE_URL`).
+ne se colle jamais en clair : variable saisie sans écho. Sous bash :
+`read -rs DATABASE_URL ; export DATABASE_URL`. Sous PowerShell (5.1 comme 7) :
+`$env:DATABASE_URL = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecureString)).Password`.

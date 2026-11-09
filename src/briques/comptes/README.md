@@ -838,7 +838,11 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 **Interne** : `UTILISATEURS_DEMO`, `entrerEnDemo`, `demoProposee`,
 `lireSession`, `lireSessionDe`, `trouverUtilisateur`, `fermerLesSessionsDe`,
 `roleEffectif`, `origineDuCompte`, `seraitAdmis`, `COLONNES_ENTREE`,
-`enBaseDe`, `estAdresseDeDemo`, `domaineDe`, l'ensemble de `jeton.ts`,
+`enBaseDe`, `estAdresseDeDemo`, `domaineDe`, `contexteDeLAppli` (que seul l'écran de la
+brique gestion-comptes appelle), `normaliser`, `DOMAINE_DEMO`,
+`refuserLaDemoEnProduction` et `refuserUneEntreeOuverteQuiAdministre` (les deux gardes de
+démarrage que le proxy joue à chaque requête), `DUREE_SESSION_JOURS`, les types
+`ContexteEntree`, `CompteEnBase` et `LigneEntree`, l'ensemble de `jeton.ts`,
 `code-email.ts`, `lien-email.ts`, `google.ts`, `microsoft.ts` et `parcours.ts`,
 les routes de Google et de Microsoft, la page du lien, les actions
 (`actions.ts`), `FormulaireCode` et `FormulaireLien`.

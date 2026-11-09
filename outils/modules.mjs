@@ -75,6 +75,9 @@ export const EXCLUS_DU_CATALOGUE = [
   // Verrouille l'outil des issues de la section 9 (outils/creer-issues.mjs),
   // absent de l'appli : sans lui, ce test ne trouverait rien à importer.
   "tests/creer-issues.test.ts",
+  // Verrouille les renvois fichier:ligne du registre docs/cicatrices.md : ils
+  // visent des tests et des briques que l'appli n'a pas toujours gardés.
+  "tests/cicatrices.test.ts",
   // Verrouille le job qui lance le test de l'assembleur (assemblage.yml).
   "tests/assemblage-ci.test.ts",
   // Prouve le build du socle sans base et lance le test de l'assembleur :
@@ -90,8 +93,8 @@ export const EXCLUS_DU_CATALOGUE = [
   "SECURITY.md",
   ".github/ISSUE_TEMPLATE/",
   ".github/pull_request_template.md",
-  // Les captures d'écran illustrent le README du catalogue, absent de l'appli :
-  // copiées, elles y seraient orphelines.
+  // Réservé aux captures d'écran du README du catalogue (absent de l'appli :
+  // copiées, elles y seraient orphelines). Le dossier n'existe pas encore.
   "docs/captures/",
 ];
 

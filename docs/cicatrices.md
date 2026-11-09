@@ -17,7 +17,10 @@ Chaque ligne donne :
   « **Non tenue** » : rien ne la tient encore, c'est une invitation à ouvrir un
   ticket.
 
-Les numéros de ligne sont ceux du jour où la ligne a été écrite. Une règle
+Les numéros de ligne dérivent quand le fichier visé bouge : `tests/cicatrices.test.ts`
+refuse un renvoi qui tombe sur une ligne vide, une fermeture ou hors du fichier
+(il ne sait pas dire que la ligne est la bonne : à relire en retouchant le fichier
+visé). Une règle
 « tenue » par une brique, un module ou la brique données ne vaut que dans
 une appli qui les a gardés.
 
@@ -27,29 +30,29 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| D1 | Un `CREATE TABLE` fusionné ne se retouche plus. Une colonne ajoutée après coup naît dans une étape de migration, et son index dans la même étape. | Un index posé dans le schéma initial visait une colonne née en migration. Sur une base ancienne, le schéma passe avant les migrations : l'initialisation a échoué et toute l'application est tombée. | `CLAUDE.md:53` ; `solstice-donnees` (`SKILL.md:38`, `:45`) ; agent `relecteur-migrations` (`:32`) ; `tests/migrations.test.ts:17` |
+| D1 | Un `CREATE TABLE` fusionné ne se retouche plus. Une colonne ajoutée après coup naît dans une étape de migration, et son index dans la même étape. | Un index posé dans le schéma initial visait une colonne née en migration. Sur une base ancienne, le schéma passe avant les migrations : l'initialisation a échoué et toute l'application est tombée. | `CLAUDE.md:56` ; `solstice-donnees` (`SKILL.md:41`, `:48`) ; agent `relecteur-migrations` (`:32`) ; `tests/migrations.test.ts:10` |
 | D2 | Une étape de migration est idempotente, ajoutée en fin de liste, rejouée à chaque démarrage, sans table de suivi. | Sur un projet antérieur, une fonction de migration unique avait enflé jusqu'à près de 700 lignes. L'idempotence, elle, a traversé tous les incidents, quand une table de suivi aurait été un état de plus qui peut mentir. | `src/lib/db/migrations.ts:6` ; `tests/migrations.test.ts:5` ; `relecteur-migrations` |
-| D3 | Un échec d'initialisation de la base ne se garde jamais en mémoire : la requête suivante retente. | Une promesse d'initialisation rejetée restait mémorisée : après un incident passager de la base, toutes les requêtes échouaient jusqu'au redémarrage. | **En partie** : `src/lib/db/client.ts:116` et `solstice-donnees` (`SKILL.md:16`) ; `tests/client-pool.test.ts:40` couvre une variable absente, aucun test ne couvre un échec d'initialisation |
+| D3 | Un échec d'initialisation de la base ne se garde jamais en mémoire : la requête suivante retente. | Une promesse d'initialisation rejetée restait mémorisée : après un incident passager de la base, toutes les requêtes échouaient jusqu'au redémarrage. | **En partie** : `src/lib/db/client.ts:127` et `solstice-donnees` (`SKILL.md:16`) ; `tests/client-pool.test.ts:40` couvre une variable absente, aucun test ne couvre un échec d'initialisation |
 | D4 | Le SQL se relit tel qu'il part, pas tel qu'il s'écrit dans le code. | Une expression régulière écrite dans une chaîne a perdu son antislash : la base a reçu `'s+'` au lieu de `'\s+'`, et un index d'unicité était faux en production. | `solstice-donnees` (`SKILL.md:64`) ; `relecteur-migrations` (`:40`) |
 | D5 | Aucune donnée de référence (comptes, rôles, catégories) n'est semée par une étape rejouée. | Une catégorie supprimée par un administrateur réapparaissait à chaque redémarrage, recréée par le semis. | `solstice-donnees` (`SKILL.md:56`) ; `relecteur-migrations` (`:42`) |
 | D6 | Un semis « si la table est vide » ne rattrape pas une table ajoutée ensuite. | La table de chiffre d'affaires d'un mode démonstration, ajoutée après le premier semis, est restée vide en production. | `solstice-donnees` (`SKILL.md:60`) |
-| D7 | Une suppression en cascade se juge sur tout ce qu'elle emporte : lister chaque table qui référence la ligne. | La fusion de deux fiches de contact a détruit leurs documents joints, liés par une clé étrangère en cascade. | `solstice-donnees` (`SKILL.md:67`) ; `relecteur-migrations` (`:46`) ; suppressions refusées par la base, par exemple `tests/migrations.test.ts:33` |
+| D7 | Une suppression en cascade se juge sur tout ce qu'elle emporte : lister chaque table qui référence la ligne. | La fusion de deux fiches de contact a détruit leurs documents joints, liés par une clé étrangère en cascade. | `solstice-donnees` (`SKILL.md:67`) ; `relecteur-migrations` (`:46`) ; suppressions refusées par la base, par exemple `tests/migrations.test.ts:19` |
 | D8 | Un index unique ne se pose pas sur une table qui contient déjà des doublons : l'étape les cherche, n'écrit rien et les signale. | Relevé dans une appli livrée, avant tout incident : posé sur une table de production qui en contenait, l'index aurait fait échouer chaque démarrage. | `solstice-donnees` (`SKILL.md:52`) ; `relecteur-migrations` (`:34`) |
 | D9 | Deux valeurs vides ne se heurtent pas dans un index unique : `NULLS NOT DISTINCT`, ou deux index partiels avant PostgreSQL 15. | Dans un arbre de catégories, deux racines de même nom (parent vide) ne se heurtaient pas dans l'index d'unicité : il a fallu deux index partiels. | **Non tenue** |
-| D10 | Tout statut que le code peut écrire est admis par la contrainte de la base, et la base n'en admet pas d'autre. | Le code écrivait un verdict que la contrainte `CHECK` de sa table refusait : relevé à la lecture du code, toute écriture de ce verdict devait échouer. | `solstice-donnees` (`SKILL.md:73`) ; `relecteur-migrations` (`:36`) ; pour la brique validation, `tests/validation.test.ts:568` (seul test : la règle générale se tient par la relecture) |
-| D11 | Une valeur dérivée se recalcule côté serveur après l'écriture, jamais lue depuis le formulaire. | Un montant affiché en lecture seule était quand même renvoyé par le formulaire : sa valeur périmée écrasait la somme des montants mensuels. | `solstice-donnees` (`SKILL.md:106`) |
+| D10 | Tout statut que le code peut écrire est admis par la contrainte de la base, et la base n'en admet pas d'autre. | Le code écrivait un verdict que la contrainte `CHECK` de sa table refusait : relevé à la lecture du code, toute écriture de ce verdict devait échouer. | `solstice-donnees` (`SKILL.md:73`) ; `relecteur-migrations` (`:36`) ; pour la brique validation, `tests/validation.test.ts:569` (seul test : la règle générale se tient par la relecture) |
+| D11 | Une valeur dérivée se recalcule côté serveur après l'écriture, jamais lue depuis le formulaire. | Un montant affiché en lecture seule était quand même renvoyé par le formulaire : sa valeur périmée écrasait la somme des montants mensuels. | `solstice-donnees` (`SKILL.md:108`) |
 | D12 | Un rattrapage de données n'invente rien. | Des fiches anciennes sans créateur connu sont restées sans créateur, plutôt que d'en recevoir un choisi au hasard. | `solstice-donnees` (`SKILL.md:59`) |
-| D13 | Les tests tournent sur le même moteur de base, à la même version, que la production. | Le tri des valeurs vides différait entre deux moteurs de base ; il a fallu un ordre explicite (`NULLS LAST`). | `solstice-nouvelle-appli` (`socle.md:87`) ; `tests/deploiement.test.ts:227` |
+| D13 | Les tests tournent sur le même moteur de base, à la même version, que la production. | Le tri des valeurs vides différait entre deux moteurs de base ; il a fallu un ordre explicite (`NULLS LAST`). | `solstice-nouvelle-appli` (`socle.md:88`) ; `tests/deploiement.test.ts:228` |
 
 ## 2. Tests et bases locales
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| T1 | Les tests refusent toute base hors de la machine locale. | Le fichier d'environnement local portait l'adresse de la base de production, et seule une consigne empêchait les tests d'y écrire. | `vitest.config.ts:8` ; `CLAUDE.md:63` |
-| T2 | Les tests refusent une base dont le nom ne finit pas par `_test` ou `_test_<n>`. | Un `npm test` lancé sur la base de développement, locale elle aussi, a effacé le compte administrateur. | `vitest.config.ts:46` ; `tests/bases-locales.test.ts:53` ; `CLAUDE.md:65` |
+| T1 | Les tests refusent toute base hors de la machine locale. | Le fichier d'environnement local portait l'adresse de la base de production, et seule une consigne empêchait les tests d'y écrire. | `vitest.config.ts:8` ; `CLAUDE.md:66` |
+| T2 | Les tests refusent une base dont le nom ne finit pas par `_test` ou `_test_<n>`. | Un `npm test` lancé sur la base de développement, locale elle aussi, a effacé le compte administrateur. | `vitest.config.ts:46` ; `tests/bases-locales.test.ts:53` ; `CLAUDE.md:68` |
 | T3 | Les fichiers de tests qui touchent la base tournent en série. | Deux fichiers en parallèle jouaient deux migrations en même temps sur la même base : suite instable, toujours verte en série. | `vitest.config.ts:68` |
-| T4 | La base visée par une commande de données se choisit à l'invocation, et le script la nomme en première ligne. Aucun script npm ne fige le fichier d'environnement. | Le fichier d'environnement local d'un projet antérieur portait l'adresse de la production : une commande qui le lit d'office vise la production sans le dire. | `CLAUDE.md:69` ; `solstice-donnees` (`SKILL.md:148`) ; `tests/cli-base-visee.test.ts:118` |
-| T5 | Un test-verrou prouve sa propre sensibilité sur un cas fautif. | Un test des gardes d'accès qui ne trouvait aucun fichier à lire passait au vert. | `solstice-livrer` (`SKILL.md:35`) ; `tests/gardes-acces.test.ts:166`, `:183` ; `tests/comptes-proxy.test.ts:62` |
+| T4 | La base visée par une commande de données se choisit à l'invocation, et le script la nomme en première ligne. Aucun script npm ne fige le fichier d'environnement. | Le fichier d'environnement local d'un projet antérieur portait l'adresse de la production : une commande qui le lit d'office vise la production sans le dire. | `CLAUDE.md:72` ; `solstice-donnees` (`SKILL.md:172`) ; `tests/cli-base-visee.test.ts:118` |
+| T5 | Un test-verrou prouve sa propre sensibilité sur un cas fautif. | Un test des gardes d'accès qui ne trouvait aucun fichier à lire passait au vert. | `solstice-livrer` (`SKILL.md:35`) ; `tests/gardes-acces.test.ts:181`, `:204` ; `tests/comptes-proxy.test.ts:63` |
 
 ## 3. Import de fichiers
 
@@ -57,30 +60,30 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 | --- | --- | --- | --- |
 | I1 | Une date ambiguë se lit selon le format réglé pour la source, jamais devinée. | Un import réel a lu jour et mois à l'envers. | `tests/import-lot-dates.test.ts:5` |
 | I2 | Une colonne qui contient déjà le total est lue telle quelle, jamais recalculée. | Une colonne d'engagement d'un réseau social contenait déjà le total ; le recalculer divergeait de la source. | `tests/import-lot-validation.test.ts:38` |
-| I3 | Une ligne mal typée ou sans clé est écartée avec son numéro, jamais perdue en silence. | Deux formats d'import d'une même appli traitaient chacun à sa façon une ligne mal typée ; la règle commune retenue : jamais perdue en silence. | `tests/import-lot-validation.test.ts:43` |
-| I4 | Un fichier se reconnaît à son contenu, pas à son extension. | Les exports d'un réseau social arrivaient en `.xls` ou en `.xlsx`, sans que l'extension dise lequel lire : il a fallu reconnaître le format au contenu. | `tests/import-lot.test.ts:202` |
-| I5 | Un lot de plusieurs centaines de lignes se confirme sans erreur. | Au-delà d'environ 90 lignes, la confirmation tombait sur une erreur brute : le formulaire dépassait la limite de champs du framework. | `tests/import-lot.test.ts:144` |
-| I6 | Un échec au milieu d'une confirmation ne laisse aucun état partiel. | Avec l'erreur de I5, une confirmation interrompue pouvait laisser le lot à moitié écrit : elle est devenue une seule transaction. | `tests/import-lot.test.ts:167` |
-| I7 | Tout le fichier est validé avant la première écriture. | Règle des imports de grand livre et d'absences d'un projet antérieur : un fichier lu à moitié n'écrit rien. | `tests/import-lot.test.ts:91` |
-| I8 | Confirmer deux fois le même lot ne crée rien et ne plante pas. | Une page périmée soumise deux fois fabriquait un élément vierge et une erreur d'intégrité. | `tests/import-lot.test.ts:183` |
-| I9 | Supprimer un lot ne touche aucune ligne d'un autre lot. | Supprimer un lot marqué « doublon » effaçait les données d'un autre lot ; la couverture repassait à « manquant » et le rapport mensuel devenait faux. | `tests/import-lot.test.ts:275` |
-| I10 | Un réimport met à jour en place et garde la trace du lot précédent. | Pour qu'un lot puisse s'afficher « doublon », un réimport devait garder la trace du lot précédent au lieu de la remplacer. | `tests/import-lot.test.ts:292` |
-| I11 | Un champ de décision vide bloque la confirmation, jamais rempli par défaut. | Une case « payant / non payant » laissée vide ne devait jamais devenir « non payant ». | `tests/import-lot.test.ts:307` |
-| I12 | Un identifiant à zéros de tête reste du texte. | Un export réenregistré par un tableur perdait les zéros de tête des matricules. | `solstice-donnees` (`SKILL.md:174`) ; `tests/import-lot-lecture.test.ts:43` ; `tests/import-lot-validation.test.ts:94` |
-| I13 | Une date devenue nombre de série par un tableur se relit comme une date. | Le même tableur convertissait les dates écrites en texte en nombres. | `solstice-donnees` (`SKILL.md:177`) ; `tests/import-lot-dates.test.ts:35` |
-| I14 | Une cellule de date vide devient une date absente ; la ligne n'est pas rejetée. | Une chaîne vide dans une colonne de date faisait rejeter toute la ligne. | `solstice-donnees` (`SKILL.md:179`) ; `tests/import-lot-dates.test.ts:51` |
-| I15 | Les clés de rapprochement se normalisent (casse, espaces). | « AB13 » et « AB 13 » donnaient deux lignes au lieu d'une à chaque resynchronisation. | `solstice-donnees` (`SKILL.md:185`) |
-| I16 | Deux clés que la normalisation rapproche sont fusionnées avant l'écriture. | Deux adresses qui ne différaient que par une barre oblique finale sont entrées en collision de clé primaire : un lot de six mois a été perdu. | `tests/import-lot-validation.test.ts:107` ; `tests/import-lot.test.ts:390` |
-| I17 | Une ligne qui renvoie à une autre du même lot s'écrit après elle. | Un renvoi inséré avant son original violait une clé étrangère sur la même table : la table est restée vide depuis le début. | `tests/import-lot-validation.test.ts:147` ; `tests/import-lot.test.ts:380` |
-| I18 | Sans clé de dédoublonnage, deux lignes identiques sont deux lignes. | Dans un export de paie, deux lignes identiques étaient deux demi-journées ; les fondre en perdait une. | `tests/import-lot-validation.test.ts:129` |
-| I19 | Un import qui remplace une période lit tout ou rien, et n'efface qu'une fois tout prêt. | L'import mensuel des absences effaçait puis réécrivait le mois : il doit avoir lu tout le fichier avant d'effacer. | `tests/import-lot.test.ts:336` |
-| I20 | Un lot sans ligne retenue ne se confirme pas, il s'ignore ; « en attente » prime sur « décidé ». | Un lot entièrement ignoré s'affichait « confirmé ». | `tests/import-lot.test.ts:268` ; `tests/validation-cycle.test.ts:8`, `:14` |
-| I21 | Un montant illisible est refusé : la ligne est écartée avec son motif, jamais absorbée. | Un coût dont le montant ne se lisait pas était absorbé en silence : un coût faux. | `src/briques/import-lot/validation.ts:178` ; `tests/import-lot-validation.test.ts:53` (nombre ambigu refusé) |
-| I22 | Deux lignes de même clé dans un import se somment ou se rejettent, jamais l'une n'écrase l'autre. | Une collision de codes a écrasé en silence plusieurs centaines de milliers d'euros de chiffre d'affaires. | **En partie** : `solstice-donnees` (`SKILL.md:182`), aucun test |
-| I23 | Un import se réconcilie sur les totaux métier, pas sur le nombre de lignes. | Environ 150 lignes d'écart sur 4 500, pour un total de jours intact : un dédoublonnage normal. | `solstice-donnees` (`SKILL.md:187`) |
-| I24 | Les pièces jointes du système source se téléchargent avant de planifier l'import. | Les adresses des pièces jointes d'un outil source expiraient avant l'import. | `solstice-donnees` (`SKILL.md:170`) |
-| I25 | Un import en production attend le déploiement de la migration qui crée ses colonnes. | Vécu en production : un import visait des colonnes que la migration n'avait pas encore créées. | `solstice-donnees` (`SKILL.md:172`) |
-| I26 | Un script de données tourne à blanc par défaut ; l'écriture se demande à la main, par un humain, après relecture du rapport. Une valeur pleine ne se dégrade jamais. | Les rattrapages de commissions, les colonnes ajoutées après coup et la casse des noms de comptes se sont corrigés par script en production. | `scripts/lib/cli.ts:7` ; `CLAUDE.md:66` ; garde `--confirmer` (`.claude/hooks/gardes.mjs:692`) ; `tests/import-fusion.test.ts:10` |
+| I3 | Une ligne mal typée ou sans clé est écartée avec son numéro, jamais perdue en silence. | Deux formats d'import d'une même appli traitaient chacun à sa façon une ligne mal typée ; la règle commune retenue : jamais perdue en silence. | `tests/import-lot-validation.test.ts:46` |
+| I4 | Un fichier se reconnaît à son contenu, pas à son extension. | Les exports d'un réseau social arrivaient en `.xls` ou en `.xlsx`, sans que l'extension dise lequel lire : il a fallu reconnaître le format au contenu. | `tests/import-lot.test.ts:207` |
+| I5 | Un lot de plusieurs centaines de lignes se confirme sans erreur. | Au-delà d'environ 90 lignes, la confirmation tombait sur une erreur brute : le formulaire dépassait la limite de champs du framework. | `tests/import-lot.test.ts:142` |
+| I6 | Un échec au milieu d'une confirmation ne laisse aucun état partiel. | Avec l'erreur de I5, une confirmation interrompue pouvait laisser le lot à moitié écrit : elle est devenue une seule transaction. | `tests/import-lot.test.ts:165` |
+| I7 | Tout le fichier est validé avant la première écriture. | Règle des imports de grand livre et d'absences d'un projet antérieur : un fichier lu à moitié n'écrit rien. | `tests/import-lot.test.ts:89` |
+| I8 | Confirmer deux fois le même lot ne crée rien et ne plante pas. | Une page périmée soumise deux fois fabriquait un élément vierge et une erreur d'intégrité. | `tests/import-lot.test.ts:181` |
+| I9 | Supprimer un lot ne touche aucune ligne d'un autre lot. | Supprimer un lot marqué « doublon » effaçait les données d'un autre lot ; la couverture repassait à « manquant » et le rapport mensuel devenait faux. | `tests/import-lot.test.ts:288` |
+| I10 | Un réimport met à jour en place et garde la trace du lot précédent. | Pour qu'un lot puisse s'afficher « doublon », un réimport devait garder la trace du lot précédent au lieu de la remplacer. | `tests/import-lot.test.ts:312` |
+| I11 | Un champ de décision vide bloque la confirmation, jamais rempli par défaut. | Une case « payant / non payant » laissée vide ne devait jamais devenir « non payant ». | `tests/import-lot.test.ts:327` |
+| I12 | Un identifiant à zéros de tête reste du texte. | Un export réenregistré par un tableur perdait les zéros de tête des matricules. | `solstice-donnees` (`SKILL.md:198`) ; `tests/import-lot-lecture.test.ts:78` ; `tests/import-lot-validation.test.ts:100` |
+| I13 | Une date devenue nombre de série par un tableur se relit comme une date. | Le même tableur convertissait les dates écrites en texte en nombres. | `solstice-donnees` (`SKILL.md:201`) ; `tests/import-lot-dates.test.ts:35` |
+| I14 | Une cellule de date vide devient une date absente ; la ligne n'est pas rejetée. | Une chaîne vide dans une colonne de date faisait rejeter toute la ligne. | `solstice-donnees` (`SKILL.md:203`) ; `tests/import-lot-dates.test.ts:51` |
+| I15 | Les clés de rapprochement se normalisent (casse, espaces). | « AB13 » et « AB 13 » donnaient deux lignes au lieu d'une à chaque resynchronisation. | `solstice-donnees` (`SKILL.md:209`) |
+| I16 | Deux clés que la normalisation rapproche sont fusionnées avant l'écriture. | Deux adresses qui ne différaient que par une barre oblique finale sont entrées en collision de clé primaire : un lot de six mois a été perdu. | `tests/import-lot-validation.test.ts:116` ; `tests/import-lot.test.ts:421` |
+| I17 | Une ligne qui renvoie à une autre du même lot s'écrit après elle. | Un renvoi inséré avant son original violait une clé étrangère sur la même table : la table est restée vide depuis le début. | `tests/import-lot-validation.test.ts:160` ; `tests/import-lot.test.ts:408` |
+| I18 | Sans clé de dédoublonnage, deux lignes identiques sont deux lignes. | Dans un export de paie, deux lignes identiques étaient deux demi-journées ; les fondre en perdait une. | `tests/import-lot-validation.test.ts:142` |
+| I19 | Un import qui remplace une période lit tout ou rien, et n'efface qu'une fois tout prêt. | L'import mensuel des absences effaçait puis réécrivait le mois : il doit avoir lu tout le fichier avant d'effacer. | `tests/import-lot.test.ts:356` |
+| I20 | Un lot sans ligne retenue ne se confirme pas, il s'ignore ; « en attente » prime sur « décidé ». | Un lot entièrement ignoré s'affichait « confirmé ». | `tests/import-lot.test.ts:281` ; `tests/validation-cycle.test.ts:8`, `:14` |
+| I21 | Un montant illisible est refusé : la ligne est écartée avec son motif, jamais absorbée. | Un coût dont le montant ne se lisait pas était absorbé en silence : un coût faux. | `src/briques/import-lot/validation.ts:189` ; `tests/import-lot-validation.test.ts:56` (nombre ambigu refusé) |
+| I22 | Deux lignes de même clé dans un import se somment ou se rejettent, jamais l'une n'écrase l'autre. | Une collision de codes a écrasé en silence plusieurs centaines de milliers d'euros de chiffre d'affaires. | **En partie** : `solstice-donnees` (`SKILL.md:206`), aucun test |
+| I23 | Un import se réconcilie sur les totaux métier, pas sur le nombre de lignes. | Environ 150 lignes d'écart sur 4 500, pour un total de jours intact : un dédoublonnage normal. | `solstice-donnees` (`SKILL.md:211`) |
+| I24 | Les pièces jointes du système source se téléchargent avant de planifier l'import. | Les adresses des pièces jointes d'un outil source expiraient avant l'import. | `solstice-donnees` (`SKILL.md:194`) |
+| I25 | Un import en production attend le déploiement de la migration qui crée ses colonnes. | Vécu en production : un import visait des colonnes que la migration n'avait pas encore créées. | `solstice-donnees` (`SKILL.md:196`) |
+| I26 | Un script de données tourne à blanc par défaut ; l'écriture se demande à la main, par un humain, après relecture du rapport. Une valeur pleine ne se dégrade jamais. | Les rattrapages de commissions, les colonnes ajoutées après coup et la casse des noms de comptes se sont corrigés par script en production. | `scripts/lib/cli.ts:7` ; `CLAUDE.md:69` ; garde `--confirmer` (`.claude/hooks/gardes.mjs:692`) ; `tests/import-fusion.test.ts:10` |
 
 ## 4. Sources externes et synchronisations
 
@@ -107,14 +110,14 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| V1 | Un refus garde la clé : une nouvelle lecture de la source ne ressuscite pas la proposition. | Un rejet libérait la clé de dédoublonnage, et le passage suivant recréait la carte refusée. | `tests/validation.test.ts:97` |
-| V2 | Lever un refus est un geste humain, qui rafraîchit le contenu. | Même cas : un refus ne doit revenir ni tout seul, ni avec un contenu périmé. | `tests/validation.test.ts:187` |
-| V3 | Accepter une proposition ancienne revérifie l'appariement. | Une suggestion « nouveau contact » restée longtemps en attente a recréé un doublon. | `tests/validation.test.ts:225` |
-| V4 | Décider deux fois la même proposition ne fait rien de plus. | Une page périmée soumise deux fois (même cas que I8). | `tests/validation.test.ts:263` |
-| V5 | Deux décisions simultanées n'appliquent qu'une fois. | Une demande d'autorisation de nouvelle version ne devait produire qu'un dépôt. | `tests/validation.test.ts:279` |
-| V6 | Une décision exige un décideur identifié, jamais un lien à jeton ; qu'il vienne d'une session est l'engagement du garde de l'appli. | Le même circuit n'acceptait de décision qu'avec une session, jamais depuis un lien à jeton. | `tests/validation.test.ts:313` |
-| V7 | Une décision vide bloque, jamais prise par défaut. | Même cas que I11. | `tests/validation.test.ts:327` |
-| V8 | Un statut inconnu s'affiche comme tel, avec sa valeur, jamais comme un état sain. | Sur l'écran de règlement des factures d'un projet antérieur, un statut que l'écran ne savait pas lire ne devait jamais passer pour « tout va bien ». | `solstice-ui` (`SKILL.md:99`) ; `tests/validation-cycle.test.ts:38` |
+| V1 | Un refus garde la clé : une nouvelle lecture de la source ne ressuscite pas la proposition. | Un rejet libérait la clé de dédoublonnage, et le passage suivant recréait la carte refusée. | `tests/validation.test.ts:98` |
+| V2 | Lever un refus est un geste humain, qui rafraîchit le contenu. | Même cas : un refus ne doit revenir ni tout seul, ni avec un contenu périmé. | `tests/validation.test.ts:188` |
+| V3 | Accepter une proposition ancienne revérifie l'appariement. | Une suggestion « nouveau contact » restée longtemps en attente a recréé un doublon. | `tests/validation.test.ts:226` |
+| V4 | Décider deux fois la même proposition ne fait rien de plus. | Une page périmée soumise deux fois (même cas que I8). | `tests/validation.test.ts:264` |
+| V5 | Deux décisions simultanées n'appliquent qu'une fois. | Une demande d'autorisation de nouvelle version ne devait produire qu'un dépôt. | `tests/validation.test.ts:280` |
+| V6 | Une décision exige un décideur identifié, jamais un lien à jeton ; qu'il vienne d'une session est l'engagement du garde de l'appli. | Le même circuit n'acceptait de décision qu'avec une session, jamais depuis un lien à jeton. | `tests/validation.test.ts:314` |
+| V7 | Une décision vide bloque, jamais prise par défaut. | Même cas que I11. | `tests/validation.test.ts:328` |
+| V8 | Un statut inconnu s'affiche comme tel, avec sa valeur, jamais comme un état sain. | Sur l'écran de règlement des factures d'un projet antérieur, un statut que l'écran ne savait pas lire ne devait jamais passer pour « tout va bien ». | `solstice-ui` (`SKILL.md:106`) ; `tests/validation-cycle.test.ts:38` |
 | V9 | Un état « en cours » expire, après un délai plus long que celui du traitement. | Une demande restée « en cours » a verrouillé son auteur pour toujours ; la péremption a été fixée à 30 minutes pour un traitement abandonné à 25. | **Non tenue** |
 | V10 | La vérification d'arrêt se place dans l'étape irréversible ; une réponse illisible ne vaut pas annulation. | Pour un agent qui publiait du code, l'arrêt demandé se vérifiait avant l'étape de publication, pas dans celle-ci. | **Non tenue** |
 | V11 | Un agent n'annonce jamais lui-même son succès : la conclusion s'écrit après les vérifications. | Règle d'un agent autonome de développement : sa conclusion s'écrit après les vérifications, pas par lui. | **Non tenue** |
@@ -151,9 +154,9 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| A1 | Chaque page, action serveur et route commence par sa garde : masquer un bouton ou une entrée de navigation ne protège rien. | Un bouton retiré de l'écran pour respecter une règle laissait son action serveur appelable sans l'écran. | `CLAUDE.md:60` ; `src/briques/comptes/roles.ts:10` ; `tests/gardes-acces.test.ts:157` |
-| A2 | Tout est protégé par défaut ; les routes ouvertes sont une liste déclarée et vérifiée. | Deux applis livrées ont convergé vers cette forme : protection par défaut, et un test qui parcourt toutes les routes. | `tests/comptes-proxy.test.ts:68` |
-| A3 | Un seul fichier de proxy, jamais un `middleware.ts` à côté. | Les deux ensemble font planter Next.js sans message. | **En partie** : commentaire de `src/briques/comptes/protection.ts:7`, aucun test |
+| A1 | Chaque page, action serveur et route commence par sa garde : masquer un bouton ou une entrée de navigation ne protège rien. | Un bouton retiré de l'écran pour respecter une règle laissait son action serveur appelable sans l'écran. | `CLAUDE.md:63` ; `src/briques/comptes/roles.ts:10` ; `tests/gardes-acces.test.ts:172` |
+| A2 | Tout est protégé par défaut ; les routes ouvertes sont une liste déclarée et vérifiée. | Deux applis livrées ont convergé vers cette forme : protection par défaut, et un test qui parcourt toutes les routes. | `tests/comptes-proxy.test.ts:69` |
+| A3 | Un seul fichier de proxy, jamais un `middleware.ts` à côté. | Les deux ensemble font planter Next.js sans message. | **En partie** : commentaire de `src/briques/comptes/protection.ts:11`, aucun test |
 | A4 | Un secret de signature vide ou court est refusé, et la signature se vérifie avant tout usage du jeton. | Règle reprise d'une appli livrée : un HMAC à clé vide se forge. | `tests/comptes-session.test.ts:56` |
 | A5 | Le chemin de retour après connexion est filtré, caractères de contrôle compris. | Un caractère de contrôle glissé dans le chemin de retour le faisait sortir de l'appli, vers un site tiers. | `tests/comptes-session.test.ts:257` |
 | A6 | La réponse à une demande de code n'attend pas l'envoi. | Le temps de réponse trahissait les adresses qui avaient un compte. | `tests/comptes-code-email.test.ts:126` |
@@ -166,14 +169,14 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 | A13 | L'état d'une connexion par un fournisseur d'identité est lié au navigateur qui l'a lancée. | Sans ce lien, un tiers peut forcer la connexion de quelqu'un à son propre compte. | `tests/comptes-google.test.ts:221`, `:228` ; `tests/comptes-microsoft.test.ts:269`, `:276` |
 | A14 | Un jeton de passage d'une appli à l'autre est à usage unique, et son mécanisme existe en un seul exemplaire. | Le même jeton signé entre applis existait en trois copies dans un même dépôt. | **Non tenue** (le catalogue n'a pas de jeton entre applis) |
 | A15 | Un formulaire en deux temps n'a qu'un état, celui de la dernière réponse. | Deux états séparés laissaient l'erreur d'un ancien code de connexion à côté du nouveau. | **En partie** : `src/briques/comptes/FormulaireCode.tsx:15`, aucun test |
-| A16 | Une page à ne pas indexer se ferme par `noindex` (balise ou en-tête `X-Robots-Tag`), que les moteurs doivent pouvoir lire : un `Disallow` les empêche de la lire. | Les liens à jeton donnés aux clients d'une appli livrée sont sortis des moteurs de recherche par `X-Robots-Tag`, sans `Disallow`. | **En partie** : `noindex` sur chaque page fermée (`tests/referencement.test.ts:166`) ; `robots.txt` interdit aussi tout, par un choix commenté (`src/lib/referencement.ts:115`) que prescrit aussi `solstice-nouvelle-appli` (`socle.md:143`), à trancher |
+| A16 | Une page à ne pas indexer se ferme par `noindex` (balise ou en-tête `X-Robots-Tag`), que les moteurs doivent pouvoir lire : un `Disallow` les empêche de la lire. | Les liens à jeton donnés aux clients d'une appli livrée sont sortis des moteurs de recherche par `X-Robots-Tag`, sans `Disallow`. | **En partie** : `noindex` sur chaque page fermée (`tests/referencement.test.ts:166`) ; `robots.txt` interdit aussi tout, par un choix commenté (`src/lib/referencement.ts:115`) que prescrit aussi `solstice-nouvelle-appli` (`socle.md:56`), à trancher |
 | A17 | Un contenu déposé par un utilisateur s'affiche dans une iframe isolée (`sandbox` sans `allow-same-origin`), derrière un jeton non devinable. | Les présentations HTML déposées dans une appli livrée s'affichaient ainsi, lien public compris. | **Non tenue** (le catalogue n'affiche aucun contenu déposé) |
 
 ## 10. Données personnelles
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| P1 | Données réelles, exports, dumps et clés n'entrent jamais dans l'historique git. | Des données personnelles sont entrées dans l'historique d'un projet, coûteuses à purger. Un fichier retiré après coup reste lisible dans l'historique. | `.gitignore:14` ; `tests/gitignore.test.ts:71` ; garde `git add -f` (`.claude/hooks/gardes.mjs:694`) |
+| P1 | Données réelles, exports, dumps et clés n'entrent jamais dans l'historique git. | Des données personnelles sont entrées dans l'historique d'un projet, coûteuses à purger. Un fichier retiré après coup reste lisible dans l'historique. | `.gitignore:22` ; `tests/gitignore.test.ts:71` ; garde `git add -f` (`.claude/hooks/gardes.mjs:694`) |
 | P2 | Une donnée sensible masquée l'est sur toutes ses facettes : libellé, famille, couleur, légende. | Un motif d'absence masqué restait trahi par la couleur de sa légende. | **Non tenue** |
 | P3 | Les gabarits de conformité (registre des traitements, trame de sous-traitance, hébergement dans l'Union européenne) sont prêts avant la mise en ligne. | Un hébergement a été déplacé d'une région américaine vers l'Union européenne après coup. | Gabarits de la brique rgpd (`src/briques/rgpd/gabarits/`) : registre des traitements, trame d'accord de sous-traitance, checklist d'hébergement dans l'UE ; hébergement tenu aussi par DP5 |
 | P4 | La position sur l'envoi de données vers des services d'IA se documente par projet. | Point ouvert d'un projet antérieur qui envoyait des données à des modèles d'IA ; les archives ne détaillent pas d'incident. | **Non tenue** |
@@ -182,7 +185,7 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| H1 | La date du jour se calcule dans le fuseau du client et s'injecte ; jamais celle du serveur. | Le serveur tournait en UTC : vers minuit, sa date du jour divergeait de celle de Paris. | `tests/format.test.ts:41` ; `solstice-ui` (`SKILL.md:63`) |
+| H1 | La date du jour se calcule dans le fuseau du client et s'injecte ; jamais celle du serveur. | Le serveur tournait en UTC : vers minuit, sa date du jour divergeait de celle de Paris. | `tests/format.test.ts:49` ; `solstice-ui` (`SKILL.md:92`) |
 | H2 | Deux instants se comparent avec une seule horloge, celle de la base. | Un décalage d'horloge entre un conteneur et le poste faussait « l'envoi précède la modification ». | **Non tenue** |
 
 Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
@@ -191,7 +194,7 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| M1 | Toute valeur insérée dans le HTML d'un mail est échappée. | Le nom d'un objet était inséré tel quel : un membre pouvait y glisser un lien. | `tests/mails.test.ts:84` ; `tests/contact.test.ts:88` |
+| M1 | Toute valeur insérée dans le HTML d'un mail est échappée. | Le nom d'un objet était inséré tel quel : un membre pouvait y glisser un lien. | `tests/mails.test.ts:86` ; `tests/contact.test.ts:88` |
 | M2 | L'échec d'envoi à une personne n'arrête ni les suivantes ni l'enregistrement. | Les alertes de changement de contenu d'une appli livrée partaient en direct, sans file d'attente : un échec pour une personne ne devait bloquer ni les autres ni l'enregistrement de la modification. | **Non tenue** |
 | M3 | Ne sont pas prévenus : l'auteur de la modification, les comptes inactifs, les désabonnés. | L'auteur d'une modification recevait l'alerte de sa propre modification. | **Non tenue** |
 | M4 | « Le contenu a changé » se détecte en comparant avant et après dans la même requête. | Un simple renommage faisait avancer la date de mise à jour, sans que le contenu ait changé. | **Non tenue** |
@@ -207,22 +210,22 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
 | FI1 | Un fichier s'envoie par un Route Handler, pas par une action serveur. | Un fichier joint envoyé par une action serveur échouait sur « Unexpected end of form ». | **En partie** : la brique import-lot reçoit le fichier par un Route Handler que l'appli pose (`src/briques/import-lot/envoi.ts`, README « La brancher ») ; aucune règle de skill |
-| FI2 | La limite de taille annoncée est la limite réelle. | Une limite annoncée de 10 Mo, au-dessus du plafond réel de 3 Mo, produisait une erreur générique avant l'action. | **En partie** : `solstice-ui` (`SKILL.md:95`) ; brique import-lot, qui refuse au-delà de sa limite annoncée (`OCTETS_MAX` dans `src/briques/import-lot/lecture.ts`) ; la limite d'un proxy d'hébergeur reste à relever (README d'import-lot, « Questions ouvertes ») |
+| FI2 | La limite de taille annoncée est la limite réelle. | Une limite annoncée de 10 Mo, au-dessus du plafond réel de 3 Mo, produisait une erreur générique avant l'action. | **En partie** : `solstice-ui` (`SKILL.md:102`) ; brique import-lot, qui refuse au-delà de sa limite annoncée (`OCTETS_MAX` dans `src/briques/import-lot/lecture.ts`) ; la limite d'un proxy d'hébergeur reste à relever (README d'import-lot, « Questions ouvertes ») |
 | FI3 | Le nom d'un fichier téléchargé supporte tout caractère, apostrophe typographique comprise. | Une apostrophe typographique dans un nom de fichier faisait répondre une erreur 500 au téléchargement. | **Non tenue** |
 
 ## 14. Interface et kit
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| U1 | Un tableau porte d'office le tri et les filtres, et les exports sur simple option. | Chaque tableau livré a fini par les recevoir : huit pull requests, six vagues de rattrapage. | `CLAUDE.md:22` ; `src/ui/Tableau.tsx:66` ; `tests/exports-tableau.test.ts:38` |
-| U2 | Un tableau hiérarchique ne se trie pas ; son filtre masque sans recalculer. | Un tri générique a été rejeté sur un compte de résultat, où il cassait la lecture comptable. | **En partie** : `src/ui/Tableau.tsx:100`, aucun test |
-| U3 | La vue d'un tableau (tri, filtres, déplis) survit à la navigation, le temps de l'onglet. | Sur un projet antérieur, les déplis survivaient même à la fermeture de l'onglet. | **En partie** : `src/ui/vueTableau.ts:7` et `CLAUDE.md:22`, aucun test |
-| U4 | Volets figés et détail au clic. | Un croisement personnes × périodes de temps passés a demandé l'un puis l'autre, jusqu'au détail d'une cellule. | **En partie** : clic sur une ligne (`src/ui/Tableau.tsx:116`) ; le clic par cellule attend un tableau croisé |
-| U5 | Montants, dates et pourcentages passent par un seul module de format. | Deux écrans voisins affichaient « 12 500 € » et « 12,500.00 € ». | `src/lib/format.ts:4` ; `solstice-ui` (`SKILL.md:59`) |
-| U6 | Un pas de saisie ne refuse pas un montant légitime. | Un pas de 100 € refusait un reliquat de 3 334 €. | `solstice-ui` (`SKILL.md:103`) ; aucun champ montant du catalogue n'a de pas, donc aucun test |
-| U7 | La fiche d'un enregistrement est en lecture seule et montre exactement les champs du formulaire ; un seul formulaire sert à créer et à modifier. | Règle maison héritée d'un projet antérieur ; les archives ne détaillent pas l'incident. | `CLAUDE.md:59` ; `src/app/dossiers/[slug]/page.tsx:18` |
-| U8 | Le slug d'une fiche n'est jamais purement numérique et n'entre pas en collision avec une route du module. | Règle reprise d'un projet antérieur avec son module de slugs : une fiche nommée « Nouveau » deviendrait inatteignable. | `tests/slug.test.ts:15`, `:20` |
-| U9 | Une erreur de rendu n'est jamais une page blanche : le digest reste affiché, et l'écriture a souvent eu lieu malgré l'erreur. | Des pages blanches à digest cryptique en production, après des écritures bien passées. | **En partie** : `src/app/error.tsx:3` et `solstice-ui` (`SKILL.md:66`) ; « l'écriture a eu lieu » n'est écrit nulle part |
+| U1 | Un tableau porte d'office le tri et les filtres, et les exports sur simple option. | Chaque tableau livré a fini par les recevoir : huit pull requests, six vagues de rattrapage. | `CLAUDE.md:25` ; `src/ui/Tableau.tsx:59` ; `tests/exports-tableau.test.ts:38` |
+| U2 | Un tableau hiérarchique ne se trie pas ; son filtre masque sans recalculer. | Un tri générique a été rejeté sur un compte de résultat, où il cassait la lecture comptable. | **En partie** : `src/ui/Tableau.tsx:93`, aucun test |
+| U3 | La vue d'un tableau (tri, filtres, déplis) survit à la navigation, le temps de l'onglet. | Sur un projet antérieur, les déplis survivaient même à la fermeture de l'onglet. | **En partie** : `src/ui/vueTableau.ts:7` et `CLAUDE.md:25`, aucun test |
+| U4 | Volets figés et détail au clic. | Un croisement personnes × périodes de temps passés a demandé l'un puis l'autre, jusqu'au détail d'une cellule. | **En partie** : clic sur une ligne (`src/ui/Tableau.tsx:108`) ; le clic par cellule attend un tableau croisé |
+| U5 | Montants, dates et pourcentages passent par un seul module de format. | Deux écrans voisins affichaient « 12 500 € » et « 12,500.00 € ». | `src/lib/format.ts:4` ; `solstice-ui` (`SKILL.md:89`) |
+| U6 | Un pas de saisie ne refuse pas un montant légitime. | Un pas de 100 € refusait un reliquat de 3 334 €. | `solstice-ui` (`SKILL.md:110`) ; aucun champ montant du catalogue n'a de pas, donc aucun test |
+| U7 | La fiche d'un enregistrement est en lecture seule et montre exactement les champs du formulaire ; un seul formulaire sert à créer et à modifier. | Règle maison héritée d'un projet antérieur ; les archives ne détaillent pas l'incident. | `CLAUDE.md:61` ; `src/app/dossiers/[slug]/page.tsx:18` |
+| U8 | Le slug d'une fiche n'est jamais purement numérique et n'entre pas en collision avec une route du module. | Règle reprise d'un projet antérieur avec son module de slugs : une fiche nommée « Nouveau » deviendrait inatteignable. | `tests/slug.test.ts:7`, `:12` |
+| U9 | Une erreur de rendu n'est jamais une page blanche : le digest reste affiché, et l'écriture a souvent eu lieu malgré l'erreur. | Des pages blanches à digest cryptique en production, après des écritures bien passées. | **En partie** : `src/app/error.tsx:3` et `solstice-ui` (`SKILL.md:96`) ; « l'écriture a eu lieu » n'est écrit nulle part |
 
 ## 15. IA et tâches longues
 
@@ -244,14 +247,14 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
 | DP1 | La CI vérifie chaque pull request dès le premier jour. | 86 pull requests ont été fusionnées avant qu'une ligne ne soit compilée ailleurs que chez l'hébergeur. | `.github/workflows/ci.yml:3` |
-| DP2 | Rien ne part en production sans la CI verte. | L'hébergeur déployait `main` sans attendre la CI. | `tests/deploiement.test.ts:85`, `:166` |
-| DP3 | La sonde de santé répond sans session et donne le commit en ligne. | Placée derrière l'authentification, la sonde recevait une redirection et chaque déploiement échouait. | `tests/sante.test.ts:62` ; `tests/deploiement.test.ts:144` |
-| DP4 | Jamais le palier gratuit de l'hébergeur pour la base. | La base gratuite est supprimée au bout de 30 jours. | `tests/deploiement.test.ts:180` |
-| DP5 | Service et base dans l'Union européenne dès le départ. | Une base a été migrée d'une région américaine vers l'Europe après coup : une migration de données en production. | `tests/deploiement.test.ts:171` |
-| DP6 | Une variable ajoutée au fichier de l'hébergeur se déclare aussi dans son tableau de bord. | Les variables d'un service existant ne se resynchronisent pas depuis le fichier. | **En partie** : commentaire de `render.yaml:6` ; `tests/deploiement.test.ts:233` vérifie la déclaration, pas la resynchronisation |
-| DP7 | Un service se nomme avant sa création, jamais renommé ensuite. | Un service renommé dans le tableau de bord a quitté la synchronisation, sans message ; il est revenu en reprenant son nom. | `render.yaml:9` ; `solstice-nouvelle-appli` (`socle.md:123`) |
-| DP8 | Les actions de CI s'épinglent par empreinte de commit, pas par étiquette. | Une montée de version flottante d'une action a changé ce que faisait la CI, sans aucun commit du dépôt. | `.github/workflows/ci.yml:52` ; `solstice-nouvelle-appli` (`socle.md:89`) |
-| DP9 | Quand l'appli tourne en conteneur, la CI construit l'image. | Un binaire qui marchait en conteneur sur le poste a refusé de démarrer chez l'hébergeur. | `solstice-nouvelle-appli` (`socle.md:87`) |
+| DP2 | Rien ne part en production sans la CI verte. | L'hébergeur déployait `main` sans attendre la CI. | `tests/deploiement.test.ts:86`, `:167` |
+| DP3 | La sonde de santé répond sans session et donne le commit en ligne. | Placée derrière l'authentification, la sonde recevait une redirection et chaque déploiement échouait. | `tests/sante.test.ts:62` ; `tests/deploiement.test.ts:145` |
+| DP4 | Jamais le palier gratuit de l'hébergeur pour la base. | La base gratuite est supprimée au bout de 30 jours. | `tests/deploiement.test.ts:181` |
+| DP5 | Service et base dans l'Union européenne dès le départ. | Une base a été migrée d'une région américaine vers l'Europe après coup : une migration de données en production. | `tests/deploiement.test.ts:172` |
+| DP6 | Une variable ajoutée au fichier de l'hébergeur se déclare aussi dans son tableau de bord. | Les variables d'un service existant ne se resynchronisent pas depuis le fichier. | **En partie** : commentaire de `render.yaml:6` ; `tests/deploiement.test.ts:234` vérifie la déclaration, pas la resynchronisation |
+| DP7 | Un service se nomme avant sa création, jamais renommé ensuite. | Un service renommé dans le tableau de bord a quitté la synchronisation, sans message ; il est revenu en reprenant son nom. | `render.yaml:9` ; `solstice-nouvelle-appli` (`socle.md:133`) |
+| DP8 | Les actions de CI s'épinglent par empreinte de commit, pas par étiquette. | Une montée de version flottante d'une action a changé ce que faisait la CI, sans aucun commit du dépôt. | `.github/workflows/ci.yml:52` ; `solstice-nouvelle-appli` (`socle.md:90`) |
+| DP9 | Quand l'appli tourne en conteneur, la CI construit l'image. | Un binaire qui marchait en conteneur sur le poste a refusé de démarrer chez l'hébergeur. | `solstice-nouvelle-appli` (`socle.md:88`) |
 | DP10 | L'installation chez l'hébergeur se fait sans audit ni messages de financement (`--no-audit --no-fund`). | Leçon notée pour le fichier de l'hébergeur ; les archives ne détaillent pas l'incident. | `render.yaml:32` |
 | DP11 | Une sauvegarde nocturne hors de l'hébergeur, avec un test de restauration, et la date d'expiration des clés notée. | Un projet antérieur sauvegardait chaque nuit vers un stockage objet et restaurait à l'essai vers une base jetable ; le catalogue n'a pas d'équivalent. | **Non tenue** |
 
@@ -264,14 +267,14 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | ME3 | La fusion revient à un humain : fusionner, c'est mettre en ligne. | Avec l'auto-déploiement, chaque fusion partait en production. | garde `gh pr merge` (`.claude/hooks/gardes.mjs:697`) ; `solstice-livrer` (`SKILL.md:73`) |
 | ME4 | Une URL de base distante ne se colle jamais dans un terminal ni un fichier. | Collée dans un terminal, l'adresse de la base de production est restée dans l'historique, et il a fallu changer les identifiants. | garde (`.claude/hooks/gardes.mjs:61`) ; `.claude/hooks/gardes.test.mjs` |
 | ME5 | Avant une PR, relire ce que le diff rend faux dans la documentation. | La dérive de documentation a été le deuxième poste de correctifs d'un projet antérieur : renvois morts, commentaires d'un état passé, une même règle écrite à quatre endroits et contredite par l'un d'eux. | agent `relecteur-docs` (`.claude/agents/relecteur-docs.md:9`) ; `CLAUDE.md` §7 |
-| ME6 | Un test énonce la règle qu'il verrouille et cite le cas d'origine. | Sur deux projets antérieurs, ces intitulés ont servi de mémoire des incidents. | `solstice-livrer` (`SKILL.md:30`) ; `solstice-donnees` (`SKILL.md:215`) |
-| ME7 | Escalader est un résultat normal. | Une minute d'escalade coûte moins qu'un incident en production. | `CLAUDE.md:90` |
+| ME6 | Un test énonce la règle qu'il verrouille et cite le cas d'origine. | Sur deux projets antérieurs, ces intitulés ont servi de mémoire des incidents. | `solstice-livrer` (`SKILL.md:30`) ; `solstice-donnees` (`SKILL.md:239`) |
+| ME7 | Escalader est un résultat normal. | Une minute d'escalade coûte moins qu'un incident en production. | `CLAUDE.md:91` |
 | ME8 | Avant de modifier un élément partagé, chercher tous ses consommateurs. | Une date dérivée lue par 41 consommateurs ne pouvait pas changer de sens en douce. | **Non tenue** |
 | ME9 | Chaque projet note ses dangers immédiats : quelle adresse déploie, où est la production. | Point de méthode d'un projet antérieur ; les archives ne détaillent pas l'incident. | **Non tenue** |
 | ME10 | Une modification des fichiers sensibles (authentification, proxy, schéma, infrastructure) se signale. | Même origine ; la liste des fichiers reste à fixer par projet. | **Non tenue** |
-| ME11 | Avant de coder un écran, demander la cible : téléphone, ordinateur ou les deux. | Les allers-retours d'interface venaient de cibles devinées. | `solstice-ui` (`SKILL.md:41`) |
+| ME11 | Avant de coder un écran, demander la cible : téléphone, ordinateur ou les deux. | Les allers-retours d'interface venaient de cibles devinées. | `solstice-ui` (`SKILL.md:71`) |
 | ME12 | Une règle de contrôle à seuil se mesure sur un corpus avant d'être écrite. | Des règles d'un contrôle de documents ont produit des faux positifs en série : 32 cas légitimes pour l'une, 13 pour une autre. | **Non tenue** |
-| ME13 | Le spécifique d'un client vit dans la configuration, jamais dans le moteur. | Un outil livré gardait en dur les conventions et le domaine de son client : impossible à réutiliser ailleurs. | **En partie** : une brique ne connaît aucun module (tests d'isolement, par exemple `tests/echeances-isolement.test.ts:43`) et l'hébergeur ne se nomme que dans son adaptateur (`tests/deploiement.test.ts:154`) ; rien ne vérifie l'absence de convention propre à un client |
+| ME13 | Le spécifique d'un client vit dans la configuration, jamais dans le moteur. | Un outil livré gardait en dur les conventions et le domaine de son client : impossible à réutiliser ailleurs. | **En partie** : une brique ne connaît aucun module (tests d'isolement, par exemple `tests/echeances-isolement.test.ts:43`) et l'hébergeur ne se nomme que dans son adaptateur (`tests/deploiement.test.ts:155`) ; rien ne vérifie l'absence de convention propre à un client |
 
 ## Hors registre
 

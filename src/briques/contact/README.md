@@ -107,6 +107,12 @@ journal.
 | `champs.ts` | type `EtatContact` | `{ envoye: true }`, ou `{ erreur, valeurs }`. |
 | `confidentialite.ts` | `TRAITEMENTS_CONTACT` | Le traitement du formulaire (clé `contact`), au format `Traitement` de `src/lib/confidentialite.ts`, qui l'importe, avec sa `conservation` : l'empreinte de l'adresse IP une heure (clé `contact-envois`, purgée par la brique rgpd) et les messages 3 ans hors de l'appli (clé `contact-messages`, rappelée par le script de purge). L'assembleur retire cet import et la ligne `contact` des choix quand la brique part. |
 
+**Interne** : `envoyerMessageContact` (l'action serveur que la page branche sur le
+formulaire), `CHAMPS`, `LONGUEUR_MAX` et le type `ValeursContact` (les champs et leurs
+limites), les filtres anti-robot de `filtres.ts` autres que `heureDAffichage` :
+`vientDUnRobot`, `reserverUnEnvoi`, `libererUnEnvoi`, `DELAI_MINIMAL_MS`, `FENETRE_S`,
+`LIMITE_PAR_IP` et `PLAFOND_GLOBAL`.
+
 **Règle d'entretien.** Tout changement d'interface publique (symbole ajouté,
 retiré ou renommé, signature modifiée, variable ajoutée) met à jour cette
 section et ajoute une entrée **en fin** de [`CHANGELOG.md`](CHANGELOG.md),

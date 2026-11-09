@@ -187,6 +187,12 @@ tests et peut changer sans entrée au journal.
 | `EcranCreerOuRejoindre.tsx` | `EcranCreerOuRejoindre({ codeInitial, actions })`, type `ActionsCreerOuRejoindre` | Le contenu de `/espace/rejoindre`, que la page entoure d'`AppLayout`. |
 | `EcranMonEspace.tsx` | `EcranMonEspace({ espace, adhesion, membres, autresEspaces, lienDInvitation, actions })`, type `ActionsMonEspace` | Le contenu de `/espace`. Les server actions lui sont passées en `actions` : la brique n'importe rien de `src/app`. |
 
+**Interne** : `COOKIE_ESPACE`, `gestionnaireDe`, `nommerUnSuccesseur`, `ANCIEN_MEMBRE`
+(le prénom qui remplace celui d'une personne effacée), les outils du code d'invitation
+(`ALPHABET_CODE`, `LONGUEUR_CODE`, `normaliserCode`, `afficherCode`), la saisie d'un nom ou d'un
+prénom (`Saisie`, `verifierNom`, `verifierPrenom`) et le type `VocabulaireEspaces`, la forme de
+`vocabulaire` dans `ReglagesEspaces`.
+
 **Règle d'entretien.** Tout changement d'interface publique met à jour cette
 section et ajoute une entrée **en fin** de [`CHANGELOG.md`](CHANGELOG.md),
 dans la pull request qui le fait : date, ce qui change pour l'appelant,
