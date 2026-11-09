@@ -214,6 +214,15 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOIEMENT_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # La barrière humaine avant la mise en ligne : l'environnement GitHub
+    # « production », avec ses relecteurs obligatoires, suspend le job tant
+    # qu'une personne n'a pas approuvé. Sans lui, chaque push de main mettait
+    # en ligne sans que personne ait rien validé (audit du 2026-11-09). Les
+    # secrets de déploiement (DEPLOIEMENT_DECLENCHEUR) ont vocation à vivre
+    # dans cet environnement plutôt qu'au niveau du dépôt : seul ce job les lit.
+    # À créer avant le premier déploiement (README de la brique, « Mettre en
+    # ligne ») : un environnement absent est créé sans relecteur, donc sans barrière.
+    environment: production
     # Fusions rapprochées : la suivante attend la fin du déploiement en cours
     # au lieu de l'interrompre. GitHub ne garde qu'une exécution en attente,
     # la plus récente : elle porte le dernier commit de main.

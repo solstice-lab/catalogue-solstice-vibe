@@ -28,7 +28,11 @@ Cloudflare, que Render place devant le site.
   depuis Internet, sur un disque de 1 Go qui grandit seul quand il se remplit.
 - **Aucun secret dans le dépôt** : `AUTH_SECRET` est généré par l'hébergeur,
   les clés sont saisies dans son tableau de bord, l'adresse de déclenchement
-  est un secret GitHub.
+  est un secret GitHub, celui de l'environnement `production`.
+- **Une personne approuve avant la mise en ligne** : le job `deployer`
+  déclare l'environnement GitHub `production`. Avec des relecteurs
+  obligatoires (geste 4), il attend leur approbation après la CI verte ; sans
+  eux, rien ne s'interpose.
 - **Seules les dépendances de production** au démarrage : tout s'installe pour
   le build (`next build` exige `typescript`), puis `npm prune --omit=dev`.
 
@@ -57,11 +61,12 @@ avec lui.
 | Nom | Où | Rôle |
 | --- | --- | --- |
 | `DEPLOIEMENT_URL` | Variable de dépôt GitHub (*Settings → Secrets and variables → Actions → Variables*) | L'adresse publique de l'appli, sans `/sante`. **Absente, le job `deployer` est sauté** : le catalogue et une appli pas encore hébergée n'ont rien à mettre en ligne. |
-| `DEPLOIEMENT_DECLENCHEUR` | Secret de dépôt GitHub | Ce qui déclenche le déploiement chez l'hébergeur. Render : l'URL du deploy hook. Absent alors que `DEPLOIEMENT_URL` existe, refusé par l'hébergeur ou sans réponse, le job échoue en le nommant. |
+| `DEPLOIEMENT_DECLENCHEUR` | Secret de l'environnement GitHub `production` (un secret de dépôt de même nom marche aussi, mais celui de l'environnement le remplace) | Ce qui déclenche le déploiement chez l'hébergeur. Render : l'URL du deploy hook. Absent alors que `DEPLOIEMENT_URL` existe, refusé par l'hébergeur ou sans réponse, le job échoue en le nommant. |
 | `COMMIT_DEPLOYE` | Variable d'environnement du service | Le SHA en ligne, que `/sante` renvoie. Posée par l'adaptateur au démarrage, jamais déclarée à la main. |
 | `IP_EN_TETE_CLIENT` | Variable d'environnement du service | L'en-tête où le proxy de l'hébergeur pose l'adresse IP du visiteur, lu par `src/lib/adresse-ip.ts` pour les limites par adresse (connexion par code, formulaire de contact) : seulement avec la brique `comptes` ou `contact`, sans qui l'assembleur retire fichier et variable. Render : `cf-connecting-ip`, déclaré dans `render.yaml`. Avec la brique `comptes`, obligatoire en production : vide, l'appli refuse de démarrer, `/sante` comprise, et le déploiement échoue au health check ; nommant un en-tête absent d'une requête, la connexion compte cette requête sur une adresse partagée par toutes celles sans adresse. Avec le seul formulaire de contact, vide ou en-tête absent, sa limite par adresse ne s'applique pas. En-tête absent d'une requête, ou variable vide avec le seul contact : le serveur l'avertit une fois, au premier passage. |
-| `PGSSLMODE` | Variable d'environnement du service | Le chiffrement de la connexion à la base, lu par `src/lib/db/client.ts`. Vide, le certificat se vérifie. Render : `no-verify`, déclaré dans `render.yaml` : la base présente sur le réseau interne un certificat auto-signé (étape 7). |
-| `deployer` | Job de `ci.yml` | Le nom du check, à ne pas exiger dans la protection de `main` (il ne tourne qu'après la fusion). |
+| `PGSSLMODE` | Variable d'environnement du service | Le chiffrement de la connexion à la base, lu par `src/lib/db/client.ts`. Vide, le certificat se vérifie. Render : `no-verify`, déclaré dans `render.yaml` : la base présente sur le réseau interne un certificat auto-signé (étape 7). **`disable` est refusé en production vers un hôte distant** : l'appli répond à chaque requête par une erreur qui dit quoi poser (retirer la variable, `PGSSLROOTCERT`, ou `no-verify` en connaissance de cause), `/sante` comprise, et le déploiement échoue au health check. Un `.env.local` recopié chez l'hébergeur faisait circuler le mot de passe et les données en clair. `disable` reste permis hors production et vers la machine locale. |
+| `production` | Environnement GitHub (*Settings → Environments*) | Déclaré par le job `deployer` (`environment: production`). C'est là que se posent les relecteurs obligatoires, et là que vit le secret `DEPLOIEMENT_DECLENCHEUR`. Un environnement absent est créé par GitHub au premier passage, **sans relecteur, donc sans barrière** : le créer avant (geste 4). |
+| `deployer` | Job de `ci.yml` | Le nom du check, à ne pas exiger dans la protection de `main` (il ne tourne qu'après la fusion). Il attend l'approbation des relecteurs de `production` avant de démarrer. |
 | `LIEUX_DEPLOIEMENT` | `src/briques/deploiement/confidentialite.ts` | `{ hebergeur }` : où l'hébergeur traite les données, lu par `src/lib/confidentialite.ts` à la place de `CONFIDENTIALITE.lieux.hebergeur`. `tests/deploiement.test.ts` vérifie qu'il dit la région de `render.yaml`. L'assembleur retire l'import quand la brique part, et le lieu se remplit alors dans la configuration. |
 | `SOUS_TRAITANTS_DEPLOIEMENT` | `src/briques/deploiement/confidentialite.ts` | Les sous-traitants que l'hébergeur place devant le site, ajoutés par `src/lib/confidentialite.ts` à l'hébergement du site. Render : Cloudflare, qui reçoit l'adresse IP et les requêtes de chaque visiteur (constaté à l'essai réel du 2026-11-05). Son lieu de traitement se remplit dans `CONFIDENTIALITE.lieux.cloudflare` : la page le réclame tant qu'il est vide. L'assembleur retire l'import, la ligne et la clé quand la brique part. |
 
@@ -105,12 +110,33 @@ eu lieu.
    s'ajoutera dans le tableau de bord le jour où elle sert.
    La création lance un premier déploiement de la tête de `main`, le seul qui
    ne passe pas par la CI.
-4. **Le déclencheur** : dans le service Render, *Settings → Deploy Hook*,
-   copier l'URL, puis la coller à l'invite de :
+4. **La barrière et le déclencheur**. D'abord l'environnement, sur GitHub :
+   *Settings → Environments → New environment*, nom `production`, puis
+   *Required reviewers* : cocher, ajouter la ou les personnes qui approuvent,
+   *Save protection rules*. Sans relecteur coché, le job part sans
+   approbation. Le même réglage en PowerShell, une fois connecté à `gh`
+   (`<propriétaire>/<dépôt>` : celui de l'appli) :
 
    ```powershell
-   gh secret set DEPLOIEMENT_DECLENCHEUR
+   $moi = gh api user --jq .id
+   '{"reviewers":[{"type":"User","id":' + $moi + '}]}' | gh api --method PUT repos/<propriétaire>/<dépôt>/environments/production --input -
    ```
+
+   Cette commande pose la personne connectée comme seul relecteur : ajouter les autres dans l'interface.
+   Sur un dépôt privé, les relecteurs obligatoires demandent un plan GitHub
+   payant (Pro, Team ou Enterprise, d'après la documentation de GitHub) ; sans lui, l'environnement se crée mais
+   la barrière manque, à dire au client. Ensuite le déclencheur : dans le
+   service Render, *Settings → Deploy Hook*, copier l'URL, puis la coller à
+   l'invite de la commande suivante, qui le range dans l'environnement et non
+   au niveau du dépôt :
+
+   ```powershell
+   gh secret set DEPLOIEMENT_DECLENCHEUR --env production
+   ```
+
+   Une appli qui avait déjà ce secret au niveau du dépôt le déplace : le
+   recréer dans l'environnement, puis supprimer l'ancien
+   (`gh secret delete DEPLOIEMENT_DECLENCHEUR`).
 
 5. **L'adresse** : celle que Render affiche sur la page du service.
 
@@ -119,7 +145,9 @@ eu lieu.
    ```
 
 6. **GitHub** : protection de `main` avec le check `verifier` requis.
-7. **La première fusion suivante** : la CI déclenche et attend `/sante`. Ouvrir
+7. **La première fusion suivante** : la CI vérifie, le job `deployer` attend
+   l'approbation d'un relecteur de `production` (GitHub le prévient ; *Review
+   deployments* sur la page de l'exécution), puis déclenche et attend `/sante`. Ouvrir
    `<DEPLOIEMENT_URL>/sante` : le commit est celui de la fusion, la base `ok`.
    Après les premières connexions, les journaux du service ne montrent
    aucune ligne `[adresse-ip]`. Un job `deployer` en échec sur
@@ -192,7 +220,7 @@ l'hébergeur et celui de Cloudflare, et l'hébergeur dans les mentions légales 
 Render : le remplacer).
 
 **Ne changent pas** : le reste du job `deployer` (`needs`, condition,
-concurrence, attente de `/sante`), les noms `DEPLOIEMENT_URL`,
+`environment: production`, concurrence, attente de `/sante`), les noms `DEPLOIEMENT_URL`,
 `DEPLOIEMENT_DECLENCHEUR`, `COMMIT_DEPLOYE` et `IP_EN_TETE_CLIENT`, la route
 `/sante`, le reste du test (hors des cas propres à Render cités plus haut).
 
@@ -211,6 +239,8 @@ Tests dans `tests/deploiement.test.ts`.
 | Une région américaine migrée vers Francfort après coup | « place le service ET la base à Francfort » |
 | Une variable lue par l'appli, absente chez l'hébergeur | « déclare chaque variable de .env.example », prouvé par un cas fautif |
 | `NODE_ENV=production` au build : `typescript` non installé | « ne pose pas NODE_ENV » |
+| Une mise en ligne sans qu'un humain l'ait approuvée : le job `deployer` sans environnement GitHub | « déclare l'environnement production, la barrière humaine avant la mise en ligne » |
+| Un `.env.local` recopié chez l'hébergeur : la base jointe en clair avec `PGSSLMODE=disable` | « refuse en production vers un hôte distant, et le message dit quoi faire » (`tests/client-ssl.test.ts`) |
 | Un déclencheur refusé sans que le journal nomme le secret : à l'essai réel, un hook faux n'a donné que « curl: (22) … 404 » | « nomme le secret DEPLOIEMENT_DECLENCHEUR quand l'hébergeur refuse ou ne répond pas », prouvé par un cas fautif |
 | L'hébergeur nommé dans le cœur | « ne nomme l'hébergeur que dans l'étape adaptateur » |
 | Une politique de confidentialité qui situerait l'hébergeur ailleurs que `render.yaml` | « dit Francfort, la région de render.yaml, et ne le réclame plus à la configuration » |

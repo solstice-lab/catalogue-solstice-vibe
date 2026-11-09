@@ -31,10 +31,51 @@ function creerPool(): Pool {
   return new Pool({ connectionString, ssl: optionsSsl() });
 }
 
+const HOTE_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
+
+// Le premier hôte non local de DATABASE_URL, ou undefined si tous le sont (ou si
+// l'URL manque : creerPool refuse alors, avec son propre message). Même notion
+// que `hoteLocal` des gardes (.claude/hooks/gardes.mjs) : localhost, 127.0.0.1,
+// [::1], un hôte vide ou un chemin de socket Unix. Une liste d'hôtes
+// (`h1:5432,h2:5432`) ou un `host=` en paramètre se juge hôte par hôte : un seul
+// distant suffit. Un hôte vide est lu par pg dans PGHOST. Une URL illisible
+// n'est pas prouvée locale : elle compte comme distante. Seul l'hôte sort dans
+// le message, jamais l'URL, qui porte le mot de passe.
+function hoteDistant(env: Record<string, string | undefined>): string | undefined {
+  const url = env.DATABASE_URL?.trim();
+  if (!url) return undefined;
+  const lue = url.match(/^postgres(?:ql)?:\/\/([^/?#]*)([^#]*)/i);
+  if (!lue) return "URL illisible";
+  const autorite = lue[1].slice(lue[1].lastIndexOf("@") + 1);
+  const hotes = autorite.split(",").map((h) => (h.startsWith("[") ? h.slice(0, h.indexOf("]") + 1) : h.split(":")[0]));
+  const parametres = new URLSearchParams(lue[2].replace(/^[^?]*\??/, ""));
+  for (const nom of ["host", "hostaddr"]) {
+    const valeur = parametres.get(nom);
+    if (valeur) hotes.push(...valeur.split(","));
+  }
+  const lus = hotes.flatMap((brut) => {
+    try {
+      return [decodeURIComponent(brut)];
+    } catch {
+      return [brut]; // Un % mal formé : l'hôte reste tel quel, et ne sera pas reconnu local.
+    }
+  });
+  const pghote = (env.PGHOST ?? "").trim().split(",");
+  const effectifs = lus.flatMap((hote) => (hote === "" ? pghote : [hote]));
+  return effectifs.find((hote) => hote !== "" && !hote.startsWith("/") && !HOTE_LOCAL.test(hote));
+}
+
 // Le chiffrement de la connexion, tiré de l'environnement. La vérification
 // du certificat est la règle : coupée d'office, comme le faisait ce client,
 // la connexion était chiffrée vers n'importe quel serveur qui se présentait.
-// - PGSSLMODE=disable : pas de SSL (le Postgres local n'en a pas) ;
+// - PGSSLMODE=disable : pas de SSL (le Postgres local n'en a pas). Refusé en
+//   production vers un hôte distant : un .env.local recopié chez l'hébergeur
+//   faisait circuler le mot de passe et les données en clair, sans une ligne
+//   au journal (audit du 2026-11-09). Le refus lève ici, à la première
+//   requête, comme les autres refus de configuration : une erreur qui dit quoi
+//   poser, jamais une base qui répond à la place d'un message. Hors production
+//   et vers la machine locale, rien ne change : les tests et le Postgres du
+//   poste n'ont pas de SSL ;
 // - PGSSLMODE=no-verify : chiffré sans vérification, à demander en toutes
 //   lettres, pour un hébergeur dont le certificat ne se vérifie pas ;
 // - PGSSLROOTCERT : le chemin du CA de l'hébergeur (PEM), quand Node ne le
@@ -48,7 +89,17 @@ export function optionsSsl(
   env: Record<string, string | undefined> = process.env
 ): false | { rejectUnauthorized: boolean; ca?: string } {
   const mode = env.PGSSLMODE?.trim();
-  if (mode === "disable") return false;
+  if (mode === "disable") {
+    const distant = env.NODE_ENV === "production" ? hoteDistant(env) : undefined;
+    if (distant !== undefined) {
+      throw new Error(
+        `PGSSLMODE=disable refusé en production vers un hôte distant (${distant}) : mot de passe et données circuleraient en clair. ` +
+          "Retirer PGSSLMODE (le certificat se vérifie alors), poser PGSSLROOTCERT avec le chemin du CA de l'hébergeur s'il n'est pas reconnu " +
+          "par Node, ou PGSSLMODE=no-verify (chiffré sans vérifier) en connaissance de cause."
+      );
+    }
+    return false;
+  }
   if (mode === "no-verify") return { rejectUnauthorized: false };
   const cheminCa = env.PGSSLROOTCERT?.trim();
   if (!cheminCa) return { rejectUnauthorized: true };

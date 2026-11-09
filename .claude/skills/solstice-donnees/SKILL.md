@@ -18,7 +18,10 @@ est citée quand elle existe.
   jamais mis en cache — la requête suivante retente.
 - **Le certificat de la base se vérifie par défaut** (`optionsSsl()` de
   `client.ts`) : par les CA que Node reconnaît, ou par celui dont `PGSSLROOTCERT`
-  donne le chemin. `PGSSLMODE=disable` en local (pas de SSL) ;
+  donne le chemin. `PGSSLMODE=disable` en local (pas de SSL), **refusé en
+  production vers un hôte distant** (un `.env.local` recopié chez l'hébergeur
+  ferait circuler mot de passe et données en clair : erreur à la première
+  requête, qui dit quoi poser) ;
   `PGSSLMODE=no-verify` chiffre sans vérifier, à poser en toutes lettres
   pour un hébergeur dont le certificat ne se vérifie pas. Le client coupait
   la vérification d'office : chiffré, mais vers n'importe quel serveur. Un

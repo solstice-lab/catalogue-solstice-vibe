@@ -71,6 +71,70 @@ describe("client de base : options SSL tirées de l'environnement", () => {
   });
 });
 
+// Un .env.local recopié chez l'hébergeur (PGSSLMODE=disable pour le Postgres du
+// poste) faisait circuler le mot de passe et les données en clair : « disable »
+// était accepté sans bruit partout. En production vers un hôte distant, il fait
+// refuser le démarrage ; en local et hors production, rien ne change.
+describe("client de base : PGSSLMODE=disable refusé en production vers un hôte distant", () => {
+  const distante = "postgresql://app@db.exemple.fr:5432/appli";
+  const production = { NODE_ENV: "production", PGSSLMODE: "disable" };
+
+  it("refuse en production vers un hôte distant, et le message dit quoi faire", () => {
+    const appel = () => optionsSsl({ ...production, DATABASE_URL: distante });
+    expect(appel).toThrow(/PGSSLMODE=disable/);
+    expect(appel).toThrow(/PGSSLMODE=no-verify/);
+    expect(appel).toThrow(/PGSSLROOTCERT/);
+    expect(appel).toThrow(/db\.exemple\.fr/);
+  });
+
+  it("refuse aussi une liste d'hôtes dont un seul est distant, un hôte en paramètre et une URL illisible", () => {
+    for (const url of [
+      "postgresql://app@localhost:5432,db.exemple.fr:5432/appli",
+      "postgresql://app@localhost/appli?host=db.exemple.fr",
+      "postgresql:///appli?host=/var/run/postgresql,db.exemple.fr",
+      "pas une url",
+    ]) {
+      expect(() => optionsSsl({ ...production, DATABASE_URL: url }), url).toThrow(/PGSSLMODE=disable/);
+    }
+  });
+
+  it("refuse une URL sans hôte quand PGHOST (lu par pg à sa place) vise un hôte distant", () => {
+    expect(() => optionsSsl({ ...production, DATABASE_URL: "postgresql:///appli", PGHOST: "db.exemple.fr" })).toThrow(
+      /PGSSLMODE=disable/
+    );
+  });
+
+  it("accepte en production vers la machine locale : localhost, 127.0.0.1, [::1], socket Unix", () => {
+    for (const url of [
+      "postgresql://postgres@localhost:5433/appli",
+      "postgresql://postgres@127.0.0.1/appli",
+      "postgresql://postgres@[::1]:5432/appli",
+      "postgresql://postgres@LOCALHOST:5432,127.0.0.1:5433/appli",
+      "postgresql:///appli",
+      "postgresql:///appli?host=/var/run/postgresql",
+      "postgresql://%2Fvar%2Frun%2Fpostgresql/appli",
+    ]) {
+      expect(optionsSsl({ ...production, DATABASE_URL: url }), url).toBe(false);
+    }
+  });
+
+  it("accepte hors production vers un hôte distant (le développeur qui vise une base de recette)", () => {
+    for (const NODE_ENV of ["development", "test", undefined]) {
+      expect(optionsSsl({ NODE_ENV, PGSSLMODE: "disable", DATABASE_URL: distante })).toBe(false);
+    }
+  });
+
+  it("ne touche pas aux autres réglages : no-verify et vérification par défaut passent en production distante", () => {
+    const base = { NODE_ENV: "production", DATABASE_URL: distante };
+    expect(optionsSsl({ ...base, PGSSLMODE: "no-verify" })).toEqual({ rejectUnauthorized: false });
+    expect(optionsSsl({ ...base })).toEqual({ rejectUnauthorized: true });
+  });
+
+  it("sans DATABASE_URL, le refus reste à creerPool (rien à juger ici)", () => {
+    expect(optionsSsl(production)).toBe(false);
+  });
+});
+
 describe("client de base : un certificat refusé se dit avec la variable à poser", () => {
   it("traduit un refus de certificat en un message qui nomme PGSSLROOTCERT et PGSSLMODE=no-verify", () => {
     const refus = Object.assign(new Error("self-signed certificate in certificate chain"), {
@@ -111,6 +175,7 @@ describe("client de base : au démarrage, le pool vérifie et le refus se tradui
       if (environnement[nom] === undefined) delete process.env[nom];
       else process.env[nom] = environnement[nom];
     }
+    vi.unstubAllEnvs();
     globalThis.__slPool = poolDesAutresTests;
     globalThis.__slInitPromise = initDesAutresTests;
   });
@@ -126,5 +191,17 @@ describe("client de base : au démarrage, le pool vérifie et le refus se tradui
 
     await expect(client.query("SELECT 1")).rejects.toThrow(/PGSSLROOTCERT/);
     expect(optionsDesPools).toEqual([expect.objectContaining({ ssl: { rejectUnauthorized: true } })]);
+  });
+
+  it("en production vers un hôte distant, PGSSLMODE=disable fait refuser la première requête avant toute connexion, et le refus se rejoue (le .env.local recopié chez l'hébergeur)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.DATABASE_URL = "postgresql://app@db.exemple.fr:5432/appli";
+    process.env.PGSSLMODE = "disable";
+    delete process.env.PGSSLROOTCERT;
+    const client = await import("../src/lib/db/client");
+
+    await expect(client.query("SELECT 1")).rejects.toThrow(/PGSSLMODE=disable/);
+    await expect(client.query("SELECT 1")).rejects.toThrow(/PGSSLMODE=disable/);
+    expect(optionsDesPools).toEqual([]);
   });
 });
