@@ -38,7 +38,7 @@ description: <une ou deux phrases pour les moteurs et l'aperçu, sur une ligne>
 site: <public | ferme>
 entree: <ferme | ouverte>                          # avec la brique comptes seulement
 role_par_defaut: <rôle de qui entre sans rôle attribué, jamais un rôle d'administration>
-methodes: [<code-email, lien-email, google, microsoft>]        # « demo » reste en local, sans être listée
+methodes: [<code-email, lien-email, google, microsoft>]        # « demo » : jamais listée ; l'assembleur la garde, un ticket la retire
 personnes_par_reseau: <combien de personnes au plus se connectent dans la même heure depuis un même réseau>
 statut: <écrite avant tout code, brouillon validé par <qui> le <date>>
 commit_reference: <à renseigner : l'assembleur le remplace>
@@ -107,7 +107,8 @@ briques:
   - `methodes` : une liste sur une ligne parmi `code-email`, `lien-email` (appli grand public
     seulement, `URL_PUBLIQUE` en production), `google` et `microsoft`, écrite
     dans `METHODES` ; sans le champ, `code-email`. `"demo"` est toujours gardée en dernier,
-    pour le local, et se retire à la mise en ligne (elle refuse la production). `google` et
+    même quand la liste ne la cite pas, et se retire par la première PR fusionnée (elle refuse
+    la production, et la retirer de `METHODES` la retire aussi en local : section 9). `google` et
     `microsoft` ne disent pas que leur application existe chez Google ou dans le portail
     Azure : leurs variables restent à déclarer. `microsoft` accepte un seul annuaire
     (`ANNUAIRES_MICROSOFT`), à changer par ticket pour un outil ouvert à plusieurs entreprises.
@@ -178,7 +179,14 @@ la description, puis :
    le réglage d'appli qui conditionne les briques de date (`FUSEAU`, `LOCALE`, `DEVISE`
    dans `src/lib/format.ts`). Les briques installées non branchées y figurent, marquées
    « à brancher », avec l'entité de la section 2 qu'elles attendent et leur ticket. Avec
-   `deploiement`, le réglage est l'hébergeur retenu au cadrage (Render par défaut).
+   `deploiement`, le réglage est l'hébergeur retenu au cadrage (Render par défaut). Avec
+   `notifications`, les réglages sont l'heure de la tâche planifiée, **écrite en UTC avec son
+   écart à l'heure de Paris** (« 6 h 30 UTC, soit 7 h 30 ou 8 h 30 à Paris selon la saison »,
+   jamais « 8 h, heure de Paris » seule : la tâche GitHub tourne en UTC et peut être retardée
+   de quelques dizaines de minutes), et la variable de dépôt GitHub `URL_PUBLIQUE`, sans
+   laquelle la tâche s'arrête sans échouer et aucun rappel ne part (à ne pas confondre avec
+   celle du service ; README de la brique, « Les deux `URL_PUBLIQUE` »). Cas d'origine : à la recette
+   du 2026-11-06, une blueprint promettait un rappel « à 8 h, heure de Paris ».
 4. **Écrans et navigation** : un tableau (écran, URL, contenu) dans l'ordre de
    `src/lib/navigation.ts`, ordinateur et téléphone, sans citer le détail de ce fichier.
    Chaque écran a l'une de trois origines, dite dans le tableau : une brique gardée qui
@@ -212,10 +220,11 @@ la description, puis :
    `sitePublic` du référencement, les noms du service et de la base de `render.yaml`,
    l'hébergeur des mentions légales ; ce qu'un champ absent a laissé à sa valeur de
    remplacement se remplit ici), régler `src/lib/format.ts`, remplir le reste des
-   mentions légales (`src/lib/mentions-legales.ts`, avant toute mise en ligne : statut de
+   mentions légales (`src/lib/mentions-legales.ts`, avant toute mise en ligne publique, ou avant le premier
+   utilisateur réel d'une instance de recette (`solstice-nouvelle-appli` §1) : statut de
    l'éditeur ; pour un professionnel, éditeur et directeur de la publication ; coordonnées
    de l'hébergeur), remplir la politique de confidentialité
-   (`src/lib/confidentialite.ts`, avant toute mise en ligne, choix validés par le client), compléter le référencement (`src/lib/referencement.ts` : les pages publiques), thématiser, écrire
+   (`src/lib/confidentialite.ts`, à la même échéance, choix validés par le client), compléter le référencement (`src/lib/referencement.ts` : les pages publiques), thématiser, écrire
    l'accueil, construire chaque entité de la section 2 en copiant le patron `dossiers`,
    brancher les briques « à brancher », écrire les
    scripts de données de la section 6. S'il y a lieu : retirer
@@ -224,8 +233,21 @@ la description, puis :
    commentaires de `PiedDePage.tsx`, `ui.css` et `tokens.css`, exception de
    `tests/kit-tokens.test.ts`) ; écrire l'adaptateur de déploiement d'un hébergeur autre que
    Render (avec la brique `deploiement`). Avec la brique `comptes` : retirer `"demo"` de
-   `METHODES` (`src/config/comptes.ts`), fusionné sur `main` avant la création du Blueprint
-   (qui déploie `main`), car elle refuse la production ; elle reste en local, que la blueprint la déclare ou non.
+   `METHODES` (`src/config/comptes.ts`). L'assembleur la garde même quand `methodes` ne la
+   liste pas, et elle refuse la production : ce retrait est la **première PR fusionnée**,
+   avant la création du Blueprint Render (qui déploie `main`), et l'étape de mise en ligne
+   en dépend (`Bloqué par`), sans quoi le déploiement échoue. Il la retire aussi en local :
+   la connexion locale passe par la méthode déclarée (avec `code-email` et
+   `MAILS_FOURNISSEUR=console`, le code s'affiche dans la console du serveur) ; aucun
+   réglage de la blueprint ne garde la démo en local seulement. À la recette du
+   2026-11-06, la fiche projet avait repris « elle reste en local » alors que le retrait
+   l'ôtait aussi du poste.
+
+   **Une instance de recette** (fermée aux moteurs, sans vrai membre ; `solstice-nouvelle-appli`
+   §1) se met en ligne avant le ticket des mentions légales et de la politique de
+   confidentialité, qui porte alors « avant le premier utilisateur réel » : il bloque
+   l'ouverture à de vrais membres, pas le déploiement. S'il y a lieu, un ticket de plus
+   écrit le bandeau « instance de recette » tant que les mentions sont incomplètes.
 
    **Format lu par l'outil des issues** (`outils/creer-issues.mjs`, étape 6 de `SKILL.md`) :
    un paragraphe d'introduction libre, puis une étape par sous-titre `### 9.n Titre`, numérotée
@@ -250,9 +272,11 @@ la description, puis :
 
    ### 9.1 Socle prêt pour la prod
 
-   Vérifier ce que l'assembleur a écrit de l'en-tête, régler `src/lib/format.ts`.
+   Vérifier ce que l'assembleur a écrit de l'en-tête, régler `src/lib/format.ts`, retirer
+   `"demo"` de `METHODES` (avec la brique `comptes`). Première PR fusionnée : la mise en ligne (9.3) en dépend.
 
-   Vérifiable à l'écran : le titre de l'onglet porte le nom affiché de l'appli.
+   Vérifiable à l'écran : le titre de l'onglet porte le nom affiché de l'appli, et `/connexion`
+   ne propose plus la démo.
    Bloqué par : aucune
 
    ### 9.2 Entrée ouverte
@@ -260,6 +284,13 @@ la description, puis :
    Poser `ouverte: true` dans `ENTREE` et l'action du module dans `src/config/acces.ts`.
 
    Vérifiable à l'écran : `/connexion` accepte une adresse qui n'est dans aucune liste.
+   Bloqué par : 9.1
+
+   ### 9.3 Mise en ligne
+
+   Avec la brique `deploiement` : les gestes de son README (Blueprint Render, variables, secret).
+
+   Vérifiable à l'écran : `<adresse>/sante` renvoie le commit fusionné et la base `ok`.
    Bloqué par : 9.1
    ```
 

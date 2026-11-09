@@ -100,8 +100,10 @@ eu lieu.
    redescend pas.
 3. **Render** : créer le compte ou l'espace de travail, puis *New → Blueprint*,
    choisir le dépôt. Render lit `render.yaml` et demande les variables en
-   `sync: false` (`URL_PUBLIQUE`, à laisser vide tant que le domaine n'est pas
-   branché, geste 8, et sur un service de recette ; avec la brique mails :
+   `sync: false` (`URL_PUBLIQUE`, celle du service, à laisser vide tant que le domaine n'est pas
+   branché, geste 8, et sur un service de recette ; avec la brique notifications,
+   la variable de dépôt GitHub du même nom, que lit sa tâche planifiée, est une
+   autre et se pose (son README, « Les deux `URL_PUBLIQUE` ») ; avec la brique mails :
    `MAILS_EXPEDITEUR`, `RESEND_API_KEY` ; avec la brique comptes :
    `COMPTES_PREMIER_ADMIN`, `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
    (vides si `"google"` n'est pas dans `METHODES`), `MICROSOFT_CLIENT_ID`,
