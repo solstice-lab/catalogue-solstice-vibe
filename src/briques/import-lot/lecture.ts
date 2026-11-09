@@ -1,11 +1,12 @@
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import { cleDeRapprochement } from "@/lib/cle-rapprochement";
 import { parserCsv } from "@/lib/import-fusion";
 import { reconnaitreFormat, type FormatFichier } from "./format";
 import type { LigneBrute } from "./types";
 
-// Seul fichier de la brique qui importe exceljs : changer de bibliothèque
-// (ou ajouter la lecture du .xls) ne touche que lui.
+// Seul fichier de la brique qui importe exceljs et jszip : changer de
+// bibliothèque (ou ajouter la lecture du .xls) ne touche que lui.
 
 /** Le fichier ne peut pas être lu : le message s'affiche tel quel à la personne. */
 export class ErreurFichier extends Error {}
@@ -18,7 +19,20 @@ export type Lecture = {
 
 // Plafonds de la brique : exceljs décompresse tout le classeur en mémoire, et
 // ce process est partagé par toute l'appli. Un fichier plus gros se découpe.
+//
+// OCTETS_MAX porte sur le fichier ENVOYÉ, donc compressé : seul, il ne protège
+// de rien, un .xlsx de quelques Mo pouvant contenir des Go de XML répétitif
+// (audit du 2026-11-09). OCTETS_DECOMPRESSES_MAX borne ce que l'archive devient
+// une fois décompressée, toutes entrées et toutes feuilles comprises (exceljs
+// charge aussi celles que la brique ne lit pas). Mesuré le 2026-11-09 : un
+// classeur de LIGNES_MAX lignes de 20 colonnes pèse 5 Mo envoyés et 55 Mo
+// décompressés ; 100 Mo laisse passer tout fichier légitime sous le plafond
+// d'envoi et coupe la bombe avant exceljs. exceljs gardant environ 20 octets de
+// tas par octet de XML (mesuré : +1 Go pour le classeur ci-dessus), la borne
+// plafonne le pic à 2 Go environ au lieu de ne rien plafonner : la baisser si
+// l'hébergeur offre moins de mémoire.
 export const OCTETS_MAX = 10 * 1024 * 1024;
+export const OCTETS_DECOMPRESSES_MAX = 100 * 1024 * 1024;
 export const LIGNES_MAX = 50_000;
 
 export async function lireFichier(octets: Uint8Array): Promise<Lecture> {
@@ -38,12 +52,61 @@ export async function lireFichier(octets: Uint8Array): Promise<Lecture> {
   throw new ErreurFichier("Format de fichier non reconnu : envoyer un classeur .xlsx ou un CSV encodé en UTF-8.");
 }
 
+// internalStream existe dans jszip (lib/zipObject.js) mais pas dans ses typings.
+type FluxJszip = {
+  on(evenement: "data", gestionnaire: (morceau: Uint8Array) => void): FluxJszip;
+  on(evenement: "error", gestionnaire: (erreur: Error) => void): FluxJszip;
+  on(evenement: "end", gestionnaire: () => void): FluxJszip;
+  pause(): FluxJszip;
+  resume(): FluxJszip;
+};
+
+// Compte les octets RÉELLEMENT produits par la décompression de chaque entrée,
+// et s'arrête dès la borne. La taille annoncée par le répertoire central ne
+// sert à rien ici : un fichier hostile la falsifie, et jszip ne la compare au
+// flux qu'une fois l'entrée décompressée en entier, trop tard. L'archive n'est
+// décompressée qu'une fois la borne respectée, donc deux fois en tout (ici
+// puis par exceljs) : le prix de ne pas toucher à la lecture elle-même.
+async function refuserBombeDeDecompression(octets: Uint8Array): Promise<void> {
+  let archive: JSZip;
+  try {
+    archive = await JSZip.loadAsync(octets);
+  } catch {
+    throw fichier_corrompu();
+  }
+  let total = 0;
+  for (const entree of Object.values(archive.files)) {
+    if (entree.dir) continue;
+    await new Promise<void>((resoudre, rejeter) => {
+      const flux = (entree as unknown as { internalStream(type: "uint8array"): FluxJszip }).internalStream(
+        "uint8array"
+      );
+      flux.on("data", (morceau) => {
+        total += morceau.length;
+        if (total <= OCTETS_DECOMPRESSES_MAX) return;
+        // pause() arrête la décompression au morceau suivant : sans elle le
+        // flux irait au bout de l'entrée, ce que la borne doit justement éviter.
+        flux.pause();
+        rejeter(
+          new ErreurFichier(
+            `Ce fichier occupe plus de ${OCTETS_DECOMPRESSES_MAX / 1024 / 1024} Mo une fois décompressé : le découper en plusieurs fichiers, ou en retirer les feuilles et les images inutiles.`
+          )
+        );
+      });
+      flux.on("error", () => rejeter(fichier_corrompu()));
+      flux.on("end", resoudre);
+      flux.resume();
+    });
+  }
+}
+
 async function lireXlsx(octets: Uint8Array): Promise<Lecture> {
+  await refuserBombeDeDecompression(octets);
   const classeur = new ExcelJS.Workbook();
   try {
     await classeur.xlsx.load(Buffer.from(octets) as unknown as ExcelJS.Buffer);
   } catch {
-    throw new ErreurFichier("Ce fichier .xlsx est corrompu ou tronqué : le réenregistrer dans Excel puis le renvoyer.");
+    throw fichier_corrompu();
   }
   const feuille = classeur.worksheets[0];
   if (!feuille) throw new ErreurFichier("Ce classeur ne contient aucune feuille.");
@@ -133,6 +196,10 @@ function lireCsv(octets: Uint8Array): Lecture {
     ),
   }));
   return { format: "csv", entetes: entetes.filter((entete) => entete !== ""), lignes };
+}
+
+function fichier_corrompu(): ErreurFichier {
+  return new ErreurFichier("Ce fichier .xlsx est corrompu ou tronqué : le réenregistrer dans Excel puis le renvoyer.");
 }
 
 function trop_de_lignes(): ErreurFichier {

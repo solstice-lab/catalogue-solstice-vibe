@@ -1,6 +1,13 @@
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { ErreurFichier, LIGNES_MAX, lireFichier, OCTETS_MAX } from "../src/briques/import-lot/lecture";
+import {
+  ErreurFichier,
+  LIGNES_MAX,
+  lireFichier,
+  OCTETS_DECOMPRESSES_MAX,
+  OCTETS_MAX,
+} from "../src/briques/import-lot/lecture";
 
 async function classeur(remplir: (feuille: ExcelJS.Worksheet) => void): Promise<Uint8Array> {
   const livre = new ExcelJS.Workbook();
@@ -9,6 +16,34 @@ async function classeur(remplir: (feuille: ExcelJS.Worksheet) => void): Promise<
 }
 
 const octets = (texte: string) => new TextEncoder().encode(texte);
+
+async function classeurValide(): Promise<JSZip> {
+  return JSZip.loadAsync(
+    await classeur((feuille) => {
+      feuille.addRow(["Référence"]);
+      feuille.addRow(["C1"]);
+    })
+  );
+}
+
+// Zéros répétés : ils se compressent à presque rien, comme le XML d'une bombe
+// de décompression réelle.
+const compresser = (archive: JSZip) =>
+  archive.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 1 } });
+
+// Réécrit la taille décompressée annoncée par l'en-tête local et par le
+// répertoire central, pour la seule entrée énorme (> 1 Mo) : un fichier hostile ment sur elle, et jszip ne la
+// compare à la réalité qu'une fois TOUT décompressé.
+function annoncerTaille(archive: Uint8Array, taille: number): Uint8Array {
+  const copie = new Uint8Array(archive);
+  const vue = new DataView(copie.buffer);
+  for (let i = 0; i + 30 < copie.length; i++) {
+    const signature = vue.getUint32(i, true);
+    if (signature === 0x04034b50 && vue.getUint32(i + 22, true) > 1_000_000) vue.setUint32(i + 22, taille, true);
+    if (signature === 0x02014b50 && vue.getUint32(i + 24, true) > 1_000_000) vue.setUint32(i + 24, taille, true);
+  }
+  return copie;
+}
 
 describe("lecture d'un fichier d'import", () => {
   it("lit un xlsx par en-têtes, numéros de ligne du tableur compris (une ligne écartée se retrouve par son numéro)", async () => {
@@ -131,5 +166,38 @@ describe("lecture d'un fichier d'import", () => {
     const lecture = await lireFichier(fichier);
     expect(lecture.entetes).toEqual(["Référence"]);
     expect(lecture.lignes).toEqual([]);
+  });
+
+  describe("bombe de décompression : le plafond de 10 Mo porte sur le fichier compressé, pas sur ce qu'il devient en mémoire", () => {
+    const MESSAGE = /décompress.*découper|découper.*décompress/s;
+
+    it("un classeur qui dépasse la borne une fois décompressé est refusé avant d'être chargé, même s'il pèse peu (audit du 2026-11-09)", async () => {
+      const archive = await classeurValide();
+      archive.file("xl/worksheets/sheet1.xml", new Uint8Array(OCTETS_DECOMPRESSES_MAX + 1));
+      const fichier = await compresser(archive);
+      expect(fichier.length).toBeLessThan(OCTETS_MAX);
+      await expect(lireFichier(fichier)).rejects.toBeInstanceOf(ErreurFichier);
+      await expect(lireFichier(fichier)).rejects.toThrow(MESSAGE);
+    }, 60_000);
+
+    it("une feuille secondaire énorme, que la brique ne lirait jamais, compte aussi : toutes les entrées de l'archive sont chargées", async () => {
+      const archive = await classeurValide();
+      archive.file("xl/worksheets/sheet2.xml", new Uint8Array(OCTETS_DECOMPRESSES_MAX + 1));
+      await expect(lireFichier(await compresser(archive))).rejects.toThrow(MESSAGE);
+    }, 60_000);
+
+    it("la borne tient quand le fichier ment sur sa taille décompressée : c'est le flux réel qui est compté", async () => {
+      const archive = await classeurValide();
+      archive.file("xl/worksheets/sheet2.xml", new Uint8Array(OCTETS_DECOMPRESSES_MAX + 1));
+      const bombe = await compresser(archive);
+      await expect(lireFichier(annoncerTaille(bombe, 1024))).rejects.toThrow(MESSAGE);
+    }, 60_000);
+
+    it("la somme de plusieurs entrées moyennes compte, pas seulement chaque entrée", async () => {
+      const archive = await classeurValide();
+      const quart = new Uint8Array(Math.ceil(OCTETS_DECOMPRESSES_MAX / 4) + 1);
+      for (const nom of ["a", "b", "c", "d"]) archive.file(`xl/media/${nom}.bin`, quart);
+      await expect(lireFichier(await compresser(archive))).rejects.toThrow(MESSAGE);
+    }, 60_000);
   });
 });

@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
  * qu'un module né demain ne passe pas entre les mailles. Modèle :
  * tests/echeances-isolement.test.ts.
  *
- * exceljs n'est permis que dans lecture.ts : changer de bibliothèque (ou
+ * exceljs et jszip ne sont permis que dans lecture.ts : changer de bibliothèque (ou
  * lire le .xls un jour) ne doit toucher qu'un fichier.
  *
  * La brique fournit ses écrans : React, Next (navigation et
@@ -34,7 +34,7 @@ const IMPORTS_PERMIS = [
 ];
 
 const IMPORTS_PAR_FICHIER: Record<string, RegExp[]> = {
-  "lecture.ts": [/^exceljs$/],
+  "lecture.ts": [/^exceljs$/, /^jszip$/],
 };
 
 function importsHorsSocle(source: string, nomFichier = ""): string[] {
@@ -56,7 +56,7 @@ function fichiersDe(dossier: string): string[] {
 }
 
 describe("isolement de la brique import-lot", () => {
-  it("n'importe que la brique données (client de base, plus grand INTEGER, clé de rapprochement, règle de fusion), le kit, les formats, React et Next, et exceljs dans lecture.ts : rien de src/app/ ni d'aucun module, ni des droits", () => {
+  it("n'importe que la brique données (client de base, plus grand INTEGER, clé de rapprochement, règle de fusion), le kit, les formats, React et Next, et exceljs et jszip dans lecture.ts : rien de src/app/ ni d'aucun module, ni des droits", () => {
     const fichiers = fichiersDe(DOSSIER_BRIQUE);
     // Sans fichier, le verrou passerait sans rien vérifier.
     expect(fichiers.length).toBeGreaterThan(0);
@@ -72,7 +72,7 @@ describe("isolement de la brique import-lot", () => {
     expect(importsHorsSocle(`import { Pool } from "pg";`, "lot.ts")).toEqual(["pg"]);
   });
 
-  it("attrape un import fautif, sur une ou plusieurs lignes, type seul ou dynamique, les droits de l'appli, et exceljs hors de lecture.ts", () => {
+  it("attrape un import fautif, sur une ou plusieurs lignes, type seul ou dynamique, les droits de l'appli, et exceljs ou jszip hors de lecture.ts", () => {
     const source = [
       `import { cheminContrat } from "@/lib/slug";`,
       `import type { Contrat } from "../../app/contrats/ListeContrats";`,
@@ -85,6 +85,7 @@ describe("isolement de la brique import-lot", () => {
       `import { cookies } from "next/headers";`,
       `export { x } from "../voisine";`,
       `import ExcelJS from "exceljs";`,
+      `import JSZip from "jszip";`,
       `import { query } from "@/lib/db/client";`,
       `import { Tableau } from "@/ui";`,
       `import { lireDate } from "./dates";`,
@@ -99,7 +100,9 @@ describe("isolement de la brique import-lot", () => {
       "next/headers",
       "../voisine",
       "exceljs",
+      "jszip",
     ]);
     expect(importsHorsSocle(`import ExcelJS from "exceljs";`, "lecture.ts")).toEqual([]);
+    expect(importsHorsSocle(`import JSZip from "jszip";`, "lecture.ts")).toEqual([]);
   });
 });
