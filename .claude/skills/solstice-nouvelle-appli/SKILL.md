@@ -134,7 +134,7 @@ commit de la branche du premier ticket. Contenu :
   qui ne publie que son hébergeur, avec la confirmation que son identité a été communiquée à
   l'hébergeur), les réponses du bloc « La mise en ligne », et l'hébergeur (nom,
   adresse, téléphone) d'après l'hébergement retenu. Une réponse manquante s'écrit « à
-  demander » et passe aussi aux questions ouvertes (le client, avant la mise en ligne).
+  demander » et passe aussi aux questions ouvertes (le client, avant la mise en ligne publique, ou avant le premier utilisateur réel d'une instance de recette).
   Les valeurs se recopient dans `src/lib/mentions-legales.ts` (`statutEditeur`, valeur
   `"professionnel"` ou `"particulier"`, et `identiteCommuniqueeALHebergeur` pour un particulier ; avec la brique
   `deploiement`, l'assembleur y a déjà écrit le nom de l'hébergeur : adresse et

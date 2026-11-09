@@ -485,7 +485,7 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
 
    Sans `--source`, le dépôt naît vide et non relié au dossier (essai du 2026-10-21, vu
    seulement au ticket suivant). Annoncer dans le même message, sous le même oui, les
-   réglages de l'étape 6 (fusion en squash seulement ; avec `deploiement`, l'environnement
+   réglages du point 6 (fusion en squash seulement ; avec `deploiement`, l'environnement
    `production`, son relecteur et la commande). Attendre le oui ; une réponse qui change l'un
    des quatre éléments appelle une nouvelle annonce.
 5. **Vérifier**, une fois la commande passée :
@@ -522,10 +522,14 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
      par GitHub au premier passage du job `deployer`, sans relecteur, donc sans barrière.
      Le relecteur est la personne qui pilote ou le client, à faire dire au cadrage : le client
      doit avoir accès au dépôt, et son identifiant numérique se lit par `gh api users/<login> --jq .id`
-     (la commande suivante pose la personne connectée à `gh`). **Seulement si l'étape 3 a établi que
-     la barrière est possible** : sur un dépôt privé du forfait gratuit, ne pas la lancer, la
-     barrière manque (dit au client à l'étape 3, et dans le message de l'étape 5.3), et le
-     déploiement part à la fusion.
+     (la commande suivante pose la personne connectée à `gh` ; pour nommer le client,
+     remplacer `$moi` par cet identifiant). **Si l'étape 3 a établi que la barrière est
+     impossible** (dépôt privé du forfait gratuit) : ne pas poser de relecteur, qui serait
+     refusé ou sans effet. `ci.yml` déclare quand même l'environnement : il faut donc le créer
+     sans relecteur (`gh api --method PUT repos/<proprietaire>/<nom>/environments/production`)
+     pour y ranger le secret ; si GitHub le refuse, le rapporter tel quel et ranger le secret au
+     niveau du dépôt, que le job lit aussi. La barrière manque : le dire au client à l'étape 3
+     et dans le message de l'étape 5.3, et le déploiement part à la fusion.
 
      ```powershell
      $moi = gh api user --jq .id
@@ -552,8 +556,8 @@ conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe
 Claude remet un message court : où est le dossier, le commit de référence, les briques
 gardées et retirées, l'URL du dépôt distant et sa visibilité (avec, si le dépôt est privé sans
 protection de `main` ou, avec `deploiement`, sans barrière de `production`, la phrase qui le
-dit : le choix de l'étape 5.2 n'est pas à retrouver dans la conversation ; et ce que l'étape 6
-a réglé, fusion en squash et environnement `production`, avec son relecteur), puis la liste suivante ; une fois l'appli lancée, les tickets de la section 9 se créent à l'étape 6. Les
+dit : le choix de l'étape 5.2 n'est pas à retrouver dans la conversation ; et ce que le
+point 6 de 5.2 a réglé, fusion en squash et environnement `production`, avec son relecteur), puis la liste suivante ; une fois l'appli lancée, les tickets de la section 9 se créent à l'étape 6. Les
 commandes sont **une par bloc**, chacune suivie de sa vérification et de ce qu'elle doit
 afficher, dans le shell du poste de la personne : **PowerShell** sous Windows (ci-dessous),
 **bash ou zsh** sous macOS et Linux (leurs équivalents en 5.4). Claude demande le système

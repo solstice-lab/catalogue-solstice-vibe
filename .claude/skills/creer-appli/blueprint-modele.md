@@ -273,7 +273,7 @@ la description, puis :
    ### 9.1 Socle prêt pour la prod
 
    Vérifier ce que l'assembleur a écrit de l'en-tête, régler `src/lib/format.ts`, retirer
-   `"demo"` de `METHODES`. Première PR fusionnée : la mise en ligne (9.3) en dépend.
+   `"demo"` de `METHODES` (avec la brique `comptes`). Première PR fusionnée : la mise en ligne (9.3) en dépend.
 
    Vérifiable à l'écran : le titre de l'onglet porte le nom affiché de l'appli, et `/connexion`
    ne propose plus la démo.
@@ -288,7 +288,7 @@ la description, puis :
 
    ### 9.3 Mise en ligne
 
-   Les gestes du README de la brique déploiement (Blueprint Render, variables, secret).
+   Avec la brique `deploiement` : les gestes de son README (Blueprint Render, variables, secret).
 
    Vérifiable à l'écran : `<adresse>/sante` renvoie le commit fusionné et la base `ok`.
    Bloqué par : 9.1

@@ -806,8 +806,9 @@ function personnesParReseauDeLEntete(markdown) {
  *     Refusé pour toute entrée : ce rôle ne s'attribue jamais en masse ;
  *   - un rôle absent de l'appli, ou une méthode inconnue, qui casseraient le
  *     typecheck de l'appli au lieu d'un refus clair ici.
- * `demo` reste dans METHODES, en local : elle refuse de démarrer en production,
- * et son retrait fait partie des gestes de la mise en ligne.
+ * `demo` reste dans METHODES : elle refuse de démarrer en production, et son
+ * retrait (aussi du poste) est la première PR de la section 9, dont dépend la
+ * mise en ligne.
  */
 function entreeDeLEntete(markdown, { unites, racine, profil }) {
   const entree = champDeLEntete(markdown, "entree");

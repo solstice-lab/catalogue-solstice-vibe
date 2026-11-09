@@ -16,7 +16,7 @@ avant celles de `--briques`, puis `appli`, `nom_affiche`,
 `description` et `site` (`public` ou `ferme`, sinon il refuse) et les écrit dans l'appli ; avec
 la brique `comptes`, il lit aussi `entree` (`ouverte` ou `ferme`), `role_par_defaut` (jamais un
 rôle d'administration), `methodes` et `personnes_par_reseau` (un entier d'au moins 1), écrits dans `src/config/comptes.ts` et
-`src/config/acces.ts`, avec `"demo"` gardée en local. Déclarés sans `comptes`, ils sont refusés. Il ne vérifie ni le contenu, ni la cohérence avec la
+`src/config/acces.ts`, avec `"demo"` gardée par l'assembleur, que la première PR de la section 9 retire. Déclarés sans `comptes`, ils sont refusés. Il ne vérifie ni le contenu, ni la cohérence avec la
 liste de la commande. Une blueprint fausse ne se voit donc qu'une fois l'appli assemblée, ou
 des mois plus tard quand quelqu'un s'y fie. Tu es ce contrôle.
 
@@ -94,7 +94,7 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   la section 5 ou la fiche dit autre chose. Avec `espaces` et une entrée fermée, la
   section 5 dit comment une adresse invitée est admise (l'invitation ne crée pas de
   compte) : constat si elle ne le dit pas. Section 9 :
-  le retrait de `"demo"` de `METHODES` avant la mise en ligne y figure.
+  le retrait de `"demo"` de `METHODES` y figure comme première étape, dont dépend l'étape de mise en ligne (« Bloqué par »).
 - **La liste de l'en-tête redit exactement** les briques du profil, puis la valeur de
   `--briques`, plus les briques ajoutées d'office (`rgpd` avec `comptes`) : c'est ce qui
   dit, sans lire le code, ce qui est installé. Le profil redit aussi le corps : une vitrine

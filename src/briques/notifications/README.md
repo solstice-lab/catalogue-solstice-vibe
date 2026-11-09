@@ -298,7 +298,7 @@ réelle remplace les noms ; la forme reste la même.
    décide si c'est le jour d'envoi. Elle échoue si le rapport compte un envoi
    en échec ou sans destinataire : GitHub prévient alors le dépôt. Tant que
    rien n'est armé (variable ou secret absents), elle s'arrête sans échouer :
-   le catalogue, ou une appli pas encore hébergée, n'a rien à envoyer. Elle
+   le catalogue, ou une appli pas encore hébergée, n'a rien à envoyer (la tâche pose alors, chaque jour, l'annotation « rien n'est armé » : ce n'est pas une erreur, mais une appli en ligne qui la porte n'envoie rien). Elle
    n'affiche que la réponse du mode réel, qui ne contient aucune adresse.
 
    ```yaml
@@ -361,7 +361,7 @@ réelle remplace les noms ; la forme reste la même.
 
    | | Où | Rôle | Sur une recette |
    | --- | --- | --- | --- |
-   | Celle du service | Variable d'environnement chez l'hébergeur (`render.yaml`, `sync: false`) | L'adresse publique de l'appli : elle ouvre le site aux moteurs (`src/lib/referencement.ts`) et sert de base aux liens des courriels. | **Vide** (brique déploiement, geste 3) : une recette reste fermée aux moteurs. |
+   | Celle du service | Variable d'environnement chez l'hébergeur (`render.yaml`, `sync: false`) | L'adresse publique de l'appli : elle ouvre aux moteurs un site déclaré public (`src/lib/referencement.ts`) et sert de base aux liens des courriels. | **Vide** (brique déploiement, geste 3) : une recette reste fermée aux moteurs. |
    | Celle de la tâche | Variable de dépôt GitHub (*Settings → Secrets and variables → Actions → Variables*) | L'adresse que la tâche appelle. **Obligatoire pour que la tâche envoie**. | **Posée**, à l'adresse du service de recette : c'est elle qui arme la tâche, sans rien ouvrir aux moteurs. |
 
    Sans la variable de dépôt, la tâche **se tait sans échouer** : l'exécution
