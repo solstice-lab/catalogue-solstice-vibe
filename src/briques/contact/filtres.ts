@@ -71,6 +71,16 @@ export async function reserverUnEnvoi(empreinte: string | null): Promise<boolean
     );
     if (!compte || compte.total >= PLAFOND_GLOBAL) return false;
     if (empreinte !== null && compte.adresse >= LIMITE_PAR_IP) return false;
+    // Quand le message qui remplit le plafond passe, sans donnée personnelle :
+    // quelques adresses, ou une production sans adresse lisible, le saturaient
+    // sans que rien ne le dise (audit du 2026-11-09). Les refusés n'écrivent
+    // rien, un journal à chacun grossirait sans fin ; sous un plafond tenu
+    // plein, chaque place reprise le redit, au plus PLAFOND_GLOBAL fois par heure.
+    if (compte.total + 1 === PLAFOND_GLOBAL) {
+      console.warn(
+        `Brique contact : le plafond de ${PLAFOND_GLOBAL} messages par heure, toutes adresses confondues, est atteint. Jusqu'à ce qu'une place se libère, le formulaire répond « Réessayez dans une heure » et aucun message ne part. Si ce sont de vrais visiteurs, relever PLAFOND_GLOBAL (src/briques/contact/filtres.ts).`
+      );
+    }
     await client.query(`INSERT INTO contact_envois (empreinte) VALUES ($1)`, [empreinte ?? SANS_ADRESSE]);
     return true;
   });

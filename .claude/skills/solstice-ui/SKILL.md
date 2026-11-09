@@ -191,5 +191,6 @@ Puis mapper vers les tokens :
 - La sémantique des états ne se détourne jamais vers l'identité : une erreur
   reste rouge, un succès reste vert.
 - Vérifier le rendu sur la page vitrine (`/kit`) après thématisation — c'est son
-  rôle —, et sur `/kit/site-vitrine` pour un site public. Ne pas lancer de navigateur pour autant : `npm run build` puis
+  rôle —, et sur `/kit/site-vitrine` pour un site public, servis par `npm run dev` : en production (`next start`,
+  en ligne comme en local), la vitrine répond 404. Ne pas lancer de navigateur pour autant : `npm run build` puis
   vérification par la personne qui pilote le projet.

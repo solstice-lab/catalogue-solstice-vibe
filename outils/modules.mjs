@@ -86,11 +86,12 @@ export const EXCLUS_DU_CATALOGUE = [
   // La licence et les fichiers de communauté du dépôt public : le client
   // reçoit une livraison sous son contrat, pas la MIT du catalogue (le texte
   // de celle-ci part dans le NOTICE que l'assembleur écrit, comme son avis
-  // l'exige), et CONTRIBUTING.md décrit le circuit du catalogue, pas celui de
-  // son appli.
+  // l'exige), CONTRIBUTING.md décrit le circuit du catalogue, pas celui de
+  // son appli, et CODE_OF_CONDUCT.md renvoie aux mainteneurs du catalogue.
   "LICENSE",
   "CONTRIBUTING.md",
   "SECURITY.md",
+  "CODE_OF_CONDUCT.md",
   ".github/ISSUE_TEMPLATE/",
   ".github/pull_request_template.md",
   // Réservé aux captures d'écran du README du catalogue (absent de l'appli :
@@ -132,7 +133,12 @@ export const BRIQUES = {
   },
   calendrier: {
     exige: ["donnees"],
-    fichiers: ["src/briques/calendrier/", "tests/calendrier-calcul.test.ts", "tests/calendrier-isolement.test.ts"],
+    fichiers: [
+      "src/briques/calendrier/",
+      "tests/calendrier-calcul.test.ts",
+      "tests/calendrier-isolement.test.ts",
+      "tests/calendrier-requete.test.ts",
+    ],
     retraits: [],
   },
   validation: {
@@ -1005,6 +1011,20 @@ export const VITRINE_DU_KIT = {
       "- Après thématisation, `npm run build`, puis la personne qui pilote le projet vérifie le rendu sur les écrans\n  de l'appli : ne pas lancer de navigateur pour autant."
     ),
     remplace(".claude/skills/solstice-nouvelle-appli/socle.md", "(l'accueil, `/kit`…)", "(l'accueil…)"),
+    // Le 404 de la vitrine en production (brique comptes : sans elle, ces
+    // retraits se sautent) : sans la vitrine, la liste est vide. Sa ligne dans
+    // le README de la brique déploiement part de même (sautée sans la brique).
+    ligne(
+      "src/briques/deploiement/README.md",
+      "| Vitrine du kit en 404 (catalogue hébergé seulement) | `protection.ts` (brique comptes) | Servie à tout cookie bien signé, même d'une session révoquée. |"
+    ),
+    remplace(
+      "src/briques/comptes/protection.ts",
+      'readonly string[] = [\n  // La vitrine du kit et sa page de site vitrine.\n  "/kit",\n];',
+      "readonly string[] = [];"
+    ),
+    bloc("tests/comptes-proxy.test.ts", "  // Audit du 2026-11-09 : la vitrine du kit n'a pas de garde", FIN_IT),
+    bloc("tests/comptes-proxy.test.ts", '  it("sert la vitrine du kit hors production', FIN_IT),
   ],
 };
 
@@ -1102,6 +1122,17 @@ export const DONNEES = {
       "vitest.config.ts",
       "    // Fichiers en parallèle, une base par worker",
       "    maxWorkers: Math.max(1, Math.min(4, os.availableParallelism() - 1)),"
+    ),
+    // --- Dependabot (avec --dependabot) : pas de compose à surveiller
+    remplace(
+      ".github/dependabot.yml",
+      "CI, des\n# dépendances npm et de l'image Postgres du compose (brique données).",
+      "CI et des\n# dépendances npm."
+    ),
+    bloc(
+      ".github/dependabot.yml",
+      "  # L'image Postgres du poste, épinglée par digest",
+      '        update-types: ["version-update:semver-major"]'
     ),
     // --- CI : ni Postgres ni variables de base
     bloc(".github/workflows/ci.yml", "      - name: Démarrer Postgres", "          IMAGE: postgres:"),
