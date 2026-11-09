@@ -52,11 +52,10 @@ ne connaît pas la brique échéances : le lien entre les deux se fait côté ap
   mal tapée, refusée plutôt qu'envoyée pour de vrai.
 
   **Ce que le mode essai expose.** Il envoie vers une adresse d'essai, pas vers
-  des adresses inventées : les destinataires prévus sont les vrais. Le mail
-  d'essai cite le vrai destinataire (« ce message serait parti à … »), et le
-  rapport que renvoie la route, en essai comme à blanc, liste une ligne par
-  notification avec cette adresse réelle (seul le mode réel n'en renvoie
-  aucune). Trois conséquences :
+  des adresses inventées : les destinataires prévus sont les vrais. Outre la
+  ligne qui les nomme dans le mail d'essai, le rapport que renvoie la route, en
+  essai comme à blanc, liste une ligne par notification avec cette adresse
+  réelle (seul le mode réel n'en renvoie aucune). Trois conséquences :
   - **à qui donner l'adresse d'essai** : une adresse de l'équipe qui répète,
     jamais celle d'un tiers, car qui la lit voit les adresses réelles des
     responsables d'un vrai récapitulatif ;
