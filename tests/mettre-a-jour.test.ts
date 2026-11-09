@@ -688,7 +688,9 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
     ecrire(
       catalogue,
       FICHIER_MIGRATIONS,
-      remplacer("// Modèle d'étape : le champ notes", "// Modèle d'étape, commentaire revu : le champ notes")
+      // Pas sur la première ligne du commentaire : l'assembleur part d'elle pour
+      // retirer l'étape du patron d'une appli neuve (PATRON_DONNEES).
+      remplacer("// la table dossiers — il naît donc ici", "// la table dossiers, commentaire revu — il naît donc ici")
     );
     ecrire(
       catalogue,

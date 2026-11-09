@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-// Par son espace de noms : une appli assemblée perd des cas de ce fichier (ceux
-// du patron dossiers, ceux de la brique import-lot), et un import nommé resté
+// Par son espace de noms : une appli assemblée perd des cas de ce fichier (celui
+// du patron des modules métier, ceux de la brique import-lot), et un import nommé resté
 // sans usage y faisait avertir le lint.
 import * as client from "../src/lib/db/client";
 

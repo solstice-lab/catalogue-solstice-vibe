@@ -2861,7 +2861,7 @@ describe("brique données, gardée d'office", () => {
         continue;
       expect(existeAssemble(avecBase.dossier, chemin), chemin).toBe(true);
     }
-    expect(avecBase.retires.join(", ")).not.toContain("donnees");
+    expect(avecBase.retires).not.toContain("brique donnees");
   });
 
   // src/app/page.tsx n'en est plus : sans la brique espaces, l'assembleur en retire
