@@ -93,6 +93,16 @@ describe("ci.yml : le job deployer, cœur neutre de la brique", () => {
     );
   });
 
+  // Sans environnement GitHub, aucun relecteur obligatoire ne peut s'interposer :
+  // chaque push de main mettait en ligne sans qu'un humain ait rien validé
+  // (audit du 2026-11-09). Le job lit le secret de déploiement : l'environnement
+  // est aussi l'endroit où il a vocation à vivre.
+  it("déclare l'environnement production, la barrière humaine avant la mise en ligne", () => {
+    // Au niveau du job, avant ses étapes : une étape n'a pas d'environnement.
+    const entete = job.slice(0, job.indexOf("\n    steps:"));
+    expect(entete).toMatch(/^ {4}environment: production$/m);
+  });
+
   it("ne lance jamais deux déploiements à la fois ni n'en annule un en cours", () => {
     expect(job).toMatch(/group: deploiement/);
     expect(job).toMatch(/cancel-in-progress: false/);
