@@ -20,8 +20,17 @@ briques, `--briques` ajoute les autres (tableau de `SKILL.md`, étape 2).
   toute autre brique est refusée.
 - **`outil-interne`** : `comptes` et `mails`, donc la base et `rgpd` d'office. Le module
   métier s'écrit dans l'appli sur le patron `dossiers`, avec les briques qu'il appelle.
-- **`portail`** : l'outil interne avec `gestion-comptes`, pour des personnes extérieures
-  qu'un admin invite. `espaces` en plus si le besoin est des groupes.
+  Les personnes s'ajoutent par la configuration (`src/config/comptes.ts` : un domaine ou
+  une liste d'adresses fixés là, changés par un développeur et déployés) : un bureau au
+  domaine unique, une équipe à liste fixe.
+- **`portail`** : l'outil interne avec `gestion-comptes`, pour une appli dont un admin
+  ajoute et retire lui-même les personnes sur `/comptes`, sans déploiement : des
+  personnes extérieures qu'il invite, ou une **association ou un club sans domaine
+  commun**, dont les membres sont de l'organisation mais changent en cours d'année.
+  `espaces` en plus si le besoin est des groupes.
+- **Le critère de choix** est qui ajoute et retire les personnes (la configuration, ou un
+  admin à l'écran), pas d'où elles viennent : le cas d'origine (une association, 2026-11-06)
+  est dans `SKILL.md`, étape 1.
 
 ## Le catalogue : un socle et des briques
 

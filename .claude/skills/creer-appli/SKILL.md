@@ -54,10 +54,19 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
 - **Le profil de départ : vitrine, outil interne ou portail ?** À poser juste après le
   bloc « Le besoin », avant toute brique. Le besoin a-t-il des données à garder (fiches,
   saisies, imports) ? Des personnes qui se connectent ? Si c'est non aux deux,
-  recommander la **vitrine**, c'est-à-dire le socle sans base (étape 2). Sinon, les
-  personnes qui se connectent sont-elles toutes de l'organisation du client (**outil
-  interne**), ou aussi des personnes extérieures qu'un admin invite (**portail**) ? Le
-  profil retenu se note dans `profil:` de l'en-tête de la blueprint. Avec la vitrine :
+  recommander la **vitrine**, c'est-à-dire le socle sans base (étape 2). Sinon, **qui ajoute et
+  retire les personnes** : la configuration (une liste d'adresses ou un domaine fixés dans
+  `src/config/comptes.ts`, changés par un développeur puis déployés : **outil interne**), ou
+  un admin à l'écran (`/comptes`, sans déploiement : **portail**) ? Ne pas demander « de
+  l'organisation ou extérieures ? » : le critère est la personne qui ouvre l'accès, pas
+  d'où viennent les gens. Un outil ouvert à toute adresse (`ouverte`) n'a personne à
+  ajouter : la question ne se pose pas. Une association ou un club n'a pas de domaine commun : chaque
+  adhésion, chaque départ serait une retouche de la configuration et un déploiement, donc
+  **portail**, même si tous les membres sont de l'organisation (cadrage d'une association,
+  2026-11-06 : `portail` n'a été retenu que parce que la session a vu le piège, la question
+  d'alors menait à `outil-interne`). Un bureau au domaine unique, ou une équipe à liste
+  fixe, reste un **outil interne**. Le profil retenu se note dans `profil:` de l'en-tête de
+  la blueprint. Avec la vitrine :
   - Le client obtient : des pages dont le contenu est écrit dans le code, le kit, les
     mentions légales, la politique de confidentialité, `/sante` et la CSP du socle.
   - Il n'obtient pas : de base, de connexion ni de saisie gardée en base. Un formulaire
@@ -206,8 +215,8 @@ leur couche données) s'écrit ensuite dans l'appli, par tickets, en copiant le 
 | Profil | Briques gardées | À proposer en plus, si le besoin les demande |
 | --- | --- | --- |
 | `vitrine` | aucune : le socle seul, sans base ni connexion | `mails`, `contact` (avec `mails`), `deploiement` ; **aucune autre** : l'assembleur refuse toute autre brique (`comptes`, une brique qui garde des fiches), qui n'en ferait plus une vitrine |
-| `outil-interne` | `comptes`, `mails`, donc la base et `rgpd` d'office | les briques que le module métier appellera, entité par entité (étape 1, dernière question) ; le module s'écrit ensuite sur le patron `dossiers` |
-| `portail` | l'outil interne, plus `gestion-comptes` (l'admin invite et gère les comptes sur `/comptes`) | `espaces` si le besoin est des groupes (une coloc, une association) qui ne voient que leurs fiches ; puis, comme l'outil interne, les briques du module métier |
+| `outil-interne` | `comptes`, `mails`, donc la base et `rgpd` d'office. Les personnes s'ajoutent par la configuration (un domaine ou une liste d'adresses, changés par un développeur) | les briques que le module métier appellera, entité par entité (étape 1, dernière question) ; le module s'écrit ensuite sur le patron `dossiers` |
+| `portail` | l'outil interne, plus `gestion-comptes` (l'admin invite et gère les comptes sur `/comptes`, sans déploiement) : personnes extérieures à inviter, ou **association ou club sans domaine commun**, dont les adhésions changent en cours d'année | `espaces` si le besoin est des groupes (une coloc, une association) qui ne voient que leurs fiches ; puis, comme l'outil interne, les briques du module métier |
 
 Le profil va dans `profil:` de l'en-tête, les briques en plus dans `--briques` (étape 4).
 Un besoin qu'aucun profil ne décrit s'assemble sans `profil:`, par `--briques` seul.

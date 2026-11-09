@@ -98,8 +98,10 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
 - **La liste de l'en-tête redit exactement** les briques du profil, puis la valeur de
   `--briques`, plus les briques ajoutées d'office (`rgpd` avec `comptes`) : c'est ce qui
   dit, sans lire le code, ce qui est installé. Le profil redit aussi le corps : une vitrine
-  dont le corps décrit des connexions, un outil interne ouvert à des personnes extérieures
-  qu'un admin invite (c'est le `portail`), un portail sans personne extérieure : constat.
+  dont le corps décrit des connexions : constat. Le profil se juge sur qui ajoute et
+  retire les personnes : un `outil-interne` dont le corps veut que les membres changent
+  sans déploiement (association, personnes invitées : c'est le `portail`), un `portail`
+  dont le corps veut que la configuration seule règle les accès : constat.
 - `commit_reference` : « à renseigner » ou un commit réel (`git cat-file -e`). Un commit
   inventé est un constat : l'assembleur écrit le sien. **(client)**
 - **(client)** L'emplacement du fichier : dans le dépôt catalogue, il serait un fichier non

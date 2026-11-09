@@ -371,7 +371,7 @@ catalogue qui a des modifications non commitées, sauf avec
   l'en-tête de la blueprint en donne les briques, auxquelles `--briques` ajoute.
   `vitrine` : le socle seul, `mails`, `contact` et `deploiement` au plus (une autre
   brique est refusée) ; `outil-interne` : `comptes` et `mails`, donc la base, et
-  `rgpd` d'office ; `portail`, ouvert à des personnes extérieures : le même, avec
+  `rgpd` d'office ; `portail`, où un admin ajoute et retire les personnes à l'écran : le même, avec
   `gestion-comptes`. Le manifeste note les briques, pas le profil.
 
   ```
