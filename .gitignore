@@ -48,7 +48,8 @@ exports/
 *.pptx
 
 # Exceptions : ce que le dépôt doit suivre malgré les règles ci-dessus. Un
-# nouvel exemple fictif va dans scripts/exemples/, pas ailleurs ; un
-# fichier .sql ou document à suivre s'ajoute ici, sinon git l'ignore sans bruit.
+# nouvel exemple fictif va dans scripts/exemples/ (dossier à créer au premier
+# exemple), pas ailleurs ; un fichier .sql ou document à suivre s'ajoute ici,
+# sinon git l'ignore sans bruit.
 !src/lib/db/schema.sql
 !scripts/exemples/**

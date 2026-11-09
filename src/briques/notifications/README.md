@@ -158,6 +158,10 @@ de la brique ou à ses tests, et peut changer sans entrée au journal.
 Le mode se choisit dans le corps JSON de la requête : corps vide pour le mode
 réel, `{ "mode": "a-blanc" }`, ou `{ "mode": "essai", "a": "adresse@exemple.fr" }`.
 
+**Interne** : `CONSERVATION_MOIS_PAR_DEFAUT` (la conservation que `envoi.ts` applique
+sans `conservationMois`) et les types des paramètres et du retour décrits ci-dessus :
+`Mode`, `OptionsEnvoi`, `Resultat`, `OptionsRoute`.
+
 **Règle d'entretien.** Tout changement d'interface publique (symbole ajouté,
 retiré ou renommé, signature modifiée, option ou variable ajoutées) met à jour
 cette section et ajoute une entrée **en fin** de [`CHANGELOG.md`](CHANGELOG.md),
