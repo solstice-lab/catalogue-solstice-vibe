@@ -174,3 +174,57 @@ describe("ci.yml : rien de refait à l'identique d'un passage à l'autre (5 minu
     ).toBe(false);
   });
 });
+
+/*
+ * Le cas d'origine (audit du 2026-11-09) : `allowScripts` de package.json
+ * (esbuild et unrs-resolver refusés) n'est lu que par npm 11.16 ou plus. Avec
+ * un npm plus ancien, `engines` n'est qu'un avertissement et les scripts
+ * d'installation de ces deux paquets tournent sans un mot. Deux verrous :
+ * `engine-strict` dans .npmrc (poste et CI), et une étape qui échoue sur un npm
+ * trop ancien avant tout `npm ci`.
+ */
+const NPMRC = fs.readFileSync(path.join(process.cwd(), ".npmrc"), "utf-8").replace(/\r\n/g, "\n");
+
+// Les étapes de chaque job qui lance `npm ci`, chacune de son tiret à la suivante.
+function etapesDesJobsAvecNpmCi(workflow: string): string[][] {
+  const jobs = workflow.slice(workflow.indexOf("\njobs:") + 1).split(/\n(?= {2}\S)/);
+  return jobs
+    .map((bloc) => bloc.split(/\n(?= {6}- )/))
+    .filter((liste) => liste.some((etape) => /^ {8}run: npm ci$/m.test(etape)));
+}
+
+// Avant le premier npm ci de chaque job : une étape qui lit `npm --version` et
+// compare à 11.16, et qui sort en erreur.
+function refuseUnNpmTropAncienAvantNpmCi(workflow: string): boolean {
+  const jobs = etapesDesJobsAvecNpmCi(workflow);
+  return (
+    jobs.length > 0 &&
+    jobs.every((liste) => {
+      const rangNpmCi = liste.findIndex((etape) => /^ {8}run: npm ci$/m.test(etape));
+      const rangVersion = liste.findIndex((etape) => /npm --version/.test(etape) && /11\.16/.test(etape));
+      return rangVersion !== -1 && rangVersion < rangNpmCi && /exit 1/.test(liste[rangVersion]);
+    })
+  );
+}
+
+describe("npm 11.16 ou plus, seul à lire allowScripts : un npm plus ancien lancerait en silence les scripts d'installation refusés", () => {
+  it("ne laisse npm installer qu'avec engine-strict, au poste comme en CI : engines devient un refus et non un avertissement", () => {
+    expect(NPMRC).toMatch(/^engine-strict=true$/m);
+    expect(JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf-8")).engines.npm).toBe(">=11.16");
+  });
+
+  it("échoue sur un npm de moins de 11.16, par une étape placée avant tout npm ci de ci.yml", () => {
+    expect(refuseUnNpmTropAncienAvantNpmCi(CI)).toBe(true);
+    // Cas fautifs : pas d'étape ; un npm ci avant elle ; elle ne sort pas en erreur.
+    expect(refuseUnNpmTropAncienAvantNpmCi(CI.replace(/ {6}- name: Version de npm\n(?: {8}.*\n)+/, ""))).toBe(false);
+    expect(
+      refuseUnNpmTropAncienAvantNpmCi(
+        CI.replace(
+          "      - name: Version de npm\n",
+          "      - name: Trop tôt\n        run: npm ci\n      - name: Version de npm\n"
+        )
+      )
+    ).toBe(false);
+    expect(refuseUnNpmTropAncienAvantNpmCi(CI.replace(/exit 1/g, "exit 0"))).toBe(false);
+  });
+});

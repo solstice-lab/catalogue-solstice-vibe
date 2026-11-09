@@ -11,6 +11,7 @@ import {
   examiner,
   lireLesEtapes,
   mettreAJour,
+  origineRejouee,
   rapport,
   tablesSansEspaceId,
 } from "../outils/mettre-a-jour.mjs";
@@ -135,6 +136,8 @@ const REGLAGES_DE_L_APPLI = {
 beforeAll(() => {
   catalogue = copierLeCatalogue();
   commitA = git(catalogue, "rev-parse", "--short", "HEAD");
+  // Le catalogue d'essai est publié à A : l'outil ne rejoue qu'un commit d'origin/main.
+  git(catalogue, "update-ref", "refs/remotes/origin/main", "HEAD");
   lierNodeModules(catalogue);
   appli = path.join(dossierTemporaire("appli-"), "essai-coloc");
   assembler({
@@ -414,6 +417,58 @@ describe("mettre-a-jour, examen : refus en clair, avant tout rejeu", () => {
       })
     );
     expect(() => examiner({ catalogue, appli: dossier })).toThrow(/absent du catalogue.*git fetch origin/s);
+  });
+
+  /*
+   * Le cas d'origine (audit du 2026-11-09) : le commit du manifeste est rejoué,
+   * son modules.mjs et son assembler.mjs importés, son verrou installé par npm ci.
+   * Un manifeste retouché, ou une PR de fork fetchée dans le catalogue, y ferait
+   * exécuter du code que personne n'a relu. Seul un ancêtre d'origin/main l'a été.
+   */
+  describe("le commit du manifeste est exécuté : il doit être sur origin/main", () => {
+    // Un commit d'une branche locale du catalogue, hors main, le temps de `action`.
+    function avecUnCommitHorsDeMain(action: (court: string, complet: string) => void) {
+      const complet = git(catalogue, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "branche hors de main");
+      git(catalogue, "branch", "-q", "hors-de-main", complet);
+      try {
+        action(git(catalogue, "rev-parse", "--short", complet), complet);
+      } finally {
+        git(catalogue, "branch", "-q", "-D", "hors-de-main");
+      }
+    }
+
+    const appliAuCommit = (court: string, complet: string) =>
+      appliRetouchee((d) =>
+        reecrireLeManifeste(d, (manifeste) => {
+          manifeste.catalogue.commit = court;
+          manifeste.catalogue.commitComplet = complet;
+        })
+      );
+
+    const MESSAGE = /n'est pas sur origin\/main du catalogue.*sera exécuté.*manifeste de l'appli/s;
+
+    it("refuse un manifeste qui pointe un commit d'une branche locale hors main, en disant pourquoi et quoi faire", () => {
+      avecUnCommitHorsDeMain((court, complet) => {
+        const dossier = appliAuCommit(court, complet);
+        expect(refusDe(() => examiner({ catalogue, appli: dossier })).message).toMatch(MESSAGE);
+        expect(refusDe(() => origineRejouee({ catalogue, appli: dossier })).message).toMatch(MESSAGE);
+        publier(dossier);
+        expect(refusDe(() => mettreAJour({ catalogue, appli: dossier, branche: BRANCHE })).message).toMatch(MESSAGE);
+        expect(
+          refusDe(() => mettreAJour({ catalogue, appli: dossier, ajouter: ["journal"], aBlanc: true })).message
+        ).toMatch(MESSAGE);
+      });
+    });
+
+    it("refuse de rejouer un catalogue sans origin/main : l'ascendance ne se vérifie pas", () => {
+      const main = git(catalogue, "rev-parse", "refs/remotes/origin/main");
+      git(catalogue, "update-ref", "-d", "refs/remotes/origin/main");
+      try {
+        expect(refusDe(() => examiner({ catalogue, appli })).message).toMatch(/origin\/main.*git fetch origin/s);
+      } finally {
+        git(catalogue, "update-ref", "refs/remotes/origin/main", main);
+      }
+    });
   });
 
   it("refuse, au format 1, une unité qui n'est pas une brique au commit du manifeste", { timeout: REJEU }, () => {
@@ -2098,26 +2153,6 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
             .filter((ligne) => ligne !== "" && !ligne.startsWith("## "))
         ).toHaveLength(1);
         expect(retard).not.toContain("--vers");
-      }
-    );
-
-    it(
-      "sans origin/main au catalogue, le retard n'est pas calculé : l'ajout se fait, et le rapport le dit en une ligne",
-      { timeout: REJEU },
-      () => {
-        const publiee = appliRetouchee(() => {});
-        publier(publiee);
-        const main = git(catalogue, "rev-parse", "refs/remotes/origin/main");
-        git(catalogue, "update-ref", "-d", "refs/remotes/origin/main");
-        try {
-          const resultat = mettreAJour({ catalogue, appli: publiee, ajouter: ["journal"], aBlanc: true });
-          expect(resultat.retard).toMatchObject({ indisponible: expect.stringMatching(/origin\/main/) });
-          expect(rubriqueDe(rapport(resultat), "Retard sur le catalogue")).toMatch(
-            /retard n'est pas calculé[^\n]*git fetch origin/
-          );
-        } finally {
-          git(catalogue, "update-ref", "refs/remotes/origin/main", main);
-        }
       }
     );
   });

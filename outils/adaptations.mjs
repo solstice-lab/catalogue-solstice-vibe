@@ -371,7 +371,9 @@ Lit le HEAD de l'appli : ce qui n'est pas commité n'est pas lu.
               jour, que l'assembleur retouche) : rejoue l'assemblage noté au
               manifeste dans un worktree temporaire du catalogue, avec Prettier ;
               npm ci, donc le réseau, si le Prettier de ce commit n'est pas celui
-              du catalogue
+              du catalogue ; le commit du manifeste doit être sur origin/main du
+              catalogue (git fetch origin), sinon le rejeu est refusé et dit en
+              avertissement
 
 Lecture seule : rien n'est écrit dans l'appli ; le worktree temporaire est retiré.
 Sans --rejouer, pas de réseau.`;

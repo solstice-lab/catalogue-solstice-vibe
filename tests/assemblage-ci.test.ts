@@ -148,3 +148,45 @@ describe("test de l'assembleur, lancé à part (plus de 10 minutes à chaque npm
     expect(abi(bloc)).toBe(abi(CI));
   });
 });
+
+/*
+ * Le même verrou que tests/ci.test.ts, pour les deux jobs d'assemblage.yml qui
+ * lancent npm ci (audit du 2026-11-09) : `allowScripts` de package.json n'est
+ * lu que par npm 11.16 ou plus, et un npm plus ancien lancerait en silence les
+ * scripts d'installation d'esbuild et d'unrs-resolver. ci.test.ts est copié
+ * dans l'appli, qui n'a pas ce workflow : celui-ci reste au catalogue.
+ */
+function refuseUnNpmTropAncienAvantNpmCi(workflow: string): boolean {
+  const jobs = workflow
+    .slice(workflow.indexOf("\njobs:") + 1)
+    .split(/\n(?= {2}\S)/)
+    .map((bloc) => bloc.split(/\n(?= {6}- )/))
+    .filter((liste) => liste.some((etape) => /^ {8}run: npm ci$/m.test(etape)));
+  return (
+    jobs.length === 2 &&
+    jobs.every((liste) => {
+      const rangNpmCi = liste.findIndex((etape) => /^ {8}run: npm ci$/m.test(etape));
+      const rangVersion = liste.findIndex((etape) => /npm --version/.test(etape) && /11\.16/.test(etape));
+      return rangVersion !== -1 && rangVersion < rangNpmCi && /exit 1/.test(liste[rangVersion]);
+    })
+  );
+}
+
+describe("assemblage.yml : un npm de moins de 11.16 échoue avant tout npm ci", () => {
+  it("place l'étape de version avant le premier npm ci de chacun de ses deux jobs", () => {
+    expect(refuseUnNpmTropAncienAvantNpmCi(WORKFLOW)).toBe(true);
+    // Cas fautifs : pas d'étape ; un npm ci avant elle ; elle ne sort pas en erreur.
+    expect(refuseUnNpmTropAncienAvantNpmCi(WORKFLOW.replace(/ {6}- name: Version de npm\n(?: {8}.*\n)+/, ""))).toBe(
+      false
+    );
+    expect(
+      refuseUnNpmTropAncienAvantNpmCi(
+        WORKFLOW.replace(
+          "      - name: Version de npm\n",
+          "      - name: Trop tôt\n        run: npm ci\n      - name: Version de npm\n"
+        )
+      )
+    ).toBe(false);
+    expect(refuseUnNpmTropAncienAvantNpmCi(WORKFLOW.replace(/exit 1/g, "exit 0"))).toBe(false);
+  });
+});

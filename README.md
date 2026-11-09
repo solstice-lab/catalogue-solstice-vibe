@@ -268,8 +268,10 @@ ouverte à la racine du catalogue.
 Il faut Docker, Node 24 ou plus (`.nvmrc`, comme la CI) et npm 11.16 ou plus :
 c'est la première version de npm qui lit `allowScripts` de `package.json` ;
 une version antérieure ignore le champ et lance les scripts d'installation
-qu'il refuse (esbuild, unrs-resolver). `engines` n'en fait qu'un
-avertissement, sauf réglage `engine-strict`. Docker doit tourner (Docker Desktop lancé sous Windows
+qu'il refuse (esbuild, unrs-resolver). Le `.npmrc` de la racine pose
+`engine-strict=true` : sur un npm plus ancien, `npm ci` refuse au lieu de
+avertir (`engines` seul n'est qu'un avertissement), et la CI échoue de même
+avant tout `npm ci`. Docker doit tourner (Docker Desktop lancé sous Windows
 et macOS) : tant que `docker info` échoue, `docker compose up` échoue aussi. `docker-compose.yml` monte un Postgres 18 sur
 `127.0.0.1:5433`, sans mot de passe (`trust`, publié sur le poste seulement),
 partagé par toutes les applis du poste ; ses données vivent dans le volume
@@ -318,7 +320,9 @@ et les modèles de ticket et de PR (liste `EXCLUS_DU_CATALOGUE` de
 Il écrit `blueprint.md` à la racine, avec le commit de référence du catalogue (celui du dépôt au
 moment de la commande) ; `--blueprint` en donne une existante, dont seul le
 commit est mis à jour ; `--nom` fixe le nom du paquet de l'appli, d'où celui
-de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` ;
+de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` (les deux ne prennent qu'un fichier `.md`, sans clé
+privée ni URL de base distante avec mot de passe : une faute de chemin n'envoie pas un secret dans
+le premier commit) ;
 il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et `ADAPTATIONS.md`, vide
 avec son en-tête, où l'appli note chaque retouche d'un fichier venu du catalogue, et remet en forme
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
