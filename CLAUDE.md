@@ -62,7 +62,7 @@ données, **charger la skill `solstice-donnees`**. Les règles courtes :
   en LECTURE SEULE, parité stricte fiche/formulaire (un seul composant de
   formulaire pour /nouveau et /modifier), `exiger(action)` de `briques/comptes/roles.ts`
   en première ligne de chaque page ET server action (droits déclarés dans
-  `src/config/acces.ts`, refus par défaut), slugs par `lib/slug.ts`. Une appli n'a que ses données : lire les écrans au catalogue public.
+  `src/config/acces.ts`, refus par défaut), slugs par `lib/slug.ts`, bornes (la base ne lève jamais à la place d'un message : skill). Une appli n'a que ses données : lire les écrans au catalogue public.
 - **Les tests exigent une base LOCALE jetable** — `vitest.config.ts` refuse
   toute `DATABASE_URL` hors localhost, c'est voulu et ça ne se contourne pas.
   Il refuse aussi une base dont le nom ne finit pas par `_test` ou `_test_<n>`.

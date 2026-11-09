@@ -956,7 +956,8 @@ export const ADRESSE_IP = {
 // avec la base : la retirer d'une appli déjà en ligne serait une étape de
 // migration, et les briques journal, rgpd et les tests d'isolement s'y branchent.
 export const PATRON_DOSSIERS = {
-  fichiers: ["src/app/dossiers/"],
+  // Son test passe par les server actions de ces écrans (bornes, doublon de référence).
+  fichiers: ["src/app/dossiers/", "tests/dossiers-bornes.test.ts"],
   retraits: [
     // Ses droits (src/config/acces.ts) n'ont rien à retirer : acces.ts part
     // avec la brique comptes, et le droit reste la référence des briques à

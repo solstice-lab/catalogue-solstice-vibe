@@ -122,11 +122,3 @@ export function dateHeure(valeur: Date | string): string {
   const heure = instant.toLocaleTimeString(LOCALE, { timeZone: FUSEAU, hour: "2-digit", minute: "2-digit" });
   return `${jour} ${heure}`;
 }
-
-export function dateLongue(valeur: Date | string): string {
-  return enDate(valeur).toLocaleDateString(LOCALE, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
