@@ -1006,7 +1006,12 @@ export const VITRINE_DU_KIT = {
     ),
     remplace(".claude/skills/solstice-nouvelle-appli/socle.md", "(l'accueil, `/kit`…)", "(l'accueil…)"),
     // Le 404 de la vitrine en production (brique comptes : sans elle, ces
-    // retraits se sautent) : sans la vitrine, la liste est vide.
+    // retraits se sautent) : sans la vitrine, la liste est vide. Sa ligne dans
+    // le README de la brique déploiement part de même (sautée sans la brique).
+    ligne(
+      "src/briques/deploiement/README.md",
+      "| Vitrine du kit en 404 (catalogue hébergé seulement) | `protection.ts` (brique comptes) | Servie à tout cookie bien signé, même d'une session révoquée. |"
+    ),
     remplace(
       "src/briques/comptes/protection.ts",
       'readonly string[] = [\n  // La vitrine du kit et sa page de site vitrine.\n  "/kit",\n];',
