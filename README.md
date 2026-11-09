@@ -252,8 +252,10 @@ ouverte à la racine du catalogue.
 Il faut Docker, Node 24 ou plus (`.nvmrc`, comme la CI) et npm 11.16 ou plus :
 c'est la première version de npm qui lit `allowScripts` de `package.json` ;
 une version antérieure ignore le champ et lance les scripts d'installation
-qu'il refuse (esbuild, unrs-resolver). `engines` n'en fait qu'un
-avertissement, sauf réglage `engine-strict`. Docker doit tourner (Docker Desktop lancé sous Windows
+qu'il refuse (esbuild, unrs-resolver). Le `.npmrc` de la racine pose
+`engine-strict=true` : sur un npm plus ancien, `npm ci` refuse au lieu de
+avertir (`engines` seul n'est qu'un avertissement), et la CI échoue de même
+avant tout `npm ci`. Docker doit tourner (Docker Desktop lancé sous Windows
 et macOS) : tant que `docker info` échoue, `docker compose up` échoue aussi. `docker-compose.yml` monte un Postgres 18 sur
 `127.0.0.1:5433`, sans mot de passe (`trust`, publié sur le poste seulement),
 partagé par toutes les applis du poste ; ses données vivent dans le volume

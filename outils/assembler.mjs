@@ -45,6 +45,7 @@ import {
   remplissagesDeLEntree,
   retraitsDuNom,
 } from "./modules.mjs";
+import { urlDeBaseDistante } from "../.claude/hooks/gardes.mjs";
 
 export class ErreurAssemblage extends Error {
   constructor(message) {
@@ -454,30 +455,67 @@ function estVide(dossier) {
   return fs.readdirSync(dossier).length === 0;
 }
 
+/*
+ * --blueprint et --fiche copient un fichier du poste dans le premier commit de
+ * l'appli (blueprint.md, PROJET.md) : une faute de chemin y pousserait n'importe
+ * quel fichier lisible, une clé privée comprise (audit du 2026-11-09). Le nom
+ * finit donc par .md, vérifié AVANT de lire le fichier, et le texte ne porte ni
+ * clé privée ni URL de base distante avec mot de passe (même détecteur que les
+ * gardes de Claude). Le refus ne cite pas le texte trouvé : il serait lui-même
+ * affiché, puis gardé par l'historique du terminal.
+ */
+function verifierUnTexteDeProjet(fichier, option, lire) {
+  if (!/.md$/i.test(fichier)) {
+    throw new ErreurAssemblage(
+      `« ${fichier} » ne finit pas par .md : ${option} copie son fichier dans le premier commit de l'appli, ` +
+        "et seul un texte Markdown s'y copie. Vérifier le chemin donné."
+    );
+  }
+  const contenu = lire();
+  const texte = contenu.toString("utf-8");
+  if (texte.includes("-----BEGIN")) {
+    throw new ErreurAssemblage(
+      `« ${fichier} » contient « -----BEGIN » (une clé ou un certificat ?) : ${option} le copierait dans le premier commit de l'appli. ` +
+        "Vérifier le chemin donné ; s'il s'agit bien d'un texte Markdown, en retirer ce bloc."
+    );
+  }
+  if (urlDeBaseDistante(texte)) {
+    throw new ErreurAssemblage(
+      `« ${fichier} » contient une URL de base distante avec mot de passe : ${option} la copierait dans le premier commit de l'appli. ` +
+        "Vérifier le chemin donné ; sinon la retirer (DATABASE_URL se lit de l'environnement)."
+    );
+  }
+  return contenu;
+}
+
 // Un chemin de --blueprint faux est une erreur de commande, comme les autres
 // refus : sans cette garde, un essai a vu une erreur Node brute
 // (ENOENT et sa pile) au lieu de « Assemblage refusé : … ».
 function lireLaBlueprint(fichier) {
-  try {
-    return fs.readFileSync(fichier, "utf-8");
-  } catch {
-    throw new ErreurAssemblage(
-      `La blueprint « ${fichier} » est introuvable ou illisible : vérifier le chemin donné à --blueprint.`
-    );
-  }
+  return verifierUnTexteDeProjet(fichier, "--blueprint", () => {
+    try {
+      return fs.readFileSync(fichier);
+    } catch {
+      throw new ErreurAssemblage(
+        `La blueprint « ${fichier} » est introuvable ou illisible : vérifier le chemin donné à --blueprint.`
+      );
+    }
+  }).toString("utf-8");
 }
 
 // La fiche projet (PROJET.md de l'appli) est écrite par la skill creer-appli
 // AVANT l'assemblage, hors du catalogue comme la blueprint : elle part ainsi
 // dans le premier commit, copiée octet pour octet.
 function lireLaFiche(fichier) {
-  try {
-    return fs.readFileSync(fichier);
-  } catch {
-    throw new ErreurAssemblage(
-      `La fiche projet « ${fichier} » est introuvable ou illisible : vérifier le chemin donné à --fiche.`
-    );
-  }
+  return verifierUnTexteDeProjet(fichier, "--fiche", () => {
+    try {
+      return fs.readFileSync(fichier);
+    } catch {
+      throw new ErreurAssemblage(
+        `La fiche projet « ${fichier} » est introuvable ou illisible : vérifier le chemin donné à --fiche.`
+      );
+    }
+  });
 }
 
 /*

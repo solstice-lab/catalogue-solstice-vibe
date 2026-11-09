@@ -83,7 +83,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
 | L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle que le report change : le socle n'a pas de `CHANGELOG.md` (décision 6). |
-| L'historique du catalogue, de A à `origin/main` (avec `--ajouter`, où A' = A) | Les commits, fusions exclues, qui touchent le dossier de chaque brique reçue, et le nombre total : le retard de l'appli, dit en tête du rapport. Sans `origin/main` au catalogue, ou si A n'en descend pas, le retard n'est pas calculé et le rapport le dit. |
+| L'historique du catalogue, de A à `origin/main` (avec `--ajouter`, où A' = A) | Les commits, fusions exclues, qui touchent le dossier de chaque brique reçue, et le nombre total : le retard de l'appli, dit en tête du rapport. |
 
 Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
 
@@ -92,7 +92,12 @@ Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
   d'`origin/main` ;
 - l'appli n'a pas de manifeste, ou son commit porte `+arbre-modifie` : l'origine ne se
   rejoue pas ;
-- le commit A est absent du catalogue (appli assemblée avant le dépôt public) ;
+- le commit A est absent du catalogue (appli assemblée avant le dépôt public), ou n'est pas
+  un ancêtre d'`origin/main` du catalogue : le rejeu importe l'assembleur de ce commit et
+  installe son verrou, donc exécute son code, et seul ce que main a reçu a été relu (audit
+  du 2026-11-09 : un manifeste retouché, ou la PR d'un fork fetchée dans le catalogue, y
+  aurait fait exécuter du code arbitraire). `adaptations.mjs --rejouer` passe par le même
+  contrôle et le dit en avertissement ;
 - l'arbre de l'appli n'est pas propre, ou, sauf à blanc, son `HEAD` n'est pas son
   `origin/main` à jour (`solstice-livrer` §1 : une branche part de là) ;
 - une brique de B est inconnue au commit A' (renommée ou retirée du catalogue) ;
@@ -644,10 +649,8 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   entraînée, ceux qui touchent son dossier entre A et `origin/main`, avec leurs sujets jusqu'à
   cinq, et la commande `node outils/mettre-a-jour.mjs <appli> --vers <origin/main>` à lancer
   d'abord : une fois cette mise à jour fusionnée, l'ajout reçoit directement la brique du
-  jour. Sans retard, ou sans commit sur les briques reçues, une seule ligne le dit. Faute de
-  `origin/main` au catalogue (l'outil ne fait pas de `fetch`), ou si A n'en descend pas, le
-  rapport dit que le retard n'est pas calculé : l'ajout n'a pas besoin de `origin/main`, et
-  l'outil avertit, il ne refuse pas. Puis, de même avertis sans refus et à blanc comme en
+  jour. Sans retard, ou sans commit sur les briques reçues, une seule ligne le dit. L'outil avertit du
+  retard, il ne le refuse pas (A est sur `origin/main`, le rejeu l'exige). Puis, de même avertis sans refus et à blanc comme en
   écriture, les **briques écartées par la fiche projet** (le 2026-11-05, `--ajouter validation`
   sur l'appli d'essai tours-de-coloc, dont `PROJET.md` écartait la brique avec sa raison,
   s'était fait sans un mot) : l'outil lit dans le `PROJET.md` de l'appli à son HEAD ce qui

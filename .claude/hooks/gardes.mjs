@@ -63,7 +63,7 @@ const hoteLocal = (hote) => hote === "" || hote.startsWith("/") || hote.split(",
 // fallu changer les identifiants (2026-09-21). Le mot de passe peut venir sans
 // utilisateur (`redis://:mdp@hôte`) ou en paramètre (`?password=`).
 const URL_DE_BASE = /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?):\/\/([^\s'"`]*)/gi;
-function urlDeBaseDistante(texte) {
+export function urlDeBaseDistante(texte) {
   for (const [, reste] of texte.matchAll(URL_DE_BASE)) {
     const arobase = reste.indexOf("@");
     const utilisateur = arobase === -1 ? "" : reste.slice(0, arobase);
