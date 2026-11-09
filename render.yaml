@@ -47,7 +47,7 @@ services:
       # Adresse publique du site (src/lib/referencement.ts), saisie à la main
       # dans le tableau de bord : https://domaine-du-client, sans chemin.
       # Seul le service de production la déclare : une recette sans elle reste
-      # fermée aux moteurs de recherche.
+      # fermée aux moteurs de recherche et sans image d'aperçu au partage.
       - key: URL_PUBLIQUE
         sync: false
       - key: DATABASE_URL

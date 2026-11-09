@@ -491,6 +491,86 @@ assert.equal(casseHook.status, 0);
 assert.equal(casseHook.stdout, "");
 assert.equal(casseHook.stderr, "");
 
+// Le manifeste se cherche depuis le fichier écrit, pas depuis le dossier de la
+// session. Le 2026-11-06, la recette de materiotheque s'est faite d'une session
+// ouverte dans le catalogue qui écrivait aussi dans l'appli : les retouches de
+// deux fichiers du manifeste n'ont déclenché aucun rappel, la racine vue étant
+// celle du catalogue, sans manifeste.
+const depot = fs.mkdtempSync(path.join(os.tmpdir(), "gardes-depot-"));
+const catalogue = path.join(depot, "catalogue");
+const appliVoisine = path.join(depot, "materiotheque");
+fs.mkdirSync(path.join(catalogue, ".git"), { recursive: true });
+fs.mkdirSync(path.join(appliVoisine, ".git"), { recursive: true });
+fs.mkdirSync(path.join(appliVoisine, "src", "app"), { recursive: true });
+fs.copyFileSync(dans("catalogue.empreintes.json"), path.join(appliVoisine, "catalogue.empreintes.json"));
+const ecritureVoisine = (...parties) => ({
+  tool_name: "Edit",
+  tool_input: { file_path: path.join(appliVoisine, ...parties), new_string: "x" },
+});
+const dansLaVoisine = lancer(ecritureVoisine("src", "app", "page.tsx"), { CLAUDE_PROJECT_DIR: catalogue });
+assert.match(
+  JSON.parse(dansLaVoisine.stdout).hookSpecificOutput.additionalContext,
+  /src\/app\/page\.tsx[\s\S]*ADAPTATIONS\.md/
+);
+// Le fichier et son dossier n'existent pas encore (un Write qui crée l'arbre) : même rappel.
+assert.match(
+  JSON.parse(lancer(ecritureVoisine("src", "lib", "navigation.ts"), { CLAUDE_PROJECT_DIR: catalogue }).stdout)
+    .hookSpecificOutput.additionalContext,
+  /src\/lib\/navigation\.ts/
+);
+// Un fichier de l'appli hors manifeste, ou la racine du catalogue lui-même : rien.
+assert.equal(lancer(ecritureVoisine("src", "app", "coloc", "page.tsx"), { CLAUDE_PROJECT_DIR: catalogue }).stdout, "");
+assert.equal(
+  lancer(
+    { tool_name: "Edit", tool_input: { file_path: path.join(catalogue, "src", "app", "page.tsx"), new_string: "x" } },
+    { CLAUDE_PROJECT_DIR: catalogue }
+  ).stdout,
+  ""
+);
+// Un chemin relatif se lit depuis le dossier de la session, comme avant.
+fs.mkdirSync(path.join(catalogue, "src", "app"), { recursive: true });
+fs.copyFileSync(dans("catalogue.empreintes.json"), path.join(catalogue, "catalogue.empreintes.json"));
+assert.match(
+  JSON.parse(
+    lancer(
+      { tool_name: "Edit", tool_input: { file_path: path.join("src", "app", "page.tsx"), new_string: "x" } },
+      { CLAUDE_PROJECT_DIR: catalogue }
+    ).stdout
+  ).hookSpecificOutput.additionalContext,
+  /src\/app\/page\.tsx/
+);
+fs.rmSync(path.join(catalogue, "catalogue.empreintes.json"));
+// La recherche s'arrête au dépôt git : le manifeste d'un dossier au-dessus
+// d'un autre dépôt n'est pas le sien.
+fs.copyFileSync(dans("catalogue.empreintes.json"), path.join(depot, "catalogue.empreintes.json"));
+fs.rmSync(path.join(appliVoisine, "catalogue.empreintes.json"));
+assert.equal(lancer(ecritureVoisine("src", "app", "page.tsx"), { CLAUDE_PROJECT_DIR: catalogue }).stdout, "");
+// Un worktree git a un fichier .git, pas un dossier : il borne aussi la recherche.
+fs.rmSync(path.join(appliVoisine, ".git"), { recursive: true });
+fs.writeFileSync(path.join(appliVoisine, ".git"), "gitdir: ../.git/worktrees/materiotheque\n");
+assert.equal(lancer(ecritureVoisine("src", "app", "page.tsx"), { CLAUDE_PROJECT_DIR: catalogue }).stdout, "");
+// Une appli rangée dans un dossier d'un dépôt qui n'a pas de manifeste à sa racine : celui de l'appli compte.
+fs.rmSync(path.join(appliVoisine, ".git"));
+fs.rmSync(path.join(depot, "catalogue.empreintes.json"));
+fs.copyFileSync(dans("catalogue.empreintes.json"), path.join(appliVoisine, "catalogue.empreintes.json"));
+fs.renameSync(appliVoisine, path.join(catalogue, "apps-materiotheque"));
+assert.match(
+  JSON.parse(
+    lancer(
+      {
+        tool_name: "Edit",
+        tool_input: {
+          file_path: path.join(catalogue, "apps-materiotheque", "src", "app", "page.tsx"),
+          new_string: "x",
+        },
+      },
+      { CLAUDE_PROJECT_DIR: catalogue }
+    ).stdout
+  ).hookSpecificOutput.additionalContext,
+  /src\/app\/page\.tsx/
+);
+fs.rmSync(depot, { recursive: true, force: true });
+
 fs.rmSync(appli, { recursive: true, force: true });
 fs.rmSync(illisibleAppli, { recursive: true, force: true });
 fs.rmSync(sansManifeste, { recursive: true, force: true });
