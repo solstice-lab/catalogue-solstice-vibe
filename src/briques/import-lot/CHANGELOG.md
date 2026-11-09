@@ -122,3 +122,18 @@ la brique a servi aux commandes telle que livrée
 - **Appelant** : rien à changer.
 - **Pourquoi** : répondre à une demande d'effacement (RGPD art. 17) sans
   défaire l'histoire du lot.
+
+## 2026-11-09 · Borne sur la taille décompressée d'un classeur · Correction
+
+- **Ce qui change** : `lireFichier` refuse un .xlsx dont l'archive dépasse
+  100 Mo une fois décompressée (`OCTETS_DECOMPRESSES_MAX`, toutes feuilles
+  comprises) par une `ErreurFichier` qui dit de le découper. Un classeur
+  légitime sous 10 Mo envoyés, de 50 000 lignes de 20 colonnes, reste lu.
+  Nouvelle dépendance directe : `jszip`, déjà présente sous `exceljs`.
+- **Appelant** : rien à changer. Les symboles publics sont les mêmes ; seul un
+  fichier qui aurait dépassé 100 Mo décompressé, auparavant lu (ou fatal pour
+  le process), est maintenant refusé avec un message.
+- **Pourquoi** : le plafond de 10 Mo porte sur le fichier compressé, et
+  `exceljs` décompresse tout avant de compter les lignes : quelques Mo de XML
+  répétitif suffisaient à faire tomber le process partagé par toute l'appli,
+  pour toute personne qui a le droit d'importer.

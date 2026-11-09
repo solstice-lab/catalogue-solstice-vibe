@@ -34,7 +34,7 @@ const IMPORTS_PERMIS = [
 ];
 
 const IMPORTS_PAR_FICHIER: Record<string, RegExp[]> = {
-  "lecture.ts": [/^exceljs$/],
+  "lecture.ts": [/^exceljs$/, /^jszip$/],
 };
 
 function importsHorsSocle(source: string, nomFichier = ""): string[] {

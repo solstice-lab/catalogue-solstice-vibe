@@ -75,7 +75,7 @@ Le cadrage de l'appli contrats classe « Import d'un Excel » hors v1.
 | Fichier | Rôle |
 | --- | --- |
 | `format.ts` | Reconnaître le format d'un fichier à sa signature. Pur. |
-| `lecture.ts` | Lire un `.xlsx` ou un CSV vers des lignes brutes avec leur numéro. **Seul fichier qui importe `exceljs`.** |
+| `lecture.ts` | Lire un `.xlsx` ou un CSV vers des lignes brutes avec leur numéro. **Seul fichier qui importe `exceljs` et `jszip`** (ce dernier compte les octets décompressés avant `exceljs`). |
 | `dates.ts` | Lire une date selon le format configuré, y compris le numéro de série d'un tableur. Pur. |
 | `validation.ts` | Typer, contrôler les champs obligatoires, fusionner les clés rapprochées, ordonner les renvois. Pur. |
 | `lot.ts` | Le cycle du lot, par `query()`/`transaction()` : `creerLot`, `lireLot`, `listerLots`, `renseignerDecision`, `confirmerLot`, `ignorerLot`, `supprimerLot`, et `champsDeDecisionVides` (pure). Serveur seulement. |
@@ -131,7 +131,7 @@ journal.
 
 **Interne** : `verifierBranchement` (appelée par `creerLot` et `confirmerLot`),
 `verifierEcran` (appelée par les écrans et `actionEnvoyer`),
-`lireFichier`, `LIGNES_MAX` et le type `Lecture` de `lecture.ts`, tout
+`lireFichier`, `LIGNES_MAX`, `OCTETS_DECOMPRESSES_MAX` et le type `Lecture` de `lecture.ts`, tout
 `dates.ts` et `format.ts`, les autres exports de `validation.ts`
 (`validerLignes`, `colonnesObligatoiresAbsentes`, `estVide`, `typerValeur` et
 les types `LigneRetenue`, `ResultatValidation`) et le type `LigneBrute` ; les
@@ -501,7 +501,7 @@ qu'une date facultative vide ne l'écarte pas.
 | **Lire un `.xls`.** Constaté dans une appli livrée : l'export natif de LinkedIn est un `.xls`, lu par `xlrd` ; le `.xlsx` y a été ajouté ensuite. `exceljs` lit le `.xlsx` et le CSV, d'après nos connaissances de la bibliothèque, non vérifié dans sa documentation. Un vrai export client peut être un `.xls` : il faudrait une seconde bibliothèque, donc une dépendance à valider. | Responsable du projet | Quand un client en apporte un |
 | **CSV : numéros de ligne.** Les lignes blanches sont comptées, donc le numéro annoncé est celui du fichier. Une cellule entre guillemets qui contient un saut de ligne, elle, décale encore les numéros suivants : le numéro est alors celui de l'enregistrement. En xlsx, le numéro est celui du tableur. | Responsable du projet | Si le cas se présente |
 | **CSV : encodage.** Un CSV en Windows-1252 (l'option « CSV » d'un Excel français, hors « CSV UTF-8 ») est refusé comme format non reconnu, avec un message qui demande l'UTF-8. | Responsable du projet | Quand un client en apporte un |
-| **Taille limite d'un fichier téléversé.** La brique refuse au-delà de 10 Mo et de 50 000 lignes (`OCTETS_MAX`, `LIGNES_MAX` dans `lecture.ts`) avant de tout charger en mémoire. **Tranché le 2026-10-19 par la personne responsable du projet : l'envoi passe par un Route Handler** (le `envoi/route.ts` de l'appli, dont le cœur est `envoi.ts` de la brique) et le plafond est celui de la brique. Une Server Action refuse un fichier dès 2 Mo (413, limite de 1 Mo, constatée sur Next 16.3.4, après l'échec « Unexpected end of form » vécu sur le projet précédent) ; le Route Handler a lu 12 Mo. L'essai était local : la limite d'un proxy d'hébergeur reste à relever. | Responsable du projet | Avant toute mise en ligne |
+| **Taille limite d'un fichier téléversé.** La brique refuse au-delà de 10 Mo envoyés, de 100 Mo une fois l'archive décompressée toutes feuilles comprises, et de 50 000 lignes (`OCTETS_MAX`, `OCTETS_DECOMPRESSES_MAX`, `LIGNES_MAX` dans `lecture.ts`). Le plafond de 10 Mo, compressé, ne protégeait pas la mémoire : un .xlsx de quelques Mo peut contenir des Go de XML, et `exceljs` décompresse toutes les feuilles avant que les lignes soient comptées (audit du 2026-11-09). La borne de 100 Mo se vérifie donc avant `exceljs`, sur les octets réellement décompressés et non sur la taille annoncée, qu'un fichier hostile falsifie. Mesuré : 50 000 lignes de 20 colonnes font 5 Mo envoyés, 55 Mo décompressés, 26 s de lecture et environ 1 Go de tas en plus ; la borne laisse donc un pic possible de 2 Go, à baisser si l'hébergeur en offre moins. **Tranché le 2026-10-19 par la personne responsable du projet : l'envoi passe par un Route Handler** (le `envoi/route.ts` de l'appli, dont le cœur est `envoi.ts` de la brique) et le plafond est celui de la brique. Une Server Action refuse un fichier dès 2 Mo (413, limite de 1 Mo, constatée sur Next 16.3.4, après l'échec « Unexpected end of form » vécu sur le projet précédent) ; le Route Handler a lu 12 Mo. L'essai était local : la limite d'un proxy d'hébergeur reste à relever. | Responsable du projet | Avant toute mise en ligne |
 | **Retrait d'une copie client** : l'assembleur du catalogue retire la brique, ses tests et son étape de migration d'une copie neuve, et un test le vérifie ; à confirmer par l'essai complet. | Responsable du projet | Avant la prochaine copie client |
 | **Durée d'une confirmation** de plusieurs milliers de lignes : une transaction unique (1 500 lignes testées), ou par paquets sans perdre le tout ou rien ? | Responsable du projet | Si un fichier réel dépasse le millier de lignes |
 | Les cas cités du projet précédent (collision de clé, renvoi avant son original) ne sont pas revérifiés. | Responsable du projet | Avant de les citer ailleurs |

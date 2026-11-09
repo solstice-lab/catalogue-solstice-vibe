@@ -207,7 +207,7 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
 | FI1 | Un fichier s'envoie par un Route Handler, pas par une action serveur. | Un fichier joint envoyé par une action serveur échouait sur « Unexpected end of form ». | **En partie** : la brique import-lot reçoit le fichier par un Route Handler que l'appli pose (`src/briques/import-lot/envoi.ts`, README « La brancher ») ; aucune règle de skill |
-| FI2 | La limite de taille annoncée est la limite réelle. | Une limite annoncée de 10 Mo, au-dessus du plafond réel de 3 Mo, produisait une erreur générique avant l'action. | **En partie** : `solstice-ui` (`SKILL.md:95`) ; brique import-lot, qui refuse au-delà de sa limite annoncée (`src/briques/import-lot/lecture.ts:21`) ; la limite d'un proxy d'hébergeur reste à relever (README d'import-lot, « Questions ouvertes ») |
+| FI2 | La limite de taille annoncée est la limite réelle. | Une limite annoncée de 10 Mo, au-dessus du plafond réel de 3 Mo, produisait une erreur générique avant l'action. | **En partie** : `solstice-ui` (`SKILL.md:95`) ; brique import-lot, qui refuse au-delà de sa limite annoncée (`src/briques/import-lot/lecture.ts:33`) ; la limite d'un proxy d'hébergeur reste à relever (README d'import-lot, « Questions ouvertes ») |
 | FI3 | Le nom d'un fichier téléchargé supporte tout caractère, apostrophe typographique comprise. | Une apostrophe typographique dans un nom de fichier faisait répondre une erreur 500 au téléchargement. | **Non tenue** |
 
 ## 14. Interface et kit
