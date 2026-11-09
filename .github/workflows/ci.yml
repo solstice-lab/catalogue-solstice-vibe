@@ -86,6 +86,17 @@ jobs:
           node-version: "24"
           cache: "npm"
 
+      - name: Version de npm
+        # allowScripts de package.json n'est lu que par npm 11.16 ou plus : en dessous, les scripts d'installation
+        # qu'il refuse (esbuild, unrs-resolver) tourneraient sans un mot (audit du 2026-11-09). Avant tout
+        # npm ci, et avant le cache de node_modules qui en saute un.
+        run: |
+          version="$(npm --version)"
+          if [ "$(printf '%s\n' 11.16.0 "$version" | sort -V | head -n 1)" != "11.16.0" ]; then
+            echo "npm $version est trop ancien : 11.16 ou plus est exigé (allowScripts de package.json n'est lu qu'à partir de là)." >&2
+            exit 1
+          fi
+
       - name: Gardes de Claude
         # Sans dépendance, d'où sa place avant npm ci. Un garde qui laisse
         # passer ou qui bloque à tort coûte aussi cher l'un que l'autre.

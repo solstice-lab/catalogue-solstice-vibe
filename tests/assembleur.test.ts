@@ -191,6 +191,9 @@ const SOCLE = [
   "prettier.config.mjs",
   ".prettierignore",
   ".editorconfig",
+  // engine-strict : sans lui, un npm de moins de 11.16 ignorerait allowScripts de package.json et
+  // lancerait les scripts d'installation refusés ; engines seul n'est qu'un avertissement.
+  ".npmrc",
   // Verrouille la concurrence et les brouillons de ci.yml : il le suit dans chaque copie.
   "tests/ci.test.ts",
   // ci.yml lance le script, qui lit les exceptions : l'un sans l'autre, la CI
@@ -1222,12 +1225,59 @@ describe("blueprint donnée à l'assembleur", () => {
   });
 
   it("refuse de même une blueprint illisible (un dossier à la place du fichier)", () => {
-    const blueprint = dossierTemporaireVide();
+    const blueprint = path.join(dossierTemporaireVide(), "blueprint.md");
+    fs.mkdirSync(blueprint);
     const sortie = dossierTemporaireVide();
     expect(() => assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, ...variante, blueprint })).toThrow(
       ErreurAssemblage
     );
     expect(fs.readdirSync(sortie)).toEqual([]);
+  });
+
+  // Cas d'origine (audit du 2026-11-09) : une faute de chemin à --blueprint aurait copié
+  // n'importe quel fichier lisible (une clé privée) dans le premier commit de l'appli.
+  describe("refuse, avant toute écriture, un fichier qui n'est pas un texte à copier dans le dépôt", () => {
+    // Le mot de passe est coupé en deux : ce fichier-ci ne doit pas déclencher
+    // les gardes de Claude, qui lisent le texte qu'il écrit.
+    const CLE = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjE=\n-----END OPENSSH PRIVATE KEY-----\n";
+    const URL_DISTANTE = "postgresql://appli:" + "mot-de-passe-de-prod" + "@base.exemple.fr:5432/prod";
+
+    function refus(nom: string, contenu: string | Buffer) {
+      const fichier = path.join(dossierTemporaireVide(), nom);
+      fs.writeFileSync(fichier, contenu);
+      const sortie = path.join(dossierTemporaireVide(), "appli");
+      let erreur: unknown;
+      try {
+        assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, briques: [], blueprint: fichier });
+      } catch (e) {
+        erreur = e;
+      }
+      expect(erreur).toBeInstanceOf(ErreurAssemblage);
+      expect(fs.existsSync(sortie)).toBe(false);
+      return (erreur as Error).message;
+    }
+
+    it("un nom qui ne finit pas par .md, sans lire son contenu", () => {
+      for (const nom of ["id_ed25519", "fiche.txt", "cle.pem", "fiche.md.bak", "fiche-md", "notemd"]) {
+        expect(refus(nom, "# Un texte sain\n"), nom).toMatch(/ne finit pas par \.md.*--blueprint/s);
+      }
+    });
+
+    it("un texte qui porte une clé privée, sans la citer dans le refus", () => {
+      const message = refus("projet.md", `# Projet\n\n${CLE}`);
+      expect(message).toMatch(/-----BEGIN.*--blueprint/s);
+      expect(message).not.toContain("b3BlbnNzaC1rZXktdjE");
+    });
+
+    it("un texte UTF-16 : ses octets nuls cachent la clé aux recherches de texte", () => {
+      expect(refus("projet.md", Buffer.from(`# Projet\n\n${CLE}`, "utf16le"))).toMatch(/octets nuls/);
+    });
+
+    it("un texte qui porte une URL de base distante avec mot de passe, sans la citer dans le refus", () => {
+      const message = refus("projet.md", `# Projet\n\nDATABASE_URL=${URL_DISTANTE}\n`);
+      expect(message).toMatch(/URL de base distante.*--blueprint/s);
+      expect(message).not.toContain("mot-de-passe-de-prod");
+    });
   });
 
   it("en ligne de commande, affiche « Assemblage refusé : … » et sort en code 1, sans pile", () => {
@@ -2507,6 +2557,52 @@ describe("fiche projet donnée à l'assembleur", () => {
     expect(erreur).toBeInstanceOf(ErreurAssemblage);
     expect((erreur as Error).message).toContain(fiche);
     expect(fs.existsSync(sortie)).toBe(false);
+  });
+
+  // Cas d'origine (audit du 2026-11-09) : une faute de chemin à --fiche aurait copié
+  // n'importe quel fichier lisible (une clé privée) dans le premier commit de l'appli.
+  describe("refuse, avant toute écriture, un fichier qui n'est pas un texte à copier dans le dépôt", () => {
+    // Le mot de passe est coupé en deux : ce fichier-ci ne doit pas déclencher
+    // les gardes de Claude, qui lisent le texte qu'il écrit.
+    const CLE = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjE=\n-----END OPENSSH PRIVATE KEY-----\n";
+    const URL_DISTANTE = "postgresql://appli:" + "mot-de-passe-de-prod" + "@base.exemple.fr:5432/prod";
+
+    function refus(nom: string, contenu: string | Buffer) {
+      const fichier = path.join(dossierTemporaireVide(), nom);
+      fs.writeFileSync(fichier, contenu);
+      const sortie = path.join(dossierTemporaireVide(), "appli");
+      let erreur: unknown;
+      try {
+        assembler({ source: SOURCE, sortie, commit: COMMIT_DE_TEST, briques: [], fiche: fichier });
+      } catch (e) {
+        erreur = e;
+      }
+      expect(erreur).toBeInstanceOf(ErreurAssemblage);
+      expect(fs.existsSync(sortie)).toBe(false);
+      return (erreur as Error).message;
+    }
+
+    it("un nom qui ne finit pas par .md, sans lire son contenu", () => {
+      for (const nom of ["id_ed25519", "fiche.txt", "cle.pem", "fiche.md.bak"]) {
+        expect(refus(nom, "# Un texte sain\n"), nom).toMatch(/ne finit pas par \.md.*--fiche/s);
+      }
+    });
+
+    it("un texte qui porte une clé privée, sans la citer dans le refus", () => {
+      const message = refus("projet.md", `# Projet\n\n${CLE}`);
+      expect(message).toMatch(/-----BEGIN.*--fiche/s);
+      expect(message).not.toContain("b3BlbnNzaC1rZXktdjE");
+    });
+
+    it("un texte UTF-16 : ses octets nuls cachent la clé aux recherches de texte", () => {
+      expect(refus("projet.md", Buffer.from(`# Projet\n\n${CLE}`, "utf16le"))).toMatch(/octets nuls/);
+    });
+
+    it("un texte qui porte une URL de base distante avec mot de passe, sans la citer dans le refus", () => {
+      const message = refus("projet.md", `# Projet\n\nDATABASE_URL=${URL_DISTANTE}\n`);
+      expect(message).toMatch(/URL de base distante.*--fiche/s);
+      expect(message).not.toContain("mot-de-passe-de-prod");
+    });
   });
 });
 

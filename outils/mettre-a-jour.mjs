@@ -156,16 +156,40 @@ function verifierLeRejeu(manifeste) {
 
 // ---------------------------------------------------------------- le catalogue rejoué, au commit A ou A'
 
+/*
+ * Le rejeu exécute le code de ce commit : son modules.mjs et son assembler.mjs
+ * sont importés, son verrou installé par npm ci. Seul un ancêtre d'origin/main a
+ * été relu et vérifié par la CI ; sans ce contrôle, un manifeste retouché, ou la
+ * PR d'un fork fetchée dans le catalogue, ferait exécuter du code arbitraire
+ * (audit du 2026-11-09). Même exigence que commitVise pour la cible.
+ */
 function commitDuCatalogue(catalogue, manifeste) {
   const demande = manifeste.format === 2 ? manifeste.catalogue.commitComplet : manifeste.catalogue.commit;
+  let sha;
   try {
-    return git(catalogue, "rev-parse", "--verify", "--quiet", `${demande}^{commit}`).trim();
+    sha = git(catalogue, "rev-parse", "--verify", "--quiet", `${demande}^{commit}`).trim();
   } catch {
     throw new ErreurMiseAJour(
       `Le commit ${manifeste.catalogue.commit} du manifeste est absent du catalogue : git fetch origin dans le catalogue, ` +
         "puis relancer. S'il manque encore, l'appli a été assemblée avant le dépôt public et son origine ne se rejoue pas."
     );
   }
+  const main = origineMain(catalogue);
+  if (main === undefined) {
+    throw new ErreurMiseAJour(
+      "Le catalogue n'a pas de origin/main : l'outil ne peut pas vérifier que le commit du manifeste y figure, " +
+        "et le code de ce commit sera exécuté. git fetch origin dans le catalogue, puis relancer."
+    );
+  }
+  if (!reussit(catalogue, "merge-base", "--is-ancestor", sha, main)) {
+    throw new ErreurMiseAJour(
+      `Le commit ${manifeste.catalogue.commit} du manifeste n'est pas sur origin/main du catalogue : le code de ce commit sera exécuté ` +
+        "(son assembleur, l'installation de ses dépendances), et seul ce que main a reçu a été relu. " +
+        `Vérifier le manifeste de l'appli (${MANIFESTE}, catalogue.commit et catalogue.commitComplet : retouché ?) ; ` +
+        "si le commit est légitime, git fetch origin dans le catalogue, puis relancer."
+    );
+  }
+  return sha;
 }
 
 /*
@@ -1723,19 +1747,11 @@ function controlerLAjout({ ajouter, presentes, definitions, commit }) {
  * avertit, il ne refuse pas : une mise à jour peut être lourde et attendre son
  * propre ticket, quand l'ajout est urgent. Les fusions ne comptent pas : elles
  * ne portent pas de changement, et un `git log` sur un dossier ne les voit pas.
- * Faute de origin/main (l'ajout n'en a pas besoin, l'outil ne fait pas de fetch),
- * le retard n'est pas calculé, et le rapport le dit.
+ * origin/main est acquis : le rejeu du commit de l'appli l'exige (commitDuCatalogue).
  */
 function retardDeLAjout({ catalogue, shaOrigine, briques }) {
+  // commitDuCatalogue a déjà exigé origin/main et que le commit de l'appli en descende.
   const main = origineMain(catalogue);
-  if (main === undefined) {
-    return {
-      indisponible: "le catalogue n'a pas de origin/main : git fetch origin dans le catalogue pour le connaître",
-    };
-  }
-  if (!reussit(catalogue, "merge-base", "--is-ancestor", shaOrigine, main)) {
-    return { indisponible: "le commit de l'appli n'est pas sur origin/main du catalogue" };
-  }
   const intervalle = `${shaOrigine}..${main}`;
   return {
     commitMain: git(catalogue, "rev-parse", "--short", main).trim(),
@@ -2537,13 +2553,6 @@ function rubriqueDuRetard(resultat) {
   const celleDuJour =
     ajoutees.length > 1 ? "les briques reçues sont celles du jour" : "la brique reçue est celle du jour";
   const entete = ["## Retard sur le catalogue", ""];
-  if (retard.indisponible !== undefined) {
-    return [
-      ...entete,
-      `Le retard n'est pas calculé : ${retard.indisponible}. La brique arrive telle qu'elle était au commit ${commitOrigine}.`,
-      "",
-    ];
-  }
   const { commitMain, total, briques } = retard;
   if (total === 0) {
     return [
@@ -2887,11 +2896,11 @@ l'appli ; l'outil s'arrête avant toute écriture si une étape reçue change au
 catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe déjà,
 ou si schema.sql, déjà dans l'appli, change entre l'origine et la cible (un
 schema.sql qui arrive avec la base est ajouté). Le catalogue doit
-avoir le commit de l'appli (git fetch origin dans le catalogue). Avec --ajouter,
+avoir le commit de l'appli, et il doit être sur son origin/main : le code de
+ce commit est exécuté (git fetch origin dans le catalogue). Avec --ajouter,
 le rapport avertit en tête du retard de l'appli sur origin/main : la brique
 arrive telle qu'elle était au commit de l'appli, et la commande --vers à lancer
-d'abord est donnée (sans origin/main, l'ajout se fait et le rapport dit que le
-retard n'est pas calculé) ; puis des briques ajoutées que le PROJET.md de l'appli
+d'abord est donnée ; puis des briques ajoutées que le PROJET.md de l'appli
 écarte, avec sa raison, et, si l'appli a espaces, des tables arrivées sans
 espace_id (avertissements, jamais un refus). Seul appel
 au réseau : npm ci dans un worktree temporaire du catalogue, quand le Prettier

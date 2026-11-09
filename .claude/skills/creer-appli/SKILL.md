@@ -374,6 +374,7 @@ attendu », se corrigent en relisant la commande.
 | « La blueprint n'a pas d'en-tête YAML » | Reprendre l'en-tête du modèle : un bloc entre deux lignes `---` en tête de fichier. |
 | « La blueprint … est introuvable ou illisible » | Le chemin donné à `--blueprint` ne désigne pas un fichier lisible : le corriger (il se lit depuis le dossier où la commande est lancée). Le dossier de sortie n'est pas créé. |
 | « La fiche projet … est introuvable ou illisible » | Même chose pour `--fiche`. |
+| « … ne finit pas par .md », « … contient -----BEGIN », « … contient une URL de base distante avec mot de passe », « … contient des octets nuls » | Le chemin donné à `--blueprint` ou `--fiche` ne désigne pas la blueprint ou la fiche : une clé ou un autre fichier a été pris pour elle. Corriger le chemin ; **ne pas ouvrir ni afficher le fichier incriminé** (le refus ne cite pas ce qu'il a trouvé). Le dossier de sortie n'est pas créé. |
 | « git n'a pas d'identité » | Donner à l'humain les deux commandes `git config --global` du message, **à taper par lui** (son nom et son adresse), puis relancer. Le dossier de sortie est resté tel qu'il était. |
 | « git init » a échoué, ou « … a pour racine … » | Rapporter le message tel quel à l'humain ; ne pas versionner le dossier à la main. Le dossier de sortie est resté tel qu'il était. |
 | « … l'avis de licence de l'appli (NOTICE) ne peut pas être écrit » | Le catalogue a perdu `LICENSE` ou `src/ui/theme/polices/LICENCE-OFL.txt`. Arrêter, le dire à la personne responsable technique du projet ; rien n'est écrit. |

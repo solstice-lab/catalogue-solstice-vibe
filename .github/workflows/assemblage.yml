@@ -81,6 +81,15 @@ jobs:
           node-version: "24"
           cache: "npm"
 
+      - name: Version de npm
+        # Celle de ci.yml, qui dit pourquoi : avant tout npm ci du job.
+        run: |
+          version="$(npm --version)"
+          if [ "$(printf '%s\n' 11.16.0 "$version" | sort -V | head -n 1)" != "11.16.0" ]; then
+            echo "npm $version est trop ancien : 11.16 ou plus est exigé (allowScripts de package.json n'est lu qu'à partir de là)." >&2
+            exit 1
+          fi
+
       - name: Vulnérabilités du catalogue
         # Avant son npm ci, pour la même raison que plus bas.
         run: node scripts/verifier-audit.mjs
@@ -194,6 +203,15 @@ jobs:
           # Celle de ci.yml, qui dit quoi changer avec elle.
           node-version: "24"
           cache: "npm"
+
+      - name: Version de npm
+        # Celle de ci.yml, qui dit pourquoi : avant tout npm ci du job.
+        run: |
+          version="$(npm --version)"
+          if [ "$(printf '%s\n' 11.16.0 "$version" | sort -V | head -n 1)" != "11.16.0" ]; then
+            echo "npm $version est trop ancien : 11.16 ou plus est exigé (allowScripts de package.json n'est lu qu'à partir de là)." >&2
+            exit 1
+          fi
 
       - name: Vulnérabilités
         run: node scripts/verifier-audit.mjs

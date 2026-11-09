@@ -17,6 +17,10 @@
 // fusion humaine) et aucun secret de production sur le poste.
 // Ce script ne refait pas ce que GitHub fait déjà pour tout le monde.
 //
+// `urlDeBaseDistante` est aussi importée par l'assembleur du catalogue, qui refuse par elle
+// un --fiche ou un --blueprint porteur d'une telle URL : une retouche du détecteur
+// change aussi ce refus.
+//
 // Sans dépendance : il tourne avant tout `npm install`, sur n'importe quel poste.
 // Test : `node .claude/hooks/gardes.test.mjs` (lancé par la CI). Un garde qui
 // bloque à tort se corrige avec un cas de test, comme un garde qui laisse passer.
@@ -63,7 +67,7 @@ const hoteLocal = (hote) => hote === "" || hote.startsWith("/") || hote.split(",
 // fallu changer les identifiants (2026-09-21). Le mot de passe peut venir sans
 // utilisateur (`redis://:mdp@hôte`) ou en paramètre (`?password=`).
 const URL_DE_BASE = /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?):\/\/([^\s'"`]*)/gi;
-function urlDeBaseDistante(texte) {
+export function urlDeBaseDistante(texte) {
   for (const [, reste] of texte.matchAll(URL_DE_BASE)) {
     const arobase = reste.indexOf("@");
     const utilisateur = arobase === -1 ? "" : reste.slice(0, arobase);
