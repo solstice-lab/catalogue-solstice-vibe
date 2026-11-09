@@ -906,7 +906,8 @@ export const PROFILS = {
     proposees: ["mails", "contact", "deploiement"],
     personnesParReseau: 20,
   },
-  // Une appli à comptes pour les personnes de l'organisation. Son module métier
+  // Une appli à comptes dont les accès se règlent dans src/config/comptes.ts
+  // (une liste ou un domaine, changés par un développeur et déployés). Son module métier
   // s'écrit dans l'appli sur le patron dossiers ; les briques qu'il appelle se
   // choisissent entité par entité au cadrage (skill creer-appli, étape 1).
   "outil-interne": {
@@ -917,9 +918,10 @@ export const PROFILS = {
     proposees: [],
     personnesParReseau: 100,
   },
-  // Un outil interne ouvert à des personnes extérieures : un admin y gère les
-  // comptes et les invitations (/comptes). espaces si le besoin est des groupes
-  // (une coloc, une association) qui ne voient que leurs fiches.
+  // Un outil interne dont un admin ajoute et retire les personnes à l'écran
+  // (/comptes), sans déploiement : personnes extérieures invitées, ou association
+  // sans domaine commun. espaces si le besoin est des groupes (une coloc, une
+  // association) qui ne voient que leurs fiches.
   portail: {
     briques: ["comptes", "mails", "gestion-comptes"],
     proposees: ["espaces"],
