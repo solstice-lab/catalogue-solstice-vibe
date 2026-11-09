@@ -562,7 +562,7 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   unité et empreinte de chaque fichier ; `NOTICE` contre l'origine rejouée.
 - **Les refus outillés** : dossier qui n'est pas la racine d'un dépôt git, arbre pas
   propre, manifeste absent, illisible ou d'un format inconnu, `+arbre-modifie`, commit A
-  absent du catalogue, worktree temporaire impossible à créer, verrou du commit A (ou A')
+  absent du catalogue ou hors d'`origin/main`, worktree temporaire impossible à créer, verrou du commit A (ou A')
   sans Prettier, Prettier du commit A (ou A') qui ne s'installe pas, assembleur du commit A
   (ou A') qui refuse,
   au format 1 une unité inconnue au commit A ou un `package.json` sans nom de paquet,
@@ -588,7 +588,7 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   et les fichiers dont le texte change, le registre RGPD, ce que la fusion
   déclenche, le manifeste et la blueprint réécrits avec les avertissements, la suite. À blanc, une appli déjà au commit visé reçoit le rapport, sans
   aucun fichier à reporter : il dit ce qu'elle a retouché, l'usage seul de la tranche 1.
-- **Les refus de la tranche 2**, avant toute écriture : le catalogue sans `origin/main` ;
+- **Les refus de la tranche 2**, avant toute écriture : le catalogue sans `origin/main`, ou un commit A de l'appli qui n'en est pas un ancêtre (le code de ce commit est exécuté par le rejeu) ;
   visant son `HEAD`, le catalogue aux modifications non commitées ou dont le `HEAD` n'est
   pas `origin/main` ; `--vers` introuvable ou hors d'`origin/main` ; un commit visé qui ne
   descend pas de celui de l'appli ; sauf à blanc, l'appli déjà au commit visé, une appli

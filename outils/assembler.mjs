@@ -100,8 +100,9 @@ function messageDeGit(erreur) {
 }
 
 // Les fichiers du catalogue : ceux que git SUIT, et eux seuls. Pas de parcours
-// du disque, et pas les fichiers non suivis même non ignorés : un .npmrc, une
-// clé ou un export qui traîne dans le dossier n'entre jamais dans une copie.
+// du disque, et pas les fichiers non suivis même non ignorés : un .npmrc local,
+// une clé ou un export qui traîne dans le dossier n'entre jamais dans une copie
+// (le .npmrc du catalogue, lui, est suivi et livré exprès : engine-strict).
 // node_modules, .next et les autres worktrees non plus.
 function listerFichiers(source) {
   let sortie;
@@ -465,13 +466,21 @@ function estVide(dossier) {
  * affiché, puis gardé par l'historique du terminal.
  */
 function verifierUnTexteDeProjet(fichier, option, lire) {
-  if (!/.md$/i.test(fichier)) {
+  if (!/\.md$/i.test(fichier)) {
     throw new ErreurAssemblage(
       `« ${fichier} » ne finit pas par .md : ${option} copie son fichier dans le premier commit de l'appli, ` +
         "et seul un texte Markdown s'y copie. Vérifier le chemin donné."
     );
   }
   const contenu = lire();
+  // Un texte UTF-16 porte un octet nul entre ses lettres : -----BEGIN et les URL
+  // lui échapperaient. Un Markdown n'en a pas.
+  if (contenu.includes(0)) {
+    throw new ErreurAssemblage(
+      `« ${fichier} » contient des octets nuls : ce n'est pas un texte Markdown en UTF-8, et ${option} ne copie que celui-là. ` +
+        "Vérifier le chemin donné."
+    );
+  }
   const texte = contenu.toString("utf-8");
   if (texte.includes("-----BEGIN")) {
     throw new ErreurAssemblage(
@@ -1377,6 +1386,9 @@ const AIDE = `Usage : node outils/assembler.mjs <dossier-vide> [--briques <liste
                       les personnes au plus par réseau et par heure (personnes_par_reseau)
   --fiche <fichier>   la fiche projet, copiée telle quelle en PROJET.md à la racine
                       (défaut : pas de PROJET.md)
+                      --blueprint et --fiche refusent un fichier dont le nom ne finit pas
+                      par .md, ou dont le texte porte une clé (-----BEGIN) ou une URL de
+                      base distante avec mot de passe
   --dependabot        garder .github/dependabot.yml, à demander quand quelqu'un entretient
                       l'appli après la livraison (défaut : retiré, car sans personne pour
                       les fusionner, ses PR hebdomadaires s'accumulent)

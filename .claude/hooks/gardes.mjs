@@ -17,6 +17,10 @@
 // fusion humaine) et aucun secret de production sur le poste.
 // Ce script ne refait pas ce que GitHub fait déjà pour tout le monde.
 //
+// `urlDeBaseDistante` est aussi importée par l'assembleur du catalogue, qui refuse par elle
+// un --fiche ou un --blueprint porteur d'une telle URL : une retouche du détecteur
+// change aussi ce refus.
+//
 // Sans dépendance : il tourne avant tout `npm install`, sur n'importe quel poste.
 // Test : `node .claude/hooks/gardes.test.mjs` (lancé par la CI). Un garde qui
 // bloque à tort se corrige avec un cas de test, comme un garde qui laisse passer.

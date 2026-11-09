@@ -305,7 +305,9 @@ et les modèles de ticket et de PR, ni les captures du README, `docs/captures/`
 Il écrit `blueprint.md` à la racine, avec le commit de référence du catalogue (celui du dépôt au
 moment de la commande) ; `--blueprint` en donne une existante, dont seul le
 commit est mis à jour ; `--nom` fixe le nom du paquet de l'appli, d'où celui
-de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` ;
+de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` (les deux ne prennent qu'un fichier `.md`, sans clé
+privée ni URL de base distante avec mot de passe : une faute de chemin n'envoie pas un secret dans
+le premier commit) ;
 il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et `ADAPTATIONS.md`, vide
 avec son en-tête, où l'appli note chaque retouche d'un fichier venu du catalogue, et remet en forme
 par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;

@@ -1242,7 +1242,7 @@ describe("blueprint donnée à l'assembleur", () => {
     const CLE = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjE=\n-----END OPENSSH PRIVATE KEY-----\n";
     const URL_DISTANTE = "postgresql://appli:" + "mot-de-passe-de-prod" + "@base.exemple.fr:5432/prod";
 
-    function refus(nom: string, contenu: string) {
+    function refus(nom: string, contenu: string | Buffer) {
       const fichier = path.join(dossierTemporaireVide(), nom);
       fs.writeFileSync(fichier, contenu);
       const sortie = path.join(dossierTemporaireVide(), "appli");
@@ -1258,7 +1258,7 @@ describe("blueprint donnée à l'assembleur", () => {
     }
 
     it("un nom qui ne finit pas par .md, sans lire son contenu", () => {
-      for (const nom of ["id_ed25519", "fiche.txt", "cle.pem", "fiche.md.bak"]) {
+      for (const nom of ["id_ed25519", "fiche.txt", "cle.pem", "fiche.md.bak", "fiche-md", "notemd"]) {
         expect(refus(nom, "# Un texte sain\n"), nom).toMatch(/ne finit pas par \.md.*--blueprint/s);
       }
     });
@@ -1267,6 +1267,10 @@ describe("blueprint donnée à l'assembleur", () => {
       const message = refus("projet.md", `# Projet\n\n${CLE}`);
       expect(message).toMatch(/-----BEGIN.*--blueprint/s);
       expect(message).not.toContain("b3BlbnNzaC1rZXktdjE");
+    });
+
+    it("un texte UTF-16 : ses octets nuls cachent la clé aux recherches de texte", () => {
+      expect(refus("projet.md", Buffer.from(`# Projet\n\n${CLE}`, "utf16le"))).toMatch(/octets nuls/);
     });
 
     it("un texte qui porte une URL de base distante avec mot de passe, sans la citer dans le refus", () => {
@@ -2563,7 +2567,7 @@ describe("fiche projet donnée à l'assembleur", () => {
     const CLE = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjE=\n-----END OPENSSH PRIVATE KEY-----\n";
     const URL_DISTANTE = "postgresql://appli:" + "mot-de-passe-de-prod" + "@base.exemple.fr:5432/prod";
 
-    function refus(nom: string, contenu: string) {
+    function refus(nom: string, contenu: string | Buffer) {
       const fichier = path.join(dossierTemporaireVide(), nom);
       fs.writeFileSync(fichier, contenu);
       const sortie = path.join(dossierTemporaireVide(), "appli");
@@ -2588,6 +2592,10 @@ describe("fiche projet donnée à l'assembleur", () => {
       const message = refus("projet.md", `# Projet\n\n${CLE}`);
       expect(message).toMatch(/-----BEGIN.*--fiche/s);
       expect(message).not.toContain("b3BlbnNzaC1rZXktdjE");
+    });
+
+    it("un texte UTF-16 : ses octets nuls cachent la clé aux recherches de texte", () => {
+      expect(refus("projet.md", Buffer.from(`# Projet\n\n${CLE}`, "utf16le"))).toMatch(/octets nuls/);
     });
 
     it("un texte qui porte une URL de base distante avec mot de passe, sans la citer dans le refus", () => {
