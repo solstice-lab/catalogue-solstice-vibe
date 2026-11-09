@@ -290,6 +290,32 @@ passe(cmd("psql -h dpg-x.render.com -U u db")); // sans mot de passe : psql le d
 passe(cmd("mysql -u root -psecret app")); // la machine locale, comme pour les URL
 passe(cmd("find . -name '*.ts' -print"));
 
+// Cas trouvés à la relecture de ce durcissement (2026-11-09).
+// Le corps sort de `$(cat <<'EOF' …)` vers un interpréteur ; un heredoc non
+// quoté ou une here-string `@"…"@` exécutent leurs `$( )`.
+refuse(cmd(`bash -c "$(cat <<'EOF'\ngh pr merge 42\nEOF\n)"`));
+refuse(cmd(`eval "$(cat <<'EOF'\nnpx tsx scripts/import.ts --confirmer\nEOF\n)"`));
+refuse(cmd("cat <<EOF > notes.md\n$(gh pr merge 42)\nEOF"));
+refuse(cmd('git commit -m @"\n$(gh pr merge 42)\n"@'));
+passe(cmd(`git commit -m "$(cat <<'EOF'\nGardes : gh pr merge est refusé\nEOF\n)"`));
+passe(cmd(`CORPS=$(cat <<'EOF'\ngh pr merge 42\nEOF\n)`));
+// Un séparateur cité dans un titre ne change pas l'hôte du heredoc.
+passe(cmd("gh pr create --title \"UI & thème | gardes\" --body-file - <<'EOF'\n--confirmer\nEOF"));
+// Un corps de PR rangé dans une variable PowerShell reste du texte.
+passe(cmd("$corps = @'\nRefuse --confirmer et gh pr merge\n'@\ngh pr create --title Gardes --body $corps"));
+// Options de gh avant la sous-commande, numéro de PR dans une variable.
+refuse(cmd("gh pr -R o/r merge 42"));
+refuse(cmd('gh api -X PUT "repos/o/r/pulls/$PR/merge"'));
+// L'hôte d'une URL de base compte comme hôte nommé.
+refuse(cmd("PGPASSWORD=secret psql postgresql://u" + "@dpg-x.render.com/db"));
+passe(cmd("PGPASSWORD=postgres psql postgresql://postgres" + "@localhost:5433/app_test"));
+// Lire n'est pas écrire ; afficher --confirmer n'est pas le lancer.
+passe(cmd(`python -c "print(open('.env.local').read())"`));
+passe(cmd(`node -e "require('dotenv').config({ path: '.env.local' }); process.stdout.write('ok')"`));
+passe(cmd("echo --confirmer"));
+refuse(cmd(`python -c "open('.env.local', mode='a').write('A=1')"`));
+refuse(cmd(`node -e "require('fs').appendFileSync('.env.local', 'A=1')"`));
+
 // --- Adaptations d'une appli assemblée : un rappel, jamais un refus ---
 // Le 2026-11-05, sur l'appli d'essai tours-de-coloc, trois retouches de fichiers
 // du catalogue n'ont été remontées qu'une fois vues à l'écran.

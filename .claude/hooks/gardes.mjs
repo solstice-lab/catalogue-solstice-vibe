@@ -94,6 +94,10 @@ function motDePasseDeBaseDistante(texte) {
   );
   if (CLIENT_DE_BASE.test(texte))
     hotes.push(...[...texte.matchAll(/(?:^|\s)(?:-h|--host)(?:=|\s+)?["']?([^\s"'&;|]+)/g)].map((x) => x[1]));
+  // `PGPASSWORD=… psql postgresql://u@hôte/db` : l'hôte vient de l'URL.
+  hotes.push(
+    ...[...texte.matchAll(URL_DE_BASE)].map(([, reste]) => reste.slice(reste.indexOf("@") + 1).split(/[/?#]/)[0])
+  );
   return hotes.some((h) => !hoteLocal(h));
 }
 
@@ -155,28 +159,85 @@ const CONSOMMATEURS_DE_TEXTE = new Set([
   "write-host",
 ]);
 
+// Où commence la commande qui porte un heredoc : après le dernier séparateur
+// hors guillemets (`--title "UI & thème"` n'en est pas un), ou dans la
+// substitution `$(` encore ouverte (`--body "$(cat <<'EOF'`), dont `dehors`
+// garde l'ouverture.
+function commandeOuverte(avant) {
+  let debut = 0;
+  let guillemet = null;
+  const pile = [];
+  for (let i = 0; i < avant.length; i++) {
+    const c = avant[i];
+    if (guillemet === "'") {
+      if (c === "'") guillemet = null;
+    } else if (c === "$" && avant[i + 1] === "(") {
+      pile.push({ debut, guillemet, ouverture: i });
+      guillemet = null;
+      debut = i + 2;
+      i++;
+    } else if (guillemet === '"') {
+      if (c === "\\") i++;
+      else if (c === '"') guillemet = null;
+    } else if (c === '"' || c === "'") guillemet = c;
+    else if (c === ")" && pile.length > 0) ({ debut, guillemet } = pile.pop());
+    else if (";|&({".includes(c)) debut = i + 1;
+  }
+  return { debut, dehors: pile.at(-1) };
+}
+
 // Le corps d'un heredoc (`<<'EOF' … EOF`) ou d'une here-string PowerShell
 // (`@' … '@`) n'est du texte que si son hôte en consomme : un message de commit
 // qui citait « gh pr merge » bloquait son propre commit (2026-10-08). Donné à un
-// interpréteur (`bash <<'EOF'`, `Invoke-Expression @'…'@`, `… | sh`) ou rangé
-// dans une variable, il se lit comme des commandes.
+// interpréteur (`bash <<'EOF'`, `Invoke-Expression @'…'@`, `… | sh`,
+// `bash -c "$(cat <<'EOF' …)"`), il se lit comme des commandes. Rangé dans une
+// variable (`$corps = @'…'@`, façon habituelle de passer un corps de PR sous
+// PowerShell), il reste du texte : le garde ne suit pas les variables.
 function hoteConsommateur(avant, apres) {
-  const debut = Math.max(...[";", "|", "&", "(", "{"].map((c) => avant.lastIndexOf(c))) + 1;
-  const hote = sansPrefixes(decouperMots(avant.slice(debut)))[0]?.nu;
+  const { debut, dehors } = commandeOuverte(avant);
+  const commande = avant.slice(debut);
   const tubes = apres.split("|").slice(1);
-  if (hote) return CONSOMMATEURS_DE_TEXTE.has(nomOutil(hote)) && tubes.length === 0;
-  // `@'…'@ | Set-Content notes.md` : le texte part vers un consommateur.
-  return tubes.length === 1 && CONSOMMATEURS_DE_TEXTE.has(nomOutil(decouperMots(tubes[0])[0]?.nu));
+  let consomme;
+  if (/^\s*(\$[\w:]+\s*|[A-Za-z_]\w*)=\s*$/.test(commande)) consomme = tubes.length === 0;
+  else {
+    const hote = sansPrefixes(decouperMots(commande))[0]?.nu;
+    consomme = hote
+      ? CONSOMMATEURS_DE_TEXTE.has(nomOutil(hote)) && tubes.length === 0
+      : // `@'…'@ | Set-Content notes.md` : le texte part vers un consommateur.
+        tubes.length === 1 && CONSOMMATEURS_DE_TEXTE.has(nomOutil(decouperMots(tubes[0])[0]?.nu));
+  }
+  // Dans `$( … )`, la sortie va à la commande du dehors.
+  return consomme && dehors ? hoteConsommateur(avant.slice(0, dehors.ouverture), "") : consomme;
+}
+
+// Les `$( … )` d'un texte : un heredoc non quoté ou une here-string `@"…"@`
+// les exécutent, même quand leur hôte ne fait que consommer du texte.
+function substitutions(corps) {
+  const trouvees = [];
+  let i = corps.indexOf("$(");
+  while (i !== -1) {
+    const fin = parentheseFermante(corps, i + 1);
+    trouvees.push(corps.slice(i, fin + 1));
+    i = corps.indexOf("$(", fin + 1);
+  }
+  return trouvees;
 }
 
 const HEREDOC = /<<-?[ \t]*(['"]?)([\w.-]+)\1([^\n]*)\n([\s\S]*?)\n[ \t]*\2[ \t]*(?=\r?\n|$)/g;
 const HERE_STRING = /@(['"])[ \t]*\r?\n([\s\S]*?)\r?\n\1@([^\n]*)/g;
 function resoudreTextesLibres(commande) {
   const ligneAvant = (chaine, position) => chaine.slice(chaine.lastIndexOf("\n", position - 1) + 1, position);
-  const remplacer = (avant, apres, corps) => (hoteConsommateur(avant, apres) ? apres : `${apres}\n${corps}`);
+  const remplacer = (avant, apres, corps, developpe) =>
+    hoteConsommateur(avant, apres)
+      ? [apres, ...(developpe ? substitutions(corps) : [])].join("\n")
+      : `${apres}\n${corps}`;
   return commande
-    .replace(HEREDOC, (_t, _g, _d, apres, corps, pos, chaine) => remplacer(ligneAvant(chaine, pos), apres, corps))
-    .replace(HERE_STRING, (_t, _g, corps, apres, pos, chaine) => remplacer(ligneAvant(chaine, pos), apres, corps));
+    .replace(HEREDOC, (_t, g, _d, apres, corps, pos, chaine) =>
+      remplacer(ligneAvant(chaine, pos), apres, corps, g === "")
+    )
+    .replace(HERE_STRING, (_t, g, corps, apres, pos, chaine) =>
+      remplacer(ligneAvant(chaine, pos), apres, corps, g === '"')
+    );
 }
 
 function parentheseFermante(texte, ouvrante) {
@@ -507,11 +568,23 @@ function gitSansHooks({ sous, args, configs }) {
 // lecture de la commande entière.
 const MUTATION_DE_FUSION = /\b(mergePullRequest|enablePullRequestAutoMerge)\b/;
 const CLIENTS_HTTP = new Set(["curl", "wget", "invoke-restmethod", "irm", "invoke-webrequest", "iwr", "http", "xh"]);
+// Les mots de gh hors options, celles à valeur sautées : `gh pr -R o/r merge 42`
+// donne `pr merge 42`.
+function positionnelsGh(a) {
+  const positionnels = [];
+  for (let i = 1; i < a.length; i++) {
+    if (/^(-R|--repo|--hostname)$/.test(a[i])) i++;
+    else if (!a[i].startsWith("-")) positionnels.push(a[i]);
+  }
+  return positionnels;
+}
+
 function fusion(a, o, entiere) {
-  if (o === "gh" && a[1] === "pr" && a[2] === "merge") return true;
-  if (!((o === "gh" && a[1] === "api") || CLIENTS_HTTP.has(o))) return false;
+  const gh = o === "gh" ? positionnelsGh(a) : [];
+  if (gh[0] === "pr" && gh[1] === "merge") return true;
+  if (!(gh[0] === "api" || CLIENTS_HTTP.has(o))) return false;
   const put = a.some((x) => /^put$/i.test(x) || /^(-X|--request=|--method=)put$/i.test(x));
-  if (put && a.some((x) => /\/pulls\/\d+\/merge\b/.test(x))) return true;
+  if (put && a.some((x) => /\/pulls\/[^/\s]+\/merge\b/.test(x))) return true;
   return (
     a.some((x) => /graphql/i.test(x)) && (a.some((x) => MUTATION_DE_FUSION.test(x)) || MUTATION_DE_FUSION.test(entiere))
   );
@@ -577,7 +650,11 @@ function ciblesDeRedirection(segment) {
 // nommé avec un verbe d'écriture, ou une commande lancée par un verbe
 // d'exécution (`execSync('gh pr merge 42')`, `run(['gh', 'pr', 'merge'])`).
 const LITTERAUX = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
-const VERBE_ECRITURE = /write|append|copy|rename|move|symlink|truncate|\bopen\s*\([^)]*["'][^"']*[wax+]/i;
+// Les écritures de fichier de Node, Python et .NET ; `open(…)` seulement avec un
+// mode d'écriture : `open('.env.local').read()` lit, `stdout.write` n'écrit
+// aucun fichier.
+const VERBE_ECRITURE =
+  /\b(write(File\w*|_text|_bytes|All\w*)|append(File\w*|All\w*)|copy\w*|cp(Sync)?|rename\w*|move\w*|createWriteStream|symlink\w*|truncate\w*)\b|\bopen\s*\(\s*(?<q>["'])[^"']*\k<q>\s*,\s*(mode\s*=\s*)?["'][^"']*[wax+]/i;
 const VERBE_EXECUTION = /\b(exec\w*|spawn\w*|system|popen|subprocess|check_output|call|run|execa|shell)\b/i;
 function analyserCode(code, entiere, profondeur) {
   const litteraux = [...code.matchAll(LITTERAUX)].map((x) => x[2]);
@@ -590,9 +667,24 @@ function analyserCode(code, entiere, profondeur) {
   return null;
 }
 
-// --confirmer cherché dans le code (`grep -- --confirmer`, `git log -S`) n'est
-// pas --confirmer lancé.
-const LECTEURS = new Set(["grep", "egrep", "fgrep", "rg", "ag", "ack", "findstr", "select-string", "sls", "git"]);
+// --confirmer cherché dans le code (`grep -- --confirmer`, `git log -S`) ou
+// affiché (`echo`) n'est pas --confirmer lancé.
+const LECTEURS = new Set([
+  "grep",
+  "egrep",
+  "fgrep",
+  "rg",
+  "ag",
+  "ack",
+  "findstr",
+  "select-string",
+  "sls",
+  "git",
+  "echo",
+  "printf",
+  "write-output",
+  "write-host",
+]);
 
 function regles(m, entiere) {
   const a = m.map((x) => x.nu);
@@ -656,12 +748,7 @@ export function verifierCommande(commande) {
 }
 
 export function verifierEcriture(chemin, contenu) {
-  const nom = chemin.replace(/\\/g, "/").split("/").pop();
-  if (fichierSecret(chemin))
-    return [
-      "deny",
-      `${nom} porte des secrets : Claude ne l'écrit pas. Le modèle des variables va dans .env.example, les valeurs chez l'hébergeur.`,
-    ];
+  if (fichierSecret(chemin)) return refus("env");
   if (urlDeBaseDistante(contenu))
     return [
       "deny",

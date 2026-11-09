@@ -77,7 +77,7 @@ chaque commande (Bash, PowerShell, terminal de l'appli de bureau) et chaque écr
 MultiEdit, NotebookEdit) de Claude, Claude Code lance
 `node .claude/hooks/gardes.mjs`, qui lit la commande ou le fichier visé, sans
 dépendance ni réseau, et refuse : écrire un `.env*` (hors `.env.example`), `.envrc` ou `.npmrc`, un
-mot de passe de base distante (dans une commande ou un fichier),
+mot de passe de base distante dans une commande, une URL de base distante avec mot de passe dans un fichier,
 `git add -f`, `--confirmer`, la fusion d'une PR (`gh pr merge` ou l'API), `git push --force`
 (`--force-with-lease` passe) et `--no-verify`, y compris confiés à un interpréteur (`sh -c`,
 `pwsh -Command`, heredoc exécuté). Il arrête l'inadvertance d'une session, pas qui veut passer :
@@ -493,9 +493,9 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   catalogue, une appli assemblée ne le reçoit pas).
 - `.claude/settings.json` + `.claude/hooks/gardes.mjs` — refusent à Claude
   (voir « Claude Code : un hook s'applique d'office ») :
-  écrire un `.env*` (hors `.env.example`), une URL de base distante avec mot de passe,
-  `git add -f`, `--confirmer`, `gh pr merge` (et la fusion par `gh api`), `git push --force`
-  (`--force-with-lease` passe), `--no-verify` sur `git commit` et `git push`. Testés par
+  écrire un `.env*` (hors `.env.example`), `.envrc` ou `.npmrc`, un secret de base distante,
+  `git add -f`, `--confirmer`, la fusion d'une PR, `git push --force`
+  (`--force-with-lease` passe), les hooks git sautés. Testés par
   `node .claude/hooks/gardes.test.mjs` (lancé par la CI). Le hook demande
   Node sur le poste.
 - `CLAUDE.md` — les règles du harnais, lues par Claude à chaque session.

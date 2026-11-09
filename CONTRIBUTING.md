@@ -77,7 +77,8 @@ skill `solstice-livrer`, mais rien n'oblige à passer par Claude pour travailler
 Qui ouvre le dépôt dans Claude Code reçoit d'office le hook `PreToolUse` de
 `.claude/settings.json` : avant chaque commande et chaque écriture de fichier
 de Claude, `.claude/hooks/gardes.mjs` refuse d'écrire un `.env*` (hors
-`.env.example`), `.envrc`, `.npmrc` ou un mot de passe de base distante, ainsi que
+`.env.example`), `.envrc`, `.npmrc` ou une URL de base distante avec mot de passe, un tel
+mot de passe dans une commande, ainsi que
 `git add -f`, `--confirmer`, la fusion d'une PR, `git push --force` (`--force-with-lease`
 passe) et `--no-verify`, y compris confiés à un interpréteur. Il arrête l'inadvertance,
 pas qui veut passer : `SECURITY.md` dit où est la barrière réelle. Pour s'en passer sur son poste :
