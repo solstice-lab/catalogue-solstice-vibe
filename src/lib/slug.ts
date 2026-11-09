@@ -66,13 +66,6 @@ export function cheminDossier(dossier: { reference: string; client: string }): s
   return `/dossiers/${slugDossier(dossier)}`;
 }
 
-// L'id porté par un slug qui finit par « -<id> », ou par un id nu ; null si
-// la valeur n'en porte aucun.
-export function idEnFinDeSlug(valeur: string): number | null {
-  const correspondance = /(?:^|-)(\d+)$/.exec(valeur);
-  return correspondance ? Number(correspondance[1]) : null;
-}
-
 // Une URL /<module>/<valeur> peut porter un slug ou, pour les redirections
 // internes des server actions (qui ne connaissent que l'id), un id numérique.
 export function estIdentifiantNumerique(valeur: string): boolean {

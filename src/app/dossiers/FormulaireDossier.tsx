@@ -5,6 +5,7 @@ import { Bouton, Champ, ChampSelect, ChampTexteLong, LienBouton } from "@/ui";
 import {
   centimesVersEurosSaisie,
   LIBELLES_STATUT_DOSSIER,
+  LONGUEUR_MAX_DOSSIER,
   STATUTS_DOSSIER,
   type Dossier,
 } from "@/lib/dossiers-domaine";
@@ -33,10 +34,17 @@ export function FormulaireDossier({
         name="reference"
         defaultValue={initial?.reference}
         placeholder="Ex. DOS-021"
+        maxLength={LONGUEUR_MAX_DOSSIER.reference}
         aide="Unique — c'est elle qui identifie le dossier, y compris pour les imports."
         required
       />
-      <Champ label="Client" name="client" defaultValue={initial?.client} required />
+      <Champ
+        label="Client"
+        name="client"
+        defaultValue={initial?.client}
+        maxLength={LONGUEUR_MAX_DOSSIER.client}
+        required
+      />
       <Champ
         label="Montant"
         name="montant"
@@ -59,6 +67,7 @@ export function FormulaireDossier({
         name="notes"
         defaultValue={initial?.notes ?? ""}
         placeholder="Contexte, décisions, prochaines étapes…"
+        maxLength={LONGUEUR_MAX_DOSSIER.notes}
       />
       {etat.erreur && <p className="sl-erreur-formulaire">{etat.erreur}</p>}
       <div style={{ display: "flex", gap: 10 }}>

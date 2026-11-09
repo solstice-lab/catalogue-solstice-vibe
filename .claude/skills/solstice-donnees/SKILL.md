@@ -109,6 +109,20 @@ brancher ») :
   côté serveur après l'écriture, même s'il s'affiche en lecture seule dans le
   formulaire. Un montant affiché sans être modifiable était quand même
   renvoyé, et sa valeur périmée écrasait la somme des montants mensuels.
+- **Les bornes font partie du patron : la base ne lève jamais à la place d'un
+  message** (audit du 2026-11-09 : un montant géant, « 2026-06-31 » ou
+  `/dossiers/99999999999` donnaient la page d'erreur). À copier avec le module :
+  un montant se borne à `ENTIER_MAX` (`lib/db/bornes.ts`) et se refuse négatif
+  sauf raison métier écrite ; une date se valide par `estDateIso`
+  (`lib/date-iso.ts`), pas par sa seule forme ; chaque texte a une longueur
+  maximale (`LONGUEUR_MAX_DOSSIER` du domaine, reprise en `maxLength` du
+  formulaire) ; un id d'URL ou posté se contrôle (`estIdDossier`) avant la
+  requête, un id hors plage valant « introuvable » (404 à la lecture, message à
+  l'écriture, écarté d'un lot). La clé métier `UNIQUE` se contrôle d'avance pour
+  le message rapide ET se rattrape à l'écriture : deux envois simultanés passent
+  le pré-contrôle, la violation `23505` se traduit par `estRefusDeLaBase`
+  (`lib/db/client.ts`). `tests/dossiers-bornes.test.ts`, à lire au catalogue
+  public (il part avec les écrans), est le modèle des tests.
 - **Garde d'accès** : `exiger("objet.verbe")` de `briques/comptes/roles.ts` en PREMIÈRE
   ligne de chaque page ET server action (une action se poste sans passer par
   l'écran) ; `tests/gardes-acces.test.ts` le vérifie. Le module déclare ses
