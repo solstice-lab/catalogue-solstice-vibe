@@ -329,6 +329,11 @@ const AVEC_IMPORT_LOT = { nom: "comptes + import-lot", briques: ["comptes", "mai
 // de comptes reste seule, et le nettoyage des comptes des tests garde la sienne.
 const AVEC_ESPACES = { nom: "comptes + espaces", briques: ["comptes", "mails", "espaces"] };
 
+// Une brique à brancher seule : la base arrive sans aucune table ni étape de
+// migration (schema.sql en commentaires, MIGRATIONS vide) depuis que la couche
+// données du patron dossiers n'est plus livrée.
+const ECHEANCES_SEULE = { nom: "echeances seule (base sans table ni étape)", briques: ["echeances"] };
+
 // Les briques à brancher, sans la brique comptes : elles lisent la base et
 // rien d'autre, et une copie qui les prend sans connexion doit compiler.
 const A_BRANCHER_SANS_COMPTES = {
@@ -360,6 +365,7 @@ const TOUTES_LES_COMBINAISONS = [
   AVEC_GESTION_COMPTES,
   AVEC_IMPORT_LOT,
   AVEC_ESPACES,
+  ECHEANCES_SEULE,
   A_BRANCHER_SANS_COMPTES,
   AVEC_BRIQUES_OPTIONNELLES,
   TOUTES_LES_BRIQUES,
@@ -713,7 +719,11 @@ describe("appli assemblée, vérifiée par ses propres outils", () => {
   // appuyait encore échouerait ici. Avec et sans comptes, avec le journal, et
   // les briques à brancher sans comptes ; sans base, le test suivant. Une suite
   // à la fois : chacune répartit déjà ses fichiers sur les cœurs du poste.
-  it.for([AVEC_COMPTES, AVEC_JOURNAL, A_BRANCHER_SANS_COMPTES].filter((variante) => COMBINAISONS.includes(variante)))(
+  it.for(
+    [AVEC_COMPTES, AVEC_JOURNAL, ECHEANCES_SEULE, A_BRANCHER_SANS_COMPTES].filter((variante) =>
+      COMBINAISONS.includes(variante)
+    )
+  )(
     "« $nom », sans le patron dossiers, passe lint et ses tests sur une base neuve",
     { timeout: 6 * ENTIER },
     async (variante, { expect }) => {
@@ -834,6 +844,7 @@ const SANS_VITRINE_NI_PATRON = [
   AVEC_COMPTES,
   AVEC_CONTACT,
   AVEC_JOURNAL,
+  ECHEANCES_SEULE,
   A_BRANCHER_SANS_COMPTES,
   TOUTES_LES_BRIQUES,
 ];
