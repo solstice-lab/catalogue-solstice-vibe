@@ -126,9 +126,14 @@ let commitA: string;
 let appli: string;
 
 // Les réglages qui changent des fichiers : briques dont une ajoutée d'office
-// (rgpd avec comptes), champs de l'en-tête, Dependabot.
+// (rgpd avec comptes), champs de l'en-tête, Dependabot. Et la couche données du
+// patron dossiers, comme toute appli assemblée avant son retrait du 2026-11-09 :
+// c'est à elles que la mise à jour s'applique, et elle doit la leur garder
+// (table, étape de migration, module, droit). Une appli assemblée depuis, sans
+// elle, est celle du profil outil-interne et de la vitrine plus bas.
 const REGLAGES_DE_L_APPLI = {
   briques: ["comptes", "mails"],
+  patronDonnees: true,
   dependabot: true,
   entete:
     'appli: Essai de coloc\nnom_affiche: "Essai # de coloc"\nsite: public\nentree: ouverte\nmethodes: [code-email]',
@@ -146,6 +151,7 @@ beforeAll(() => {
     sortie: appli,
     commit: commitA,
     briques: REGLAGES_DE_L_APPLI.briques,
+    patronDonnees: REGLAGES_DE_L_APPLI.patronDonnees,
     dependabot: REGLAGES_DE_L_APPLI.dependabot,
     blueprint: blueprint(REGLAGES_DE_L_APPLI.entete),
   });
@@ -791,6 +797,18 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
       expect(verrou.packages[""].devDependencies.picocolors).toBe(paquet.devDependencies.picocolors);
       // Le fichier de l'appli n'est ni lu ni touché.
       expect(lu("src/app/coloc/page.tsx").toString()).toBe("export default function Page() {}\n");
+      // La couche données du patron, reçue avant que l'assembleur cesse de la livrer :
+      // ni supprimée ni retouchée, sa table et son étape gardées, son droit aussi.
+      for (const chemin of [
+        "src/lib/db/dossiers.ts",
+        "src/lib/dossiers-domaine.ts",
+        "scripts/exemple-import.ts",
+        "src/lib/db/schema.sql",
+        "src/config/acces.ts",
+      ]) {
+        expect(lu(chemin), chemin).toEqual(avant(chemin));
+      }
+      expect(nomsDesEtapes(lu(FICHIER_MIGRATIONS).toString())).toContain(ETAPE_AU_COMMENTAIRE_REVU);
 
       // L'en-tête de la blueprint : commit_reference seul change, le corps reste.
       const blueprintAvant = avant("blueprint.md").toString();
@@ -810,7 +828,7 @@ describe("mettre-a-jour : reporter le catalogue du commit A au commit visé A', 
             "src/lib/date-iso.ts",
           ]),
           ajoutes: ["src/lib/nouveau-du-catalogue.ts"],
-          supprimes: expect.arrayContaining(["docs/cicatrices.md"]),
+          supprimes: ["docs/cicatrices.md"],
           fusionnes: ["NOTICE", "package.json", "src/config/comptes.ts", "src/lib/navigation.ts"],
           enConflit: ["src/lib/image-partage.ts"],
           supprimesParLAppli: ["src/briques/mails/README.md"],
@@ -1776,6 +1794,7 @@ export const AUTRES_MAILS_ESSAI = [{ cle: "sous-traitant-bizarre", role: "Essai.
 function assemblerAuCommitA(options: {
   sortie: string;
   briques: string[];
+  patronDonnees?: boolean;
   dependabot?: boolean;
   entete?: string;
   commit?: string;
@@ -1790,6 +1809,7 @@ function assemblerAuCommitA(options: {
       sortie: options.sortie,
       commit,
       briques: options.briques,
+      patronDonnees: options.patronDonnees ?? false,
       dependabot: options.dependabot ?? false,
       blueprint: options.entete === undefined ? undefined : blueprint(options.entete),
     });
@@ -2224,6 +2244,7 @@ describe("mettre-a-jour --ajouter : ajouter une brique au commit de l'appli (tra
           sortie: aJour,
           commit: git(catalogue, "rev-parse", "--short", "origin/main"),
           briques: REGLAGES_DE_L_APPLI.briques,
+          patronDonnees: REGLAGES_DE_L_APPLI.patronDonnees,
           dependabot: REGLAGES_DE_L_APPLI.dependabot,
           blueprint: blueprint(REGLAGES_DE_L_APPLI.entete),
         });
