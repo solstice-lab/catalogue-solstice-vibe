@@ -106,10 +106,10 @@ DATABASE_URL=<la même> PGSSLMODE=disable npm run test:assembleur   # catalogue 
 npm run build   # sans DATABASE_URL (brique données : le pool naît à la première requête, le build n'en fait aucune)
 ```
 
-Brique données : les tests vident la base qu'ils visent, donc **un seul
-`npm test` à la fois par base de test**. Deux lancements simultanés sur la
-même base se perturbent (deadlocks, table supprimée sous les pieds de l'autre :
-29 échecs le 2026-10-20). Sessions ou personnes en parallèle :
+Brique données : `npm test` répartit les fichiers sur des workers, chacun vidant sa base
+`<base>_w<k>` (k : n° du worker ; créée puis supprimée par `tests/bases-des-workers.ts`). Donc
+**un seul lancement de tests à la fois par base de test** : deux sur la même base se
+perturbent (29 échecs le 2026-10-20). Sessions ou personnes en parallèle :
 **une base dédiée chacune**, `<nom>_test_<n>` (n = numéro du ticket), créée
 par `docker exec catalogue-postgres createdb -U postgres <nom>_test_<n>`
 (conteneur du `docker-compose.yml`), puis la commande ci-dessus avec ce nom.

@@ -539,7 +539,13 @@ export async function testsSurUneBaseNeuve(
       );
     });
   } finally {
-    await query(`DROP DATABASE IF EXISTS ${nomBase} WITH (FORCE)`);
+    // Et les bases de ses workers (tests/bases-des-workers.ts), que la suite
+    // supprime elle-même, sauf arrêtée par le délai ci-dessus.
+    const bases = await query<{ datname: string }>(
+      "SELECT datname FROM pg_database WHERE datname = $1 OR starts_with(datname, $1 || '_w')",
+      [nomBase]
+    );
+    for (const { datname } of bases) await query(`DROP DATABASE IF EXISTS ${datname} WITH (FORCE)`);
   }
 }
 
