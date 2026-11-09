@@ -2677,7 +2677,7 @@ function rubriqueDesAjoutsLourds(resultat) {
             `- La brique rgpd arrive d'office : l'export et l'effacement des données d'une personne, et le registre ${code(REGISTRE)}, où chaque table de l'appli se déclare.`,
           ]
         : []),
-      `- Avant la mise en ligne : ${code("AUTH_SECRET")}, l'adresse du premier admin (${code("COMPTES_PREMIER_ADMIN")}) et l'envoi des codes de connexion par la brique mails (Resend).`,
+      `- Avant la mise en ligne : ${code("AUTH_SECRET")}, l'adresse du premier admin (${code("COMPTES_PREMIER_ADMIN")}), l'en-tête de l'adresse IP (${code("IP_EN_TETE_CLIENT")}, sans quoi la connexion par code refuse de démarrer en production) et l'envoi des codes de connexion par la brique mails (Resend).`,
       ""
     );
   }

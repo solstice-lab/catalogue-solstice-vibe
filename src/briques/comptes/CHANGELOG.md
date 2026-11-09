@@ -366,3 +366,35 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   où cinquante personnes se connectent le lundi matin : la valeur dépend de l'appli.
   L'assembleur la règle depuis l'en-tête de la blueprint (`personnes_par_reseau`), avec
   un défaut par profil.
+
+## 2026-11-09 · `IP_EN_TETE_CLIENT` obligatoire en production, plafond de toute l'appli · Rupture
+
+- **Ce qui change** :
+  - en production, avec le code ou le lien dans `METHODES`, le proxy refuse toute
+    requête, `/sante` comprise, tant que `IP_EN_TETE_CLIENT` est vide (`refuserLaProductionSansEnTeteIp` de `methodes.ts`,
+    appelé par `protegerLaRoute` comme la garde de la démo) ;
+  - une requête sans adresse lisible (variable réglée, en-tête absent) compte, pour les
+    limites par IP, sur une adresse partagée avec toutes celles qui arrivent sans
+    adresse, au lieu de sauter ces limites ;
+  - `LimitesParReseau` gagne `envoisParHeure`, facultatif : le plafond des demandes de
+    code ou de lien de toute l'appli, sur une heure glissante, toutes adresses et IP
+    confondues. Sans lui, `ENVOIS_PAR_HEURE_PAR_DEFAUT` (300), ou `demandesParHeure` si
+    elle est plus haute. Atteint, la demande reçoit la réponse ordinaire, rien ne
+    s'écrit ni ne part, et le journal le dit, sans adresse ni IP, quand la demande qui
+    le remplit passe ;
+  - `refuserDesLimitesParReseauInvalides` rend `Required<LimitesParReseau>`, le plafond
+    rempli, et refuse un `envoisParHeure` qui n'est pas un entier d'au moins 1.
+- **Appelant** :
+  - une appli déployée sans `IP_EN_TETE_CLIENT` la déclare chez l'hébergeur avant de
+    mettre la brique à jour (Render : `cf-connecting-ip`, déjà dans `render.yaml` de
+    la brique déploiement), sans quoi son déploiement échoue au health check ;
+  - rien à changer dans `src/config/comptes.ts` : sans `envoisParHeure`, le plafond
+    vaut 300 (ou `demandesParHeure`, si elle est plus haute). Une appli grand public, ou ouverte à plusieurs entreprises, le relève ;
+  - un appelant de `refuserDesLimitesParReseauInvalides` reçoit une clé de plus.
+- **Pourquoi** : audit du 2026-11-09. Sans la variable, l'adresse du visiteur ne se
+  lisait pas, et la connexion sautait la limite des demandes par IP et celle des
+  saisies fausses, avec un seul avertissement au journal : un tiers invalidait chaque
+  code reçu par une adresse visée (trois saisies fausses par minute) et savait, à
+  « expiré » contre « incorrect », qui demandait un code à l'instant. Et rien ne
+  plafonnait les mails de connexion de toute l'appli, contrairement aux invitations
+  d'espaces : qui dispose de beaucoup d'IP en faisait partir autant qu'il voulait.

@@ -15,7 +15,7 @@ import {
 import type { ContexteEntree } from "../src/briques/comptes/entree";
 import { nomDuCookie } from "../src/briques/comptes/jeton";
 import { lireSessionDe } from "../src/briques/comptes/session";
-import { refuserDesLimitesParReseauInvalides } from "../src/briques/comptes/methodes";
+import { ENVOIS_PAR_HEURE_PAR_DEFAUT, refuserDesLimitesParReseauInvalides } from "../src/briques/comptes/methodes";
 
 /*
  * La connexion par code à 6 chiffres envoyé par e-mail, reprise
@@ -28,7 +28,13 @@ import { refuserDesLimitesParReseauInvalides } from "../src/briques/comptes/meth
 
 // Les limites par réseau de l'appli (src/config/comptes.ts), changées par test :
 // la brique doit lire le réglage de l'appli, pas une valeur à elle.
-const reglages = vi.hoisted(() => ({ limites: { demandesParHeure: 20, codesFauxParHeure: 30 } }));
+const reglages = vi.hoisted(() => ({
+  limites: { demandesParHeure: 20, codesFauxParHeure: 30 } as {
+    demandesParHeure: number;
+    codesFauxParHeure: number;
+    envoisParHeure?: number;
+  },
+}));
 vi.mock("../src/config/comptes", async (original) => ({
   ...(await original<typeof import("../src/config/comptes")>()),
   LIMITES_PAR_RESEAU: reglages.limites,
@@ -127,6 +133,7 @@ beforeEach(async () => {
   envoi.enPanne = false;
   reglages.limites.demandesParHeure = DEMANDES_PAR_HEURE_IP;
   reglages.limites.codesFauxParHeure = ESSAIS_FAUX_PAR_HEURE_IP;
+  delete reglages.limites.envoisParHeure;
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -193,12 +200,103 @@ describe("limites par réseau : lues du réglage de l'appli, jamais retirées", 
     // Une clé absente ferait d'une comparaison une limite qui ne refuse jamais.
     expect(() => refuserDesLimitesParReseauInvalides({ demandesParHeure: 20 } as never)).toThrow(/codesFauxParHeure/);
     expect(() => refuserDesLimitesParReseauInvalides({ codesFauxParHeure: 30 } as never)).toThrow(/demandesParHeure/);
+    // Le plafond de toute l'appli est facultatif : une appli assemblée avant
+    // lui n'a pas la clé, et reçoit le défaut de la brique, pas une absence de
+    // plafond.
     expect(refuserDesLimitesParReseauInvalides({ demandesParHeure: 100, codesFauxParHeure: 150 })).toEqual({
       demandesParHeure: 100,
       codesFauxParHeure: 150,
+      envoisParHeure: ENVOIS_PAR_HEURE_PAR_DEFAUT,
     });
+    expect(
+      refuserDesLimitesParReseauInvalides({ demandesParHeure: 100, codesFauxParHeure: 150, envoisParHeure: 1_000 })
+    ).toMatchObject({ envoisParHeure: 1_000 });
+    // L'assembleur règle demandesParHeure depuis la blueprint (400 personnes par
+    // réseau), pas le plafond : son défaut refuserait un seul réseau avant sa
+    // propre limite.
+    expect(refuserDesLimitesParReseauInvalides({ demandesParHeure: 400, codesFauxParHeure: 600 })).toMatchObject({
+      envoisParHeure: 400,
+    });
+    for (const refusee of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, null, "300"]) {
+      expect(
+        () =>
+          refuserDesLimitesParReseauInvalides({
+            demandesParHeure: 20,
+            codesFauxParHeure: 30,
+            envoisParHeure: refusee as never,
+          }),
+        String(refusee)
+      ).toThrow(/envoisParHeure.*LIMITES_PAR_RESEAU/);
+    }
   });
 });
+
+// Audit du 2026-11-09 : les limites par adresse et par IP ne bornent pas qui
+// dispose de beaucoup d'IP. Rien ne plafonnait les codes et liens que l'appli
+// fait partir en une heure, contrairement aux invitations d'espaces (plafond
+// par espace et global) : coût d'envoi, réputation de l'expéditeur.
+describe(
+  "plafond de toute l'appli : codes et liens par heure, toutes adresses et IP confondues",
+  { timeout: 30_000 },
+  () => {
+    it("au plafond, répond comme à une adresse inconnue, sans rien écrire ni envoyer : la réponse ne dit rien de l'adresse", async () => {
+      reglages.limites.envoisParHeure = 2;
+      expect(await demander(ADMISE, IP_A)).toBe("envoye");
+      expect(await demander("autre@client.example", IP_B)).toBe("envoye");
+      await lancerLesEnvois();
+      viderMailsCaptures();
+
+      expect(await demander("encore@client.example", "192.0.2.1")).toBe("envoye");
+      expect(await demander(ADMISE, "192.0.2.2")).toBe("envoye");
+      await lancerLesEnvois();
+      expect(mailsCaptures()).toEqual([]);
+      expect(await query("SELECT 1 FROM codes_connexion")).toHaveLength(2);
+    });
+
+    it("libère une place quand une demande a plus d'une heure : le plafond se compte sur l'heure glissante", async () => {
+      reglages.limites.envoisParHeure = 1;
+      expect(await demander(ADMISE, IP_A)).toBe("envoye");
+      await vieillir(61);
+      expect(await recevoirUnCode(ADMISE, IP_B)).toMatch(/^\d{6}$/);
+    });
+
+    it("ne laisse passer qu'une demande parmi plusieurs simultanées, de réseaux différents, à une place du plafond : le plafond se lit sous verrou", async () => {
+      reglages.limites.envoisParHeure = 3;
+      await demander("avant1@client.example", "192.0.2.1");
+      await demander("avant2@client.example", "192.0.2.2");
+      await Promise.all(
+        Array.from({ length: 5 }, (_, i) => demander(`simultanee${i}@client.example`, `198.51.100.${i}`))
+      );
+      expect(await query("SELECT 1 FROM codes_connexion")).toHaveLength(3);
+    });
+
+    it("le dit au journal une fois, quand la demande qui l'atteint passe, sans adresse ni IP : de quoi relever le réglage si ce sont de vraies connexions", async () => {
+      const avertissement = vi.spyOn(console, "warn").mockImplementation(() => {});
+      reglages.limites.envoisParHeure = 2;
+      await demander(ADMISE, IP_A);
+      expect(avertissement).not.toHaveBeenCalled();
+      await demander("autre@client.example", IP_B);
+      for (let i = 0; i < 3; i++) await demander(`apres${i}@client.example`, `192.0.2.${i}`);
+      expect(avertissement).toHaveBeenCalledTimes(1);
+      const message = avertissement.mock.calls[0].map(String).join(" ");
+      expect(message).toMatch(/Brique comptes : .*plafond.*2.*envoisParHeure/);
+      for (const donnee of [ADMISE, "autre@client.example", IP_A, IP_B]) expect(message).not.toContain(donnee);
+    });
+
+    it("donne, au plafond, le même état de l'action qu'une demande ordinaire", async () => {
+      reglages.limites.envoisParHeure = 1;
+      const formulaire = (email: string) => {
+        const donnees = new FormData();
+        donnees.set("email", email);
+        return donnees;
+      };
+      const ordinaire = await demanderCodeAction({}, formulaire(ADMISE));
+      const auPlafond = await demanderCodeAction({}, formulaire("autre@client.example"));
+      expect(auPlafond.erreur).toBeUndefined();
+      expect(Object.keys(auPlafond).sort()).toEqual(Object.keys(ordinaire).sort());
+    });
+  }
+);
 
 describe("demande d'un code : la réponse ne dit pas qui a un compte", () => {
   it("répond avant l'envoi, qui part après la réponse : attendre l'envoi rendait la réponse plus lente pour une adresse connue (projet précédent)", async () => {
@@ -312,10 +410,13 @@ describe("limites de demandes, en base, par adresse et par adresse IP", { timeou
     expect(reponses.filter((reponse) => reponse === "envoye")).toHaveLength(1);
   });
 
-  it("sans adresse IP lisible en production, garde les limites par adresse et laisse tomber celle par IP, qui bloquerait tout le monde d'un coup", async () => {
-    for (let i = 0; i <= DEMANDES_PAR_HEURE_IP; i++)
+  // Audit du 2026-11-09 : sans adresse lisible, la limite par IP sautait, et
+  // rien ne bornait plus qui essayait des milliers d'adresses.
+  it("sans adresse IP lisible en production, compte la demande sur une même adresse partagée, soumise à la limite par réseau, au lieu de n'en appliquer aucune", async () => {
+    for (let i = 0; i < DEMANDES_PAR_HEURE_IP; i++)
       expect(await demander(`personne${i}@client.example`, null)).toBe("envoye");
-    expect(await demander("personne0@client.example", null)).toBe("limite");
+    expect(await demander("encore-une@client.example", null)).toBe("limite");
+    expect(await demander("encore-une@client.example", IP_A)).toBe("envoye");
   });
 
   it("ne garde en base ni le code, ni l'adresse, ni l'IP : seulement leurs empreintes", async () => {
@@ -411,10 +512,17 @@ describe("vérification du code : expiré, déjà utilisé ou faux ne connecte p
     expect(await query("SELECT 1 FROM codes_connexion_essais")).toHaveLength(1);
   });
 
-  it("sans adresse IP lisible en production, ne compte pas les saisies fausses par IP, qui bloqueraient tout le monde d'un coup", async () => {
-    for (let i = 0; i <= ESSAIS_FAUX_PAR_HEURE_IP; i++) {
+  // Audit du 2026-11-09 : sans adresse lisible, les saisies fausses ne se
+  // comptaient pas. Un tiers invalidait chaque code reçu par une adresse visée
+  // (trois saisies fausses par minute) et lisait, à « expiré » contre
+  // « incorrect », qui demandait un code à l'instant.
+  it("sans adresse IP lisible en production, compte les saisies fausses sur une même adresse partagée : au-delà de la limite par réseau, plus aucun code n'est lu sans adresse", async () => {
+    const code = await recevoirUnCode();
+    for (let i = 0; i < ESSAIS_FAUX_PAR_HEURE_IP; i++) {
       expect(await connecterParCode(`sonde${i}@client.example`, "000000", null, CONTEXTE)).toBe("expire");
     }
+    expect(await connecterParCode(ADMISE, autreCode(code), null, CONTEXTE)).toBe("limite");
+    expect(await connecterParCode(ADMISE, code, IP_A, CONTEXTE)).toBe("connecte");
   });
 
   it("refuse une adresse désactivée entre l'envoi du code et sa saisie", async () => {

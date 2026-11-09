@@ -3,6 +3,7 @@ import { nomDuCookie, verifierSignature } from "./jeton";
 import {
   refuserDesLimitesParReseauInvalides,
   refuserLaDemoEnProduction,
+  refuserLaProductionSansEnTeteIp,
   refuserUneEntreeOuverteQuiAdministre,
 } from "./methodes";
 
@@ -48,6 +49,7 @@ export function estOuverte(chemin: string): boolean {
 // redirection n'exécute aucun script : elle n'a pas besoin de la CSP.
 export function protegerLaRoute(requete: NextRequest): NextResponse | null {
   refuserLaDemoEnProduction();
+  refuserLaProductionSansEnTeteIp();
   refuserUneEntreeOuverteQuiAdministre();
   refuserDesLimitesParReseauInvalides();
   if (estOuverte(requete.nextUrl.pathname)) return null;
