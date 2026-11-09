@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { nomDuCookie, verifierSignature } from "./jeton";
 import {
+  refuserDesDureesDeSessionInvalides,
   refuserDesLimitesParReseauInvalides,
   refuserLaDemoEnProduction,
   refuserLaProductionSansEnTeteIp,
@@ -52,6 +53,7 @@ export function protegerLaRoute(requete: NextRequest): NextResponse | null {
   refuserLaProductionSansEnTeteIp();
   refuserUneEntreeOuverteQuiAdministre();
   refuserDesLimitesParReseauInvalides();
+  refuserDesDureesDeSessionInvalides();
   if (estOuverte(requete.nextUrl.pathname)) return null;
   if (verifierSignature(requete.cookies.get(nomDuCookie())?.value)) return null;
   const connexion = new URL("/connexion", requete.url);

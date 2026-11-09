@@ -1,6 +1,6 @@
 "use server";
 
-import { exiger } from "@/briques/comptes/roles";
+import { exiger, exigerConnexionRecente } from "@/briques/comptes/roles";
 import { apercevoirEffacement, effacerDonnees, type BilanEffacement } from "@/briques/rgpd/effacement";
 import { adresseLisible, normaliserAdresse } from "@/briques/rgpd/export";
 import { transaction } from "@/lib/db/client";
@@ -13,14 +13,24 @@ import { transaction } from "@/lib/db/client";
  * venues du client et la confirmation.
  */
 
-export type RetourEffacement = { bilan: BilanEffacement } | { erreur: string };
+// `reconnexion` accompagne le refus faute de connexion récente : l'écran où
+// ramène le bouton « Se reconnecter ».
+export type RetourEffacement = { bilan: BilanEffacement } | { erreur: string; reconnexion?: string };
 
 const ILLISIBLE = { erreur: "Adresse e-mail illisible : attendu nom@domaine.ext." };
 
 const adresseDe = (valeur: unknown) => normaliserAdresse(typeof valeur === "string" ? valeur : "");
 
+// Un effacement ne se rattrape pas : il demande une connexion récente, qu'un
+// cookie volé n'a pas (audit du 2026-11-09). Dès l'aperçu, pour que le refus
+// arrive avant que l'admin ait lu et retapé l'adresse ; et de nouveau à
+// l'effacement, la connexion ayant pu vieillir entre les deux.
+const ECRAN = "/donnees-personnelles";
+
 export async function apercevoirEffacementAction(adresse: unknown): Promise<RetourEffacement> {
   const personne = await exiger("donnees.effacer");
+  const refus = await exigerConnexionRecente(ECRAN);
+  if (refus) return refus;
   const cible = adresseDe(adresse);
   if (!adresseLisible(cible)) return ILLISIBLE;
   const issue = await apercevoirEffacement(cible, { transaction, demandeur: personne.email });
@@ -31,6 +41,8 @@ export async function apercevoirEffacementAction(adresse: unknown): Promise<Reto
 // ne se rattrape pas ne part pas sur une adresse lue de travers.
 export async function effacerAction(adresse: unknown, confirmation: unknown): Promise<RetourEffacement> {
   const personne = await exiger("donnees.effacer");
+  const refus = await exigerConnexionRecente(ECRAN);
+  if (refus) return refus;
   const cible = adresseDe(adresse);
   if (!adresseLisible(cible)) return ILLISIBLE;
   if (adresseDe(confirmation) !== cible) {

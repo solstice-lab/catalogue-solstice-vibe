@@ -34,3 +34,16 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   désactivation obligeait à retoucher ce fichier de la brique, compté dans
   `catalogue.empreintes.json`, et trois tickets y ajoutaient chacun leur
   effet.
+
+## 2026-11-09 · Inviter et changer un rôle demandent une connexion récente · Comportement
+
+- **Ce qui change** : `inviterAction` et `changerRoleAction` appellent
+  `exigerConnexionRecente("/comptes")` de la brique comptes après `exiger` ; sans
+  connexion de moins de dix minutes par défaut (`connexionRecenteMinutes` de
+  `DUREES_DE_SESSION`), elles rendent `{ erreur, reconnexion }`. `RetourAdministration` gagne `reconnexion`,
+  facultatif, et l'écran affiche le refus par `RefusReconnexion` (bouton « Se
+  reconnecter »).
+- **Appelant** : rien à changer. Une appli qui avait retouché
+  `src/app/comptes/actions.ts` y reprend l'appel.
+- **Pourquoi** : audit du 2026-11-09 : un cookie volé suffisait à donner le rôle
+  admin à un compte, existant ou invité pour l'occasion.

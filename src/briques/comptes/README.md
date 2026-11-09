@@ -62,7 +62,8 @@ ni base, ni droits, ni protection des routes : c'est un site vitrine. Son
 - **Session.** Le cookie (`session`, `__Host-session` en production) porte un
   jeton aléatoire de 256 bits et sa signature HMAC par `AUTH_SECRET`. La base
   ne garde que l'empreinte SHA-256 du jeton. Le cookie est `HttpOnly`,
-  `SameSite=Lax`, `Secure` en production, et vaut 30 jours.
+  `SameSite=Lax`, `Secure` en production, et vaut 30 jours ; la session se
+  ferme plus tôt, après 7 jours sans visite (voir « La politique de session »).
 - **Proxy.** `src/proxy.ts` (socle) appelle `protegerLaRoute`, qui ne vérifie
   que la signature, sans lire la base, parce que le proxy tourne sur chaque
   requête, préchargements compris.
@@ -98,6 +99,71 @@ ni base, ni droits, ni protection des routes : c'est un site vitrine. Son
 - **Comptes en base.** Un compte naît à sa première connexion, ou à son
   invitation au niveau 3 : rien n'est semé par migration. On désactive un
   compte (`actif`), on ne le supprime pas.
+
+## La politique de session
+
+Fixée par la personne responsable le 2026-11-09, après l'audit du même jour :
+un cookie volé valait 30 jours de droits admin, sans expiration à l'inactivité
+ni preuve redemandée avant un geste sensible. Les trois durées se règlent dans
+`DUREES_DE_SESSION` de `src/config/comptes.ts` (valeurs ci-dessous par défaut).
+
+- **Durée maximale, 30 jours** (`maximumJours`) depuis la connexion, visites
+  comprises. Le cookie vit autant ; c'est la base qui ferme la session avant.
+- **Inactivité, 7 jours** (`inactiviteJours`). `expire_le` est l'échéance
+  d'inactivité : chaque visite la repousse à 7 jours, jamais au-delà des
+  30 jours depuis `cree_le`, l'heure de la connexion. Une session sans visite
+  pendant 7 jours ne rend plus personne. Pas de colonne de dernière visite, donc
+  pas de migration : la purge de la brique rgpd et le ménage à la connexion
+  lisaient déjà `expire_le`.
+- **Une écriture par heure au plus.** La session se lit à chaque requête ; elle
+  ne s'écrit que si sa visite précédente date de plus d'une heure. Le délai
+  d'inactivité réel va donc de 7 jours moins une heure à 7 jours.
+- **Sessions ouvertes avant cette règle.** Leur `expire_le` valait 30 jours :
+  dès leur visite suivante, il revient à 7 jours. La durée maximale se compte de
+  toute façon depuis `cree_le`, même si `expire_le` la dépasse (une durée
+  raccourcie dans la configuration agit aussi sur les sessions ouvertes).
+- **Connexion récente, 10 minutes** (`connexionRecenteMinutes`), avant quatre
+  gestes : effacer les données d'une personne (`/donnees-personnelles`, à
+  l'aperçu comme à l'effacement), inviter une adresse et changer un rôle
+  (`/comptes` : l'un comme l'autre donne un rôle, admin compris), fermer ses
+  autres sessions. Une connexion par code, lien, Google ou Microsoft (ou un
+  rôle joué en démo) ouvre une session neuve, dont `cree_le` fait foi ; une
+  visite ne la rajeunit pas. Chaque server action appelle
+  `exigerConnexionRecente(ecran)` de `roles.ts` juste après `exiger`, et
+  renvoie son refus : « reconnectez-vous, puis recommencez », avec l'écran du
+  geste (`reconnexion`). L'écran l'affiche par `RefusReconnexion`, dont le
+  bouton « Se reconnecter » ferme la session puis mène à
+  `/connexion?retour=<écran>`. Un bouton et pas un lien : `/connexion` et la
+  page du lien renvoient une personne encore connectée vers son retour sans
+  rien lui redemander, et le lien ramenait au geste refusé. Un module qui ajoute
+  un geste sensible appelle `exigerConnexionRecente` de la même façon.
+- **« Fermer mes autres sessions ».** La carte « Mes sessions » (`MesSessions`)
+  dit dans combien d'autres navigateurs ou appareils le compte est encore
+  ouvert, et son bouton les ferme toutes sauf celui-ci, derrière la connexion
+  récente, et répond par un 404 sans personne connectée. Posée sur `/mes-donnees`, l'écran personnel que tout rôle ouvre
+  (brique rgpd, gardée d'office avec comptes). Aucun rôle ne la garde :
+  chacun gère ses propres sessions.
+
+Les bornes sont vérifiées au démarrage comme les limites par réseau
+(`refuserDesDureesDeSessionInvalides`, appelée par le proxy à chaque requête et
+par la brique à chaque lecture de session) : des entiers d'au moins 1,
+l'inactivité jamais plus longue que la durée maximale, la connexion récente
+d'une heure au plus (au-delà, elle ne prouve plus que la personne est devant
+l'écran), la durée maximale de 400 jours au plus (Chrome raccourcit au-delà la
+vie du cookie). Sinon l'appli refuse de démarrer, en nommant la durée fautive.
+
+Pièges verrouillés dans `tests/comptes-session.test.ts` (« politique de
+session »), `tests/gestion-comptes.test.ts` et `tests/rgpd-routes.test.ts` :
+
+| Piège | Test |
+| --- | --- |
+| Un cookie volé vaut la durée maximale | « ferme une session restée sans visite pendant le délai d'inactivité » |
+| La session s'écrit à chaque requête | « n'écrit pas en base à chaque requête : au plus un renouvellement par heure » |
+| Les visites prolongent la session sans fin | « ne repousse jamais l'échéance au-delà de la durée maximale… » |
+| Une session d'avant la règle garde ses 30 jours | « ramène dès la visite suivante à l'échéance d'inactivité… » |
+| Un cookie volé change un rôle, efface une personne ou ferme les sessions de sa victime | « refusent un changement de rôle sans connexion récente… », « refusent une invitation sans connexion récente… », « refuse l'aperçu et l'effacement sans connexion récente… », « « Fermer mes autres sessions » exige une connexion récente… » |
+| « Se reconnecter » ramène au geste refusé, en boucle | « « Se reconnecter » ferme la session avant de mener à /connexion… » |
+| Le cookie perd `__Host-`, `HttpOnly`, `Secure` ou `SameSite` | « pose le cookie de production en __Host-, HttpOnly, Secure, SameSite=Lax… » |
 
 ## Le niveau 3 : l'administration dans l'appli
 
@@ -238,8 +304,8 @@ Et dans `tests/comptes-effets.test.ts`, le registre des effets :
 
 | Fichier | Rôle |
 | --- | --- |
-| `roles.ts` | Le mécanisme des droits, sans aucun nom de module : `peut`, `exiger`, `visiblePour`, `utilisateurCourant`. |
-| `session.ts` | Ouvrir, lire, fermer une session ; retrouver une personne par son adresse ; fermer toutes les sessions d'un compte qu'on désactive. Seul fichier qui touche aux sessions en base. |
+| `roles.ts` | Le mécanisme des droits, sans aucun nom de module : `peut`, `exiger`, `visiblePour`, `utilisateurCourant`, et `exigerConnexionRecente` avant un geste sensible. |
+| `session.ts` | Ouvrir, lire (et repousser l'échéance d'inactivité), fermer une session ; dire si la connexion est récente ; compter et fermer les autres sessions du compte ; retrouver une personne par son adresse ; fermer toutes les sessions d'un compte qu'on désactive. Seul fichier qui touche aux sessions en base. |
 | `entree.ts` | Qui entre, avec quel rôle : `admettre`, `seraitAdmis`, `roleEffectif`, `origineDuCompte`. |
 | `administration.ts` | Le niveau 3 : lister les comptes et les domaines, inviter, changer un rôle, désactiver, réactiver, ouvrir et fermer un domaine, sous la protection du dernier admin. |
 | `effets.ts` | Les types du registre des effets de comptes et `jouerLesEffets`, qu'appellent la désactivation, la réactivation et l'anonymisation d'un compte. |
@@ -252,8 +318,8 @@ Et dans `tests/comptes-effets.test.ts`, le registre des effets :
 | `microsoft.ts` | La méthode Microsoft (Entra ID) : le départ vers Microsoft, le retour (state, PKCE, nonce, ID token, annuaire), les règles d'entrée propres à Microsoft, les messages de refus. |
 | `parcours.ts` | Le cookie de parcours d'une connexion par un fournisseur : ce que le départ tire au hasard et que le retour doit retrouver. Il est signé, à usage unique, et vaut 10 minutes. |
 | `demo.ts` | La méthode démo : un compte par rôle, refusée en production. |
-| `methodes.ts` | Les types de la configuration (`MethodeDeConnexion`, `Entree`, `AnnuairesMicrosoft`) et `ErreurComptes`. |
-| `actions.ts` | Les server actions : demander un code, le vérifier, demander un lien, se connecter par le lien, entrer en démo, se déconnecter. Sans garde, puisque ce sont elles qui décident de qui l'on est. |
+| `methodes.ts` | Les types de la configuration (`MethodeDeConnexion`, `Entree`, `AnnuairesMicrosoft`, `LimitesParReseau`, `DureesDeSession`), les gardes de démarrage et `ErreurComptes`. |
+| `actions.ts` | Les server actions : demander un code, le vérifier, demander un lien, se connecter par le lien, entrer en démo, se déconnecter, se reconnecter (après un refus faute de connexion récente), fermer ses autres sessions. Sans garde de rôle, puisque ce sont elles qui décident de qui l'on est ; fermer ses autres sessions exige une connexion récente. |
 | `EcranConnexion.tsx` | Le contenu de `/connexion` : un bloc par méthode, dans l'ordre de `METHODES`, et le message d'un refus de Google ou de Microsoft. |
 | `FormulaireCode.tsx` | Le bloc du code par e-mail, en deux étapes : l'adresse, puis le code. |
 | `FormulaireLien.tsx` | Le bloc du lien par e-mail : l'adresse, puis ce qu'il faut faire du mail. Sur `/connexion` et sur la page d'un lien qui ne vaut plus. |
@@ -261,6 +327,8 @@ Et dans `tests/comptes-effets.test.ts`, le registre des effets :
 | `confidentialite.ts` | La description des traitements de la brique, pour la politique de confidentialité. N'importe que `src/config/comptes.ts` : la page publique ne doit pas atteindre la base. |
 | `donnees-personnelles.ts` | Ce que la brique garde sur une adresse, pour l'export et l'effacement des données d'une personne de la brique rgpd, que l'assembleur garde d'office avec comptes. |
 | `BandeauSession.tsx` | Au-dessus de chaque page (depuis `src/app/layout.tsx`) : qui est connecté, « Se déconnecter » et, en démo, le choix du rôle. |
+| `MesSessions.tsx`, `FormulaireAutresSessions.tsx` | La carte « Mes sessions » de `/mes-donnees` : les autres sessions ouvertes du compte, et le bouton qui les ferme. |
+| `RefusReconnexion.tsx` | Le refus d'un geste et, faute de connexion récente, le bouton « Se reconnecter » : pour `/comptes`, `/donnees-personnelles` et « Mes sessions ». |
 
 Hors de la brique, mais partis avec elle quand une copie ne la garde pas :
 - `src/config/acces.ts`, `src/config/comptes.ts` et `src/config/effets-comptes.ts`,
@@ -346,9 +414,10 @@ une minute ; « Changer d'adresse » recommence.
     (sous un plafond tenu plein, à chaque place reprise : au plus le plafond par
     heure). Son prix, accepté : qui dispose de beaucoup d'IP peut l'épuiser avec
     des adresses quelconques et retarder toutes les connexions jusqu'à une heure.
-    Trois cents, parce qu'une session dure trente jours : une appli interne de
-    quelques centaines de personnes n'en voit pas autant se connecter dans la
-    même heure. Une appli grand public le relève.
+    Trois cents, parce qu'une appli interne de quelques centaines de personnes
+    n'en voit pas autant se connecter dans la même heure, même un lundi matin
+    où celles absentes depuis sept jours se reconnectent toutes (« La politique
+    de session »). Une appli grand public le relève.
 
   Les limites par adresse e-mail (cinq depuis une IP, dix sur toutes les IP) sont
   fixes : elles parlent d'une seule personne.
@@ -492,6 +561,21 @@ une minute. Le mail mène à `/connexion/lien`.
   `URL_PUBLIQUE`), la méthode ne fonctionne donc pas ; y déclarer
   `URL_PUBLIQUE` ouvrirait un site public aux moteurs (`src/lib/referencement.ts`).
   La recette garde le code.
+
+**Le jeton dans l'adresse du lien : un risque assumé.** Le jeton voyage dans
+l'adresse d'une requête GET, `/connexion/lien?jeton=…` (`lienDeConnexion` de
+`lien-email.ts`, lu par `EcranLien.tsx` à l'ouverture). Il peut donc finir dans
+les journaux d'accès de l'hébergeur et du CDN, qui notent l'adresse de chaque
+requête, et y rester lisible pendant ses 15 minutes de validité. C'est assumé :
+les antivirus de messagerie ouvrent les liens d'un e-mail et consomment ceux
+qui agissent au GET, et le jeton doit donc arriver par l'adresse jusqu'à une
+page qui ne fait que l'afficher. Ce qui limite le risque : le jeton est chiffré
+(l'adresse e-mail n'y paraît pas en clair), il ne vaut que 15 minutes, il est
+consommé par le POST du bouton, et en demander un nouveau l'invalide. Qui lit
+ces journaux dans la fenêtre peut se connecter à la place de la personne : leur
+accès se restreint chez l'hébergeur. Le mécanisme ne change pas tant qu'aucune
+autre voie ne survit aux antivirus (un jeton dans le fragment `#`, que les
+journaux ne voient pas, demanderait du JavaScript pour le poster).
 
 Dans une appli qui propose le code et le lien, la dernière demande peut être
 un lien : un code saisi alors compte pour un essai faux. La politique de
@@ -821,6 +905,7 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `roles.ts` | `peut(utilisateur, action)` → `boolean` | La règle elle-même, relue à chaque appel. Refus par défaut : `null` ou un rôle absent de `ROLES` ne passe aucune action. Une route l'appelle avec `await utilisateurCourant()` et répond elle-même. |
 | `roles.ts` | `visiblePour(action)` → `() => Promise<boolean>` | Le garde d'une entrée de `src/lib/navigation.ts`, avec la même action que la page. |
 | `roles.ts` | `utilisateurCourant()` → `Promise<Utilisateur \| null>` | La personne de la session, ou `null`. Une seule lecture en base par requête. |
+| `roles.ts` | `exigerConnexionRecente(ecran)` → `Promise<RefusConnexionAncienne | null>`, type `RefusConnexionAncienne` | Juste après `exiger`, dans une server action de geste sensible (effacer les données d'une personne, changer un rôle, fermer ses autres sessions). `null` si la session a été ouverte par une connexion de moins de `connexionRecenteMinutes` ; sinon le refus à renvoyer à l'écran, `{ erreur, reconnexion }`, où `reconnexion` est `ecran` filtré (`cheminDeRetour`). Voir « La politique de session ». |
 | `roles.ts` | `utilisateurDeLEmail(email)` → `Promise<Utilisateur \| null>` | Retrouve en base une personne active et encore admise, par son adresse (le `peutDecider` de la brique validation). |
 | `roles.ts` | types `Utilisateur`, `DroitsDe<A, R>` | `Utilisateur` : `{ email, role }`, avec `role` en chaîne (un rôle retiré de la configuration est refusé, pas rejeté au typage). `DroitsDe` : le type de `DROITS`. |
 | `entree.ts` | `admettre(email)` → `Promise<CompteAdmis \| null>` | Pour une méthode, une fois l'identité vérifiée : le compte, créé s'il manque, ou `null` si la personne n'entre pas (inconnue, compte désactivé). |
@@ -830,8 +915,10 @@ utilise. Les autres exports servent aux fichiers de la brique ou
 | `EcranConnexion.tsx` | `EcranConnexion({ retour, erreur? })` | Le contenu de `/connexion`, que la page entoure de `AppLayout`. `erreur` reçoit le paramètre `erreur` de l'adresse, tel quel : seul un code de refus de Google ou de Microsoft connu affiche un message. |
 | `EcranLien.tsx` | `EcranLien({ jeton?, retour, erreur? })` | Le contenu de `/connexion/lien`, où mène le lien de connexion du mail, que la page entoure de `AppLayout`. Son rendu ne fait que lire si le lien vaut encore : il montre l'adresse et le bouton « Me connecter », dont l'envoi (POST) connecte, ou la demande d'un nouveau lien. `retour` arrive filtré (`cheminDeRetour`). Sans lien valable, le message du lien expiré, quelle que soit l'`erreur` ; `acces` et `limite`, seuls codes reconnus en plus, donnent une alerte fixe. Page introuvable sans `"lien-email"` dans `METHODES`. |
 | `BandeauSession.tsx` | `BandeauSession` | Placé dans `src/app/layout.tsx`. |
-| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"lien-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`), `LimitesParReseau` (`demandesParHeure`, `codesFauxParHeure`, `envoisParHeure` facultatif) ; `ENVOIS_PAR_HEURE_PAR_DEFAUT` (300) ; classe `ErreurComptes` ; `refuserDesLimitesParReseauInvalides(limites?)` → `Required<LimitesParReseau>` ; `refuserLaProductionSansEnTeteIp()` | Les types de `src/config/comptes.ts`. `refuserDesLimitesParReseauInvalides` lève `ErreurComptes` pour une limite qui n'est pas un entier d'au moins 1, et rend les limites avec `envoisParHeure` à `ENVOIS_PAR_HEURE_PAR_DEFAUT` (ou à `demandesParHeure`, si elle est plus haute) quand l'appli ne le règle pas ; le proxy l'appelle à chaque requête, avec les gardes de démarrage (démo, `IP_EN_TETE_CLIENT` en production, entrée ouverte), et la brique à chaque demande ou saisie. `refuserLaProductionSansEnTeteIp` lève `ErreurComptes` en production quand `IP_EN_TETE_CLIENT` est vide et que `METHODES` propose le code ou le lien. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
-| `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code`, `connexion-lien`, `connexion-google` et `connexion-microsoft`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code, par lien, avec Google et avec Microsoft n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. Les durées y sont écrites en toutes lettres : la durée de session, la validité du code et du lien, et la vie du cookie de parcours de Google et de Microsoft sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. Chaque traitement déclare sa `conservation`, à valider avec le client : le compte 24 mois après la dernière connexion (clé `comptes-inactifs`, compté par le script de purge de la brique rgpd, effacé à la main), les sessions un jour après leur expiration (`sessions`), les demandes et saisies de code ou de lien une heure (`codes-connexion`, `codes-connexion-essais`, déclarées par le lien seulement quand le code n'est pas proposé), purgées par la brique rgpd ; les connexions avec Google et avec Microsoft n'en déclarent pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
+| `MesSessions.tsx` | `MesSessions({ retour })` | La carte « Mes sessions », composant serveur, posée sur `/mes-donnees` ; `retour` est le chemin de l'écran qui la pose, où ramène « Se reconnecter ». |
+| `RefusReconnexion.tsx` | `RefusReconnexion({ erreur, reconnexion? })` | Le refus d'un geste ; avec `reconnexion`, le bouton « Se reconnecter » (un formulaire : jamais à l'intérieur d'un autre). |
+| `methodes.ts` | types `MethodeDeConnexion` (`"code-email"`, `"lien-email"`, `"google"`, `"microsoft"`, `"demo"`), `Entree` (`adresses`, `domaines`, `ouverte` facultatif), `AnnuairesMicrosoft` (`"un-seul"`, `"tous"`), `LimitesParReseau` (`demandesParHeure`, `codesFauxParHeure`, `envoisParHeure` facultatif), `DureesDeSession` (`maximumJours`, `inactiviteJours`, `connexionRecenteMinutes`) ; `ENVOIS_PAR_HEURE_PAR_DEFAUT` (300) ; classe `ErreurComptes` ; `refuserDesLimitesParReseauInvalides(limites?)` → `Required<LimitesParReseau>` ; `refuserDesDureesDeSessionInvalides(durees?)` → `DureesDeSession` ; `refuserLaProductionSansEnTeteIp()` | Les types de `src/config/comptes.ts`. `refuserDesLimitesParReseauInvalides` lève `ErreurComptes` pour une limite qui n'est pas un entier d'au moins 1, et rend les limites avec `envoisParHeure` à `ENVOIS_PAR_HEURE_PAR_DEFAUT` (ou à `demandesParHeure`, si elle est plus haute) quand l'appli ne le règle pas ; le proxy l'appelle à chaque requête, avec les gardes de démarrage (démo, `IP_EN_TETE_CLIENT` en production, entrée ouverte), et la brique à chaque demande ou saisie. `refuserDesDureesDeSessionInvalides` lève `ErreurComptes` pour des durées hors de leurs bornes (« La politique de session ») ; le proxy l'appelle aussi à chaque requête. `refuserLaProductionSansEnTeteIp` lève `ErreurComptes` en production quand `IP_EN_TETE_CLIENT` est vide et que `METHODES` propose le code ou le lien. Le message de l'erreur commence par « Brique comptes : » et ne cite jamais un secret. |
+| `confidentialite.ts` | `TRAITEMENTS_COMPTES`, `traitementsComptes(methodes)` | Les traitements de la brique (clés `comptes`, `connexion-code`, `connexion-lien`, `connexion-google` et `connexion-microsoft`), au format `Traitement` de `src/lib/confidentialite.ts`, qui les importe. La connexion par code, par lien, avec Google et avec Microsoft n'y sont que si `METHODES` les propose. Une méthode ajoutée y décrit son traitement et, s'il y en a, ses sous-traitants. La durée du cookie de session et le délai d'inactivité y viennent de `DUREES_DE_SESSION` ; les autres durées y sont écrites en toutes lettres : la validité du code et du lien, et la vie du cookie de parcours de Google et de Microsoft sont comparées aux constantes par `tests/comptes-session.test.ts` ; l'heure de conservation des empreintes (`CONSERVATION_S`, interne à `code-email.ts`) ne l'est pas. Chaque traitement déclare sa `conservation`, à valider avec le client : le compte 24 mois après la dernière connexion (clé `comptes-inactifs`, compté par le script de purge de la brique rgpd, effacé à la main), les sessions un jour après leur expiration (`sessions`), les demandes et saisies de code ou de lien une heure (`codes-connexion`, `codes-connexion-essais`, déclarées par le lien seulement quand le code n'est pas proposé), purgées par la brique rgpd ; les connexions avec Google et avec Microsoft n'en déclarent pas. L'assembleur retire l'import et les clés quand la brique part, et sans la brique gestion-comptes les deux lignes du traitement `comptes` qui viennent de son écran (un rôle fixé dans l'appli, un compte créé par un admin). |
 | `donnees-personnelles.ts` | `SOURCES_COMPTES` | Pour la brique rgpd, gardée d'office avec comptes : les sources de l'export des données d'une personne (`compte`, `sessions`, `codes-connexion`), que son registre rassemble. Les demandes de code ou de lien se retrouvent en recalculant l'empreinte à clé de l'adresse (`empreinteDeLAdresse` de `code-email.ts`, exportée pour cela et interne à la brique). Aucune empreinte ne sort. La source `compte` dit aussi si le rôle est fixé dans l'appli (`gere_par_l_appli`). Chaque source porte son `effacement` et `effacer(executeur, adresse, auteur)` : le compte s'anonymise (`anonymiserLeCompte`, au nom de `auteur`, l'admin qui efface), sessions et demandes de code ou de lien sont supprimées. |
 | `entree.ts` | type `OrigineDuCompte` | Ce qui fait entrer un compte : `appli`, `configuration`, `demo`, `premier-admin`, `domaine`, `ouverte` ou `aucune`. Lu par l'écran de la brique gestion-comptes. |
 | `administration.ts` | `anonymiserLeCompte(executeur, email, auteur, contexte?)` → `Promise<CompteAnonymise \| Refus \| null>`, `adresseAnonymisee(id)` → `string` | L'anonymisation du compte d'une adresse, dans la transaction de l'appelant (l'effacement de la brique rgpd), suivie des effets d'effacement du registre au nom de `auteur` (`{ email }`, l'admin qui efface) : `null` sans compte, `Refus` pour le dernier admin actif ou un compte de démo. `CompteAnonymise` : `{ id, avertissement? }`, où `avertissement` dit de retirer l'adresse de la configuration. `avertissementDeConfiguration(email, contexte?)` → `string | null` donne cet avertissement aussi pour une adresse sans compte en base. |
@@ -863,22 +950,25 @@ utilise. Les autres exports servent aux fichiers de la brique ou
     moins 1, sans quoi l'appli refuse de démarrer. Les limites par adresse e-mail ne
     se règlent pas. `envoisParHeure`, facultatif, y règle le plafond de toute l'appli
     (300 sans lui, ou `demandesParHeure` si elle est plus haute), à relever pour une
-    appli grand public.
+    appli grand public ;
+  - `DUREES_DE_SESSION`, `{ maximumJours, inactiviteJours, connexionRecenteMinutes }` :
+    la politique de session, `{ 30, 7, 10 }` par défaut (« La politique de session »).
 - `src/config/effets-comptes.ts` : `EFFETS_COMPTES`, une entrée par unité qui
   réagit à un compte désactivé, réactivé ou effacé (le journal d'audit et les
   espaces, si l'appli les a, y sont déjà).
 
 **Interne** : `UTILISATEURS_DEMO`, `entrerEnDemo`, `demoProposee`,
-`lireSession`, `lireSessionDe`, `trouverUtilisateur`, `fermerLesSessionsDe`,
+`lireSession`, `lireSessionDe`, `connexionRecente`, `connexionRecenteDe`,
+`autresSessionsOuvertes`, `fermerLesAutresSessions`, `trouverUtilisateur`, `fermerLesSessionsDe`,
 `roleEffectif`, `origineDuCompte`, `seraitAdmis`, `COLONNES_ENTREE`,
 `enBaseDe`, `estAdresseDeDemo`, `domaineDe`, `contexteDeLAppli` (que seul l'écran de la
 brique gestion-comptes appelle), `normaliser`, `DOMAINE_DEMO`,
 `refuserLaDemoEnProduction` et `refuserUneEntreeOuverteQuiAdministre` (les deux gardes de
-démarrage que le proxy joue à chaque requête), `DUREE_SESSION_JOURS`, les types
+démarrage que le proxy joue à chaque requête), les types
 `ContexteEntree`, `CompteEnBase` et `LigneEntree`, l'ensemble de `jeton.ts`,
 `code-email.ts`, `lien-email.ts`, `google.ts`, `microsoft.ts` et `parcours.ts`,
 les routes de Google et de Microsoft, la page du lien, les actions
-(`actions.ts`), `FormulaireCode` et `FormulaireLien`.
+(`actions.ts`), `FormulaireCode`, `FormulaireLien` et `FormulaireAutresSessions`.
 
 **Règle d'entretien.** Tout changement d'interface publique (symbole ajouté,
 retiré ou renommé, signature modifiée) met à jour cette section. Il ajoute

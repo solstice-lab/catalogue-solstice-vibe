@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { Bouton, Carte, Champ, EtatVide, Modale, Tableau, type Colonne } from "@/ui";
 import type { BilanEffacement } from "@/briques/rgpd/effacement";
+import { RefusReconnexion } from "@/briques/comptes/RefusReconnexion";
 import { apercevoirEffacementAction, effacerAction, type RetourEffacement } from "./actions";
 
 /*
@@ -13,6 +14,9 @@ import { apercevoirEffacementAction, effacerAction, type RetourEffacement } from
  */
 
 type LigneSource = BilanEffacement["sources"][number];
+// Un refus, avec le bouton « Se reconnecter » quand il vient faute de connexion
+// récente.
+type Refus = Extract<RetourEffacement, { erreur: string }>;
 
 const COLONNES: Colonne<LigneSource>[] = [
   { cle: "titre", titre: "Source" },
@@ -51,15 +55,15 @@ export function EffacementDonnees() {
   const [adresse, setAdresse] = useState("");
   const [apercu, setApercu] = useState<BilanEffacement | null>(null);
   const [fait, setFait] = useState<BilanEffacement | null>(null);
-  const [erreur, setErreur] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<Refus | null>(null);
   const [confirmation, setConfirmation] = useState("");
-  const [erreurModale, setErreurModale] = useState<string | null>(null);
+  const [erreurModale, setErreurModale] = useState<Refus | null>(null);
   const [modaleOuverte, setModaleOuverte] = useState(false);
   const [enCours, demarrer] = useTransition();
 
-  const recevoir = (retour: RetourEffacement, quandRefus: (message: string) => void) => {
+  const recevoir = (retour: RetourEffacement, quandRefus: (refus: Refus) => void) => {
     if ("erreur" in retour) {
-      quandRefus(retour.erreur);
+      quandRefus(retour);
       return null;
     }
     return retour.bilan;
@@ -116,17 +120,14 @@ export function EffacementDonnees() {
             setApercu(null);
           }}
         />
-        {erreur && (
-          <p className="sl-erreur-formulaire" role="alert">
-            {erreur}
-          </p>
-        )}
         <div className="sl-rangee-actions">
           <Bouton type="submit" variante="secondaire" disabled={enCours}>
             Voir ce qui sera effacé
           </Bouton>
         </div>
       </form>
+      {/* Hors du formulaire : le refus porte le sien (« Se reconnecter »). */}
+      {erreur && <RefusReconnexion erreur={erreur.erreur} reconnexion={erreur.reconnexion} />}
 
       {apercu && (
         <>
@@ -193,11 +194,7 @@ export function EffacementDonnees() {
             value={confirmation}
             onChange={(evenement) => setConfirmation(evenement.target.value)}
           />
-          {erreurModale && (
-            <p className="sl-erreur-formulaire" role="alert">
-              {erreurModale}
-            </p>
-          )}
+          {erreurModale && <RefusReconnexion erreur={erreurModale.erreur} reconnexion={erreurModale.reconnexion} />}
         </div>
       </Modale>
     </Carte>

@@ -31,3 +31,17 @@ export function jouerLaPersonne(personne: Utilisateur): void {
 export function personneJouee(): Utilisateur | null {
   return joue;
 }
+
+// L'âge de la connexion de la personne jouée : récente par défaut
+// (tests/setup.ts), pour que les tests des modules vérifient le geste et non
+// l'heure de la connexion. Un test du refus joue une connexion ancienne, que
+// exigerConnexionRecente (src/briques/comptes/roles.ts) doit arrêter.
+let connexion: "recente" | "ancienne" = "recente";
+
+export function jouerLaConnexion(age: "recente" | "ancienne"): void {
+  connexion = age;
+}
+
+export function connexionJouee(): "recente" | "ancienne" {
+  return connexion;
+}

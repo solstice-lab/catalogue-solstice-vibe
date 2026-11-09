@@ -1,4 +1,4 @@
-import { METHODES } from "@/config/comptes";
+import { DUREES_DE_SESSION, METHODES } from "@/config/comptes";
 
 /*
  * Les traitements de la brique comptes, pour la politique de confidentialité
@@ -11,10 +11,11 @@ import { METHODES } from "@/config/comptes";
  * Forme : `Traitement` de src/lib/confidentialite.ts, vérifiée là où le socle
  * les assemble. La brique n'importe pas le socle qui l'importe.
  *
- * Les durées sont écrites en toutes lettres : session.ts et code-email.ts
- * lisent la base, que la page publique ne doit pas importer. Un test
- * (tests/comptes-session.test.ts) les compare à DUREE_SESSION_JOURS et
- * DUREE_VALIDITE_MINUTES (DUREE_VALIDITE_LIEN_MINUTES pour le lien), et la vie du cookie de parcours de Google et de
+ * Les durées de session se lisent dans la configuration (DUREES_DE_SESSION),
+ * qui ne lit pas la base. Les autres sont écrites en toutes lettres :
+ * code-email.ts et lien-email.ts lisent la base, que la page publique ne doit
+ * pas importer. Un test (tests/comptes-session.test.ts) les compare à
+ * DUREES_DE_SESSION et DUREE_VALIDITE_MINUTES (DUREE_VALIDITE_LIEN_MINUTES pour le lien), et la vie du cookie de parcours de Google et de
  * Microsoft à DUREE_PARCOURS_MINUTES ; l'heure de conservation des empreintes est
  * CONSERVATION_S de code-email.ts.
  */
@@ -34,7 +35,7 @@ const COMPTES = {
   personnes: "Les personnes qui ont un compte.",
   sousTraitants: [],
   precisions: [
-    "Un cookie de session, nécessaire à la connexion, est déposé pour 30 jours. Il ne sert à rien d'autre.",
+    `Un cookie de session, nécessaire à la connexion, est déposé pour ${DUREES_DE_SESSION.maximumJours} jours. La session se ferme plus tôt, après ${DUREES_DE_SESSION.inactiviteJours} jours sans visite. Le cookie ne sert à rien d'autre.`,
     "Un administrateur peut créer un compte pour une adresse avant toute connexion, et prévenir la personne par un e-mail d'information (voir « Envoi des e-mails »).",
   ],
   conservation: [
@@ -57,7 +58,8 @@ const COMPTES = {
     {
       // Une session expirée ne sert plus à rien ; elle n'est effacée qu'à la
       // connexion suivante du même compte, qui peut ne jamais venir. Un jour
-      // de marge après l'expiration (30 jours après l'ouverture).
+      // de marge après l'expiration (après inactiviteJours sans visite, ou
+      // maximumJours après l'ouverture : DUREES_DE_SESSION).
       cle: "sessions",
       donnee: "Sessions ouvertes",
       duree: { jours: 1 },

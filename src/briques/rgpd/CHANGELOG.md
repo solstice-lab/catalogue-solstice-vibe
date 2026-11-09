@@ -95,3 +95,17 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : le RGPD (art. 5.1.e) limite la conservation ; une durée qui
   n'est qu'un texte de la politique n'est tenue par rien. La purge au passage
   vient de tours-de-coloc, où elle avait pris un ticket entier.
+
+## 2026-11-09 · L'effacement demande une connexion récente, « Mes sessions » sur /mes-donnees · Comportement
+
+- **Ce qui change** : l'aperçu et l'effacement de `/donnees-personnelles` appellent
+  `exigerConnexionRecente("/donnees-personnelles")` de la brique comptes après
+  `exiger` ; sans connexion de moins de dix minutes par défaut (`connexionRecenteMinutes`
+  de `DUREES_DE_SESSION`), ils rendent
+  `{ erreur, reconnexion }`, affiché par `RefusReconnexion`. `/mes-donnees` porte
+  la carte « Mes sessions » de la brique comptes (`MesSessions`).
+- **Appelant** : rien à changer. Une appli qui avait retouché ces deux écrans y
+  reprend l'appel et la carte.
+- **Pourquoi** : audit du 2026-11-09 : un cookie volé suffisait à effacer les
+  données de n'importe qui, et une personne n'avait aucun moyen de fermer une
+  session restée sur un autre appareil.

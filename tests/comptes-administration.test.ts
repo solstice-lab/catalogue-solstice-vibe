@@ -32,7 +32,8 @@ import { lireSessionDe, ouvrirSession } from "../src/briques/comptes/session";
  * niveau 2 au niveau 3, qui ne doit ni retirer ni rendre un accès.
  *
  * Les accès se lisent par lireSessionDe, la vraie lecture d'une requête :
- * tests/setup.ts remplace lireSession et trouverUtilisateur pour les modules.
+ * tests/setup.ts remplace lireSession, connexionRecente et trouverUtilisateur
+ * pour les modules.
  */
 
 const envoi = vi.hoisted(() => ({ enPanne: false }));

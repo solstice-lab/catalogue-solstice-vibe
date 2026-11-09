@@ -654,14 +654,14 @@ export const BRIQUES = {
       // La personne rendue par le garde ne sert plus qu'à la trace.
       remplace(
         "src/app/comptes/actions.ts",
-        '  const personne = await exiger("comptes.administrer");\n  // Sans adresse publique',
-        '  await exiger("comptes.administrer");\n  // Sans adresse publique'
+        '  const personne = await exiger("comptes.administrer");\n  const refus = await exigerConnexionRecente("/comptes");\n  if (refus) return refus;\n  // Sans adresse publique',
+        '  await exiger("comptes.administrer");\n  const refus = await exigerConnexionRecente("/comptes");\n  if (refus) return refus;\n  // Sans adresse publique'
       ),
       remplace("src/app/comptes/actions.ts", "      : null,\n    tracer(personne)\n  );", "      : null\n  );"),
       remplace(
         "src/app/comptes/actions.ts",
-        '  const personne = await exiger("comptes.administrer");\n  return retour(await changerRole(entier(id), texte(role), contexteDeLAppli(), tracer(personne)));',
-        '  await exiger("comptes.administrer");\n  return retour(await changerRole(entier(id), texte(role)));'
+        '  const personne = await exiger("comptes.administrer");\n  const refus = await exigerConnexionRecente("/comptes");\n  if (refus) return refus;\n  return retour(await changerRole(entier(id), texte(role), contexteDeLAppli(), tracer(personne)));',
+        '  await exiger("comptes.administrer");\n  const refus = await exigerConnexionRecente("/comptes");\n  if (refus) return refus;\n  return retour(await changerRole(entier(id), texte(role)));'
       ),
       // Désactiver et réactiver gardent la personne : elle est l'auteur que
       // reçoivent les effets du registre des effets de comptes, journal ou non.

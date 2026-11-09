@@ -1,4 +1,10 @@
-import type { AnnuairesMicrosoft, Entree, LimitesParReseau, MethodeDeConnexion } from "@/briques/comptes/methodes";
+import type {
+  AnnuairesMicrosoft,
+  DureesDeSession,
+  Entree,
+  LimitesParReseau,
+  MethodeDeConnexion,
+} from "@/briques/comptes/methodes";
 
 /*
  * Qui peut se connecter à cette appli, et comment : le fichier
@@ -82,4 +88,20 @@ export const ANNUAIRES_MICROSOFT: AnnuairesMicrosoft = "un-seul";
 export const LIMITES_PAR_RESEAU: LimitesParReseau = {
   demandesParHeure: 20,
   codesFauxParHeure: 30,
+};
+
+// La politique de session, fixée par la personne responsable le 2026-11-09 :
+// un cookie volé valait 30 jours de droits admin. Une session dure au plus
+// maximumJours depuis la connexion ; sans visite pendant inactiviteJours, elle se
+// ferme, et chaque visite repousse ce délai. Effacer les données d'une
+// personne, inviter une adresse, changer un rôle ou fermer ses autres sessions
+// demande une connexion
+// de moins de connexionRecenteMinutes. Des entiers d'au moins 1, l'inactivité
+// jamais plus longue que la durée maximale, la connexion récente d'une heure
+// au plus, la durée maximale de 400 jours au plus : l'appli refuse de démarrer
+// sinon (README de la brique comptes, « La politique de session »).
+export const DUREES_DE_SESSION: DureesDeSession = {
+  maximumJours: 30,
+  inactiviteJours: 7,
+  connexionRecenteMinutes: 10,
 };

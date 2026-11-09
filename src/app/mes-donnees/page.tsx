@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppLayout, Carte, LienBouton } from "@/ui";
 import { NAVIGATION, NOM_APP } from "@/lib/navigation";
 import { exiger } from "@/briques/comptes/roles";
+import { MesSessions } from "@/briques/comptes/MesSessions";
 
 // La session se lit à chaque requête : jamais prérendue.
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function PageMesDonnees() {
           </LienBouton>
         </div>
       </Carte>
+      {/* Brique comptes : l'écran personnel de chacun, où il ferme ses autres sessions. */}
+      <MesSessions retour="/mes-donnees" />
     </AppLayout>
   );
 }
