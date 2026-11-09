@@ -398,3 +398,41 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   « expiré » contre « incorrect », qui demandait un code à l'instant. Et rien ne
   plafonnait les mails de connexion de toute l'appli, contrairement aux invitations
   d'espaces : qui dispose de beaucoup d'IP en faisait partir autant qu'il voulait.
+
+## 2026-11-09 · Politique de session : inactivité, connexion récente, fermer ses autres sessions · Rupture
+
+- **Ce qui change** :
+  - une session se ferme après `inactiviteJours` (7) sans visite ; chaque visite
+    repousse l'échéance (`expire_le`), au plus une écriture par heure, jamais
+    au-delà de `maximumJours` (30) depuis la connexion. Une session ouverte avant
+    cette version revient à 7 jours dès sa visite suivante. Aucune migration ;
+  - `exigerConnexionRecente(ecran)` (`roles.ts`) et le type `RefusConnexionAncienne` :
+    `null` après une connexion de moins de `connexionRecenteMinutes` (10), le refus
+    `{ erreur, reconnexion }` sinon. Appliquée à l'effacement des données d'une
+    personne (aperçu et effacement), au changement de rôle de `/comptes` et à
+    « Fermer mes autres sessions » ;
+  - `MesSessions({ retour })`, la carte « Mes sessions » posée sur `/mes-donnees`,
+    et `RefusReconnexion({ erreur, reconnexion? })`, dont le bouton « Se
+    reconnecter » ferme la session avant de mener à `/connexion` ;
+  - `DureesDeSession` et `refuserDesDureesDeSessionInvalides(durees?)`
+    (`methodes.ts`), que le proxy appelle à chaque requête ;
+  - `DUREE_SESSION_JOURS` (interne) disparaît : la durée se lit dans
+    `DUREES_DE_SESSION.maximumJours`. La politique de confidentialité dit aussi
+    le délai d'inactivité.
+- **Appelant** :
+  - ajouter à `src/config/comptes.ts` l'import du type `DureesDeSession` et
+    `export const DUREES_DE_SESSION: DureesDeSession = { maximumJours: 30, inactiviteJours: 7, connexionRecenteMinutes: 10 };`,
+    sans quoi le typecheck et le build échouent ;
+  - une appli qui avait retouché `src/app/comptes/actions.ts`,
+    `src/app/donnees-personnelles/` ou `src/app/mes-donnees/page.tsx` reprend
+    l'appel à `exigerConnexionRecente` et la carte `MesSessions` ;
+  - un geste sensible propre à l'appli appelle `exigerConnexionRecente` après
+    `exiger`, et affiche son refus par `RefusReconnexion` ;
+  - après la mise à jour, une personne qui n'est pas revenue depuis 7 jours se
+    reconnecte.
+- **Pourquoi** : audit du 2026-11-09, politique fixée par la personne responsable
+  le même jour. Un cookie volé valait 30 jours de droits admin : aucune expiration
+  à l'inactivité, aucune preuve redemandée avant d'effacer une personne ou de
+  changer un rôle, et aucun moyen pour une personne de fermer une session restée
+  sur un autre appareil. Les attributs du cookie (`__Host-`, `HttpOnly`,
+  `Secure`, `SameSite`) sont désormais couverts par un test.

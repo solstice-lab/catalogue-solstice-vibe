@@ -8,5 +8,8 @@
 export const ACTIONS_GESTION_COMPTES = ["comptes.administrer"] as const;
 
 // Ce que chaque server action de /comptes rend à l'écran : un refus à afficher
-// dans la modale, ou un message à dire une fois le geste fait.
-export type RetourAdministration = { erreur?: string; message?: string };
+// dans la modale, ou un message à dire une fois le geste fait. `reconnexion`
+// accompagne le refus d'un geste qui demande une connexion récente
+// (exigerConnexionRecente de la brique comptes) : l'écran où ramène le bouton
+// « Se reconnecter ».
+export type RetourAdministration = { erreur?: string; message?: string; reconnexion?: string };

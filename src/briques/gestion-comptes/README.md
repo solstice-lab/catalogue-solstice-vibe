@@ -44,7 +44,7 @@ niveau 2 au niveau 3, et le dernier admin protégé à deux portes.
 | Import | Symboles | Rôle |
 | --- | --- | --- |
 | `domaine.ts` | `ACTIONS_GESTION_COMPTES` | Les actions de la brique, à étendre dans `ACTIONS` de `src/config/acces.ts`. `DROITS["comptes.administrer"]` doit contenir `ROLE_ADMIN` : c'est ce rôle que la brique comptes protège du « dernier admin désactivé » (`tests/gestion-comptes.test.ts` le vérifie). |
-| `domaine.ts` | type `RetourAdministration` | Ce que rend une server action de `/comptes` : `{ erreur }` à afficher dans la modale, ou `{ message }` à dire une fois le geste fait. |
+| `domaine.ts` | type `RetourAdministration` | Ce que rend une server action de `/comptes` : `{ erreur }` à afficher dans la modale, ou `{ message }` à dire une fois le geste fait. `reconnexion` accompagne le refus d'un geste qui demande une connexion récente (changer un rôle : `exigerConnexionRecente` de la brique comptes) ; l'écran montre alors le bouton « Se reconnecter ». |
 | `EcranComptes.tsx` | `EcranComptes({ comptes, domaines, roles, roleParDefaut, roleAdmin, emailConnecte, actions })`, type `ActionsAdministration` | Le contenu de `/comptes`, que la page entoure de `AppLayout`. Les server actions lui sont passées en `actions` : la brique n'importe rien de `src/app`. |
 
 **Règle d'entretien.** Tout changement d'interface publique met à jour cette

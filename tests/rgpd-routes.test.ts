@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { jouer } from "./aide-session";
+import { jouer, jouerLaConnexion } from "./aide-session";
 import { query } from "../src/lib/db/client";
 import { UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
 import { DROITS } from "../src/config/acces";
@@ -173,6 +173,19 @@ describe("effacement par l'admin", () => {
     jouer("membre");
     await expect(apercevoirEffacementAction(ELLE)).rejects.toMatchObject(UN_404);
     await expect(effacerAction(ELLE, ELLE)).rejects.toMatchObject(UN_404);
+  });
+
+  it("refuse l'aperçu et l'effacement sans connexion récente, en disant de se reconnecter et en proposant le lien, et n'efface rien : un cookie volé n'efface personne (audit du 2026-11-09)", async () => {
+    jouer("admin");
+    await query(`INSERT INTO utilisateurs (email, role) VALUES ($1, 'membre')`, [ELLE]);
+    jouerLaConnexion("ancienne");
+    const refus = {
+      erreur: expect.stringMatching(/reconnectez-vous/),
+      reconnexion: "/donnees-personnelles",
+    };
+    expect(await apercevoirEffacementAction(ELLE)).toEqual(refus);
+    expect(await effacerAction(ELLE, ELLE)).toEqual(refus);
+    expect(await query(`SELECT 1 FROM utilisateurs WHERE email = $1`, [ELLE])).toHaveLength(1);
   });
 
   it("refuse une adresse illisible", async () => {

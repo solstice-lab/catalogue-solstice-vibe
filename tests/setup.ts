@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, vi } from "vitest";
-import { cookiesDeTest, enTetesDeTest } from "./aide-cookies";
+import { attributsDesCookiesDeTest, cookiesDeTest, enTetesDeTest } from "./aide-cookies";
 import { ACTIONS, ROLES } from "../src/config/acces";
 import { peut } from "../src/briques/comptes/roles";
 import { UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
-import { jouer } from "./aide-session";
+import { jouer, jouerLaConnexion } from "./aide-session";
 
 // Simulé pour TOUS les fichiers de test (setupFiles) : voir aide-cookies.ts.
 vi.mock("next/headers", () => ({
@@ -12,11 +12,14 @@ vi.mock("next/headers", () => ({
       const valeur = cookiesDeTest.get(nom);
       return valeur === undefined ? undefined : { name: nom, value: valeur };
     },
-    set: (nom: string, valeur: string) => {
+    set: (nom: string, valeur: string, attributs: Record<string, unknown> = {}) => {
       cookiesDeTest.set(nom, valeur);
+      attributsDesCookiesDeTest.set(nom, attributs);
     },
-    delete: (cookie: string | { name: string }) => {
-      cookiesDeTest.delete(typeof cookie === "string" ? cookie : cookie.name);
+    delete: (cookie: string | ({ name: string } & Record<string, unknown>)) => {
+      const nom = typeof cookie === "string" ? cookie : cookie.name;
+      cookiesDeTest.delete(nom);
+      attributsDesCookiesDeTest.set(nom, typeof cookie === "string" ? {} : cookie);
     },
   }),
   headers: async () => enTetesDeTest,
@@ -30,6 +33,7 @@ vi.mock("next/headers", () => ({
 vi.mock("../src/briques/comptes/session", async (original) => ({
   ...(await original<typeof import("../src/briques/comptes/session")>()),
   lireSession: async () => (await import("./aide-session")).personneJouee(),
+  connexionRecente: async () => (await import("./aide-session")).connexionJouee() === "recente",
   trouverUtilisateur: async (email: string) =>
     Object.values((await import("../src/briques/comptes/demo")).UTILISATEURS_DEMO).find(
       (utilisateur) => utilisateur.email === email
@@ -57,9 +61,11 @@ if (!ROLE_DES_TESTS) {
 }
 beforeEach(() => {
   jouer(ROLE_DES_TESTS);
+  jouerLaConnexion("recente");
 });
 // Fin de la brique comptes.
 afterEach(() => {
   cookiesDeTest.clear();
+  attributsDesCookiesDeTest.clear();
   for (const nom of [...enTetesDeTest.keys()]) enTetesDeTest.delete(nom);
 });

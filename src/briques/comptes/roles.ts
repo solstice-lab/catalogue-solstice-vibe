@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { DROITS, ROLES, type Action, type Droits, type Role } from "@/config/acces";
-import { lireSession, trouverUtilisateur } from "./session";
+import { DUREES_DE_SESSION } from "@/config/comptes";
+import { cheminDeRetour } from "./retour";
+import { connexionRecente, lireSession, trouverUtilisateur } from "./session";
 
 /*
  * Gardes d'accès — LE mécanisme des droits, sans aucun nom de module. Qui a
@@ -53,6 +55,27 @@ export async function exiger(...actions: [Action, ...Action[]]): Promise<Utilisa
   const utilisateur = await utilisateurCourant();
   if (!utilisateur || !actions.some((action) => peut(utilisateur, action))) notFound();
   return utilisateur;
+}
+
+// Le refus d'un geste sensible faute de connexion récente : le message à
+// afficher, et l'écran du geste, où ramène la reconnexion (RefusReconnexion
+// en fait le bouton « Se reconnecter »).
+export type RefusConnexionAncienne = { erreur: string; reconnexion: string };
+
+// À appeler après exiger(), avant un geste sensible : effacer les données
+// d'une personne, changer un rôle, fermer ses autres sessions. Un cookie volé
+// valait 30 jours de droits admin (audit du 2026-11-09) : une session ouverte
+// ne suffit plus, il faut une connexion de moins de connexionRecenteMinutes
+// (DUREES_DE_SESSION de src/config/comptes.ts). Rend null si elle l'est, le
+// refus sinon : une server action le renvoie à l'écran, qui propose de se
+// reconnecter. `retour`, l'écran du geste, est filtré : il peut venir du
+// navigateur.
+export async function exigerConnexionRecente(retour: string): Promise<RefusConnexionAncienne | null> {
+  if (await connexionRecente()) return null;
+  return {
+    erreur: `Ce geste demande une connexion de moins de ${DUREES_DE_SESSION.connexionRecenteMinutes} minutes : reconnectez-vous, puis recommencez.`,
+    reconnexion: cheminDeRetour(retour),
+  };
 }
 
 // Le garde d'affichage d'une entrée de navigation : la MÊME règle que celle

@@ -10,7 +10,7 @@ import {
   reactiver,
   type Refus,
 } from "@/briques/comptes/administration";
-import { exiger } from "@/briques/comptes/roles";
+import { exiger, exigerConnexionRecente } from "@/briques/comptes/roles";
 // Brique journal : chaque geste se trace dans la transaction de son effet.
 import { contexteDeLAppli } from "@/briques/comptes/entree";
 import { journaliser, type Auteur, type Evenement, type Transaction } from "@/briques/journal/journal";
@@ -68,8 +68,12 @@ export async function inviterAction(email: unknown, role: unknown, prevenir: unk
   return { message: `Le compte de ${adresse} est créé : prévenez la personne, elle se connecte avec cette adresse.` };
 }
 
+// Un rôle donne des droits : le changer demande une connexion récente, qu'un
+// cookie volé n'a pas (audit du 2026-11-09).
 export async function changerRoleAction(id: unknown, role: unknown): Promise<RetourAdministration> {
   const personne = await exiger("comptes.administrer");
+  const refus = await exigerConnexionRecente("/comptes");
+  if (refus) return refus;
   return retour(await changerRole(entier(id), texte(role), contexteDeLAppli(), tracer(personne)));
 }
 

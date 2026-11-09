@@ -11,12 +11,38 @@ import { entrerEnDemo } from "./demo";
 import { normaliser } from "./entree";
 import { adresseDesLiens, CHEMIN_LIEN, connecterParLien, demanderUnLien } from "./lien-email";
 import { cheminDeRetour } from "./retour";
-import { fermerSession } from "./session";
+import { exigerConnexionRecente } from "./roles";
+import { fermerLesAutresSessions, fermerSession } from "./session";
 
 /*
  * Les actions de la brique, sans garde : elles décident de qui l'on est,
  * aucun rôle ne peut les précéder. Chacune vérifie ce qu'elle reçoit.
  */
+
+/*
+ * « Fermer mes autres sessions » : la personne connectée ferme ses sessions
+ * des autres navigateurs et appareils (un poste partagé, un téléphone perdu,
+ * un cookie volé). Aucun rôle ne la garde, chacun gère les siennes ; la
+ * connexion récente, si : sinon, un cookie volé fermerait la session de la
+ * personne à qui il a été volé. « retour » est l'écran qui la propose.
+ */
+export type EtatAutresSessions = { message?: string; erreur?: string; reconnexion?: string };
+
+export async function fermerMesAutresSessionsAction(
+  _etat: EtatAutresSessions,
+  donnees: FormData
+): Promise<EtatAutresSessions> {
+  const retour = cheminDeRetour(String(donnees.get("retour") ?? ""));
+  const refus = await exigerConnexionRecente(retour);
+  if (refus) return refus;
+  const fermees = await fermerLesAutresSessions();
+  revalidatePath(retour);
+  if (fermees === 0) return { message: "Aucune autre session n'était ouverte." };
+  const s = fermees > 1 ? "s" : "";
+  return {
+    message: `${fermees} autre${s} session${s} fermée${s} : ce compte n'est plus ouvert que dans ce navigateur.`,
+  };
+}
 
 // Depuis /connexion, le formulaire porte « retour » : on y renvoie, filtré.
 // Depuis le bandeau, on reste sur la page, qui se recharge avec le rôle joué.
@@ -29,6 +55,17 @@ export async function entrerEnDemoAction(donnees: FormData): Promise<void> {
 export async function seDeconnecterAction(): Promise<void> {
   await fermerSession();
   redirect("/connexion");
+}
+
+// « Se reconnecter », après le refus d'un geste faute de connexion récente
+// (exigerConnexionRecente de roles.ts). La session se ferme d'abord :
+// /connexion et la page du lien renvoient une personne déjà connectée vers son
+// retour sans rien lui redemander, et un simple lien ramenait au geste
+// refusé, en boucle. « retour », l'écran du geste, est refiltré ici.
+export async function seReconnecterAction(donnees: FormData): Promise<void> {
+  const retour = cheminDeRetour(String(donnees.get("retour") ?? ""));
+  await fermerSession();
+  redirect(retour === "/" ? "/connexion" : `/connexion?${new URLSearchParams({ retour })}`);
 }
 
 /*

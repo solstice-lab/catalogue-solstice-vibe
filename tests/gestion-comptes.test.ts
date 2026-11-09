@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { supprimerTousLesComptes } from "./aide-comptes";
-import { jouer, personneJouee } from "./aide-session";
+import { jouer, jouerLaConnexion, personneJouee } from "./aide-session";
 import { DROITS, ROLE_ADMIN, ROLE_PAR_DEFAUT, ROLES } from "../src/config/acces";
 import { query, queryOne } from "../src/lib/db/client";
 import { mailsCaptures, viderMailsCaptures } from "../src/briques/mails/envoi";
@@ -88,6 +88,19 @@ describe("actions de /comptes", () => {
     expect(await queryOne("SELECT role, actif FROM utilisateurs WHERE id = $1", [issue.compte.id])).toEqual({
       role: ROLE_ADMIN,
       actif: true,
+    });
+  });
+
+  it("refusent un changement de rôle sans connexion récente, en disant de se reconnecter et en proposant le lien : un cookie volé ne change aucun rôle (audit du 2026-11-09)", async () => {
+    const issue = await inviter("cible@client.example", AUTRE_ROLE, null);
+    if ("erreur" in issue) throw new Error(issue.erreur);
+    jouerLaConnexion("ancienne");
+    expect(await changerRoleAction(issue.compte.id, ROLE_ADMIN)).toEqual({
+      erreur: expect.stringMatching(/reconnectez-vous/),
+      reconnexion: "/comptes",
+    });
+    expect(await queryOne("SELECT role FROM utilisateurs WHERE id = $1", [issue.compte.id])).toEqual({
+      role: AUTRE_ROLE,
     });
   });
 

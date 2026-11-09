@@ -1,13 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cookiesDeTest } from "./aide-cookies";
+import { attributsDesCookiesDeTest, cookiesDeTest } from "./aide-cookies";
 import { poserLesMethodes, supprimerTousLesComptes } from "./aide-comptes";
+import { jouerLaConnexion } from "./aide-session";
 import { ROLE_ADMIN, ROLE_PAR_DEFAUT, ROLES } from "../src/config/acces";
+import { DUREES_DE_SESSION } from "../src/config/comptes";
 import { query, queryOne } from "../src/lib/db/client";
-import { entrerEnDemoAction, seDeconnecterAction } from "../src/briques/comptes/actions";
+import {
+  entrerEnDemoAction,
+  fermerMesAutresSessionsAction,
+  seDeconnecterAction,
+  seReconnecterAction,
+} from "../src/briques/comptes/actions";
 import { demoProposee, entrerEnDemo, UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
 import { admettre, origineDuCompte, roleEffectif, type ContexteEntree } from "../src/briques/comptes/entree";
 import { listerComptes } from "../src/briques/comptes/administration";
-import { refuserUneEntreeOuverteQuiAdministre } from "../src/briques/comptes/methodes";
+import {
+  refuserDesDureesDeSessionInvalides,
+  refuserUneEntreeOuverteQuiAdministre,
+  type DureesDeSession,
+} from "../src/briques/comptes/methodes";
 import {
   empreinte,
   nomDuCookie,
@@ -17,7 +28,14 @@ import {
   verifierSignature,
 } from "../src/briques/comptes/jeton";
 import { cheminDeRetour } from "../src/briques/comptes/retour";
-import { DUREE_SESSION_JOURS, fermerSession, lireSessionDe, ouvrirSession } from "../src/briques/comptes/session";
+import {
+  autresSessionsOuvertes,
+  connexionRecenteDe,
+  fermerLesAutresSessions,
+  fermerSession,
+  lireSessionDe,
+  ouvrirSession,
+} from "../src/briques/comptes/session";
 import { DUREE_VALIDITE_MINUTES } from "../src/briques/comptes/code-email";
 import { DUREE_VALIDITE_LIEN_MINUTES } from "../src/briques/comptes/lien-email";
 import { DUREE_PARCOURS_MINUTES } from "../src/briques/comptes/parcours";
@@ -216,6 +234,232 @@ describe("session en base", () => {
     await expect(ouvrirSession(utilisateur!)).rejects.toThrow(/AUTH_SECRET/);
     expect(await query("SELECT 1 FROM sessions")).toEqual([]);
     expect(await cookieDeSession()).toBeUndefined();
+  });
+});
+
+/*
+ * La politique de session fixée par la personne responsable le 2026-11-09,
+ * après l'audit du même jour : un cookie volé valait 30 jours de droits
+ * admin, sans expiration à l'inactivité ni preuve redemandée avant un geste
+ * sensible. Le temps passe en reculant les dates de la session : l'horloge
+ * est celle de la base.
+ */
+describe("politique de session", () => {
+  const { maximumJours, inactiviteJours, connexionRecenteMinutes } = DUREES_DE_SESSION;
+  const JOUR_S = 24 * 60 * 60;
+  const CONTEXTE: ContexteEntree = {
+    ...SANS_ENTREE,
+    entree: {
+      adresses: { "membre@client.example": ROLE_PAR_DEFAUT, "autre@client.example": ROLE_PAR_DEFAUT },
+      domaines: [],
+    },
+  };
+
+  async function connecter(email = "membre@client.example"): Promise<string> {
+    const utilisateur = await admettre(email, CONTEXTE);
+    if (!utilisateur) throw new Error(`${email} refusé`);
+    await ouvrirSession(utilisateur);
+    return (await cookieDeSession())!;
+  }
+
+  // La connexion et la dernière visite reculent ensemble : le temps a passé.
+  async function reculer(intervalle: string): Promise<void> {
+    await query("UPDATE sessions SET cree_le = cree_le - $1::interval, expire_le = expire_le - $1::interval", [
+      intervalle,
+    ]);
+  }
+
+  async function echeance(): Promise<number> {
+    const ligne = await queryOne<{ expire_le: Date }>("SELECT expire_le FROM sessions");
+    return ligne!.expire_le.getTime();
+  }
+
+  async function secondesRestantes(): Promise<number> {
+    const ligne = await queryOne<{ reste: number }>(
+      "SELECT EXTRACT(EPOCH FROM expire_le - now())::float8 AS reste FROM sessions"
+    );
+    return ligne!.reste;
+  }
+
+  it("ferme une session restée sans visite pendant le délai d'inactivité : un cookie volé valait 30 jours de droits admin (audit du 2026-11-09)", async () => {
+    const cookie = await connecter();
+    expect(await secondesRestantes()).toBeLessThanOrEqual(inactiviteJours * JOUR_S);
+    await reculer(`${inactiviteJours} days 1 minute`);
+    expect(await lireSessionDe(cookie, CONTEXTE)).toBeNull();
+  });
+
+  it("repousse l'échéance d'inactivité à chaque visite", async () => {
+    const cookie = await connecter();
+    await reculer(`${inactiviteJours} days -2 hours`);
+    expect(await lireSessionDe(cookie, CONTEXTE)).not.toBeNull();
+    expect(await secondesRestantes()).toBeGreaterThan(inactiviteJours * JOUR_S - 60);
+  });
+
+  it("n'écrit pas en base à chaque requête : au plus un renouvellement par heure", async () => {
+    const cookie = await connecter();
+    await query("UPDATE sessions SET expire_le = now() + make_interval(days => $1) - interval '30 minutes'", [
+      inactiviteJours,
+    ]);
+    const avant = await echeance();
+    expect(await lireSessionDe(cookie, CONTEXTE)).not.toBeNull();
+    expect(await echeance()).toBe(avant);
+
+    await query("UPDATE sessions SET expire_le = now() + make_interval(days => $1) - interval '61 minutes'", [
+      inactiviteJours,
+    ]);
+    const ensuite = await echeance();
+    expect(await lireSessionDe(cookie, CONTEXTE)).not.toBeNull();
+    expect(await echeance()).toBeGreaterThan(ensuite);
+  });
+
+  it("ne repousse jamais l'échéance au-delà de la durée maximale depuis la connexion, même visitée chaque jour", async () => {
+    const cookie = await connecter();
+    await query(
+      "UPDATE sessions SET cree_le = now() - make_interval(days => $1) + interval '1 hour', expire_le = now() + interval '30 minutes'",
+      [maximumJours]
+    );
+    expect(await lireSessionDe(cookie, CONTEXTE)).not.toBeNull();
+    expect(await secondesRestantes()).toBeLessThanOrEqual(60 * 60);
+    await reculer("1 hour 1 minute");
+    expect(await lireSessionDe(cookie, CONTEXTE)).toBeNull();
+  });
+
+  it("tient la durée maximale depuis la connexion même quand l'échéance enregistrée la dépasse (session ouverte avant la règle, durée raccourcie)", async () => {
+    const cookie = await connecter();
+    await query(
+      "UPDATE sessions SET cree_le = now() - make_interval(days => $1) - interval '1 minute', expire_le = now() + interval '1 day'",
+      [maximumJours]
+    );
+    expect(await lireSessionDe(cookie, CONTEXTE)).toBeNull();
+  });
+
+  it("ramène dès la visite suivante à l'échéance d'inactivité une session ouverte pour la durée maximale avant cette règle", async () => {
+    const cookie = await connecter();
+    await query("UPDATE sessions SET expire_le = cree_le + make_interval(days => $1)", [maximumJours]);
+    expect(await lireSessionDe(cookie, CONTEXTE)).not.toBeNull();
+    expect(await secondesRestantes()).toBeLessThanOrEqual(inactiviteJours * JOUR_S);
+  });
+
+  it("pose le cookie de production en __Host-, HttpOnly, Secure, SameSite=Lax, sur / sans domaine, pour la durée maximale, et le retire avec les mêmes attributs (non testé avant l'audit du 2026-11-09)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    await connecter();
+    const attributs = { httpOnly: true, secure: true, sameSite: "lax", path: "/" };
+    expect(nomDuCookie()).toBe("__Host-session");
+    expect(attributsDesCookiesDeTest.get("__Host-session")).toEqual({ ...attributs, maxAge: maximumJours * JOUR_S });
+    await fermerSession();
+    expect(attributsDesCookiesDeTest.get("__Host-session")).toEqual({ name: "__Host-session", ...attributs });
+  });
+
+  it("tient pour récente une connexion de moins de connexionRecenteMinutes, et plus au-delà : une visite renouvelle la session, pas l'heure de la connexion", async () => {
+    const cookie = await connecter();
+    expect(await connexionRecenteDe(cookie)).toBe(true);
+    await reculer(`${connexionRecenteMinutes} minutes 1 second`);
+    expect(await lireSessionDe(cookie, CONTEXTE)).not.toBeNull();
+    expect(await connexionRecenteDe(cookie)).toBe(false);
+  });
+
+  it("ne tient pour récente aucune connexion sans session valable : cookie absent ou forgé, compte désactivé, session expirée", async () => {
+    expect(await connexionRecenteDe(undefined)).toBe(false);
+    expect(await connexionRecenteDe(signer(nouveauJeton()))).toBe(false);
+    const cookie = await connecter();
+    await query("UPDATE utilisateurs SET actif = false");
+    expect(await connexionRecenteDe(cookie)).toBe(false);
+    await query("UPDATE utilisateurs SET actif = true");
+    await query("UPDATE sessions SET expire_le = now() - interval '1 second'");
+    expect(await connexionRecenteDe(cookie)).toBe(false);
+  });
+
+  it("ferme les autres sessions du compte, jamais la courante ni celles d'un autre compte", async () => {
+    const ailleurs = await connecter();
+    cookiesDeTest.clear();
+    const autreCompte = await connecter("autre@client.example");
+    cookiesDeTest.clear();
+    const ici = await connecter();
+    expect(await autresSessionsOuvertes()).toBe(1);
+    expect(await fermerLesAutresSessions()).toBe(1);
+    expect(await lireSessionDe(ailleurs, CONTEXTE)).toBeNull();
+    expect(await lireSessionDe(ici, CONTEXTE)).not.toBeNull();
+    expect(await lireSessionDe(autreCompte, CONTEXTE)).not.toBeNull();
+    expect(await autresSessionsOuvertes()).toBe(0);
+  });
+
+  it("ne ferme rien sans session valable", async () => {
+    await connecter();
+    cookiesDeTest.clear();
+    expect(await autresSessionsOuvertes()).toBe(0);
+    expect(await fermerLesAutresSessions()).toBe(0);
+    cookiesDeTest.set(nomDuCookie(), signer(nouveauJeton()));
+    expect(await fermerLesAutresSessions()).toBe(0);
+    expect(await query("SELECT 1 FROM sessions")).toHaveLength(1);
+  });
+
+  it("« Fermer mes autres sessions » exige une connexion récente : le refus dit de se reconnecter, propose le lien et ne ferme rien", async () => {
+    const ailleurs = await connecter();
+    cookiesDeTest.clear();
+    await connecter();
+    const donnees = new FormData();
+    donnees.set("retour", "/mes-donnees");
+
+    jouerLaConnexion("ancienne");
+    expect(await fermerMesAutresSessionsAction({}, donnees)).toEqual({
+      erreur: expect.stringMatching(/reconnectez-vous/),
+      reconnexion: "/mes-donnees",
+    });
+    expect(await lireSessionDe(ailleurs, CONTEXTE)).not.toBeNull();
+
+    jouerLaConnexion("recente");
+    expect(await fermerMesAutresSessionsAction({}, donnees)).toEqual({
+      message: expect.stringMatching(/1 autre session fermée/),
+    });
+    expect(await lireSessionDe(ailleurs, CONTEXTE)).toBeNull();
+  });
+
+  it("filtre le chemin de retour du lien de reconnexion, posté par le navigateur", async () => {
+    await connecter();
+    jouerLaConnexion("ancienne");
+    const donnees = new FormData();
+    donnees.set("retour", "//ailleurs.example");
+    expect(await fermerMesAutresSessionsAction({}, donnees)).toMatchObject({ reconnexion: "/" });
+  });
+
+  // /connexion et la page du lien renvoient une personne déjà connectée vers
+  // son retour sans rien lui redemander : un simple lien « Se reconnecter »
+  // ramenait au geste refusé, en boucle.
+  it("« Se reconnecter » ferme la session avant de mener à /connexion, avec l'écran du geste en retour, filtré", async () => {
+    const cookie = await connecter();
+    const donnees = new FormData();
+    donnees.set("retour", "/comptes");
+    await expect(seReconnecterAction(donnees)).rejects.toMatchObject(UNE_REDIRECTION("/connexion?retour=%2Fcomptes"));
+    expect(await lireSessionDe(cookie, CONTEXTE)).toBeNull();
+    expect(await cookieDeSession()).toBeUndefined();
+
+    donnees.set("retour", "//ailleurs.example");
+    await expect(seReconnecterAction(donnees)).rejects.toMatchObject(UNE_REDIRECTION("/connexion"));
+  });
+});
+
+describe("durées de session réglables (DUREES_DE_SESSION de src/config/comptes.ts)", () => {
+  const VALIDES: DureesDeSession = { maximumJours: 30, inactiviteJours: 7, connexionRecenteMinutes: 10 };
+
+  it("accepte les durées de la configuration et des durées cohérentes", () => {
+    expect(() => refuserDesDureesDeSessionInvalides()).not.toThrow();
+    expect(refuserDesDureesDeSessionInvalides(VALIDES)).toEqual(VALIDES);
+    expect(() => refuserDesDureesDeSessionInvalides({ ...VALIDES, inactiviteJours: 30 })).not.toThrow();
+  });
+
+  it("refuse de démarrer sur une durée qui n'est pas un entier d'au moins 1, une inactivité plus longue que la durée maximale, une connexion « récente » de plus d'une heure ou une session de plus de 400 jours", () => {
+    for (const fautives of [
+      { ...VALIDES, maximumJours: 0 },
+      { ...VALIDES, inactiviteJours: 1.5 },
+      { ...VALIDES, connexionRecenteMinutes: Number.NaN },
+      { ...VALIDES, inactiviteJours: Number.POSITIVE_INFINITY },
+      { ...VALIDES, inactiviteJours: 31 },
+      { ...VALIDES, connexionRecenteMinutes: 61 },
+      { ...VALIDES, maximumJours: 401, inactiviteJours: 7 },
+      { inactiviteJours: 7, connexionRecenteMinutes: 10 } as DureesDeSession,
+    ]) {
+      expect(() => refuserDesDureesDeSessionInvalides(fautives), JSON.stringify(fautives)).toThrow(/DUREES_DE_SESSION/);
+    }
   });
 });
 
@@ -481,7 +725,10 @@ describe("description des traitements de la brique comptes (politique de confide
   const texte = (traitements: ReturnType<typeof traitementsComptes>) => JSON.stringify(traitements);
 
   it("dit la vraie durée du cookie de session et la vraie validité du code", () => {
-    expect(texte(traitementsComptes(["code-email"]))).toContain(`déposé pour ${DUREE_SESSION_JOURS} jours`);
+    expect(texte(traitementsComptes(["code-email"]))).toContain(`déposé pour ${DUREES_DE_SESSION.maximumJours} jours`);
+    expect(texte(traitementsComptes(["code-email"]))).toContain(
+      `après ${DUREES_DE_SESSION.inactiviteJours} jours sans visite`
+    );
     expect(texte(traitementsComptes(["code-email"]))).toContain(`vaut ${DUREE_VALIDITE_MINUTES} minutes`);
   });
 

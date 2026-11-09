@@ -1,5 +1,5 @@
 import { ROLE_ADMIN, ROLE_PAR_DEFAUT, type Role } from "@/config/acces";
-import { ENTREE, LIMITES_PAR_RESEAU, METHODES } from "@/config/comptes";
+import { DUREES_DE_SESSION, ENTREE, LIMITES_PAR_RESEAU, METHODES } from "@/config/comptes";
 
 /*
  * Les types que l'appli remplit dans src/config/comptes.ts, et l'erreur de la
@@ -61,6 +61,22 @@ export type LimitesParReseau = {
  */
 export const ENVOIS_PAR_HEURE_PAR_DEFAUT = 300;
 
+// La politique de session, que l'appli règle (src/config/comptes.ts). Un
+// cookie volé valait 30 jours de droits admin, sans expiration à
+// l'inactivité ni preuve redemandée avant un geste sensible (audit du
+// 2026-11-09).
+export type DureesDeSession = {
+  // Depuis la connexion, visites comprises : au-delà, il faut se reconnecter.
+  maximumJours: number;
+  // Sans visite pendant ce délai, la session se ferme. Chaque visite le repousse,
+  // jamais au-delà de maximumJours.
+  inactiviteJours: number;
+  // Une connexion plus ancienne ne suffit pas aux gestes sensibles (effacer les
+  // données d'une personne, changer un rôle, fermer ses autres sessions) :
+  // exigerConnexionRecente de roles.ts.
+  connexionRecenteMinutes: number;
+};
+
 // Son message commence par « Brique comptes : » et ne cite jamais un secret.
 export class ErreurComptes extends Error {
   constructor(message: string) {
@@ -101,6 +117,44 @@ export function refuserDesLimitesParReseauInvalides(
     }
   }
   return completes;
+}
+
+// Bornes des durées de session, au même titre que les limites par réseau :
+// l'appli refuse de démarrer plutôt que de tenir une politique qu'on ne lui a
+// pas demandée. Une inactivité plus longue que la durée maximale ne voudrait
+// rien dire. Une connexion « récente » de plus d'une heure ne prouve plus
+// que la personne est devant l'écran, et laisse au voleur d'un cookie tout
+// juste ouvert le temps d'agir. Au-delà de 400 jours, Chrome raccourcit de
+// lui-même la vie du cookie, et la base garderait une échéance qu'il ne tient pas.
+const MAXIMUM_JOURS_PLAFOND = 400;
+const CONNEXION_RECENTE_PLAFOND_MINUTES = 60;
+
+export function refuserDesDureesDeSessionInvalides(durees: DureesDeSession = DUREES_DE_SESSION): DureesDeSession {
+  const refuser = (motif: string): never => {
+    throw new ErreurComptes(`DUREES_DE_SESSION (src/config/comptes.ts) : ${motif}`);
+  };
+  // Les clés nommées : une clé absente ferait une comparaison avec undefined
+  // qui ne refuse jamais, sans un mot.
+  for (const nom of ["maximumJours", "inactiviteJours", "connexionRecenteMinutes"] as const) {
+    const valeur: unknown = durees[nom];
+    if (typeof valeur !== "number" || !Number.isInteger(valeur) || valeur < 1) {
+      refuser(`« ${nom} » doit être un entier d'au moins 1 (valeur lue : ${String(valeur)}).`);
+    }
+  }
+  if (durees.maximumJours > MAXIMUM_JOURS_PLAFOND) {
+    refuser(`« maximumJours » ne dépasse pas ${MAXIMUM_JOURS_PLAFOND} jours (valeur lue : ${durees.maximumJours}).`);
+  }
+  if (durees.inactiviteJours > durees.maximumJours) {
+    refuser(
+      `« inactiviteJours » (${durees.inactiviteJours}) ne dépasse pas « maximumJours » (${durees.maximumJours}).`
+    );
+  }
+  if (durees.connexionRecenteMinutes > CONNEXION_RECENTE_PLAFOND_MINUTES) {
+    refuser(
+      `« connexionRecenteMinutes » ne dépasse pas ${CONNEXION_RECENTE_PLAFOND_MINUTES} minutes (valeur lue : ${durees.connexionRecenteMinutes}) : au-delà, la connexion ne prouve plus que la personne est devant l'écran.`
+    );
+  }
+  return durees;
 }
 
 // La démo en production : n'importe qui y jouerait l'admin. Appelé par le

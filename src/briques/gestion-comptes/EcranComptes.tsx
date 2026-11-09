@@ -5,6 +5,7 @@ import { Badge, Bouton, Carte, Champ, ChampCase, ChampSelect, EtatVide, Modale, 
 import { date } from "@/lib/format";
 import type { CompteAdministre, DomaineAdministre, StatutDuCompte } from "@/briques/comptes/administration";
 import type { OrigineDuCompte } from "@/briques/comptes/entree";
+import { RefusReconnexion } from "@/briques/comptes/RefusReconnexion";
 import type { RetourAdministration } from "./domaine";
 
 /*
@@ -87,7 +88,9 @@ export function EcranComptes({
   actions: ActionsAdministration;
 }) {
   const [geste, setGeste] = useState<Geste | null>(null);
-  const [erreur, setErreur] = useState<string | null>(null);
+  // Le refus du geste, avec le lien de reconnexion quand il demande une
+  // connexion récente (changer un rôle).
+  const [erreur, setErreur] = useState<{ texte: string; reconnexion?: string } | null>(null);
   const [annonce, setAnnonce] = useState<{ titre: string; texte: string } | null>(null);
   const [enCours, demarrer] = useTransition();
 
@@ -105,7 +108,7 @@ export function EcranComptes({
     demarrer(async () => {
       const retour = await operation();
       if (retour.erreur) {
-        if (dansUneModale) setErreur(retour.erreur);
+        if (dansUneModale) setErreur({ texte: retour.erreur, reconnexion: retour.reconnexion });
         else setAnnonce({ titre: "Geste refusé", texte: retour.erreur });
         return;
       }
@@ -391,7 +394,7 @@ export function EcranComptes({
               : `${geste.domaine.comptesQuiPerdraientLAcces} compte${geste.domaine.comptesQuiPerdraientLAcces > 1 ? "s" : ""} de ce domaine perdr${geste.domaine.comptesQuiPerdraientLAcces > 1 ? "ont" : "a"} l'accès ; ceux dont vous avez fixé le rôle ici le gardent.`}
           </p>
         )}
-        {erreur && <p className="sl-erreur-formulaire">{erreur}</p>}
+        {erreur && <RefusReconnexion erreur={erreur.texte} reconnexion={erreur.reconnexion} />}
       </Modale>
 
       <Modale

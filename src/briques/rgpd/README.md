@@ -22,7 +22,8 @@ brique les applique (« Durées de conservation et purge »).
   - **`/mes-donnees`** : la personne connectée télécharge ses propres données.
     La route `GET /mes-donnees/export` ne lit que la session, jamais la
     requête : une adresse lue dans l'URL ouvrirait les données des autres à
-    tout membre ;
+    tout membre. La page porte aussi la carte « Mes sessions » de la brique
+    comptes, où la personne ferme ses autres sessions ;
   - **`/donnees-personnelles`** : l'admin saisit une adresse et télécharge ce
     que l'appli garde sur elle. Elle sert pour un compte désactivé (qui ne se
     connecte plus) et pour une personne sans compte (un responsable de
@@ -52,6 +53,10 @@ brique les applique (« Durées de conservation et purge »).
   `donnees.exporter` : un rôle qui efface doit aussi pouvoir exporter. Pas de bouton « effacer mon
   compte » : le geste ne se rattrape pas, et un compte volé suffirait à tout
   effacer. Un admin n'efface pas ses propres données : un autre le fait.
+- **Après une connexion récente.** L'aperçu et l'effacement exigent une
+  connexion de moins de dix minutes (`exigerConnexionRecente` de la brique
+  comptes, « La politique de session » de son README) : un cookie volé n'efface
+  personne. Le refus propose « Se reconnecter », qui ramène à l'écran.
 - **En deux temps.** L'aperçu joue l'effacement dans une transaction et
   l'annule : ce qu'il montre, source par source, est ce que la confirmation
   fera, refus compris. La confirmation se fait dans une Modale où l'admin
