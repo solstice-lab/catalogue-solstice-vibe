@@ -62,8 +62,10 @@ CI, gardes de Claude, mise en ligne avec la brique déploiement) ; le reste est
   tentatives) : il est perdu à chaque déploiement et interdit d'avoir plus d'un worker.
 - **L'adresse IP du visiteur se lit par `src/lib/adresse-ip.ts`**, dans le seul en-tête
   que nomme `IP_EN_TETE_CLIENT`, réglée avec l'hébergeur (Render : `cf-connecting-ip`),
-  jamais dans `X-Forwarded-For`, qui garde ce que le visiteur envoie. Sans la variable en
-  production, aucune limite par adresse ne s'applique : jamais un compte commun à tous les
+  jamais dans `X-Forwarded-For`, qui garde ce que le visiteur envoie. Obligatoire en
+  production avec la brique comptes, qui refuse de démarrer sans elle : ses limites par IP
+  sautaient, et un tiers invalidait les codes de n'importe qui. Avec le seul formulaire de
+  contact, sans elle, pas de limite par adresse plutôt qu'un compte commun à tous les
   visiteurs, qui bloquerait tout le monde dès qu'un seul insiste.
 
 ## Dans le dépôt

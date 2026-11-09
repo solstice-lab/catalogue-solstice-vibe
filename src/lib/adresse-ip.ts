@@ -26,9 +26,11 @@ function avertirUneFois(message: string): void {
  * L'adresse, « local » hors production quand il n'y en a pas (serveur de
  * développement, sans proxy), ou null en production quand il n'y en a pas :
  * variable vide, ou en-tête configuré absent de la requête (mal réglé pour
- * cet hébergeur). L'appelant n'applique alors pas sa limite par adresse :
- * mettre tous les visiteurs dans un même compte bloquerait tout le monde dès
- * qu'un seul insiste.
+ * cet hébergeur). L'appelant décide quoi en faire. Le formulaire de contact
+ * n'applique pas sa limite par adresse, son plafond global reste. La connexion
+ * par code ou lien refuse de démarrer en production sans la variable, et compte
+ * ensemble, sur une adresse partagée, les requêtes où l'en-tête manque : sans
+ * limite, un tiers invalidait les codes de n'importe qui (audit du 2026-11-09).
  */
 export function adresseDuVisiteur(enTetes: Pick<Headers, "get">): string | null {
   const nom = (process.env.IP_EN_TETE_CLIENT ?? "").trim().toLowerCase();
@@ -46,8 +48,8 @@ export function adresseDuVisiteur(enTetes: Pick<Headers, "get">): string | null 
   if (process.env.NODE_ENV !== "production") return "local";
   avertirUneFois(
     nom === ""
-      ? "IP_EN_TETE_CLIENT n'est pas renseignée : les limites par adresse IP ne s'appliquent pas. La régler à l'en-tête où le proxy de l'hébergeur pose l'adresse du visiteur (Render : cf-connecting-ip)."
-      : `L'en-tête « ${nom} » (IP_EN_TETE_CLIENT) manque à la requête : les limites par adresse IP ne s'appliquent pas. Vérifier l'en-tête que pose le proxy de l'hébergeur.`
+      ? "IP_EN_TETE_CLIENT n'est pas renseignée : l'adresse du visiteur ne se lit pas, et les limites par adresse IP ne la distinguent plus. La régler à l'en-tête où le proxy de l'hébergeur pose l'adresse du visiteur (Render : cf-connecting-ip)."
+      : `L'en-tête « ${nom} » (IP_EN_TETE_CLIENT) manque à la requête : l'adresse du visiteur ne se lit pas, et les limites par adresse IP ne la distinguent plus. Vérifier l'en-tête que pose le proxy de l'hébergeur.`
   );
   return null;
 }

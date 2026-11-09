@@ -147,7 +147,8 @@ function lienDeConnexion(origine: URL, jeton: string, retour: string): string {
  * Écrit une demande de lien, ou refuse si une limite est atteinte, sans
  * chercher à savoir si l'adresse est admise : cela se fait après la réponse,
  * avec l'envoi, comme pour le code. `origine` vient d'adresseDesLiens, `ip`
- * d'adresseDuVisiteur (null : voir demanderUnCode).
+ * d'adresseDuVisiteur (null, et le plafond de toute l'appli : voir
+ * demanderUnCode).
  */
 export async function demanderUnLien(
   email: string,
@@ -167,7 +168,9 @@ export async function demanderUnLien(
     empreinteDuLien(secret, adresse, alea),
     DUREE_VALIDITE_LIEN_MINUTES
   );
-  if (!acceptee) return "limite";
+  if (acceptee === "limite") return "limite";
+  // Au plafond de toute l'appli, la réponse d'une adresse inconnue : rien ne part.
+  if (acceptee === "plafond") return "envoye";
   const lien = lienDeConnexion(origine, chiffrer(secret, adresse, alea), cheminDeRetour(retour));
   planifier(() => envoyerSiAdmis(adresse, lien, contexte));
   return "envoye";

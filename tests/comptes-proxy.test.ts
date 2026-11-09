@@ -138,8 +138,42 @@ describe("accès protégé par défaut, dans proxy.ts", () => {
     }
   });
 
-  it("sert /sante en production une fois la démo retirée des méthodes : le geste d'avant la mise en ligne suffit", () => {
+  // Audit du 2026-11-09 : sans la variable, l'adresse du visiteur ne se lisait
+  // pas, et la connexion par code sautait toute limite par IP. Un tiers
+  // invalidait chaque code reçu par une adresse visée (trois saisies fausses par
+  // minute) et savait qui demandait un code à l'instant (« expiré » contre
+  // « incorrect »), avec un seul avertissement au journal.
+  it("refuse de servir quoi que ce soit en production sans IP_EN_TETE_CLIENT, /sante comprise : sans elle, les limites par réseau de la connexion sautaient", () => {
     vi.stubEnv("NODE_ENV", "production");
+    poserLesMethodes(["code-email"]);
+    try {
+      for (const valeur of [undefined, "", "  "]) {
+        vi.stubEnv("IP_EN_TETE_CLIENT", valeur);
+        for (const chemin of ["/", "/sante", "/connexion"]) {
+          expect(() => proxy(requete(chemin)), `${chemin} ${String(valeur)}`).toThrow(
+            /IP_EN_TETE_CLIENT.*production.*cf-connecting-ip/
+          );
+        }
+      }
+    } finally {
+      vi.unstubAllEnvs();
+      poserLesMethodes(null);
+    }
+  });
+
+  it("n'exige pas IP_EN_TETE_CLIENT hors production : en local, l'adresse vaut « local »", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("IP_EN_TETE_CLIENT", "");
+    try {
+      expect(versLaConnexion(proxy(requete("/sante")))).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("sert /sante en production une fois la démo retirée des méthodes et l'en-tête de l'adresse IP réglé : les gestes d'avant la mise en ligne suffisent", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("IP_EN_TETE_CLIENT", "cf-connecting-ip");
     poserLesMethodes(["code-email"]);
     try {
       const reponse = proxy(requete("/sante"));

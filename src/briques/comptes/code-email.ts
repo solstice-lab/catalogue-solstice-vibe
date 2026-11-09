@@ -84,10 +84,24 @@ export function empreinteDeLAdresse(secret: string, adresse: string): string {
   return empreinte(secret, `adresse:${adresse}`);
 }
 
+/*
+ * L'adresse que partagent les requêtes dont l'IP ne se lit pas : en production,
+ * IP_EN_TETE_CLIENT réglée mais son en-tête absent de la requête (proxy mal
+ * réglé, requête qui le contourne ; src/lib/adresse-ip.ts rend null et le
+ * journalise une fois). Ces requêtes comptaient hors de toute limite par IP :
+ * un tiers invalidait chaque code reçu par une adresse visée et lisait qui se
+ * connectait (audit du 2026-11-09). Elles comptent désormais ensemble, comme
+ * un seul réseau aux limites de LIMITES_PAR_RESEAU : les plus strictes, puisque
+ * tout ce qui arrive sans adresse se les partage. Le prix, accepté : un proxy
+ * qui perd l'en-tête bloque vite tout le monde, ce qui se voit et se corrige,
+ * là où l'absence de limite ne se voyait pas.
+ */
+const SANS_ADRESSE = "sans-adresse";
+
 // À clé aussi : sans elle, les 2^32 adresses IPv4 se retrouvent en quelques
-// secondes. null quand l'IP ne se lit pas (voir plus bas).
-function empreinteDeLIp(secret: string, ip: string | null): string | null {
-  return ip === null ? null : empreinte(secret, `ip:${ip}`);
+// secondes.
+function empreinteDeLIp(secret: string, ip: string | null): string {
+  return empreinte(secret, `ip:${ip ?? SANS_ADRESSE}`);
 }
 
 /*
@@ -96,9 +110,11 @@ function empreinteDeLIp(secret: string, ip: string | null): string | null {
  * fait dans la tâche planifiée, après la réponse, avec l'envoi.
  *
  * `ip` vaut null quand l'adresse du visiteur ne se lit pas de façon sûre en
- * production (src/lib/adresse-ip.ts) : la limite par IP saute, elle bloquerait
- * tout le monde d'un coup ; celles par adresse restent, toutes les demandes
- * comptant alors comme venues de la même IP.
+ * production (src/lib/adresse-ip.ts) : la demande compte alors sur l'adresse
+ * partagée SANS_ADRESSE, avec toutes celles qui arrivent sans adresse.
+ *
+ * Au plafond de toute l'appli, la réponse est celle d'une demande ordinaire et
+ * rien ne part : c'est la réponse d'une adresse inconnue.
  */
 export async function demanderUnCode(
   email: string,
@@ -117,18 +133,28 @@ export async function demanderUnCode(
     empreinteDuCode(secret, adresse, code),
     DUREE_VALIDITE_MINUTES
   );
-  if (!acceptee) return "limite";
+  if (acceptee === "limite") return "limite";
+  if (acceptee === "plafond") return "envoye";
 
   planifier(() => envoyerSiAdmis(adresse, code, contexte));
   return "envoye";
 }
 
 /*
- * Écrit la demande sous les limites, ou répond faux si l'une est atteinte.
- * Partagée avec la connexion par lien (lien-email.ts) : un lien et un code
- * sont deux lignes de la même table, comptées ensemble. Sans cela, une appli
- * qui propose les deux méthodes doublait les mails qu'un tiers peut faire
- * envoyer à une personne. `empreinteSecrete` est celle du code ou du lien.
+ * Écrit la demande sous les limites (« enregistree »), ou n'écrit rien :
+ * « limite » quand une limite par adresse ou par IP est atteinte, « plafond »
+ * quand c'est celui de toute l'appli. Partagée avec la connexion par lien
+ * (lien-email.ts) : un lien et un code sont deux lignes de la même table,
+ * comptées ensemble. Sans cela, une appli qui propose les deux méthodes
+ * doublait les mails qu'un tiers peut faire envoyer à une personne.
+ * `empreinteSecrete` est celle du code ou du lien.
+ *
+ * Le plafond compte les demandes acceptées, qu'un mail parte ou non :
+ * l'admission ne se lit qu'après la réponse, et la lire avant trahirait, par le
+ * temps de réponse, qui a un compte. Son prix : qui dispose de beaucoup d'IP
+ * peut l'épuiser avec des adresses quelconques, et retarder toutes les
+ * connexions jusqu'à une heure ; le journal le dit. Il borne aussi ce qu'un
+ * tiers fait écrire en base.
  */
 export async function enregistrerUneDemande(
   secret: string,
@@ -136,18 +162,20 @@ export async function enregistrerUneDemande(
   ip: string | null,
   empreinteSecrete: string,
   dureeMinutes: number
-): Promise<boolean> {
+): Promise<"enregistree" | "limite" | "plafond"> {
   const cleAdresse = empreinteDeLAdresse(secret, adresse);
   const cleIp = empreinteDeLIp(secret, ip);
   // Lue avant la transaction : une valeur refusée ne laisse aucun verrou pris.
   const limites = refuserDesLimitesParReseauInvalides(LIMITES_PAR_RESEAU);
   return transaction(async (client) => {
     // Deux demandes simultanées liraient sinon le même compte et passeraient
-    // toutes deux sous la limite. Toujours l'adresse puis l'IP : pris dans le
-    // même ordre, les verrous ne s'interbloquent pas.
+    // toutes deux sous la limite. Toujours l'adresse, puis l'IP, puis toute
+    // l'appli : pris dans le même ordre, les verrous ne s'interbloquent pas. Le
+    // dernier fait passer les demandes une à une, le temps de quelques
+    // requêtes : une appli interne n'en reçoit que quelques-unes à la minute.
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`codes_connexion:adresse:${cleAdresse}`]);
-    if (cleIp !== null)
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`codes_connexion:ip:${cleIp}`]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`codes_connexion:ip:${cleIp}`]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["codes_connexion:appli"]);
     // Ménage à chaque demande, plutôt qu'une tâche planifiée à part.
     await client.query("DELETE FROM codes_connexion WHERE cree_le < now() - make_interval(secs => $1)", [
       CONSERVATION_S,
@@ -170,7 +198,20 @@ export async function enregistrerUneDemande(
       compte.adresse >= DEMANDES_PAR_HEURE_ADRESSE ||
       compte.ip >= limites.demandesParHeure
     ) {
-      return false;
+      return "limite";
+    }
+
+    // Toutes les lignes ont moins d'une heure : le ménage vient de passer.
+    const appli = await client.queryOne<{ n: number }>("SELECT count(*)::int AS n FROM codes_connexion");
+    const dejaAcceptees = appli?.n ?? 0;
+    if (dejaAcceptees >= limites.envoisParHeure) return "plafond";
+    // Quand la demande qui remplit le plafond passe, une fois, sans donnée
+    // personnelle : les suivantes n'écrivent rien, et un journal à chacune
+    // grossirait sans fin.
+    if (dejaAcceptees + 1 === limites.envoisParHeure) {
+      console.warn(
+        `Brique comptes : le plafond de ${limites.envoisParHeure} demandes de code ou de lien par heure, toutes adresses et IP confondues, est atteint. Jusqu'à ce qu'une place se libère, les demandes reçoivent la réponse habituelle sans qu'aucun mail parte. Si ce sont de vraies connexions, relever envoisParHeure de LIMITES_PAR_RESEAU (src/config/comptes.ts).`
+      );
     }
 
     // Un nouveau code invalide le précédent : seul le dernier reçu vaut. Un
@@ -183,7 +224,7 @@ export async function enregistrerUneDemande(
        VALUES ($1, $2, $3, now() + make_interval(mins => $4))`,
       [cleAdresse, cleIp, empreinteSecrete, dureeMinutes]
     );
-    return true;
+    return "enregistree";
   });
 }
 
@@ -233,20 +274,18 @@ export async function sousLaLimiteDeLIp<R>(
   const cleIp = empreinteDeLIp(secret, ip);
   const limites = refuserDesLimitesParReseauInvalides(LIMITES_PAR_RESEAU);
   return transaction(async (client) => {
-    if (cleIp !== null) {
-      // Deux saisies simultanées d'une IP ne passent pas toutes deux sous la limite.
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`codes_connexion_essais:ip:${cleIp}`]);
-      await client.query("DELETE FROM codes_connexion_essais WHERE cree_le < now() - make_interval(secs => $1)", [
-        CONSERVATION_S,
-      ]);
-      const faux = await client.queryOne<{ n: number }>(
-        "SELECT count(*)::int AS n FROM codes_connexion_essais WHERE ip_empreinte = $1",
-        [cleIp]
-      );
-      if ((faux?.n ?? 0) >= limites.codesFauxParHeure) return "limite" as const;
-    }
+    // Deux saisies simultanées d'une IP ne passent pas toutes deux sous la limite.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`codes_connexion_essais:ip:${cleIp}`]);
+    await client.query("DELETE FROM codes_connexion_essais WHERE cree_le < now() - make_interval(secs => $1)", [
+      CONSERVATION_S,
+    ]);
+    const faux = await client.queryOne<{ n: number }>(
+      "SELECT count(*)::int AS n FROM codes_connexion_essais WHERE ip_empreinte = $1",
+      [cleIp]
+    );
+    if ((faux?.n ?? 0) >= limites.codesFauxParHeure) return "limite" as const;
     const echec = async <E>(resultat: E): Promise<E> => {
-      if (cleIp !== null) await client.query("INSERT INTO codes_connexion_essais (ip_empreinte) VALUES ($1)", [cleIp]);
+      await client.query("INSERT INTO codes_connexion_essais (ip_empreinte) VALUES ($1)", [cleIp]);
       return resultat;
     };
     return verifier(client, echec);
