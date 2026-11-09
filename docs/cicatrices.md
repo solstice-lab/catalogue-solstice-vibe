@@ -83,7 +83,7 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 | I23 | Un import se réconcilie sur les totaux métier, pas sur le nombre de lignes. | Environ 150 lignes d'écart sur 4 500, pour un total de jours intact : un dédoublonnage normal. | `solstice-donnees` (`SKILL.md:211`) |
 | I24 | Les pièces jointes du système source se téléchargent avant de planifier l'import. | Les adresses des pièces jointes d'un outil source expiraient avant l'import. | `solstice-donnees` (`SKILL.md:194`) |
 | I25 | Un import en production attend le déploiement de la migration qui crée ses colonnes. | Vécu en production : un import visait des colonnes que la migration n'avait pas encore créées. | `solstice-donnees` (`SKILL.md:196`) |
-| I26 | Un script de données tourne à blanc par défaut ; l'écriture se demande à la main, par un humain, après relecture du rapport. Une valeur pleine ne se dégrade jamais. | Les rattrapages de commissions, les colonnes ajoutées après coup et la casse des noms de comptes se sont corrigés par script en production. | `scripts/lib/cli.ts:7` ; `CLAUDE.md:69` ; garde `--confirmer` (`.claude/hooks/gardes.mjs:692`) ; `tests/import-fusion.test.ts:10` |
+| I26 | Un script de données tourne à blanc par défaut ; l'écriture se demande à la main, par un humain, après relecture du rapport. Une valeur pleine ne se dégrade jamais. | Les rattrapages de commissions, les colonnes ajoutées après coup et la casse des noms de comptes se sont corrigés par script en production. | `scripts/lib/cli.ts:7` ; `CLAUDE.md:69` ; garde `--confirmer` (`.claude/hooks/gardes.mjs:696`) ; `tests/import-fusion.test.ts:10` |
 
 ## 4. Sources externes et synchronisations
 
@@ -176,7 +176,7 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| P1 | Données réelles, exports, dumps et clés n'entrent jamais dans l'historique git. | Des données personnelles sont entrées dans l'historique d'un projet, coûteuses à purger. Un fichier retiré après coup reste lisible dans l'historique. | `.gitignore:22` ; `tests/gitignore.test.ts:71` ; garde `git add -f` (`.claude/hooks/gardes.mjs:694`) |
+| P1 | Données réelles, exports, dumps et clés n'entrent jamais dans l'historique git. | Des données personnelles sont entrées dans l'historique d'un projet, coûteuses à purger. Un fichier retiré après coup reste lisible dans l'historique. | `.gitignore:22` ; `tests/gitignore.test.ts:71` ; garde `git add -f` (`.claude/hooks/gardes.mjs:698`) |
 | P2 | Une donnée sensible masquée l'est sur toutes ses facettes : libellé, famille, couleur, légende. | Un motif d'absence masqué restait trahi par la couleur de sa légende. | **Non tenue** |
 | P3 | Les gabarits de conformité (registre des traitements, trame de sous-traitance, hébergement dans l'Union européenne) sont prêts avant la mise en ligne. | Un hébergement a été déplacé d'une région américaine vers l'Union européenne après coup. | Gabarits de la brique rgpd (`src/briques/rgpd/gabarits/`) : registre des traitements, trame d'accord de sous-traitance, checklist d'hébergement dans l'UE ; hébergement tenu aussi par DP5 |
 | P4 | La position sur l'envoi de données vers des services d'IA se documente par projet. | Point ouvert d'un projet antérieur qui envoyait des données à des modèles d'IA ; les archives ne détaillent pas d'incident. | **Non tenue** |
@@ -264,8 +264,8 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | --- | --- | --- | --- |
 | ME1 | On s'assigne un ticket avant de le prendre. | Un ticket pris deux fois a donné deux implémentations, et la mauvaise a été fusionnée. | `solstice-livrer` (`SKILL.md:15`) |
 | ME2 | Une session de travail, un worktree. | D'autres sessions changeaient la branche du clone partagé juste avant un commit. | `solstice-livrer` (`SKILL.md:21`) |
-| ME3 | La fusion revient à un humain : fusionner, c'est mettre en ligne. | Avec l'auto-déploiement, chaque fusion partait en production. | garde `gh pr merge` (`.claude/hooks/gardes.mjs:697`) ; `solstice-livrer` (`SKILL.md:73`) |
-| ME4 | Une URL de base distante ne se colle jamais dans un terminal ni un fichier. | Collée dans un terminal, l'adresse de la base de production est restée dans l'historique, et il a fallu changer les identifiants. | garde (`.claude/hooks/gardes.mjs:61`) ; `.claude/hooks/gardes.test.mjs` |
+| ME3 | La fusion revient à un humain : fusionner, c'est mettre en ligne. | Avec l'auto-déploiement, chaque fusion partait en production. | garde `gh pr merge` (`.claude/hooks/gardes.mjs:701`) ; `solstice-livrer` (`SKILL.md:73`) |
+| ME4 | Une URL de base distante ne se colle jamais dans un terminal ni un fichier. | Collée dans un terminal, l'adresse de la base de production est restée dans l'historique, et il a fallu changer les identifiants. | garde (`.claude/hooks/gardes.mjs:65`) ; `.claude/hooks/gardes.test.mjs` |
 | ME5 | Avant une PR, relire ce que le diff rend faux dans la documentation. | La dérive de documentation a été le deuxième poste de correctifs d'un projet antérieur : renvois morts, commentaires d'un état passé, une même règle écrite à quatre endroits et contredite par l'un d'eux. | agent `relecteur-docs` (`.claude/agents/relecteur-docs.md:9`) ; `CLAUDE.md` §7 |
 | ME6 | Un test énonce la règle qu'il verrouille et cite le cas d'origine. | Sur deux projets antérieurs, ces intitulés ont servi de mémoire des incidents. | `solstice-livrer` (`SKILL.md:30`) ; `solstice-donnees` (`SKILL.md:242`) |
 | ME7 | Escalader est un résultat normal. | Une minute d'escalade coûte moins qu'un incident en production. | `CLAUDE.md:91` |
