@@ -39,6 +39,26 @@ export function estBaseDeTest(nom: string): boolean {
   return /^.+_test(_\d+)?$/.test(nom);
 }
 
+// La base d'un worker de vitest, dérivée de la base de test passée par
+// DATABASE_URL : les fichiers de test tournent en parallèle, chacun vide la
+// base qu'il vise, donc chaque worker a la sienne (tests/bases-des-workers.ts).
+// Le suffixe _w<n> ne finit jamais par _test ni _test_<n> : aucune session ne
+// choisira ce nom pour sa base dédiée. « <appli>_test_<n> » aurait donné à
+// un worker la base de la session du ticket n, vidée sous ses pieds.
+export function baseDuWorker(base: string, numero: number): string {
+  if (!Number.isInteger(numero) || numero < 1) {
+    throw new Error(`Numéro de worker « ${numero} » : un entier à partir de 1 était attendu (VITEST_POOL_ID).`);
+  }
+  const nom = `${base}_w${numero}`;
+  if (nom.length > LONGUEUR_MAX) {
+    throw new Error(
+      `Base de test « ${base} » trop longue : « ${nom} » dépasse les ${LONGUEUR_MAX} caractères que Postgres garde. ` +
+        "Raccourcir le nom de la base de test."
+    );
+  }
+  return nom;
+}
+
 // La ligne à coller dans .env.local : la base _dev, jamais celle des tests.
 // Sans mot de passe : le Postgres du compose est en trust, publié sur
 // 127.0.0.1 seulement.

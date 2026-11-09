@@ -21,7 +21,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run --exclude tests/assembleur.test.ts --exclude tests/mettre-a-jour.test.ts",
-    "test:assembleur": "vitest run tests/assembleur.test.ts tests/mettre-a-jour.test.ts"
+    "test:assembleur": "vitest run --no-file-parallelism tests/assembleur.test.ts tests/mettre-a-jour.test.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
