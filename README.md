@@ -473,7 +473,9 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   `src/lib/referencement.ts`. Fermés aux moteurs (`noindex`, `robots.txt` qui
   interdit tout) hors production, sans `URL_PUBLIQUE`, pour un site qui n'est
   pas public ou tant qu'une valeur reste « À compléter ». L'image lit ses
-  couleurs dans `tokens.css` (`src/lib/image-partage.ts`).
+  couleurs dans `tokens.css` (`src/lib/image-partage.ts`). En production sans
+  `URL_PUBLIQUE` (une recette), aucune image d'aperçu n'est annoncée : Next
+  la ferait pointer sur `localhost` et le port interne de l'hébergeur.
 - `src/lib/adresse-ip.ts` — l'adresse IP du visiteur pour les limites par
   adresse (formulaire de contact, connexion par code), lue dans le seul
   en-tête que nomme `IP_EN_TETE_CLIENT`, réglée avec l'hébergeur. Une appli
