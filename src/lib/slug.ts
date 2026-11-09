@@ -1,6 +1,6 @@
 /*
- * Slugs d'URL des fiches : /dossiers/dos-014-atelier-morvan plutôt que
- * /dossiers/213. Repris d'un projet précédent.
+ * Slugs d'URL des fiches : /<module>/dos-014-atelier-morvan plutôt que
+ * /<module>/213. Repris d'un projet précédent.
  *
  * Le slug n'est PAS stocké en base : il est recalculé à partir des champs de
  * la fiche, à l'affichage pour construire le lien comme côté serveur pour la

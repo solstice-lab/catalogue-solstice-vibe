@@ -157,8 +157,8 @@ sortie, de fiche et d'identité git ne se voient pas dans la blueprint.
   une brique gardée qui apporte ses écrans, à comparer aux routes de `src/app/` listées
   dans ses `fichiers` (`/connexion` avec `comptes`, `/mes-donnees` et
   `/donnees-personnelles` avec `rgpd`, `/comptes` avec `gestion-comptes`, `/journal` avec
-  `journal`, `/contact` avec `contact`, `/espace` et `/espace/rejoindre` avec `espaces`) ; le socle (ni `/kit` ni `/dossiers` ne sont livrés : `PATRON_DOSSIERS` et
-  `VITRINE_DU_KIT` sont toujours retirés ; `/mentions-legales`
+  `journal`, `/contact` avec `contact`, `/espace` et `/espace/rejoindre` avec `espaces`) ; le socle (ni `/kit` ni `/dossiers` ne sont livrés : `PATRON_DOSSIERS`,
+  `PATRON_DONNEES` et `VITRINE_DU_KIT` sont toujours retirés ; `/mentions-legales`
   et `/confidentialite`, toujours là, à remplir ; `/robots.txt`, `/sitemap.xml`,
   `/opengraph-image`, `/twitter-image`, remplis depuis `src/lib/referencement.ts` ; `/`,
   l'accueil de départ : nom, description et lien d'entrée, lus de l'en-tête) ; ou une page que l'appli écrira (l'accueil métier, les

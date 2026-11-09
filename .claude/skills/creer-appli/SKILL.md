@@ -273,8 +273,8 @@ Règles de l'assembleur :
   il aura besoin. Assembler sans brique qui lit la base donne une appli sans base : ce
   n'est la réponse que si le besoin n'a pas de données à garder.
   Si le besoin a des données, le profil `outil-interne` au moins (sans profil,
-  `--briques comptes,mails`, avec `rgpd` d'office) garde la base, les droits, l'export et l'effacement des données d'une personne et le
-  patron `dossiers` à copier. Un doute sur ce que le besoin garde : le dire, et laisser la
+  `--briques comptes,mails`, avec `rgpd` d'office) garde la base, les droits, l'export et l'effacement des données d'une personne ; le
+  patron `dossiers` à copier se lit au catalogue public. Un doute sur ce que le besoin garde : le dire, et laisser la
   personne responsable du projet trancher (retirer ensuite des écrans à la main est un
   changement structurel, `CLAUDE.md` §5).
 - **La base et `comptes` se décident à l'assemblage, pas plus tard.** Une autre brique

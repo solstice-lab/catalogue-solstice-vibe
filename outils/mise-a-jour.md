@@ -719,7 +719,7 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   (`echeances`, `calendrier`, `validation`, `import-lot`, `notifications`, le vocabulaire
   de `creer-appli`, hors `mails` seule, que ce repérage ne voit pas), chacune avec son
   ticket de l'appli ; celles dont elle part seulement du patron `dossiers` arrivent branchées sur le
-  catalogue, à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Une appli
+  catalogue (sur le patron, dans une appli qui l'a reçu), à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Une appli
   assemblée par profil reçoit une brique comme une autre (les briques du profil sont au
   manifeste) ; si son profil n'admet pas une brique arrivée (`permises` de `PROFILS` au
   commit A : `comptes` dans une `vitrine`), le rapport avertit que `profil:` de l'en-tête

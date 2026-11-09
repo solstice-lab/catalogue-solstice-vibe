@@ -1994,7 +1994,8 @@ export function tablesSansEspaceId(etapes) {
  *     relecteur-blueprint, hors mails seule, que ce repérage ne voit pas ;
  *   - à rattacher : elle arrive branchée sur le catalogue, et sa section part
  *     du patron `dossiers` pour les modules que l'appli a écrits (journal, qui
- *     ne trace que src/lib/db/dossiers.ts ; espaces).
+ *     ne trace des fiches que celles du patron, et seulement dans une appli qui
+ *     l'a reçu ; espaces).
  * La section de mails, contact, comptes ou rgpd ne commence pas par cette phrase
  * et ne part pas du patron : le rapport ne les annonce pas. Toute brique arrivée
  * se note de toute façon dans la blueprint (rubrique « Manifeste et blueprint »).
@@ -2842,7 +2843,7 @@ function rubriqueDesBriquesABrancher(resultat) {
   }
   if (aRattacher.length > 0) {
     lignes.push(
-      `Arrivées branchées sur le catalogue (le patron ${code("dossiers")}), pas sur les modules que l'appli a écrits en le copiant : les y rattacher, comme le dit la section de leur README, est un ticket de l'appli.`,
+      `Arrivées branchées sur le catalogue (le patron ${code("dossiers")}, dans une appli qui l'a reçu), pas sur les modules que l'appli a écrits en le copiant : les y rattacher, comme le dit la section de leur README, est un ticket de l'appli.`,
       "",
       ...aRattacher.map(ligne),
       ""
