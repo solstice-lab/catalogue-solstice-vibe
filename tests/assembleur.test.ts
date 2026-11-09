@@ -1366,6 +1366,9 @@ describe("registre des adaptations de l'appli assemblée", () => {
     const texte = lireAssemble(dossier, "ADAPTATIONS.md");
     expect(texte).toMatch(/^# Adaptations de l'appli\n/);
     expect(texte).toContain("défaut du catalogue");
+    // Le fichier qu'une mise à jour ramène à la version du catalogue : le report du
+    // 2026-11-06 dans materiotheque l'a noté à la main, faute de ligne qui le prévoie.
+    expect(texte).toContain("Nature : retour au catalogue");
     // L'exemple de l'en-tête est dans un bloc de code : la garde ne le prend pas pour une note.
     expect(entreesDesAdaptations(texte)).toEqual([]);
   });

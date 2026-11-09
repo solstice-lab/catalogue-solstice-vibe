@@ -178,11 +178,13 @@ export function refuserLaDemoEnProduction(): void {
 // journal (audit du 2026-11-09). Appelé par le proxy comme la démo, /sante
 // comprise : le déploiement échoue au lieu d'une appli en ligne sans limite.
 // Seulement avec le code ou le lien : Google et Microsoft ne lisent pas l'IP.
+// Le message ne nomme pas le fichier de l'hébergeur : il part avec la brique
+// deploiement, et une appli sans elle le citait sans l'avoir (2026-11-09).
 export function refuserLaProductionSansEnTeteIp(): void {
   const lisentLIp = METHODES.includes("code-email") || METHODES.includes("lien-email");
   if (lisentLIp && process.env.NODE_ENV === "production" && (process.env.IP_EN_TETE_CLIENT ?? "").trim() === "") {
     throw new ErreurComptes(
-      "IP_EN_TETE_CLIENT est obligatoire en production : sans elle, les limites par adresse IP de la connexion ne voient pas qui demande. La déclarer chez l'hébergeur, à l'en-tête où son proxy pose l'adresse du visiteur (Render : cf-connecting-ip, déjà dans render.yaml)."
+      "IP_EN_TETE_CLIENT est obligatoire en production : sans elle, les limites par adresse IP de la connexion ne voient pas qui demande. La déclarer chez l'hébergeur, à l'en-tête où son proxy pose l'adresse du visiteur (Render : cf-connecting-ip)."
     );
   }
 }

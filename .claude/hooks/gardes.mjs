@@ -819,7 +819,10 @@ export function entreesDesAdaptations(texte) {
       chemin.trim().replace(/\\/g, "/").replace(/^\.\//, "")
     );
     const ligneNature = lignes.find((ligne) => champ(ligne) === "nature") ?? "";
-    const nature = /défaut du catalogue|propre à l['’]appli/i.exec(ligneNature)?.[0].toLowerCase().replace("’", "'");
+    const nature = /défaut du catalogue|propre à l['’]appli|retour au catalogue/i
+      .exec(ligneNature)?.[0]
+      .toLowerCase()
+      .replace("’", "'");
     entrees.push({ titre: lignes[0].slice(3).trim(), chemins, nature: nature ?? null, texte: lignes.join("\n") });
   }
   return entrees;

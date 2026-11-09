@@ -150,7 +150,10 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   - Les réponses vont dans le bloc « La mise en ligne » de la fiche. L'hébergeur retenu
     renseigne aussi les mentions légales (question suivante) : avec la brique `deploiement`,
     l'assembleur y écrit le nom de Render (« Render Services, Inc. »), pas son adresse ni
-    son téléphone.
+    son téléphone : Render ne les publie pas sur son site. Leur source est la facture ou le
+    DPA du compte Render de l'appli (Dashboard → Billing, ou Account Settings), relevés pour
+    chaque appli et datés ; d'ici là, `/mentions-legales` affiche « Non renseigné ». Le dire
+    à la personne : qui a accès au compte Render, et avant quelle mise en ligne publique.
 - **Les mentions légales** (`src/lib/mentions-legales.ts`, page `/mentions-legales`) : le
   bloc « La mise en ligne » de `solstice-nouvelle-appli` §1, posé pendant ce cadrage et
   non à la veille de la mise en ligne (éditeur, directeur de la publication, champs

@@ -34,7 +34,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { ADAPTATIONS } from "../.claude/hooks/gardes.mjs";
+import { ADAPTATIONS, couvre, entreesDesAdaptations } from "../.claude/hooks/gardes.mjs";
 import { environnementDeGit } from "./assembler.mjs";
 import {
   contenusDuCommit,
@@ -1251,6 +1251,70 @@ const SORTS = {
   binairesRetouches: "binaire retouché par l'appli, changé au catalogue : gardé, à trancher",
 };
 
+// Les fichiers dont l'outil sait lire les commentaires : `//` et `/* */` en
+// JavaScript et TypeScript, `/* */` seul en CSS (où `//` n'en est pas un).
+const AVEC_COMMENTAIRES_DE_LIGNE = /\.[cm]?[jt]sx?$/;
+const AVEC_COMMENTAIRES_DE_BLOC = /\.(?:[cm]?[jt]sx?|css)$/;
+
+// Une ligne de commentaire entière, sans code après un `*/`. Une ligne qui
+// commence par « * » sans espace (`*entrees() {`, une méthode génératrice) est du code.
+const estUneLigneDeCommentaire = (ligne, deLigne) =>
+  (deLigne && ligne.startsWith("//")) || (/^(?:\/\*|\*(?:\s|\/|$))/.test(ligne) && !/\*\/\s*\S/.test(ligne));
+
+/**
+ * Ce qui sépare le fichier de l'appli de celui de la cible : "aucun" (les mêmes
+ * octets), "commentaires" (des lignes de commentaire entières ou des lignes
+ * vides, dans un fichier de code), null sinon, ou pour un fichier dont l'outil
+ * ne lit pas les commentaires. Le 2026-11-06, au report du catalogue dans
+ * materiotheque, le test des gardes était en conflit pour une seule ligne de
+ * commentaire : la session l'a vu seule. Prudente, la comparaison laisse au
+ * code tout ce qui en a peut-être (un commentaire en fin de ligne de code, un
+ * retrait changé). Limite : elle ne lit pas les chaînes, et une ligne qui
+ * ressemble à un commentaire dans un gabarit multiligne compte comme tel ;
+ * le rapport ne fait que conseiller de comparer.
+ * @param {string} chemin
+ * @param {Buffer | undefined} appli
+ * @param {Buffer | undefined} cible
+ * @returns {"aucun" | "commentaires" | null}
+ */
+export function ecartDeLaCible(chemin, appli, cible) {
+  if (appli === undefined || cible === undefined) return null;
+  if (appli.equals(cible)) return "aucun";
+  if (!AVEC_COMMENTAIRES_DE_BLOC.test(chemin)) return null;
+  const deLigne = AVEC_COMMENTAIRES_DE_LIGNE.test(chemin);
+  const code = (contenu) =>
+    contenu
+      .toString("utf-8")
+      .split(/\r?\n/)
+      .map((ligne) => ligne.trimEnd())
+      .filter((ligne) => ligne !== "" && !estUneLigneDeCommentaire(ligne.trimStart(), deLigne));
+  const [deLAppli, deLaCible] = [code(appli), code(cible)];
+  return deLAppli.length === deLaCible.length && deLAppli.every((ligne, rang) => ligne === deLaCible[rang])
+    ? "commentaires"
+    : null;
+}
+
+/*
+ * Ce qu'ADAPTATIONS.md dit de chaque fichier fusionné ou en conflit : la note
+ * qui le couvre (la plus récente, comme pour outils/adaptations.mjs), et
+ * l'écart entre l'appli et la cible. Le 2026-11-06, materiotheque avait noté
+ * « défaut du catalogue » le test des gardes qu'elle avait corrigé ; le
+ * catalogue a corrigé le même défaut, et le rapport ne listait que le conflit.
+ * La lecture des notes est celle de la garde, que l'appli reçoit. migrations.ts,
+ * fusionné hors de ses étapes, en est aussi.
+ */
+function adaptationsDesFusions({ fichiers, cible, appli }) {
+  const entrees = entreesDesAdaptations(texteDe(appli.get(ADAPTATIONS)));
+  return [...fichiers.enConflit, ...fichiers.fusionnes, ...fichiers.migrations].sort().map((chemin) => {
+    const entree = entrees.findLast((candidate) => couvre(candidate, chemin));
+    return {
+      chemin,
+      note: entree === undefined ? null : { titre: entree.titre, nature: entree.nature },
+      ecart: ecartDeLaCible(chemin, appli.get(chemin), cible.get(chemin)),
+    };
+  });
+}
+
 function sortDe(fichiers, chemin) {
   const liste = Object.keys(SORTS).find((cle) => fichiers[cle].includes(chemin));
   return liste === undefined ? undefined : SORTS[liste];
@@ -2203,6 +2267,8 @@ export function mettreAJour({ catalogue, appli, vers, ajouter, branche, aBlanc =
       retouchesAvant: examen.resultat.retouches,
       supprimesAvant: examen.resultat.supprimes,
       fichiers,
+      adaptationsDesFusions: adaptationsDesFusions({ fichiers, cible, appli: contenus }),
+      registreDesAdaptations: contenus.has(ADAPTATIONS),
       verrou,
       paquetJson: egaux(origine.get("package.json"), cible.get("package.json"))
         ? "inchangé au catalogue"
@@ -2312,13 +2378,59 @@ function rubriqueDesFichiers(resultat) {
     ["ajoutes", "Ajoutés"],
     ["supprimes", "Supprimés, intacts dans l'appli"],
   ];
+  // Un fichier fusionné ou en conflit a été retouché par l'appli : sa note
+  // d'ADAPTATIONS.md dit pourquoi, et si la cible rend la retouche inutile.
+  const adaptations = new Map(resultat.adaptationsDesFusions.map((adaptation) => [adaptation.chemin, adaptation]));
+  const ecartDit = {
+    aucun: " L'appli avait déjà la version de la cible.",
+    commentaires: " L'appli et la cible ne diffèrent que par des commentaires.",
+  };
+  const suiteDe = (chemin) => {
+    const adaptation = adaptations.get(chemin);
+    if (adaptation === undefined) return "";
+    const { note, ecart } = adaptation;
+    // Sans le registre (appli assemblée avant lui), « sans note » se dit une fois, plus bas.
+    if (note === null && !resultat.registreDesAdaptations)
+      return ecartDit[ecart] === undefined ? "" : ` :${ecartDit[ecart]}`;
+    const dit =
+      note === null
+        ? `sans note dans ${code(ADAPTATIONS)}.`
+        : note.nature === "défaut du catalogue"
+          ? `note « ${note.titre} », défaut du catalogue ; la cible corrige peut-être ce défaut : comparer, et prendre la cible si elle suffit.`
+          : `note « ${note.titre} », ${note.nature ?? "nature non dite"}.`;
+    return ` : ${dit}${ecartDit[ecart] ?? ""}`;
+  };
   let rien = true;
   for (const [cle, titre] of listes) {
     if (fichiers[cle].length === 0) continue;
     rien = false;
-    lignes.push(`${titre} (${fichiers[cle].length}) :`, ...fichiers[cle].map((chemin) => `- ${code(chemin)}`), "");
+    lignes.push(
+      `${titre} (${fichiers[cle].length}) :`,
+      ...fichiers[cle].map((chemin) => `- ${code(chemin)}${suiteDe(chemin)}`),
+      ""
+    );
   }
   if (rien) lignes.push("Aucun fichier venu du catalogue ne change.", "");
+  if (resultat.adaptationsDesFusions.length > 0 && !resultat.registreDesAdaptations) {
+    lignes.push(
+      `L'appli n'a pas d'${code(ADAPTATIONS)} (assemblée avant le 2026-11-05) : aucune note à citer pour les fichiers fusionnés ou en conflit.`,
+      ""
+    );
+  }
+  // Le retour d'un fichier à la version du catalogue se note : materiotheque l'a
+  // fait à la main le 2026-11-06, sans ligne de l'en-tête qui le prévoie.
+  if (
+    resultat.adaptationsDesFusions.some(
+      ({ note, ecart }) => note?.nature === "défaut du catalogue" || (note !== null && ecart === "aucun")
+    )
+  ) {
+    lignes.push(
+      `Un fichier noté repris tel que la cible le donne revient au catalogue : le noter dans ${code(ADAPTATIONS)}, ` +
+        `une entrée de plus en bas, qui le cite sur sa ligne « Fichiers », dit « repris du catalogue au commit ${resultat.commitCible} » ` +
+        "et porte « Nature : retour au catalogue » ; l'entrée d'origine reste.",
+      ""
+    );
+  }
   // Ce que l'appli a changé et que le catalogue ne touche pas : rien à faire, mais
   // c'est ce que montrait seule la première tranche, et une relecture le cherche.
   const touches = new Set(Object.values(fichiers).flat());
