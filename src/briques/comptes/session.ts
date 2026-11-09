@@ -143,10 +143,10 @@ export async function connexionRecente(): Promise<boolean> {
   return connexionRecenteDe((await cookies()).get(nomDuCookie())?.value);
 }
 
-// Les sessions encore ouvertes du compte de la session courante, hors elle :
-// $1 et $2 comme SESSION_VALABLE.
+// Les sessions encore valables du compte de la session courante, hors elle,
+// aux mêmes échéances que la lecture : $1 et $2 comme SESSION_VALABLE.
 const AUTRES_SESSIONS = `autre.utilisateur_id = (SELECT s.utilisateur_id FROM sessions s WHERE ${SESSION_VALABLE})
-  AND autre.empreinte <> $1 AND autre.expire_le > now()`;
+  AND autre.empreinte <> $1 AND autre.expire_le > now() AND autre.cree_le > now() - make_interval(days => $2)`;
 
 async function jetonCourant(): Promise<string | null> {
   return verifierSignature((await cookies()).get(nomDuCookie())?.value);

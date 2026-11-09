@@ -53,9 +53,10 @@ export type LimitesParReseau = {
  * limites par adresse et par IP ne bornent pas qui dispose de beaucoup d'IP :
  * il faisait partir autant de mails qu'il voulait au nom de l'appli (coût
  * d'envoi, réputation de l'expéditeur), et remplissait la table des demandes
- * (audit du 2026-11-09). 300 par heure : une session dure trente jours, si bien
- * qu'une appli interne de quelques centaines de personnes n'en voit pas
- * autant se connecter dans la même heure, même un lundi matin ; c'est aussi
+ * (audit du 2026-11-09). 300 par heure : une appli interne de quelques
+ * centaines de personnes n'en voit pas autant se connecter dans la même heure,
+ * même un lundi matin où celles absentes depuis sept jours (DUREES_DE_SESSION)
+ * se reconnectent toutes ; c'est aussi
  * quinze réseaux au plafond par défaut de vingt demandes. Une appli grand
  * public, ou ouverte à plusieurs entreprises, le relève.
  */
@@ -72,7 +73,7 @@ export type DureesDeSession = {
   // jamais au-delà de maximumJours.
   inactiviteJours: number;
   // Une connexion plus ancienne ne suffit pas aux gestes sensibles (effacer les
-  // données d'une personne, changer un rôle, fermer ses autres sessions) :
+  // données d'une personne, inviter, changer un rôle, fermer ses autres sessions) :
   // exigerConnexionRecente de roles.ts.
   connexionRecenteMinutes: number;
 };

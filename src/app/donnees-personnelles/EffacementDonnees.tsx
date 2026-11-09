@@ -14,7 +14,7 @@ import { apercevoirEffacementAction, effacerAction, type RetourEffacement } from
  */
 
 type LigneSource = BilanEffacement["sources"][number];
-// Un refus, avec le lien de reconnexion quand il vient faute de connexion
+// Un refus, avec le bouton « Se reconnecter » quand il vient faute de connexion
 // récente.
 type Refus = Extract<RetourEffacement, { erreur: string }>;
 

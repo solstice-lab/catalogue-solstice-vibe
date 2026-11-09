@@ -9,7 +9,7 @@ import { autresSessionsOuvertes } from "./session";
  * téléphone perdu, un cookie volé). Posée sur son écran personnel,
  * /mes-donnees, le seul que tout rôle ouvre ; elle vit ici parce que seule la
  * brique comptes lit les sessions. `retour` : le chemin de l'écran qui la pose,
- * où ramène le lien de reconnexion.
+ * où ramène « Se reconnecter ».
  */
 export async function MesSessions({ retour }: { retour: string }) {
   const autres = await autresSessionsOuvertes();

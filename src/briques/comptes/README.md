@@ -122,9 +122,10 @@ ni preuve redemandée avant un geste sensible. Les trois durées se règlent dan
   dès leur visite suivante, il revient à 7 jours. La durée maximale se compte de
   toute façon depuis `cree_le`, même si `expire_le` la dépasse (une durée
   raccourcie dans la configuration agit aussi sur les sessions ouvertes).
-- **Connexion récente, 10 minutes** (`connexionRecenteMinutes`), avant trois
+- **Connexion récente, 10 minutes** (`connexionRecenteMinutes`), avant quatre
   gestes : effacer les données d'une personne (`/donnees-personnelles`, à
-  l'aperçu comme à l'effacement), changer un rôle (`/comptes`), fermer ses
+  l'aperçu comme à l'effacement), inviter une adresse et changer un rôle
+  (`/comptes` : l'un comme l'autre donne un rôle, admin compris), fermer ses
   autres sessions. Une connexion par code, lien, Google ou Microsoft (ou un
   rôle joué en démo) ouvre une session neuve, dont `cree_le` fait foi ; une
   visite ne la rajeunit pas. Chaque server action appelle
@@ -139,7 +140,7 @@ ni preuve redemandée avant un geste sensible. Les trois durées se règlent dan
 - **« Fermer mes autres sessions ».** La carte « Mes sessions » (`MesSessions`)
   dit dans combien d'autres navigateurs ou appareils le compte est encore
   ouvert, et son bouton les ferme toutes sauf celui-ci, derrière la connexion
-  récente. Posée sur `/mes-donnees`, l'écran personnel que tout rôle ouvre
+  récente, et répond par un 404 sans personne connectée. Posée sur `/mes-donnees`, l'écran personnel que tout rôle ouvre
   (brique rgpd, gardée d'office avec comptes). Aucun rôle ne la garde :
   chacun gère ses propres sessions.
 
@@ -160,7 +161,7 @@ session »), `tests/gestion-comptes.test.ts` et `tests/rgpd-routes.test.ts` :
 | La session s'écrit à chaque requête | « n'écrit pas en base à chaque requête : au plus un renouvellement par heure » |
 | Les visites prolongent la session sans fin | « ne repousse jamais l'échéance au-delà de la durée maximale… » |
 | Une session d'avant la règle garde ses 30 jours | « ramène dès la visite suivante à l'échéance d'inactivité… » |
-| Un cookie volé change un rôle, efface une personne ou ferme les sessions de sa victime | « refusent un changement de rôle sans connexion récente… », « refuse l'aperçu et l'effacement sans connexion récente… », « « Fermer mes autres sessions » exige une connexion récente… » |
+| Un cookie volé change un rôle, efface une personne ou ferme les sessions de sa victime | « refusent un changement de rôle sans connexion récente… », « refusent une invitation sans connexion récente… », « refuse l'aperçu et l'effacement sans connexion récente… », « « Fermer mes autres sessions » exige une connexion récente… » |
 | « Se reconnecter » ramène au geste refusé, en boucle | « « Se reconnecter » ferme la session avant de mener à /connexion… » |
 | Le cookie perd `__Host-`, `HttpOnly`, `Secure` ou `SameSite` | « pose le cookie de production en __Host-, HttpOnly, Secure, SameSite=Lax… » |
 
@@ -413,9 +414,10 @@ une minute ; « Changer d'adresse » recommence.
     (sous un plafond tenu plein, à chaque place reprise : au plus le plafond par
     heure). Son prix, accepté : qui dispose de beaucoup d'IP peut l'épuiser avec
     des adresses quelconques et retarder toutes les connexions jusqu'à une heure.
-    Trois cents, parce qu'une session dure trente jours : une appli interne de
-    quelques centaines de personnes n'en voit pas autant se connecter dans la
-    même heure. Une appli grand public le relève.
+    Trois cents, parce qu'une appli interne de quelques centaines de personnes
+    n'en voit pas autant se connecter dans la même heure, même un lundi matin
+    où celles absentes depuis sept jours se reconnectent toutes (« La politique
+    de session »). Une appli grand public le relève.
 
   Les limites par adresse e-mail (cinq depuis une IP, dix sur toutes les IP) sont
   fixes : elles parlent d'une seule personne.

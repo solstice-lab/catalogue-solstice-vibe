@@ -409,7 +409,8 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   - `exigerConnexionRecente(ecran)` (`roles.ts`) et le type `RefusConnexionAncienne` :
     `null` après une connexion de moins de `connexionRecenteMinutes` (10), le refus
     `{ erreur, reconnexion }` sinon. Appliquée à l'effacement des données d'une
-    personne (aperçu et effacement), au changement de rôle de `/comptes` et à
+    personne (aperçu et effacement), à l'invitation et au changement de rôle de
+    `/comptes` et à
     « Fermer mes autres sessions » ;
   - `MesSessions({ retour })`, la carte « Mes sessions » posée sur `/mes-donnees`,
     et `RefusReconnexion({ erreur, reconnexion? })`, dont le bouton « Se

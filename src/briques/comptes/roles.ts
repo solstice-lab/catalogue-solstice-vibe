@@ -63,7 +63,7 @@ export async function exiger(...actions: [Action, ...Action[]]): Promise<Utilisa
 export type RefusConnexionAncienne = { erreur: string; reconnexion: string };
 
 // À appeler après exiger(), avant un geste sensible : effacer les données
-// d'une personne, changer un rôle, fermer ses autres sessions. Un cookie volé
+// d'une personne, inviter ou changer un rôle, fermer ses autres sessions. Un cookie volé
 // valait 30 jours de droits admin (audit du 2026-11-09) : une session ouverte
 // ne suffit plus, il faut une connexion de moins de connexionRecenteMinutes
 // (DUREES_DE_SESSION de src/config/comptes.ts). Rend null si elle l'est, le

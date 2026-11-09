@@ -100,7 +100,8 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 
 - **Ce qui change** : l'aperçu et l'effacement de `/donnees-personnelles` appellent
   `exigerConnexionRecente("/donnees-personnelles")` de la brique comptes après
-  `exiger` ; sans connexion de moins de dix minutes, ils rendent
+  `exiger` ; sans connexion de moins de dix minutes par défaut (`connexionRecenteMinutes`
+  de `DUREES_DE_SESSION`), ils rendent
   `{ erreur, reconnexion }`, affiché par `RefusReconnexion`. `/mes-donnees` porte
   la carte « Mes sessions » de la brique comptes (`MesSessions`).
 - **Appelant** : rien à changer. Une appli qui avait retouché ces deux écrans y

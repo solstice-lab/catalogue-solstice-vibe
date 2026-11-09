@@ -94,7 +94,8 @@ export const LIMITES_PAR_RESEAU: LimitesParReseau = {
 // un cookie volé valait 30 jours de droits admin. Une session dure au plus
 // maximumJours depuis la connexion ; sans visite pendant inactiviteJours, elle se
 // ferme, et chaque visite repousse ce délai. Effacer les données d'une
-// personne, changer un rôle ou fermer ses autres sessions demande une connexion
+// personne, inviter une adresse, changer un rôle ou fermer ses autres sessions
+// demande une connexion
 // de moins de connexionRecenteMinutes. Des entiers d'au moins 1, l'inactivité
 // jamais plus longue que la durée maximale, la connexion récente d'une heure
 // au plus, la durée maximale de 400 jours au plus : l'appli refuse de démarrer

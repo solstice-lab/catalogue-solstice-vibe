@@ -54,7 +54,7 @@ brique les applique (« Durées de conservation et purge »).
   compte » : le geste ne se rattrape pas, et un compte volé suffirait à tout
   effacer. Un admin n'efface pas ses propres données : un autre le fait.
 - **Après une connexion récente.** L'aperçu et l'effacement exigent une
-  connexion de moins de dix minutes (`exigerConnexionRecente` de la brique
+  connexion de moins de dix minutes par défaut (`exigerConnexionRecente` de la brique
   comptes, « La politique de session » de son README) : un cookie volé n'efface
   personne. Le refus propose « Se reconnecter », qui ramène à l'écran.
 - **En deux temps.** L'aperçu joue l'effacement dans une transaction et

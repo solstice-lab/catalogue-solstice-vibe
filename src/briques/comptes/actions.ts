@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
 import { METHODES } from "@/config/comptes";
 import { adresseDuVisiteur } from "@/lib/adresse-ip";
@@ -11,7 +11,7 @@ import { entrerEnDemo } from "./demo";
 import { normaliser } from "./entree";
 import { adresseDesLiens, CHEMIN_LIEN, connecterParLien, demanderUnLien } from "./lien-email";
 import { cheminDeRetour } from "./retour";
-import { exigerConnexionRecente } from "./roles";
+import { exigerConnexionRecente, utilisateurCourant } from "./roles";
 import { fermerLesAutresSessions, fermerSession } from "./session";
 
 /*
@@ -22,8 +22,10 @@ import { fermerLesAutresSessions, fermerSession } from "./session";
 /*
  * « Fermer mes autres sessions » : la personne connectée ferme ses sessions
  * des autres navigateurs et appareils (un poste partagé, un téléphone perdu,
- * un cookie volé). Aucun rôle ne la garde, chacun gère les siennes ; la
- * connexion récente, si : sinon, un cookie volé fermerait la session de la
+ * un cookie volé). Aucun rôle ne la garde, chacun gère les siennes : la
+ * brique ne déclare aucune action dans src/config/acces.ts, d'où la personne
+ * connectée exigée ici comme exiger() le ferait (un 404 sans elle). La
+ * connexion récente aussi : sinon, un cookie volé fermerait la session de la
  * personne à qui il a été volé. « retour » est l'écran qui la propose.
  */
 export type EtatAutresSessions = { message?: string; erreur?: string; reconnexion?: string };
@@ -32,6 +34,7 @@ export async function fermerMesAutresSessionsAction(
   _etat: EtatAutresSessions,
   donnees: FormData
 ): Promise<EtatAutresSessions> {
+  if (!(await utilisateurCourant())) notFound();
   const retour = cheminDeRetour(String(donnees.get("retour") ?? ""));
   const refus = await exigerConnexionRecente(retour);
   if (refus) return refus;

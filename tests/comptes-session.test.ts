@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { attributsDesCookiesDeTest, cookiesDeTest } from "./aide-cookies";
 import { poserLesMethodes, supprimerTousLesComptes } from "./aide-comptes";
-import { jouerLaConnexion } from "./aide-session";
+import { jouer, jouerLaConnexion } from "./aide-session";
 import { ROLE_ADMIN, ROLE_PAR_DEFAUT, ROLES } from "../src/config/acces";
 import { DUREES_DE_SESSION } from "../src/config/comptes";
 import { query, queryOne } from "../src/lib/db/client";
@@ -393,7 +393,7 @@ describe("politique de session", () => {
     expect(await query("SELECT 1 FROM sessions")).toHaveLength(1);
   });
 
-  it("« Fermer mes autres sessions » exige une connexion récente : le refus dit de se reconnecter, propose le lien et ne ferme rien", async () => {
+  it("« Fermer mes autres sessions » exige une connexion récente : le refus dit de se reconnecter, le propose et ne ferme rien", async () => {
     const ailleurs = await connecter();
     cookiesDeTest.clear();
     await connecter();
@@ -414,7 +414,25 @@ describe("politique de session", () => {
     expect(await lireSessionDe(ailleurs, CONTEXTE)).toBeNull();
   });
 
-  it("filtre le chemin de retour du lien de reconnexion, posté par le navigateur", async () => {
+  it("« Fermer mes autres sessions » répond par un 404 sans personne connectée, comme une action gardée par exiger", async () => {
+    jouer(null);
+    await expect(fermerMesAutresSessionsAction({}, new FormData())).rejects.toMatchObject({
+      digest: expect.stringContaining("404"),
+    });
+  });
+
+  it("ne compte ni ne ferme une autre session plus vieille que la durée maximale, que la lecture refuse déjà", async () => {
+    await connecter();
+    await query("UPDATE sessions SET cree_le = now() - make_interval(days => $1) - interval '1 minute'", [
+      maximumJours,
+    ]);
+    cookiesDeTest.clear();
+    await connecter();
+    expect(await autresSessionsOuvertes()).toBe(0);
+    expect(await fermerLesAutresSessions()).toBe(0);
+  });
+
+  it("filtre le chemin de retour de « Se reconnecter », posté par le navigateur", async () => {
     await connecter();
     jouerLaConnexion("ancienne");
     const donnees = new FormData();

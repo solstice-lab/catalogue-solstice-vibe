@@ -91,7 +91,7 @@ describe("actions de /comptes", () => {
     });
   });
 
-  it("refusent un changement de rôle sans connexion récente, en disant de se reconnecter et en proposant le lien : un cookie volé ne change aucun rôle (audit du 2026-11-09)", async () => {
+  it("refusent un changement de rôle sans connexion récente, en disant de se reconnecter et en le proposant : un cookie volé ne change aucun rôle (audit du 2026-11-09)", async () => {
     const issue = await inviter("cible@client.example", AUTRE_ROLE, null);
     if ("erreur" in issue) throw new Error(issue.erreur);
     jouerLaConnexion("ancienne");
@@ -102,6 +102,15 @@ describe("actions de /comptes", () => {
     expect(await queryOne("SELECT role FROM utilisateurs WHERE id = $1", [issue.compte.id])).toEqual({
       role: AUTRE_ROLE,
     });
+  });
+
+  it("refusent une invitation sans connexion récente, et ne créent aucun compte : un cookie volé invitait sa propre adresse en admin (audit du 2026-11-09)", async () => {
+    jouerLaConnexion("ancienne");
+    expect(await inviterAction("intrus@client.example", ROLE_ADMIN, false)).toEqual({
+      erreur: expect.stringMatching(/reconnectez-vous/),
+      reconnexion: "/comptes",
+    });
+    expect(await queryOne("SELECT 1 FROM utilisateurs WHERE email = 'intrus@client.example'")).toBeUndefined();
   });
 
   it("répondent « introuvable » à un id posté qui n'est pas un entier de la base, sans page d'erreur", async () => {

@@ -16,8 +16,10 @@ const IMPORTS_PERMIS = [
   /^\.\/[^/]+$/, // un fichier de la brique elle-même, jamais « ../ »
   /^@\/ui$/,
   /^@\/lib\/format$/,
-  // Exigée dans modules.mjs (BRIQUES["gestion-comptes"].exige).
-  /^@\/briques\/comptes\/(administration|entree)$/,
+  // Exigée dans modules.mjs (BRIQUES["gestion-comptes"].exige). RefusReconnexion :
+  // le refus d'un changement de rôle faute de connexion récente, et son bouton
+  // « Se reconnecter », rendus comme sur les autres écrans qui l'exigent.
+  /^@\/briques\/comptes\/(administration|entree|RefusReconnexion)$/,
   /^react$/,
 ];
 

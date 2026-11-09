@@ -88,8 +88,8 @@ export function EcranComptes({
   actions: ActionsAdministration;
 }) {
   const [geste, setGeste] = useState<Geste | null>(null);
-  // Le refus du geste, avec le lien de reconnexion quand il demande une
-  // connexion récente (changer un rôle).
+  // Le refus du geste, avec le bouton « Se reconnecter » quand il demande une
+  // connexion récente (inviter, changer un rôle).
   const [erreur, setErreur] = useState<{ texte: string; reconnexion?: string } | null>(null);
   const [annonce, setAnnonce] = useState<{ titre: string; texte: string } | null>(null);
   const [enCours, demarrer] = useTransition();

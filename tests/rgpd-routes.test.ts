@@ -175,7 +175,7 @@ describe("effacement par l'admin", () => {
     await expect(effacerAction(ELLE, ELLE)).rejects.toMatchObject(UN_404);
   });
 
-  it("refuse l'aperçu et l'effacement sans connexion récente, en disant de se reconnecter et en proposant le lien, et n'efface rien : un cookie volé n'efface personne (audit du 2026-11-09)", async () => {
+  it("refuse l'aperçu et l'effacement sans connexion récente, en disant de se reconnecter et en le proposant, et n'efface rien : un cookie volé n'efface personne (audit du 2026-11-09)", async () => {
     jouer("admin");
     await query(`INSERT INTO utilisateurs (email, role) VALUES ($1, 'membre')`, [ELLE]);
     jouerLaConnexion("ancienne");
