@@ -98,6 +98,26 @@ describe("client de base : PGSSLMODE=disable refusé en production vers un hôte
     }
   });
 
+  // pg lit le sslmode de l'URL après les options du client : `?sslmode=disable` y gagne
+  // sur tout et laissait la connexion en clair sans que PGSSLMODE soit posée.
+  it("refuse aussi sslmode=disable écrit dans DATABASE_URL, sans PGSSLMODE", () => {
+    for (const url of [
+      "postgresql://app@db.exemple.fr/appli?sslmode=disable",
+      "postgresql://app@db.exemple.fr/appli?application_name=x&SSLMODE=disable",
+    ]) {
+      expect(() => optionsSsl({ NODE_ENV: "production", DATABASE_URL: url }), url).toThrow(/sslmode=disable/);
+    }
+    // Vers la machine locale ou hors production, il passe comme PGSSLMODE=disable.
+    expect(
+      optionsSsl({ NODE_ENV: "production", DATABASE_URL: "postgresql://app@localhost/appli?sslmode=disable" })
+    ).toEqual({
+      rejectUnauthorized: true,
+    });
+    expect(optionsSsl({ DATABASE_URL: "postgresql://app@db.exemple.fr/appli?sslmode=disable" })).toEqual({
+      rejectUnauthorized: true,
+    });
+  });
+
   it("refuse une URL sans hôte quand PGHOST (lu par pg à sa place) vise un hôte distant", () => {
     expect(() => optionsSsl({ ...production, DATABASE_URL: "postgresql:///appli", PGHOST: "db.exemple.fr" })).toThrow(
       /PGSSLMODE=disable/
@@ -112,6 +132,7 @@ describe("client de base : PGSSLMODE=disable refusé en production vers un hôte
       "postgresql://postgres@LOCALHOST:5432,127.0.0.1:5433/appli",
       "postgresql:///appli",
       "postgresql:///appli?host=/var/run/postgresql",
+      "postgresql:///appli?host=::1",
       "postgresql://%2Fvar%2Frun%2Fpostgresql/appli",
     ]) {
       expect(optionsSsl({ ...production, DATABASE_URL: url }), url).toBe(false);

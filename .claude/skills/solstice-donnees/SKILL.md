@@ -21,7 +21,7 @@ est citée quand elle existe.
   donne le chemin. `PGSSLMODE=disable` en local (pas de SSL), **refusé en
   production vers un hôte distant** (un `.env.local` recopié chez l'hébergeur
   ferait circuler mot de passe et données en clair : erreur à la première
-  requête, qui dit quoi poser) ;
+  requête, qui dit quoi poser ; de même pour `sslmode=disable` dans l'URL) ;
   `PGSSLMODE=no-verify` chiffre sans vérifier, à poser en toutes lettres
   pour un hébergeur dont le certificat ne se vérifie pas. Le client coupait
   la vérification d'office : chiffré, mais vers n'importe quel serveur. Un

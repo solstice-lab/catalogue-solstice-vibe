@@ -1,7 +1,7 @@
 # Brique déploiement
 
-La mise en ligne d'une appli : la CI vérifie le commit, le
-déclenche chez l'hébergeur, puis attend de le lire sur `/sante`. Hébergeur
+La mise en ligne d'une appli : la CI vérifie le commit, une personne
+l'approuve, la CI le déclenche chez l'hébergeur, puis attend de le lire sur `/sante`. Hébergeur
 retenu pour la v1 : Render, région Francfort.
 
 La brique est en deux parties. Le **cœur** ne nomme pas l'hébergeur ;
@@ -16,7 +16,8 @@ Cloudflare, que Render place devant le site.
 ## Ce qu'elle apporte
 
 - **Rien ne part sans la CI verte.** L'auto-déploiement est coupé ; le job
-  `deployer` de `ci.yml` ne part qu'après `verifier`, sur un push de `main`.
+  `deployer` de `ci.yml` ne part qu'après `verifier`, sur un push de `main` (et
+  après l'approbation de `production`, voir plus bas).
   Sur un projet précédent, l'hébergeur déployait `main` sans attendre la CI.
 - **Le commit vérifié, pas la tête de `main`** : le déclenchement passe le
   SHA du commit que la CI vient de vérifier.
@@ -64,7 +65,7 @@ avec lui.
 | `DEPLOIEMENT_DECLENCHEUR` | Secret de l'environnement GitHub `production` (un secret de dépôt de même nom marche aussi, mais celui de l'environnement le remplace) | Ce qui déclenche le déploiement chez l'hébergeur. Render : l'URL du deploy hook. Absent alors que `DEPLOIEMENT_URL` existe, refusé par l'hébergeur ou sans réponse, le job échoue en le nommant. |
 | `COMMIT_DEPLOYE` | Variable d'environnement du service | Le SHA en ligne, que `/sante` renvoie. Posée par l'adaptateur au démarrage, jamais déclarée à la main. |
 | `IP_EN_TETE_CLIENT` | Variable d'environnement du service | L'en-tête où le proxy de l'hébergeur pose l'adresse IP du visiteur, lu par `src/lib/adresse-ip.ts` pour les limites par adresse (connexion par code, formulaire de contact) : seulement avec la brique `comptes` ou `contact`, sans qui l'assembleur retire fichier et variable. Render : `cf-connecting-ip`, déclaré dans `render.yaml`. Avec la brique `comptes`, obligatoire en production : vide, l'appli refuse de démarrer, `/sante` comprise, et le déploiement échoue au health check ; nommant un en-tête absent d'une requête, la connexion compte cette requête sur une adresse partagée par toutes celles sans adresse. Avec le seul formulaire de contact, vide ou en-tête absent, sa limite par adresse ne s'applique pas. En-tête absent d'une requête, ou variable vide avec le seul contact : le serveur l'avertit une fois, au premier passage. |
-| `PGSSLMODE` | Variable d'environnement du service | Le chiffrement de la connexion à la base, lu par `src/lib/db/client.ts`. Vide, le certificat se vérifie. Render : `no-verify`, déclaré dans `render.yaml` : la base présente sur le réseau interne un certificat auto-signé (étape 7). **`disable` est refusé en production vers un hôte distant** : l'appli répond à chaque requête par une erreur qui dit quoi poser (retirer la variable, `PGSSLROOTCERT`, ou `no-verify` en connaissance de cause), `/sante` comprise, et le déploiement échoue au health check. Un `.env.local` recopié chez l'hébergeur faisait circuler le mot de passe et les données en clair. `disable` reste permis hors production et vers la machine locale. |
+| `PGSSLMODE` | Variable d'environnement du service | Le chiffrement de la connexion à la base, lu par `src/lib/db/client.ts`. Vide, le certificat se vérifie. Render : `no-verify`, déclaré dans `render.yaml` : la base présente sur le réseau interne un certificat auto-signé (geste 7). **`disable` (ou `sslmode=disable` dans `DATABASE_URL`) est refusé en production vers un hôte distant** : l'appli répond à chaque requête par une erreur qui dit quoi poser (retirer la variable, `PGSSLROOTCERT`, ou `no-verify` en connaissance de cause), `/sante` comprise, et le déploiement échoue au health check. Un `.env.local` recopié chez l'hébergeur faisait circuler le mot de passe et les données en clair. `disable` reste permis hors production et vers la machine locale ; un service voisin (un `postgres` de Docker Compose) compte comme distant. Le refus ne vaut qu'avec `NODE_ENV=production` : un script lancé à la main sans elle n'est pas gardé. |
 | `production` | Environnement GitHub (*Settings → Environments*) | Déclaré par le job `deployer` (`environment: production`). C'est là que se posent les relecteurs obligatoires, et là que vit le secret `DEPLOIEMENT_DECLENCHEUR`. Un environnement absent est créé par GitHub au premier passage, **sans relecteur, donc sans barrière** : le créer avant (geste 4). |
 | `deployer` | Job de `ci.yml` | Le nom du check, à ne pas exiger dans la protection de `main` (il ne tourne qu'après la fusion). Il attend l'approbation des relecteurs de `production` avant de démarrer. |
 | `LIEUX_DEPLOIEMENT` | `src/briques/deploiement/confidentialite.ts` | `{ hebergeur }` : où l'hébergeur traite les données, lu par `src/lib/confidentialite.ts` à la place de `CONFIDENTIALITE.lieux.hebergeur`. `tests/deploiement.test.ts` vérifie qu'il dit la région de `render.yaml`. L'assembleur retire l'import quand la brique part, et le lieu se remplit alors dans la configuration. |

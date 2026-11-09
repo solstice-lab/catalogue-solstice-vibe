@@ -31,7 +31,8 @@ function creerPool(): Pool {
   return new Pool({ connectionString, ssl: optionsSsl() });
 }
 
-const HOTE_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
+// `::1` sans crochets : la seule forme possible dans le paramètre `host=`.
+const HOTE_LOCAL = /^(localhost|127\.0\.0\.1|\[?::1\]?)$/i;
 
 // Le premier hôte non local de DATABASE_URL, ou undefined si tous le sont (ou si
 // l'URL manque : creerPool refuse alors, avec son propre message). Même notion
@@ -84,22 +85,27 @@ function hoteDistant(env: Record<string, string | undefined>): string | undefine
 //   que NODE_EXTRA_CA_CERTS complète). Une autre valeur de
 //   PGSSLMODE (« require » de libpq, une faute de frappe) ne coupe rien.
 // Un `sslmode` écrit dans DATABASE_URL passe avant ces options (pg lit
-// l'URL en dernier) : ne pas en mettre.
+// l'URL en dernier) : ne pas en mettre. Seul `sslmode=disable` y est refusé
+// comme PGSSLMODE=disable ; les autres valeurs ne sont pas jugées.
 export function optionsSsl(
   env: Record<string, string | undefined> = process.env
 ): false | { rejectUnauthorized: boolean; ca?: string } {
   const mode = env.PGSSLMODE?.trim();
-  if (mode === "disable") {
+  // `sslmode=disable` dans l'URL passe avant les options d'ici (pg le lit en
+  // dernier) : le même trou, par une autre porte.
+  const dansLUrl = /[?&]sslmode=disable(?:[&#]|$)/i.test(env.DATABASE_URL ?? "");
+  if (mode === "disable" || dansLUrl) {
     const distant = env.NODE_ENV === "production" ? hoteDistant(env) : undefined;
     if (distant !== undefined) {
+      const quoi = mode === "disable" ? "PGSSLMODE=disable" : "sslmode=disable dans DATABASE_URL";
       throw new Error(
-        `PGSSLMODE=disable refusé en production vers un hôte distant (${distant}) : mot de passe et données circuleraient en clair. ` +
-          "Retirer PGSSLMODE (le certificat se vérifie alors), poser PGSSLROOTCERT avec le chemin du CA de l'hébergeur s'il n'est pas reconnu " +
-          "par Node, ou PGSSLMODE=no-verify (chiffré sans vérifier) en connaissance de cause."
+        `${quoi} refusé en production vers un hôte distant (${distant}) : mot de passe et données circuleraient en clair. ` +
+          "Retirer PGSSLMODE et tout sslmode de DATABASE_URL (le certificat se vérifie alors), poser PGSSLROOTCERT avec le chemin du CA de l'hébergeur " +
+          "s'il n'est pas reconnu par Node, ou PGSSLMODE=no-verify (chiffré sans vérifier) en connaissance de cause."
       );
     }
-    return false;
   }
+  if (mode === "disable") return false;
   if (mode === "no-verify") return { rejectUnauthorized: false };
   const cheminCa = env.PGSSLROOTCERT?.trim();
   if (!cheminCa) return { rejectUnauthorized: true };

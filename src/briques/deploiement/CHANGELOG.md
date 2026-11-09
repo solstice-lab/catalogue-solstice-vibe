@@ -130,7 +130,8 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
   `environment: production`, et le secret `DEPLOIEMENT_DECLENCHEUR` a vocation
   à vivre dans cet environnement. Le client de la base
   (`src/lib/db/client.ts`) refuse `PGSSLMODE=disable` quand `NODE_ENV` vaut
-  `production` et que l'hôte de `DATABASE_URL` n'est pas local : une erreur à
+  `production` et que l'hôte de `DATABASE_URL` n'est pas local (de même pour un
+  `sslmode=disable` écrit dans l'URL) : une erreur à
   la première requête, `/sante` comprise, qui dit quoi poser.
 - **Appelant** : une appli déjà en ligne crée l'environnement `production`
   (*Settings → Environments*) avec ses relecteurs obligatoires AVANT de
