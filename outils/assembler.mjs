@@ -1245,8 +1245,10 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   };
   const entree = blueprint ? entreeDeLEntete(contenuBlueprint, { unites, racine, profil }) : {};
   for (const retrait of retraitsAAppliquer(unites, nomPaquet, valeurs, entree)) {
-    // Un fichier retiré par une autre unité n'a plus rien à retoucher.
-    if (aSupprimer(retrait.fichier) || correspond(retrait.fichier, EXCLUS_DU_CATALOGUE)) continue;
+    // Un fichier retiré par une autre unité, ou d'une option non demandée, n'a
+    // plus rien à retoucher.
+    if (aSupprimer(retrait.fichier) || sansOption(retrait.fichier) || correspond(retrait.fichier, EXCLUS_DU_CATALOGUE))
+      continue;
     if (!copies.includes(retrait.fichier)) {
       throw new ErreurAssemblage(
         `${retrait.fichier} : fichier à retoucher introuvable dans le catalogue (outils/modules.mjs est à jour du code ?).`

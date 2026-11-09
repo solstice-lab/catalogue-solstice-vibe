@@ -133,6 +133,19 @@ describe("test de l'assembleur, lancé à part (plus de 10 minutes à chaque npm
     expect(aSaBase(bloc.replace("- name: Démarrer Postgres", "- name: Autre chose"))).toBe(false);
   });
 
+  // Audit du 2026-11-09 : l'image se tirait par étiquette. Épinglée par digest
+  // (tests/bases-locales.test.ts le vérifie pour ci.yml et le compose), elle
+  // ne se renouvelle que par la PR de Dependabot sur le compose, où ce test et
+  // le sien disent de recopier le digest dans les deux workflows.
+  it("tire dans le job assembleur l'image Postgres de ci.yml, épinglée par digest, que Dependabot renouvelle depuis le compose", () => {
+    const image = (texte: string) => texte.match(/^\s*IMAGE:\s*(\S+)/m)?.[1];
+    expect(image(job(WORKFLOW, "assembleur"))).toMatch(/^postgres:\d+@sha256:[0-9a-f]{64}$/);
+    expect(image(job(WORKFLOW, "assembleur"))).toBe(image(CI));
+    expect(image(lire("docker-compose.yml").replace(/image:/, "IMAGE:"))).toBe(image(CI));
+    const dependabot = lire(".github/dependabot.yml");
+    expect(dependabot).toMatch(/- package-ecosystem: "docker-compose"\n\s+directory: "\/"\n/);
+  });
+
   it("ne lance le job socle-seul ni la nuit ni à la main : main l'a déjà passé à son arrivée", () => {
     expect(condition(job(WORKFLOW, "socle-seul"))).toBe(
       "github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)"

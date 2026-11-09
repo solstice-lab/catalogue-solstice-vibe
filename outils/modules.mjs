@@ -1112,6 +1112,17 @@ export const DONNEES = {
       "    // Fichiers en parallèle, une base par worker",
       "    maxWorkers: Math.max(1, Math.min(4, os.availableParallelism() - 1)),"
     ),
+    // --- Dependabot (avec --dependabot) : pas de compose à surveiller
+    remplace(
+      ".github/dependabot.yml",
+      "CI, des\n# dépendances npm et de l'image Postgres du compose (brique données).",
+      "CI et des\n# dépendances npm."
+    ),
+    bloc(
+      ".github/dependabot.yml",
+      "  # L'image Postgres du poste, épinglée par digest",
+      '        update-types: ["version-update:semver-major"]'
+    ),
     // --- CI : ni Postgres ni variables de base
     bloc(".github/workflows/ci.yml", "      - name: Démarrer Postgres", "          IMAGE: postgres:"),
     bloc(".github/workflows/ci.yml", "      - name: Attendre Postgres", "docker logs postgres; exit 1"),
