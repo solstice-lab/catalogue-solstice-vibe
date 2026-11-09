@@ -442,12 +442,17 @@ describe("politique de session", () => {
 
   // /connexion et la page du lien renvoient une personne déjà connectée vers
   // son retour sans rien lui redemander : un simple lien « Se reconnecter »
-  // ramenait au geste refusé, en boucle.
+  // ramenait au geste refusé, en boucle. L'écran de retour est /mes-donnees,
+  // que toute appli à comptes a (rgpd vient d'office) : /comptes part avec
+  // gestion-comptes, et une appli sans elle nommait une route qu'elle n'a pas
+  // (passage complet de l'assembleur, 2026-11-09).
   it("« Se reconnecter » ferme la session avant de mener à /connexion, avec l'écran du geste en retour, filtré", async () => {
     const cookie = await connecter();
     const donnees = new FormData();
-    donnees.set("retour", "/comptes");
-    await expect(seReconnecterAction(donnees)).rejects.toMatchObject(UNE_REDIRECTION("/connexion?retour=%2Fcomptes"));
+    donnees.set("retour", "/mes-donnees");
+    await expect(seReconnecterAction(donnees)).rejects.toMatchObject(
+      UNE_REDIRECTION("/connexion?retour=%2Fmes-donnees")
+    );
     expect(await lireSessionDe(cookie, CONTEXTE)).toBeNull();
     expect(await cookieDeSession()).toBeUndefined();
 
