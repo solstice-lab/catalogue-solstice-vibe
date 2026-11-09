@@ -461,7 +461,10 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
   avec la brique données, état de la base (`src/lib/db/sante.ts`), 503 si elle
   ne répond pas.
 - `src/app/kit/` — la vitrine du kit, hors navigation, pour vérifier une
-  thématisation. Au catalogue seulement : l'assembleur ne la livre à aucune appli.
+  thématisation. Au catalogue seulement : l'assembleur ne la livre à aucune appli,
+  et le catalogue ne la sert pas en production (`next start`, en ligne comme en
+  local : 404 depuis le proxy, `ROUTES_HORS_PRODUCTION` de
+  `src/briques/comptes/protection.ts`) ; elle se regarde sous `npm run dev`.
 - `src/app/mentions-legales/` — les mentions légales (LCEN), ouvertes sans
   connexion, remplies depuis `src/lib/mentions-legales.ts`.
 - `src/app/confidentialite/` — la politique de confidentialité (RGPD,

@@ -1005,6 +1005,15 @@ export const VITRINE_DU_KIT = {
       "- Après thématisation, `npm run build`, puis la personne qui pilote le projet vérifie le rendu sur les écrans\n  de l'appli : ne pas lancer de navigateur pour autant."
     ),
     remplace(".claude/skills/solstice-nouvelle-appli/socle.md", "(l'accueil, `/kit`…)", "(l'accueil…)"),
+    // Le 404 de la vitrine en production (brique comptes : sans elle, ces
+    // retraits se sautent) : sans la vitrine, la liste est vide.
+    remplace(
+      "src/briques/comptes/protection.ts",
+      'readonly string[] = [\n  // La vitrine du kit et sa page de site vitrine.\n  "/kit",\n];',
+      "readonly string[] = [];"
+    ),
+    bloc("tests/comptes-proxy.test.ts", "  // Audit du 2026-11-09 : la vitrine du kit n'a pas de garde", FIN_IT),
+    bloc("tests/comptes-proxy.test.ts", '  it("sert la vitrine du kit hors production', FIN_IT),
   ],
 };
 
