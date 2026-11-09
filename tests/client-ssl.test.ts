@@ -26,6 +26,11 @@ vi.mock("pg", () => ({
     async query() {
       throw reponse.refus;
     }
+    // Le rejeu du schéma prend d'abord une connexion pour son verrou : le
+    // certificat s'y vérifie, comme à toute connexion.
+    async connect() {
+      throw reponse.refus;
+    }
     async end() {}
   },
 }));

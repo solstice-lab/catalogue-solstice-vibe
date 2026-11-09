@@ -15,7 +15,10 @@ est citée quand elle existe.
   au chargement : le build passe sans `DATABASE_URL`, c'est la première
   requête qui lève si elle manque. L'initialisation (schema.sql puis
   migrations) se joue aussi à la première requête et un échec d'init n'est
-  jamais mis en cache — la requête suivante retente.
+  jamais mis en cache — la requête suivante retente. Elle se joue sous un
+  verrou consultatif Postgres (`VERROU_DU_REJEU`) : deux instances qui
+  démarrent ensemble levaient « already exists » sur un `CREATE … IF NOT
+  EXISTS` concurrent ; la seconde attend désormais la première.
 - **Le certificat de la base se vérifie par défaut** (`optionsSsl()` de
   `client.ts`) : par les CA que Node reconnaît, ou par celui dont `PGSSLROOTCERT`
   donne le chemin. `PGSSLMODE=disable` en local (pas de SSL), **refusé en

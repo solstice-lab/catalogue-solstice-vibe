@@ -225,6 +225,12 @@ Le certificat de la base se vérifie de même au premier déploiement : sans
 (journaux du service). Refusé : `PGSSLROOTCERT` reçoit le chemin du CA de
 l'hébergeur s'il en publie un, sinon `PGSSLMODE=no-verify`, comme chez Render.
 
+La base se joint en direct, jamais par un pgbouncer en mode transaction : le
+rejeu du schéma au démarrage se fait sous un verrou consultatif de session
+(`src/lib/db/client.ts`), que pgbouncer prendrait et relâcherait sur deux
+connexions différentes. Le verrou resterait pris, et chaque démarrage suivant
+l'attendrait sans fin. Render joint sa base en direct.
+
 Puis réécrire, dans `tests/deploiement.test.ts`, le bloc « render.yaml :
 l'adaptateur Render » pour le nouveau fichier, le cas du lieu de
 l'hébergeur et celui de Cloudflare, et l'hébergeur dans les mentions légales (l'assembleur y a écrit
