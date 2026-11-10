@@ -469,8 +469,19 @@ Restent à un humain :
   déployée : les supprimer est un geste humain (README de la brique notifications).
 - **Les applis sans manifeste**, assemblées avant le 2026-11-02 : leur premier commit
   pourrait servir d'origine, s'il n'a pas été réécrit.
-- **Prévenir** une appli qu'une correction l'attend : l'outil se lance à la demande, et rien
-  ne tient la liste des applis assemblées (décision 7).
+- **Prévenir** une appli qu'une correction l'attend : l'outil se lance à la demande. Le dépôt
+  public ne sait pas qui l'a cloné, et c'est voulu (pas de télémétrie) ; la seule liste
+  utile, celle des applis que Solstice Lab maintient, ne se tient pas à la main (décision 7).
+  Leur dépôt vit dans l'organisation `solstice-lab` (skill `creer-appli`, étape 5.2) et
+  porte le manifeste : la liste est celle des dépôts de l'organisation qui ont un
+  `catalogue.empreintes.json` à la racine, sous PowerShell :
+
+  ```powershell
+  gh repo list solstice-lab --limit 200 --json name --jq '.[].name' | ForEach-Object { gh api "repos/solstice-lab/$_/contents/catalogue.empreintes.json" --silent 2>$null; if ($LASTEXITCODE -eq 0) { $_ } }
+  ```
+
+  Une appli dont le dépôt reste chez le client n'y figure pas : un registre tenu hors du
+  dépôt public la retrouvera, plus tard. Aucun outil ne prévient encore une appli.
 - **Un script de l'appli qui liste ses écarts au manifeste**, sans le catalogue : chantier
   voisin, que cet outil ne remplace pas.
 
@@ -778,7 +789,7 @@ note :
 | 4 | Manifeste au format 2, versions numérotées du catalogue ? | Format 2 dans la tranche 1 ; l'outil lit encore le format 1. Les versions numérotées viendront plus tard, pour dire où se trouve une correction : l'outil n'en a pas besoin. |
 | 5 | L'outil réécrit-il l'en-tête de `blueprint.md` ? | Oui, `commit_reference` et `briques_assemblees`, jamais le corps. |
 | 6 | Un `CHANGELOG.md` du socle ? | Oui, au moins pour les ruptures et la sécurité, dans un ticket à part de ce chantier. |
-| 7 | Une liste des applis assemblées, pour prévenir d'une correction ? | Plus tard, hors de ce chantier et hors du dépôt public. |
+| 7 | Une liste des applis assemblées, pour prévenir d'une correction ? | Plus tard, hors de ce chantier et hors du dépôt public. Forme retenue le 2026-11-10 : pas de registre, la liste se déduit des dépôts de l'organisation `solstice-lab` qui portent `catalogue.empreintes.json` (« Hors v1 », puce « Prévenir »). |
 | 8 | L'outil écrit-il par défaut ? | Oui, sur une branche neuve d'un arbre propre, sans base et sans réseau pour l'appli ; `--a-blanc` donne le rapport seul. |
 
 ## Sources
