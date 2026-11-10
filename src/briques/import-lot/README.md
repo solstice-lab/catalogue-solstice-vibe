@@ -149,10 +149,13 @@ qui change pour l'appelant, raison.
 ## La brancher
 
 Tout se déclare côté appli, jamais dans la brique. L'exemple suit le patron
-`dossiers` du catalogue (`src/app/dossiers/`, CLAUDE.md §3) : un tableur de
-dossiers (référence, client, montant, échéance) importé en lot, qui crée les
-dossiers nouveaux et met à jour ceux dont la référence existe. Une entité
-réelle remplace les noms ; la forme reste la même.
+`dossiers` (CLAUDE.md §3), qui se lit dans le catalogue public
+(`src/lib/db/dossiers.ts` du dépôt `solstice-lab/catalogue-solstice-vibe`),
+pas dans l'appli : l'appli branche à sa place son propre module écrit sur ce
+patron (sa table, son droit, ses fonctions de données). Dans l'exemple, un
+tableur de dossiers (référence, client, montant, échéance) importé en lot, qui
+crée les dossiers nouveaux et met à jour ceux dont la référence existe. Une
+entité réelle remplace les noms ; la forme reste la même.
 
 1. **La liaison**, `src/lib/import-dossiers.ts`. `ecrire` appelle les
    fonctions de `src/lib/db/` de l'appli avec le `client` reçu : une écriture
@@ -272,18 +275,21 @@ réelle remplace les noms ; la forme reste la même.
    };
    ```
 
-   Une adaptation côté appli que l'exemple suppose : `lireDossierParReference`,
-   `creerDossier` et `modifierDossier` de `src/lib/db/dossiers.ts` reçoivent le
-   client de la transaction en dernier paramètre. Le patron du catalogue ne le
-   prend pas encore (et n'a pas de lecture par référence) : l'ajouter,
-   facultatif, avec `query`/`queryOne` du socle par défaut.
+   Une adaptation du module de l'appli que l'exemple suppose : ses fonctions
+   de lecture par référence, de création et de modification
+   (`lireDossierParReference`, `creerDossier` et `modifierDossier` dans
+   l'exemple) reçoivent le client de la transaction en dernier paramètre. Le
+   patron du catalogue (`src/lib/db/dossiers.ts`) ne le prend pas encore (et
+   n'a pas de lecture par référence) : l'ajouter, facultatif, avec
+   `query`/`queryOne` du socle par défaut.
 
 2. **Quatre fichiers sous `src/app/importer/`** (le `chemin` déclaré dans
    `ecran`), qui posent chacun le garde de `briques/comptes/roles.ts` en
    première ligne (patron `dossiers`), puis appellent la brique. La brique ne
-   connaît pas les droits ; l'action `dossiers.importer` se déclare dans
-   `ACTIONS_DOSSIERS` (`src/lib/dossiers-domaine.ts`) et `DROITS`
-   (`src/config/acces.ts`), à un rôle d'administration.
+   connaît pas les droits ; l'action `dossiers.importer` se déclare dans les
+   actions du module (`ACTIONS_DOSSIERS` de `src/lib/dossiers-domaine.ts` dans
+   le patron) et dans `DROITS` (`src/config/acces.ts`), à un rôle
+   d'administration.
 
    - `actions.ts`, une server action par geste :
 

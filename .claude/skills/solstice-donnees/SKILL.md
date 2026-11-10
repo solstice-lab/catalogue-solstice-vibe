@@ -98,12 +98,15 @@ Avant la PR, l'agent `relecteur-migrations` relit toute évolution de schéma.
 ## Le module métier canonique (`src/app/dossiers/`)
 
 Tout nouveau module se construit en COPIANT ce patron, puis « dossiers » se
-remplace par le premier module réel. Une appli assemblée n'en a que la couche données
-(`src/lib/db/dossiers.ts`) : ses écrans, qui appellent `exiger`, se lisent dans le dépôt public
-du catalogue, et sans la brique comptes elle la prend avant son premier module. Avec la brique
-journal, ses écritures (`src/lib/db/dossiers.ts`) passent en `transaction()` avec
-leur trace, et sa fiche porte l'historique : à la copie, renommer l'entité ;
-sans la brique, ces blocs sont déjà retirés (README de la brique, « La
+remplace par le premier module réel. Une appli assemblée n'en reçoit rien : ses écrans, qui
+appellent `exiger`, et sa couche données (`src/lib/db/dossiers.ts`, `src/lib/dossiers-domaine.ts`,
+la table, son étape de migration et le droit `dossiers.acceder`) se lisent dans le dépôt public du
+catalogue, et sans la brique comptes l'appli la prend avant son premier module. Décidé le
+2026-11-09 : l'appli materiotheque gardait une table vide et un droit sans écran. Une appli assemblée
+avant garde sa couche données, que la mise à jour depuis le catalogue ne retire pas : la supprimer
+est un ticket de l'appli (étape de migration comprise). Avec la brique journal, les écritures du
+patron passent en `transaction()` avec leur trace, et sa fiche porte l'historique : à la copie,
+renommer l'entité ; sans la brique, ne pas reprendre ces blocs (README de la brique, « La
 brancher ») :
 
 - **Fiche en LECTURE SEULE** (`/dossiers/[slug]`) : elle affiche exactement
@@ -167,7 +170,7 @@ brancher ») :
 
 ## Scripts d'import et de correctif (`scripts/`)
 
-Copier le squelette `exemple-import.ts` + `lib/cli.ts`. Les fichiers du client se
+Copier le squelette `exemple-import.ts` (au catalogue public, avec le patron) + `lib/cli.ts`. Les fichiers du client se
 déposent dans `donnees-reelles/`, ignoré par git ; un exemple fictif suivi va dans
 `scripts/exemples/` (dossier à créer au premier exemple ; `.gitignore` le laisse passer). Le protocole :
 

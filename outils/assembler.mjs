@@ -19,10 +19,10 @@
  *
  * Ce que le script décide vient de outils/modules.mjs (la liste déclarative).
  * Ce fichier-ci ne connaît aucun nom de brique : il applique la liste. Son
- * code ne nomme que la vitrine du kit et les écrans du patron dossiers, que
- * aucune copie ne reçoit, l'adresse IP du visiteur et la base (« donnees »),
- * qui ne se choisissent pas mais suivent ce qui les exige, et les briques
- * comptes et contact, que suit l'adresse IP.
+ * code ne nomme que la vitrine du kit et le patron dossiers (écrans et couche
+ * données), que aucune copie neuve ne reçoit, l'adresse IP du visiteur et la
+ * base (« donnees »), qui ne se choisissent pas mais suivent ce qui les exige,
+ * et les briques comptes et contact, que suit l'adresse IP.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -37,6 +37,7 @@ import {
   EXCLUS_DU_CATALOGUE,
   OPTIONS_DU_SOCLE,
   NOM_DU_CATALOGUE,
+  PATRON_DONNEES,
   PATRON_DOSSIERS,
   PROFILS,
   RETRAITS_DU_SOCLE,
@@ -64,6 +65,12 @@ export function estUnSecret(chemin) {
 
 function correspond(chemin, entrees) {
   return entrees.some((entree) => (entree.endsWith("/") ? chemin.startsWith(entree) : chemin === entree));
+}
+
+// Ce qu'une unité retirée emporte : ses fichiers, et ceux d'une autre unité
+// qu'elle déclare dans `emporte` (outils/modules.mjs, PATRON_DONNEES).
+function emportePar(chemin, unite) {
+  return correspond(chemin, unite.definition.fichiers) || correspond(chemin, unite.definition.emporte ?? []);
 }
 
 // Les variables qui envoient git vers un autre dépôt que celui du dossier
@@ -186,12 +193,15 @@ const profilDeLaBlueprint = (markdown) => champDeLEntete(markdown.replace(/\r\n/
 // Qui est gardé, qui est retiré. La base n'est pas au choix : elle suit les
 // briques qui l'exigent.
 /**
- * @param {{ briques: string[] }} choix
+ * @param {{ briques: string[], patronDonnees?: boolean }} choix
+ *   `patronDonnees` : garder la couche données du patron dossiers avec la base,
+ *   comme avant son retrait (PATRON_DONNEES d'outils/modules.mjs) ; seul
+ *   outils/mettre-a-jour.mjs le demande, pour une appli qui l'a reçue.
  * @param {{ BRIQUES: Record<string, { exige: string[], entraine?: string[] }> }} [catalogue]
  *   la liste déclarative, celle du dépôt par défaut. Un test la remplace pour
  *   prouver un refus qu'aucune brique du catalogue ne déclenche encore.
  */
-export function planifier({ briques: choisies }, catalogue = { BRIQUES }) {
+export function planifier({ briques: choisies, patronDonnees = false }, catalogue = { BRIQUES }) {
   const { BRIQUES: lesBriques } = catalogue;
   const briquesConnues = Object.keys(lesBriques);
   for (const nom of choisies) {
@@ -225,24 +235,30 @@ export function planifier({ briques: choisies }, catalogue = { BRIQUES }) {
     }
   }
   // Aucune brique qui lit la base : un site sans base. La brique comptes
-  // garde la base et la couche données du patron dossiers (ses écrans, jamais :
-  // voir plus bas), d'où partira le premier module métier de l'appli, avec,
-  // s'il est choisi, l'écran /comptes de la brique gestion-comptes, et les
-  // espaces de la brique du même nom ; la brique contact garde la base sans
-  // connexion ; les briques
-  // echeances, calendrier, validation, import-lot et
-  // notifications la gardent et arrivent à brancher sur ce module métier.
+  // garde la base, où s'écrira le premier module métier de l'appli, sur le
+  // patron dossiers lu au catalogue (voir plus bas), avec, s'il est choisi,
+  // l'écran /comptes de la brique gestion-comptes, et les espaces de la brique
+  // du même nom ; la brique contact garde la base sans connexion ; les briques
+  // echeances, calendrier, validation, import-lot et notifications la gardent
+  // et arrivent à brancher sur ce module métier.
   const lisentLaBase = briques.filter((nom) => lesBriques[nom].exige.includes(BASE));
   const baseGardee = lisentLaBase.length > 0;
 
   const unites = [];
-  // Les écrans du patron dossiers et la vitrine du kit ne sont jamais livrés :
-  // ils restent au catalogue, où l'appli les lit et les copie à la demande. Des
-  // unités qui ne se gardent pour aucune combinaison, pour que leurs retraits
-  // de texte (menu, gardes, skills) et leur ligne « Retiré » dans le premier
-  // commit passent par le même chemin que les autres. La couche données du
-  // patron reste avec la base.
+  // Le patron dossiers et la vitrine du kit ne sont jamais livrés : ils restent
+  // au catalogue, où l'appli les lit et les copie à la demande. Des unités qui
+  // ne se gardent pour aucune combinaison, pour que leurs retraits de texte
+  // (menu, gardes, skills, schéma, droits) et leur ligne « Retiré » dans le
+  // premier commit passent par le même chemin que les autres. Seule exception,
+  // la couche données du patron, avec la base, pour une appli qui l'a reçue
+  // avant son retrait (`patronDonnees`).
   unites.push({ genre: "partagée", nom: "patron-dossiers", definition: PATRON_DOSSIERS, gardee: false });
+  unites.push({
+    genre: "partagée",
+    nom: "patron-donnees",
+    definition: PATRON_DONNEES,
+    gardee: patronDonnees && baseGardee,
+  });
   unites.push({ genre: "partagée", nom: "vitrine-du-kit", definition: VITRINE_DU_KIT, gardee: false });
   // L'adresse IP du visiteur suit les briques qui la lisent.
   unites.push({
@@ -1152,16 +1168,28 @@ function blueprintParDefaut({ nom, commit, briques }) {
  * l'appelant le choisit (la ligne de commande lit celui du dépôt, un test en
  * donne un fictif). `fiche`, si donnée, devient le PROJET.md de l'appli.
  * `dependabot` : garder .github/dependabot.yml, que l'appli ne reçoit sinon pas.
+ * `patronDonnees` : garder la couche données du patron dossiers (planifier) ;
+ * aucune option de la ligne de commande ne le donne.
  * `briques` s'ajoute à celles du profil que déclare l'en-tête de la blueprint
  * (`profil:`), s'il y en a un (briquesDeLAssemblage).
  */
 /**
- * @param {{ source: string, sortie: string, briques: string[], commit: string, nom?: string, blueprint?: string, fiche?: string, dependabot?: boolean }} options
+ * @param {{ source: string, sortie: string, briques: string[], commit: string, nom?: string, blueprint?: string, fiche?: string, dependabot?: boolean, patronDonnees?: boolean }} options
  * @returns {{ fichiers: string[], retires: string[], ajoutees: string[], commitInitial: string, profil?: string, briques: string[] }}
  *   `ajoutees` : les briques gardées sans être choisies, « rgpd (avec comptes) » ;
  *   `briques` : les choisies, celles du profil d'abord, telles que notées au manifeste.
  */
-export function assembler({ source, sortie, briques, commit, nom, blueprint, fiche, dependabot = false }) {
+export function assembler({
+  source,
+  sortie,
+  briques,
+  commit,
+  nom,
+  blueprint,
+  fiche,
+  dependabot = false,
+  patronDonnees = false,
+}) {
   const racine = path.resolve(source);
   const destination = path.resolve(sortie);
   // La blueprint est lue d'abord : son en-tête peut donner le profil de départ,
@@ -1169,7 +1197,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
   const blueprintDonnee = blueprint ? lireLaBlueprint(blueprint) : undefined;
   const profil = blueprintDonnee === undefined ? undefined : profilDeLaBlueprint(blueprintDonnee);
   const choisies = briquesDeLAssemblage({ profil, briques });
-  const unites = planifier({ briques: choisies });
+  const unites = planifier({ briques: choisies, patronDonnees });
   const entrainees = briquesEntrainees(choisies);
 
   const relatif = path.relative(racine, destination);
@@ -1184,7 +1212,7 @@ export function assembler({ source, sortie, briques, commit, nom, blueprint, fic
 
   const tous = listerFichiers(racine);
   const retires = unites.filter((unite) => !unite.gardee);
-  const aSupprimer = (chemin) => retires.some((unite) => correspond(chemin, unite.definition.fichiers));
+  const aSupprimer = (chemin) => retires.some((unite) => emportePar(chemin, unite));
 
   // Un fichier propre à deux unités serait retiré par l'une avec l'autre qui le
   // garde : la liste est fautive, mieux vaut le dire que choisir.

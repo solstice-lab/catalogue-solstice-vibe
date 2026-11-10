@@ -161,7 +161,7 @@ Ce sont exactement celles que l'assembleur sait livrer (`BRIQUES` de
 | `contact` | Le formulaire de contact public (`/contact`) : envoi par `mails`, champ piège, délai minimal et limite par adresse IP en base, sans captcha | la base, `mails` | le socle |
 | `comptes` | Session en base, tout protégé par défaut, page `/connexion`, droits (`exiger`, `peut`, `visiblePour`) ; connexion par code à 6 chiffres envoyé par e-mail (par défaut), par lien envoyé par e-mail (applis grand public), avec Google ou avec Microsoft (Entra ID) ; la démo est une méthode, refusée en production | la base, `mails` | le socle |
 | `rgpd` | L'export des données d'une personne en JSON, par elle-même (`/mes-donnees`) ou par l'admin (`/donnees-personnelles`), et leur effacement ou anonymisation, par l'admin seul (`/donnees-personnelles`) ; chaque table se déclare dans `src/config/donnees-personnelles.ts` ; la purge des données au terme de la durée que chaque brique déclare (`scripts/purger-donnees.ts`, et au passage), la trace de l'export de l'admin au journal, et les gabarits hors code (registre des traitements, sous-traitance, hébergement dans l'UE) | la base, `comptes` | le socle |
-| `journal` | Le journal d'audit : qui a créé, modifié ou supprimé quoi, et quand, dans la transaction de l'écriture, sans valeur de champ ; écran `/journal` et historique de fiche pour l'admin ; branché sur le patron `dossiers` et, avec `gestion-comptes`, sur les gestes de `/comptes` | la base, `comptes` | le patron `dossiers` |
+| `journal` | Le journal d'audit : qui a créé, modifié ou supprimé quoi, et quand, dans la transaction de l'écriture, sans valeur de champ ; écran `/journal` et historique de fiche pour l'admin ; branché, avec `gestion-comptes`, sur les gestes de `/comptes`, et au catalogue sur le patron `dossiers` | la base, `comptes` | le module métier de l'appli, sur le modèle du patron `dossiers` |
 | `gestion-comptes` | L'écran `/comptes`, où un admin invite, change un rôle, désactive ou réactive un compte et ouvre un domaine ; le dernier admin actif y est protégé | la base, `comptes` | le socle |
 | `espaces` | Des groupes de personnes (une coloc, une association) qu'on crée ou rejoint par un code, un lien ou une invitation par e-mail plafonnée ; rôles d'espace, dernier gestionnaire protégé, écrans « Créer ou rejoindre » et « Mon espace ». L'accès unique `exigerMonEspace()` isole les fiches de chaque espace, et un test-verrou refuse un module qui lirait sans lui | la base, `comptes`, `mails` | le socle, puis le module métier |
 
@@ -207,7 +207,7 @@ Trois volets :
   fichier, les invariants ne se négocient pas.
 - **Données** — la brique données (`src/lib/db/`), qu'une appli reçoit avec une
   brique qui lit la base et qu'un site sans en a pas : client Postgres à migrations idempotentes, module métier
-  canonique à copier (`dossiers`, écrans au catalogue seulement, couche données livrée avec la base), squelette de scripts d'import en dry-run
+  canonique à copier (`dossiers`, au catalogue seulement : ni ses écrans ni sa couche données ne sont livrés), squelette des scripts de données en dry-run (`scripts/lib/cli.ts`, l'import d'exemple au catalogue)
   par défaut, tests avec garde anti-prod : impossible de les lancer contre
   autre chose qu'une base locale.
 - **Méthode** — skills de cadrage (`solstice-nouvelle-appli`) et de livraison
@@ -261,8 +261,8 @@ ouverte à la racine du catalogue.
 6. Remplacer l'accueil (`/`) par les premiers écrans réels, en copiant le patron
    `dossiers` pour chaque module métier. L'appli assemblée n'a ni la vitrine du kit
    (`/kit`) ni les écrans de ce patron : ils restent au catalogue, où se lisent
-   `src/app/kit/` et `src/app/dossiers/` ; elle garde la couche données du patron
-   (`src/lib/db/dossiers.ts`).
+   `src/app/kit/`, `src/app/dossiers/` et la couche données du patron
+   (`src/lib/db/dossiers.ts`, sa table, son droit), qu'elle ne reçoit pas non plus.
 
 ### Démarrer en local
 
@@ -379,10 +379,10 @@ catalogue qui a des modifications non commitées, sauf avec
   ```
   node outils/assembler.mjs ../mon-portail --blueprint ../mon-portail-blueprint.md --briques espaces
   ```
-- `comptes` (avec `mails`) donne la base, la couche données du patron `dossiers`
+- `comptes` (avec `mails`) donne la base
   et les droits, avec un accueil de départ (nom, description, lien d'entrée) ; `contact` (avec `mails`) donne
-  la base pour la limite d'envois, sans connexion ; aucune brique ne livre les
-  écrans du patron `dossiers` ; `rgpd` vient
+  la base pour la limite d'envois, sans connexion ; aucune brique ne livre le
+  patron `dossiers`, ni ses écrans ni sa couche données ; `rgpd` vient
   d'office avec `comptes`, `journal`, `gestion-comptes` et `espaces` s'y ajoutent. Une
   brique à brancher (`echeances`, `calendrier`, `validation`, `import-lot`,
   `notifications`) donne la base et attend son branchement dans l'appli.
@@ -455,7 +455,7 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
 - `src/lib/db/` — brique données : client Postgres (`client.ts`, seul point d'accès),
   `schema.sql` (état initial) et `migrations.ts` (étapes idempotentes,
   rejouées à chaque démarrage).
-- `src/app/dossiers/` — le patron `dossiers`, module métier canonique à copier (au catalogue seulement : l'assembleur ne livre que sa couche données) : liste à actions en lot,
+- `src/app/dossiers/` — le patron `dossiers`, module métier canonique à copier (au catalogue seulement, avec sa couche données `src/lib/db/dossiers.ts` : l'assembleur n'en livre rien) : liste à actions en lot,
   fiche en lecture seule, `/nouveau`, `/modifier`, garde d'accès
   (`exiger` de `src/briques/comptes/roles.ts`, droits dans `src/config/acces.ts`), slugs
   (`src/lib/slug.ts`).

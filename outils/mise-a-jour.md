@@ -138,8 +138,23 @@ Pour les autres :
 Une appli assemblée avant ce changement suit la ligne « présent, puis absent » de la table : ses
 fichiers intacts sont supprimés, ceux qu'elle a retouchés (le patron copié en premier module)
 sont gardés et signalés. L'entrée « Dossiers » de son menu part de `src/lib/navigation.ts` par
-la fusion à trois, ou crée un conflit si l'appli a retouché la ligne. La couche données du patron
-(`src/lib/db/dossiers.ts`, sa table) n'est pas concernée : elle reste livrée avec la base.
+la fusion à trois, ou crée un conflit si l'appli a retouché la ligne.
+
+La couche données du patron a suivi le 2026-11-09, pour une appli neuve seulement :
+`src/lib/db/dossiers.ts`, `src/lib/dossiers-domaine.ts`, `scripts/exemple-import.ts`, la table
+`dossiers` de `schema.sql` et son étape « dossiers : champ notes », `ACTIONS_DOSSIERS` et le droit
+`dossiers.acceder` de `src/config/acces.ts`, sa ligne du registre RGPD, `slugDossier` et
+`cheminDossier` de `src/lib/slug.ts`, et `tests/journal-dossiers.test.ts` (unité `patron-donnees`
+d'`outils/modules.mjs`). Le cas : l'appli materiotheque gardait une table vide et un droit sans
+écran, que sa blueprint devait citer. **Une appli qui l'a reçue la garde** : la mise à jour n'y
+touche pas. Son manifeste porte `src/lib/db/dossiers.ts` ; l'outil rejoue alors l'origine et la
+cible avec l'option `patronDonnees` de l'assembleur, qui la garde comme avant. Sans elle, la
+cible perdrait l'étape de la table, que les bases de l'appli ont jouée (arrêt, « Les
+migrations »), `schema.sql` changerait (arrêt aussi), et les fichiers intacts seraient supprimés
+par la table ci-dessus. La retirer d'une appli en ligne serait une étape de migration : la
+supprimer à la mise à jour casserait le rejeu chez une appli qui a déjà supprimé sa table, ou qui
+l'a renommée en premier module. Si l'appli n'en veut plus, c'est un ticket chez elle, sa propre
+étape en fin de `MIGRATIONS` comprise.
 
 `NOTICE` suit la même table, sans empreinte au manifeste : l'appli est jugée intacte si
 elle égale l'origine rejouée. Ont un traitement propre, dit dans les sections suivantes :
@@ -199,8 +214,8 @@ Deux limites, que le rapport redit :
   choisies ne changent pas ;
 - l'écart vaut pour les fichiers du catalogue, pas pour les modules que l'appli a écrits en
   copiant le patron `dossiers`. Ajouter `journal` remet la trace dans
-  `src/lib/db/dossiers.ts`, pas dans les modules de l'appli : les y brancher est un ticket
-  de l'appli.
+  `src/lib/db/dossiers.ts` d'une appli qui l'a reçu, pas dans les modules de l'appli : les y
+  brancher est un ticket de l'appli.
 
 ## Les migrations
 
@@ -704,7 +719,7 @@ l'appli sur `origin/main` (puce « L'ajout » ci-dessous).
   (`echeances`, `calendrier`, `validation`, `import-lot`, `notifications`, le vocabulaire
   de `creer-appli`, hors `mails` seule, que ce repérage ne voit pas), chacune avec son
   ticket de l'appli ; celles dont elle part seulement du patron `dossiers` arrivent branchées sur le
-  catalogue, à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Une appli
+  catalogue (sur le patron, dans une appli qui l'a reçu), à rattacher aux modules que l'appli a écrits (`journal`, `espaces`). Une appli
   assemblée par profil reçoit une brique comme une autre (les briques du profil sont au
   manifeste) ; si son profil n'admet pas une brique arrivée (`permises` de `PROFILS` au
   commit A : `comptes` dans une `vitrine`), le rapport avertit que `profil:` de l'en-tête

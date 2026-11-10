@@ -57,7 +57,7 @@ export class ErreurMiseAJour extends Error {
 // base (que l'assembleur garde d'office et refuse dans --briques) et les unités
 // partagées, qui suivent les briques. Chaque brique a au moins son dossier,
 // donc une entrée à son nom.
-const UNITES_SANS_CHOIX = ["socle", "donnees", "patron-dossiers", "adresse-ip"];
+const UNITES_SANS_CHOIX = ["socle", "donnees", "patron-dossiers", "patron-donnees", "adresse-ip"];
 
 function git(dossier, ...args) {
   return execFileSync("git", ["-C", dossier, ...args], {
@@ -210,8 +210,14 @@ function commitDuCatalogue(catalogue, manifeste) {
  * Limites, que l'écart des empreintes dit : un en-tête retouché depuis ; avec la
  * brique deploiement, une blueprint sans appli ni --nom, ou --nom sans
  * blueprint (le nom du service de render.yaml ne se déduit pas).
+ * Aux deux formats, `patronDonnees` : l'appli a reçu la couche données du patron
+ * dossiers, que l'assembleur ne livre plus depuis le 2026-11-09. Redonné aux deux
+ * rejeux, il la lui garde : sans lui, la cible perdrait l'étape de la table, que
+ * ses bases ont jouée (arrêt), et ses fichiers intacts seraient supprimés
+ * (outils/mise-a-jour.md, « Ce que l'assembleur a cessé de livrer »).
  */
 function reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit }) {
+  const patronDonnees = PATRON_DOSSIERS in manifeste.fichiers;
   if (manifeste.format === 2) {
     const { briques, nom, dependabot, entete, paquet } = manifeste.assemblage;
     return {
@@ -220,6 +226,7 @@ function reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit }) {
       dependabot,
       blueprint: entete === null ? undefined : blueprintDeLEntete(entete),
       paquet,
+      patronDonnees,
       deduits: false,
     };
   }
@@ -250,6 +257,7 @@ function reglagesDeLAssemblage({ manifeste, contenus, briquesDuCommit }) {
     dependabot: ".github/dependabot.yml" in manifeste.fichiers,
     blueprint: donnee ? blueprint : undefined,
     paquet,
+    patronDonnees,
     deduits: true,
   };
 }
@@ -402,14 +410,25 @@ function installerPrettier({ catalogue, arbre, commit }) {
  * de l'outil, le commit rejoué n'étant gardé nulle part.
  */
 function rejouerLAssembleur({ arbre, sortie, commit, reglages }) {
-  const { briques, nom, dependabot, blueprint } = reglages;
+  const { briques, nom, dependabot, blueprint, patronDonnees } = reglages;
   let fichierBlueprint;
   fs.mkdirSync(path.dirname(sortie), { recursive: true });
   if (blueprint !== undefined) {
     fichierBlueprint = path.join(path.dirname(sortie), "blueprint.md");
     fs.writeFileSync(fichierBlueprint, blueprint);
   }
-  const options = { source: arbre, sortie, briques, commit, nom, blueprint: fichierBlueprint, dependabot };
+  // patronDonnees : ignoré par l'assembleur d'un commit d'avant son arrivée, qui
+  // livrait la couche données du patron d'office.
+  const options = {
+    source: arbre,
+    sortie,
+    briques,
+    commit,
+    nom,
+    blueprint: fichierBlueprint,
+    dependabot,
+    patronDonnees,
+  };
   const assembleur = pathToFileURL(path.join(arbre, "outils", "assembler.mjs")).href;
   const script =
     "const { assembler } = await import(donnees.module);" +
@@ -742,6 +761,8 @@ const FICHIER_MIGRATIONS = "src/lib/db/migrations.ts";
 const SCHEMA = "src/lib/db/schema.sql";
 const REGISTRE = "src/config/donnees-personnelles.ts";
 // Le patron des modules métier : sa correction n'atteint pas les modules que l'appli en a copiés.
+// Au manifeste, il dit aussi que l'appli a reçu la couche données du patron
+// (reglagesDeLAssemblage).
 const PATRON_DOSSIERS = "src/lib/db/dossiers.ts";
 
 const egaux = (a, b) => (a === undefined ? b === undefined : b !== undefined && a.equals(b));
@@ -1973,7 +1994,8 @@ export function tablesSansEspaceId(etapes) {
  *     relecteur-blueprint, hors mails seule, que ce repérage ne voit pas ;
  *   - à rattacher : elle arrive branchée sur le catalogue, et sa section part
  *     du patron `dossiers` pour les modules que l'appli a écrits (journal, qui
- *     ne trace que src/lib/db/dossiers.ts ; espaces).
+ *     ne trace des fiches que celles du patron, et seulement dans une appli qui
+ *     l'a reçu ; espaces).
  * La section de mails, contact, comptes ou rgpd ne commence pas par cette phrase
  * et ne part pas du patron : le rapport ne les annonce pas. Toute brique arrivée
  * se note de toute façon dans la blueprint (rubrique « Manifeste et blueprint »).
@@ -2821,7 +2843,7 @@ function rubriqueDesBriquesABrancher(resultat) {
   }
   if (aRattacher.length > 0) {
     lignes.push(
-      `Arrivées branchées sur le catalogue (le patron ${code("dossiers")}), pas sur les modules que l'appli a écrits en le copiant : les y rattacher, comme le dit la section de leur README, est un ticket de l'appli.`,
+      `Arrivées branchées sur le catalogue (le patron ${code("dossiers")}, dans une appli qui l'a reçu), pas sur les modules que l'appli a écrits en le copiant : les y rattacher, comme le dit la section de leur README, est un ticket de l'appli.`,
       "",
       ...aRattacher.map(ligne),
       ""

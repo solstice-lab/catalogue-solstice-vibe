@@ -131,7 +131,7 @@ Une brique livrée contient, dans `src/briques/<nom>/` :
   importer) ; si le module métier de l'appli s'y raccorde, une section « La
   brancher » qui commence par « Tout se déclare côté appli » quand la brique
   arrive sans appelant, ou qui part du patron `dossiers` quand elle arrive
-  branchée sur lui : l'outil de mise à jour l'annonce ainsi « à brancher » ou
+  branchée sur lui au catalogue : l'outil de mise à jour l'annonce ainsi « à brancher » ou
   « à rattacher » quand elle s'ajoute à une appli ;
 - un `CHANGELOG.md` : tout changement d'interface publique y ajoute une entrée en
   fin, dans la PR qui le fait ;

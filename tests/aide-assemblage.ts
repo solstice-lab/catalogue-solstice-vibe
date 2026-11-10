@@ -45,10 +45,10 @@ const dejaAssembles = new Map<string, Assemblage>();
 // fichiers de test qui en relisent un le partagent plutôt que de le refaire.
 export function assemblerEnTemporaire(
   variante: Pick<Variante, "briques">,
-  options: { blueprint?: string; fiche?: string; dependabot?: boolean } = {}
+  options: { blueprint?: string; fiche?: string; dependabot?: boolean; patronDonnees?: boolean } = {}
 ): Assemblage {
   const cle = JSON.stringify(variante.briques);
-  const parDefaut = !options.blueprint && !options.fiche && !options.dependabot;
+  const parDefaut = !options.blueprint && !options.fiche && !options.dependabot && !options.patronDonnees;
   if (parDefaut && dejaAssembles.has(cle)) return dejaAssembles.get(cle) as Assemblage;
   const dossier = fs.mkdtempSync(path.join(os.tmpdir(), "assemblage-"));
   dossiersATraiter.push(dossier);
@@ -219,10 +219,10 @@ export const REFERENCES: Record<string, RegExp> = {
   "import-lot": /briques\/import-lot|\b(FROM|JOIN|INTO|UPDATE|TABLE)\s+import_lots?\b|import_lot_lignes/,
   calendrier: /briques\/calendrier/,
   echeances: /briques\/echeances/,
-  // La base : son client, ses scripts et son patron dossiers, le paquet pg, les
-  // variables qui la désignent et le Postgres de la CI.
+  // La base : son client, ses scripts, le paquet pg, les variables qui la
+  // désignent et le Postgres de la CI.
   donnees:
-    /lib\/db\/|from\s*["'`]pg["'`]|scripts\/lib\/cli|bases-locales|cle-rapprochement|import-fusion|dossiers-domaine|dossiers\.acceder|ACTIONS_DOSSIERS|["'`]\/dossiers|DATABASE_URL|PGSSLMODE|\bpostgres\b/,
+    /lib\/db\/|from\s*["'`]pg["'`]|scripts\/lib\/cli|bases-locales|cle-rapprochement|import-fusion|["'`]\/dossiers|DATABASE_URL|PGSSLMODE|\bpostgres\b/,
   mails: /briques\/mails|MAILS_FOURNISSEUR|MAILS_EXPEDITEUR|RESEND_API_KEY/,
   // Les notifications : sa brique, sa table, ses variables, sa description de
   // traitement et sa source de l'export des données.
@@ -230,8 +230,14 @@ export const REFERENCES: Record<string, RegExp> = {
     /briques\/notifications|notifications_(envois|lancements)|NOTIFICATIONS_(SECRET|ADRESSES_ESSAI)|TRAITEMENTS_NOTIFICATIONS|SOURCES_NOTIFICATIONS/,
   // Le job deployer de ci.yml et ses noms ; COMMIT_DEPLOYE est au socle (/sante).
   deploiement: /briques\/deploiement|render\.yaml|DEPLOIEMENT_URL|DEPLOIEMENT_DECLENCHEUR|\bdeployer:/,
-  // Les écrans du patron dossiers ; sa couche données reste avec la base.
+  // Les écrans du patron dossiers.
   "patron-dossiers": /app\/dossiers\b/,
+  // Sa couche données : son module, son domaine et ses droits, ses fabricants
+  // de slug et de chemin, son import d'exemple, sa table. Pas la route
+  // « /dossiers » : les tests de connexion Google et Microsoft la prennent pour
+  // exemple de page où revenir, et celui des écrans la cherche dans src/.
+  "patron-donnees":
+    /lib\/db\/dossiers|dossiers-domaine|ACTIONS_DOSSIERS|dossiers\.acceder|slugDossier|cheminDossier|exemple-import|\b(FROM|JOIN|INTO|UPDATE|TABLE)\s+dossiers\b/,
   // La vitrine du kit : ses pages et tout lien vers elle (« /kit » entre
   // guillemets ou suivi d'une barre, jamais « src/app/kit » nu : celui-là est
   // couvert par le premier motif).
@@ -378,6 +384,11 @@ export async function typecheck(assemble: string): Promise<{ code: number; sorti
     "--noEmit",
   ]);
   return resultat.code === 0 ? { code: 0, sortie: "" } : resultat;
+}
+
+// Le lint de l'appli assemblée, avec ses réglages copiés.
+export async function lint(assemble: string): Promise<{ code: number; sortie: string }> {
+  return lancerDans(copieDeTravail(assemble), [path.join(SOURCE, "node_modules", "eslint", "bin", "eslint.js")]);
 }
 
 // Ce que vérifie l'étape « Mise en forme » de la CI de l'appli (npm run

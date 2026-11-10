@@ -20,6 +20,7 @@ import {
   DONNEES,
   EXCLUS_DU_CATALOGUE,
   METHODES_DE_CONNEXION,
+  PATRON_DONNEES,
   PATRON_DOSSIERS,
   PROFILS,
   VITRINE_DU_KIT,
@@ -35,6 +36,7 @@ import {
   gitDans,
   importsDeBriquesNonDeclares,
   importsInvalides,
+  lint,
   lireAssemble,
   memeDossier,
   connexionDUneAdresseInconnue,
@@ -45,6 +47,7 @@ import {
   renvoisAuCatalogue,
   SOURCE,
   miseEnForme,
+  testsSurUneBaseNeuve,
   typecheck,
   verifierSansBase,
 } from "./aide-assemblage";
@@ -86,13 +89,11 @@ const TEMOINS: Record<string, string[]> = {
   calendrier: ["src/briques/calendrier/calcul.ts", "tests/calendrier-calcul.test.ts"],
   validation: ["src/briques/validation/cycle.ts", "tests/validation-cycle.test.ts"],
   "import-lot": ["src/briques/import-lot/lot.ts", "tests/import-lot.test.ts"],
-  // La base, la couche données du patron dossiers et
-  // l'outillage des données.
+  // La base et l'outillage des données.
   donnees: [
     "src/lib/db/client.ts",
     "src/lib/db/migrations.ts",
     "src/lib/db/schema.sql",
-    "src/lib/dossiers-domaine.ts",
     "src/lib/slug.ts",
     "scripts/lib/cli.ts",
     "scripts/bases-locales.ts",
@@ -108,6 +109,15 @@ const TEMOINS: Record<string, string[]> = {
   // catalogue (le cas : l'essai tours-de-coloc a dû retirer lui-même /kit et
   // les écrans du patron).
   "patron-dossiers": ["src/app/dossiers/page.tsx", "src/app/dossiers/actions.ts"],
+  // Sa couche données non plus (le cas : materiotheque gardait le droit
+  // dossiers.acceder sans aucun écran qui s'en serve), ni le test du journal
+  // branché sur elle.
+  "patron-donnees": [
+    "src/lib/db/dossiers.ts",
+    "src/lib/dossiers-domaine.ts",
+    "scripts/exemple-import.ts",
+    "tests/journal-dossiers.test.ts",
+  ],
   "vitrine-du-kit": ["src/app/kit/page.tsx", "src/app/kit/Vitrine.tsx", "src/app/kit/site-vitrine/page.tsx"],
   mails: ["src/briques/mails/envoi.ts", "tests/mails.test.ts"],
   notifications: ["src/briques/notifications/envoi.ts", "tests/notifications.test.ts"],
@@ -115,12 +125,7 @@ const TEMOINS: Record<string, string[]> = {
   // L'adresse IP du visiteur : seules la connexion par code et la limite
   // d'envois du formulaire de contact la lisent.
   "adresse-ip": ["src/lib/adresse-ip.ts", "tests/adresse-ip.test.ts"],
-  journal: [
-    "src/briques/journal/journal.ts",
-    "src/app/journal/page.tsx",
-    "tests/journal.test.ts",
-    "tests/journal-dossiers.test.ts",
-  ],
+  journal: ["src/briques/journal/journal.ts", "src/app/journal/page.tsx", "tests/journal.test.ts"],
   deploiement: ["render.yaml", "src/briques/deploiement/README.md", "tests/deploiement.test.ts"],
   // Les droits et la démo. acces.ts reste à l'appli, mais part
   // avec la brique, dont il importe les types.
@@ -285,8 +290,8 @@ const AVEC_MAILS_SANS_BASE = { nom: "socle seul + mails", briques: ["mails"] };
 // payante et les variables mails, et son test-verrou passe dans la copie.
 const AVEC_DEPLOIEMENT_SANS_BASE = { nom: "socle seul + déploiement", briques: ["deploiement"] };
 
-// La brique comptes se branche sur le socle. Elle garde la base et son patron
-// dossiers : le point de départ d'une appli sur mesure, connexion comprise.
+// La brique comptes se branche sur le socle. Elle garde la base, sans rien du
+// patron dossiers : le point de départ d'une appli sur mesure, connexion comprise.
 const AVEC_COMPTES = { nom: "comptes (rgpd d'office)", briques: ["comptes", "mails"] };
 
 // La vitrine avec son formulaire de contact. La base vient pour
@@ -301,10 +306,10 @@ const AVEC_ECHEANCES_ET_RGPD = {
   nom: "comptes + echeances + rgpd",
   briques: ["comptes", "mails", "echeances", "rgpd"],
 };
-// Le journal d'audit se branche sur le patron dossiers, que la brique comptes
-// garde. Les variantes sans lui prouvent que les dossiers retrouvent leurs
-// simples requêtes. Avec rgpd : le registre de l'export garde la source du
-// journal, que les variantes rgpd sans lui retirent.
+// Le journal d'audit arrive sans autre entité tracée que les gestes de
+// /comptes : le patron dossiers, où il se branche, reste au catalogue. Avec
+// rgpd : le registre de l'export garde la source du journal, que les variantes
+// rgpd sans lui retirent.
 const AVEC_JOURNAL = { nom: "comptes + rgpd + journal", briques: ["mails", "comptes", "rgpd", "journal"] };
 // Les notifications arrivent à brancher sur le module métier de l'appli ;
 // avec echeances, dont la liaison applique les règles de calcul, et rgpd, dont
@@ -325,6 +330,11 @@ const AVEC_IMPORT_LOT = { nom: "comptes + import-lot", briques: ["comptes", "mai
 // de comptes reste seule, et le nettoyage des comptes des tests garde la sienne.
 const AVEC_ESPACES = { nom: "comptes + espaces", briques: ["comptes", "mails", "espaces"] };
 
+// Une brique à brancher seule : la base arrive sans aucune table ni étape de
+// migration (schema.sql en commentaires, MIGRATIONS vide) depuis que la couche
+// données du patron dossiers n'est plus livrée.
+const ECHEANCES_SEULE = { nom: "echeances seule (base sans table ni étape)", briques: ["echeances"] };
+
 // Les briques à brancher, sans la brique comptes : elles lisent la base et
 // rien d'autre, et une copie qui les prend sans connexion doit compiler.
 const A_BRANCHER_SANS_COMPTES = {
@@ -342,7 +352,7 @@ const AVEC_BRIQUES_OPTIONNELLES = {
 // Le catalogue entier, qui a aussi son propre bloc (« assemblage de tout le catalogue »).
 const TOUTES_LES_BRIQUES = { nom: "toutes les briques", briques: Object.keys(BRIQUES) };
 
-const PARTAGEES = ["patron-dossiers", "vitrine-du-kit", "adresse-ip"];
+const PARTAGEES = ["patron-dossiers", "patron-donnees", "vitrine-du-kit", "adresse-ip"];
 
 const TOUTES_LES_COMBINAISONS = [
   SOCLE_SEUL,
@@ -356,6 +366,7 @@ const TOUTES_LES_COMBINAISONS = [
   AVEC_GESTION_COMPTES,
   AVEC_IMPORT_LOT,
   AVEC_ESPACES,
+  ECHEANCES_SEULE,
   A_BRANCHER_SANS_COMPTES,
   AVEC_BRIQUES_OPTIONNELLES,
   TOUTES_LES_BRIQUES,
@@ -420,7 +431,7 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
   const briques = choisies.includes("comptes") && !choisies.includes("rgpd") ? [...choisies, "rgpd"] : choisies;
   const unites = [...PARTAGEES, ...Object.keys(BRIQUES), "donnees"];
   const gardee = (unite: string) =>
-    unite === "patron-dossiers" || unite === "vitrine-du-kit"
+    unite === "patron-dossiers" || unite === "patron-donnees" || unite === "vitrine-du-kit"
       ? false
       : unite === "adresse-ip"
         ? ADRESSE_IP.conserveSiUneDe.some((nom: string) => briques.includes(nom))
@@ -667,7 +678,8 @@ describe.each(COMBINAISONS)("assemblage « $nom »", ({ briques: choisies }) => 
         notifications: ["notifications_envois", "notifications_lancements"],
         espaces: ["espaces", "espaces_adhesions", "espaces_invitations", "espaces_essais_code"],
       };
-      expect(resultat.objets).toContain("dossiers");
+      // La table du patron reste au catalogue, avec sa couche données.
+      expect(resultat.objets).not.toContain("dossiers");
       for (const [unite, objets] of Object.entries(tablesParUnite)) {
         for (const objet of objets) expect(resultat.objets.includes(objet), `${unite} : ${objet}`).toBe(gardee(unite));
       }
@@ -700,6 +712,28 @@ describe("appli assemblée, vérifiée par ses propres outils", () => {
     async (variante, { expect }) => {
       const resultat = await miseEnForme(assemblerEnTemporaire(variante).dossier);
       expect(resultat.code, resultat.sortie).toBe(0);
+    }
+  );
+
+  // Sans la couche données du patron dossiers, partie le 2026-11-09, plus rien
+  // ne lui sert d'exemple dans l'appli : un test, un droit ou un script qui s'y
+  // appuyait encore échouerait ici. Avec et sans comptes, avec le journal, et
+  // les briques à brancher sans comptes ; sans base, le test suivant. Une suite
+  // à la fois : chacune répartit déjà ses fichiers sur les cœurs du poste.
+  it.for(
+    [AVEC_COMPTES, AVEC_JOURNAL, ECHEANCES_SEULE, A_BRANCHER_SANS_COMPTES].filter((variante) =>
+      COMBINAISONS.includes(variante)
+    )
+  )(
+    "« $nom », sans le patron dossiers, passe lint et ses tests sur une base neuve",
+    { timeout: 6 * ENTIER },
+    async (variante, { expect }) => {
+      const assemble = assemblerEnTemporaire(variante);
+      const verifie = await lint(assemble.dossier);
+      expect(verifie.code, verifie.sortie).toBe(0);
+      expect(verifie.sortie.trim(), "lint sans avertissement").toBe("");
+      const tests = await testsSurUneBaseNeuve(assemble.dossier);
+      expect(tests.code, tests.sortie.slice(-4000)).toBe(0);
     }
   );
 
@@ -802,18 +836,36 @@ function sansLesChampsDuDepot(lignes: string[]) {
  * Le cas : le 2026-11-05, l'appli d'essai tours-de-coloc les a reçus avec son
  * menu « Dossiers », et la personne qui l'a vue a demandé ce que c'était ; elle
  * a dû les retirer elle-même. Aucune combinaison, avec ou sans base, ne les
- * livre plus.
+ * livre plus. La couche données du patron (sa table, son module, son droit, sa
+ * ligne du registre RGPD) a suivi le 2026-11-09 : l'appli materiotheque gardait
+ * un droit dossiers.acceder sans aucun écran qui s'en serve.
  */
-const SANS_VITRINE_NI_PATRON = [SOCLE_SEUL, AVEC_COMPTES, AVEC_CONTACT, A_BRANCHER_SANS_COMPTES, TOUTES_LES_BRIQUES];
+const SANS_VITRINE_NI_PATRON = [
+  SOCLE_SEUL,
+  AVEC_COMPTES,
+  AVEC_CONTACT,
+  AVEC_JOURNAL,
+  ECHEANCES_SEULE,
+  A_BRANCHER_SANS_COMPTES,
+  TOUTES_LES_BRIQUES,
+];
 const FICHIER_DE_TEXTE = /\.(tsx?|mjs|json|md|css|ya?ml|sql|txt)$/;
 // Le chemin d'un dossier dans une chaîne de code : « "/dossiers" », « `/dossiers/${…}` ».
 const LIEN_VERS_LES_DOSSIERS = /["'`]\/dossiers(["'`/?])/;
-// La couche données du patron reste avec la base, dont le fabricant de chemin
-// de fiche : sans écran, personne ne l'appelle, il ne mène nulle part.
-const COUCHE_DONNEES_DU_PATRON = ["src/lib/slug.ts"];
+// Les fichiers de la base où vivait la couche données du patron : chacun garde
+// ce qui sert à tout module, et perd ce qui ne servait qu'aux dossiers.
+const RESTES_DU_PATRON: Record<string, RegExp> = {
+  "src/lib/db/schema.sql": /dossiers/,
+  "src/lib/db/migrations.ts": /dossiers|Modèle d'étape/,
+  "src/lib/slug.ts": /slugDossier|cheminDossier|dossiers:/,
+  "src/config/acces.ts": /dossiers/i,
+  "src/config/donnees-personnelles.ts": /dossiers/i,
+  "tests/migrations.test.ts": /dossiers/,
+  "tests/slug.test.ts": /slugDossier|\.dossiers/,
+};
 
 describe.each(SANS_VITRINE_NI_PATRON)(
-  "appli « $nom » : ni vitrine du kit ni écrans du patron dossiers",
+  "appli « $nom » : ni vitrine du kit ni patron dossiers (écrans et couche données)",
   ({ briques }) => {
     const { dossier, retires } = assemblerEnTemporaire({ briques });
     const fichiers = fichiersAssembles(dossier);
@@ -827,6 +879,22 @@ describe.each(SANS_VITRINE_NI_PATRON)(
       expect(commit).toMatch(/Retiré : .*vitrine-du-kit/);
     });
 
+    it("n'a ni la table, ni le module, ni le droit, ni la ligne du registre du patron dossiers, et dit sa couche données retirée", () => {
+      for (const chemin of TEMOINS["patron-donnees"]) expect(fichiers, chemin).not.toContain(chemin);
+      expect(retires).toContain("partagée patron-donnees");
+      expect(gitDans(dossier, "log", "-1", "--format=%B")).toMatch(/Retiré : .*patron-donnees/);
+      const restes = Object.entries(RESTES_DU_PATRON)
+        .filter(([chemin]) => existeAssemble(dossier, chemin))
+        .filter(([chemin, motif]) => motif.test(lireAssemble(dossier, chemin)))
+        .map(([chemin]) => chemin);
+      expect(restes).toEqual([]);
+      // Ce qui sert à tout module reste : le fabricant de slugs, le tableau des étapes.
+      if (gardeDonnees(briques)) {
+        expect(lireAssemble(dossier, "src/lib/slug.ts")).toContain("export function slugAvecGardeFous");
+        expect(lireAssemble(dossier, "src/lib/db/migrations.ts")).toContain("export const MIGRATIONS: Migration[] = [");
+      }
+    });
+
     it("ne renvoie à /kit dans aucun fichier : ni lien, ni route, ni consigne de skill ou de README", () => {
       const renvois = fichiers
         .filter((chemin) => FICHIER_DE_TEXTE.test(chemin))
@@ -836,10 +904,7 @@ describe.each(SANS_VITRINE_NI_PATRON)(
 
     it("n'a ni entrée de menu, ni lien, ni route vers /dossiers, et son test du menu ne nomme aucun module", () => {
       const code = fichiers.filter(
-        (chemin) =>
-          /\.(tsx?|mjs)$/.test(chemin) &&
-          (chemin.startsWith("src/") || chemin === "tests/navigation.test.ts") &&
-          !COUCHE_DONNEES_DU_PATRON.includes(chemin)
+        (chemin) => /\.(tsx?|mjs)$/.test(chemin) && (chemin.startsWith("src/") || chemin === "tests/navigation.test.ts")
       );
       expect(code.length).toBeGreaterThan(0);
       const liens = code.filter((chemin) => LIEN_VERS_LES_DOSSIERS.test(lireAssemble(dossier, chemin)));
@@ -849,14 +914,72 @@ describe.each(SANS_VITRINE_NI_PATRON)(
   }
 );
 
-describe("le catalogue garde la vitrine du kit et les écrans du patron dossiers", () => {
-  it("les fichiers y sont, le menu y propose les dossiers : seule la copie les retire", () => {
+describe("le catalogue garde la vitrine du kit et le patron dossiers, écrans et couche données", () => {
+  it("les fichiers y sont, le menu y propose les dossiers, la base y a leur table : seule la copie les retire", () => {
     const catalogue = fichiersDuCatalogue();
-    for (const chemin of [...TEMOINS["vitrine-du-kit"], ...TEMOINS["patron-dossiers"]]) {
+    for (const chemin of [...TEMOINS["vitrine-du-kit"], ...TEMOINS["patron-dossiers"], ...TEMOINS["patron-donnees"]]) {
       expect(catalogue, chemin).toContain(chemin);
     }
-    expect(fs.readFileSync(path.join(SOURCE, "src/lib/navigation.ts"), "utf-8")).toContain('href: "/dossiers"');
+    const lire = (chemin: string) => fs.readFileSync(path.join(SOURCE, chemin), "utf-8");
+    expect(lire("src/lib/navigation.ts")).toContain('href: "/dossiers"');
+    expect(lire("src/lib/db/schema.sql")).toContain("CREATE TABLE IF NOT EXISTS dossiers (");
+    expect(lire("src/config/acces.ts")).toContain('"dossiers.acceder"');
   });
+});
+
+/*
+ * Une appli assemblée avant le retrait de la couche données du patron l'a
+ * reçue : table en production, étape de migration jouée, droit déclaré. La mise
+ * à jour depuis le catalogue rejoue l'assembleur pour elle avec patronDonnees
+ * (outils/mettre-a-jour.mjs le lit dans son manifeste) : la cible lui garde ce
+ * qu'elle a, sans quoi l'étape « dossiers : champ notes » disparaîtrait de la
+ * cible et la mise à jour s'arrêterait (une étape que les bases déployées ont
+ * jouée), et ses fichiers intacts seraient supprimés.
+ */
+describe("assemblage avec patronDonnees : la couche données du patron, comme avant son retrait", () => {
+  const variante = { briques: ["comptes", "mails", "journal"] };
+  const ancien = assemblerEnTemporaire(variante, { patronDonnees: true });
+
+  it("garde la table, le module, le droit, la ligne du registre et le test du journal branché sur eux", () => {
+    for (const chemin of TEMOINS["patron-donnees"]) expect(existeAssemble(ancien.dossier, chemin), chemin).toBe(true);
+    expect(ancien.retires).not.toContain("partagée patron-donnees");
+    expect(ancien.retires).toContain("partagée patron-dossiers");
+    expect(lireAssemble(ancien.dossier, "src/lib/db/schema.sql")).toContain("CREATE TABLE IF NOT EXISTS dossiers (");
+    expect(lireAssemble(ancien.dossier, "src/lib/db/migrations.ts")).toContain(
+      'nom: "dossiers : champ notes (texte libre de la fiche)",'
+    );
+    expect(lireAssemble(ancien.dossier, "src/config/acces.ts")).toContain('"dossiers.acceder": ["membre", "admin"],');
+    expect(lireAssemble(ancien.dossier, "src/config/donnees-personnelles.ts")).toContain('tables: ["dossiers"]');
+    expect(lireAssemble(ancien.dossier, "src/lib/slug.ts")).toContain("export function cheminDossier");
+    const manifeste = JSON.parse(lireAssemble(ancien.dossier, MANIFESTE));
+    expect(manifeste.fichiers["src/lib/db/dossiers.ts"].unite).toBe("patron-donnees");
+    expect(manifeste.fichiers["tests/journal-dossiers.test.ts"].unite).toBe("journal");
+  });
+
+  it("sans le journal, ne garde pas son test branché sur le patron", () => {
+    const sansJournal = assemblerEnTemporaire({ briques: ["comptes", "mails"] }, { patronDonnees: true });
+    expect(existeAssemble(sansJournal.dossier, "src/lib/db/dossiers.ts")).toBe(true);
+    expect(existeAssemble(sansJournal.dossier, "tests/journal-dossiers.test.ts")).toBe(false);
+  });
+
+  it("sans base, n'en garde rien : le patron lit la base", () => {
+    const sansBase = assemblerEnTemporaire({ briques: ["mails"] }, { patronDonnees: true });
+    expect(existeAssemble(sansBase.dossier, "src/lib/db/dossiers.ts")).toBe(false);
+    expect(sansBase.retires).toContain("partagée patron-donnees");
+  });
+
+  it(
+    "passe le typecheck et rejoue son schéma et ses migrations, table dossiers comprise",
+    { timeout: 4 * ENTIER },
+    async () => {
+      const verifie = await typecheck(ancien.dossier);
+      expect(verifie.sortie).toBe("");
+      expect(verifie.code).toBe(0);
+      const resultat = await migrationsSurBaseNeuve(ancien.dossier);
+      expect(resultat.code, resultat.sortie).toBe(0);
+      expect(resultat.objets).toContain("dossiers");
+    }
+  );
 });
 
 describe("assemblage de tout le catalogue", () => {
@@ -864,15 +987,23 @@ describe("assemblage de tout le catalogue", () => {
   const tout = assemblerEnTemporaire({ briques: Object.keys(BRIQUES) }, { dependabot: true });
 
   // Ce que le catalogue garde pour lui, même avec toutes les briques : la
-  // vitrine du kit et les écrans du patron dossiers. Les fichiers qui en
-  // parlaient (menu, gardes, skills) sont retouchés, jamais plus.
-  const POUR_LE_CATALOGUE = [...PATRON_DOSSIERS.fichiers, ...VITRINE_DU_KIT.fichiers];
-  const RETOUCHES_POUR_LE_CATALOGUE = [...PATRON_DOSSIERS.retraits, ...VITRINE_DU_KIT.retraits].map(
-    (retrait: { fichier: string }) => retrait.fichier
-  );
+  // vitrine du kit et le patron dossiers, écrans et couche données (avec le
+  // test du journal branché sur elle, qu'elle emporte). Les fichiers qui en
+  // parlaient (menu, gardes, skills, schéma, droits) sont retouchés, jamais plus.
+  const POUR_LE_CATALOGUE = [
+    ...PATRON_DOSSIERS.fichiers,
+    ...PATRON_DONNEES.fichiers,
+    ...PATRON_DONNEES.emporte,
+    ...VITRINE_DU_KIT.fichiers,
+  ];
+  const RETOUCHES_POUR_LE_CATALOGUE = [
+    ...PATRON_DOSSIERS.retraits,
+    ...PATRON_DONNEES.retraits,
+    ...VITRINE_DU_KIT.retraits,
+  ].map((retrait: { fichier: string }) => retrait.fichier);
 
-  it("ne retire que ce que le catalogue garde pour lui (vitrine du kit, écrans du patron) et ne retouche rien d'autre : chaque fichier du catalogue hors vie du catalogue est copié à l'identique", () => {
-    expect(tout.retires).toEqual(["partagée patron-dossiers", "partagée vitrine-du-kit"]);
+  it("ne retire que ce que le catalogue garde pour lui (vitrine du kit, patron dossiers) et ne retouche rien d'autre : chaque fichier du catalogue hors vie du catalogue est copié à l'identique", () => {
+    expect(tout.retires).toEqual(["partagée patron-dossiers", "partagée patron-donnees", "partagée vitrine-du-kit"]);
     const copies = new Set(fichiersAssembles(tout.dossier));
     let comptes = 0;
     for (const chemin of fichiersDuCatalogue()) {
@@ -2635,6 +2766,7 @@ describe("liste de retrait : les droits ne se retouchent que dans src/config/acc
     const listes: { fichier: string }[][] = [
       ...Object.values(BRIQUES).map((unite) => unite.retraits),
       PATRON_DOSSIERS.retraits,
+      PATRON_DONNEES.retraits,
       VITRINE_DU_KIT.retraits,
       ADRESSE_IP.retraits,
       DONNEES.retraits,
@@ -2654,7 +2786,14 @@ describe("liste de retrait : les droits ne se retouchent que dans src/config/acc
   // la liste. Seul ce geste est permis : retirer la ligne de SA page. Ajouter,
   // remplacer ou retirer autre chose dans le verrou des gardes reste refusé.
   it("ne touche tests/gardes-acces.test.ts que pour retirer de OUVERTS une page que l'unité emporte", () => {
-    const unites = [...Object.values(BRIQUES), PATRON_DOSSIERS, VITRINE_DU_KIT, ADRESSE_IP, DONNEES] as {
+    const unites = [
+      ...Object.values(BRIQUES),
+      PATRON_DOSSIERS,
+      PATRON_DONNEES,
+      VITRINE_DU_KIT,
+      ADRESSE_IP,
+      DONNEES,
+    ] as {
       fichiers: string[];
       retraits: { geste: string; fichier: string; extrait?: string }[];
     }[];
@@ -2741,7 +2880,7 @@ describe("brique données, gardée d'office", () => {
         continue;
       expect(existeAssemble(avecBase.dossier, chemin), chemin).toBe(true);
     }
-    expect(avecBase.retires.join(", ")).not.toContain("donnees");
+    expect(avecBase.retires).not.toContain("brique donnees");
   });
 
   // src/app/page.tsx n'en est plus : sans la brique espaces, l'assembleur en retire
@@ -2824,10 +2963,28 @@ describe("dépendances entre briques : une brique n'importe que celles qu'elle e
 
 describe("liste de retrait : chaque fichier et chaque extrait cités existent au catalogue", () => {
   const catalogue = new Set(fichiersDuCatalogue());
-  const unites = [PATRON_DOSSIERS, VITRINE_DU_KIT, ADRESSE_IP, ...Object.values(BRIQUES), DONNEES] as {
+  const unites = [PATRON_DOSSIERS, PATRON_DONNEES, VITRINE_DU_KIT, ADRESSE_IP, ...Object.values(BRIQUES), DONNEES] as {
     fichiers: string[];
+    emporte?: string[];
     retraits: { fichier: string; extrait?: string; de?: string; a?: string }[];
   }[];
+
+  // `emporte` : un fichier d'une AUTRE unité, qui part aussi quand celle-ci
+  // part (le test du journal branché sur le patron). Un fichier de l'unité
+  // elle-même s'y écrirait dans `fichiers` ; un fichier sans propriétaire
+  // partirait sans que le manifeste dise d'où il venait.
+  it("n'emporte que des fichiers qui existent et qu'une autre unité possède", () => {
+    for (const unite of unites) {
+      for (const chemin of unite.emporte ?? []) {
+        expect(catalogue.has(chemin), chemin).toBe(true);
+        const proprietaires = unites.filter((autre) =>
+          autre.fichiers.some((entree) => (entree.endsWith("/") ? chemin.startsWith(entree) : chemin === entree))
+        );
+        expect(proprietaires, chemin).toHaveLength(1);
+        expect(proprietaires[0], chemin).not.toBe(unite);
+      }
+    }
+  });
 
   it("ne cite que des fichiers propres qui existent (un dossier : au moins un fichier dedans)", () => {
     for (const unite of unites) {

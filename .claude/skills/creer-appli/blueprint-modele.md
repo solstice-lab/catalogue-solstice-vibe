@@ -131,7 +131,8 @@ briques:
   ajoutées ensuite (`outils/mettre-a-jour.mjs --ajouter`) s'y ajoutent, écrites par l'outil.
 - `entites` : les entités que **l'appli écrira**, aucune ne vient de l'assemblage. `module`
   est le dossier sous `src/app/` que l'appli créera en copiant le patron `dossiers`
-  (`CLAUDE.md` §3), avec sa couche données dans `src/lib/db/`. Chaque entité a son ticket
+  (`CLAUDE.md` §3, lu au catalogue public : l'appli n'en reçoit rien), avec sa couche données
+  dans `src/lib/db/`. Chaque entité a son ticket
   en section 9.
 - `briques` : une ligne par brique de `briques_assemblees` qui a du code à brancher ou
   branché (`deploiement` n'a pas de code à brancher et n'y figure pas). Une brique à
@@ -144,9 +145,9 @@ briques:
   `branchement: src/app/comptes/page.tsx` ; `espaces`, `entite: aucune` et
   `branchement: src/config/espaces.ts`, chaque entité rattachée à un espace portant en
   section 2 la ligne « rattachée à un espace (colonne `espace_id`) », distincte de
-  `rattache_a` ; `journal`, `entite: dossiers` et
-  `branchement: src/lib/db/dossiers.ts` (le patron), le module métier s'y branchant par
-  ticket.
+  `rattache_a` ; `journal`, `entite: aucune` et
+  `branchement: src/app/journal/page.tsx` (son écran ; chaque module métier s'y branche par
+  ticket, sur le modèle du patron lu au catalogue).
 - **Site vitrine** (`profil: vitrine`, sans brique qui lit la base hors `contact`) : `entites: []`.
   `briques_assemblees` ne cite que `mails`, `deploiement` ou `contact`, s'ils sont gardés.
   Dans `briques`, `mails` seule porte `entite: aucune` et `branchement: à brancher` ;
