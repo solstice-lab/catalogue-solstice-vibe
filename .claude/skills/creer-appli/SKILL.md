@@ -101,7 +101,8 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
   notent pas : ils sont à écrire dans `ENTREE`, avec le premier admin
   (`COMPTES_PREMIER_ADMIN`).
 - **Qui livre l'appli ?** Elle décide de la signature « Conçu par Solstice Lab » que
-  le kit affiche en pied de page (`AppLayout`, `PageVitrine`).
+  le kit affiche en pied de page (`AppLayout`, `PageVitrine`), et du propriétaire proposé
+  pour son dépôt (étape 5.2, point 1).
   - Pour une livraison Solstice Lab : la signature reste, même pour un prototype
     (`CLAUDE.md` §1). Rien à décider.
   - Pour toute autre personne : la garder ou la retirer, à son choix. C'est une règle des
@@ -454,11 +455,21 @@ L'assembleur l'a créé : Claude ne fait pas de `git init`, il vérifie.
 
 Claude crée le dépôt distant lui-même, **seulement après un oui explicite dans la
 conversation**, à la commande qu'il a annoncée. Le catalogue sert à n'importe qui :
-**aucune organisation n'est retenue d'office**, pas même celle qui publie le catalogue.
+**aucune organisation n'est retenue d'office**, pas même celle qui publie le catalogue ; seule
+une livraison Solstice Lab propose la sienne (point 1).
 
 1. **Propriétaire** : `gh api user --jq .login` donne le compte GitHub de la personne ; le
    proposer, ou l'organisation qu'elle nomme. `gh` non connecté : lui dire de taper
    `gh auth login` elle-même, puis relancer.
+
+   **Livraison Solstice Lab** (réponse à « Qui livre l'appli ? », étape 1) : le propriétaire
+   proposé est l'organisation `solstice-lab`. Le dépôt public ne tient pas la liste des
+   applis livrées, et c'est voulu ; celle des applis que Solstice Lab maintient, celles à
+   prévenir d'une correction du catalogue, se déduit des dépôts de l'organisation qui
+   portent `catalogue.empreintes.json` (`outils/mise-a-jour.md`, « Hors v1 »). Si le client veut le
+   dépôt dans son organisation, le dire dans l'annonce du point 4 : l'appli sort alors de
+   cette liste, l'accès en lecture de Solstice Lab à son dépôt est à prévoir au contrat de
+   maintenance, et seul un registre tenu hors du dépôt public, plus tard, la retrouverait.
 2. **Nom** : celui du dossier assemblé, sauf demande contraire. `gh repo view
    <proprietaire>/<nom>` doit échouer (« Could not resolve to a Repository ») ; s'il répond,
    le nom est pris : en demander un autre.
