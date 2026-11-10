@@ -124,7 +124,8 @@ Deux couches, à ne jamais mélanger :
 
 Identité : `--couleur-structure(-2)`, `--couleur-accent`,
 `--couleur-accent-fond`, `--texte`, `--texte-secondaire`,
-`--texte-sur-structure`, `--fond-page`, `--surface`, `--bordure`.
+`--texte-sur-structure`, `--texte-secondaire-sur-structure`, `--fond-page`,
+`--surface`, `--fond-secondaire`, `--bordure`.
 Sémantique (ne se thématise PAS) : `--positif`, `--negatif`, et
 `--texte-sur-semantique` pour le texte posé sur eux (bouton danger).
 Forme : `--rayon`, `--rayon-petit`. Typo : `--police-texte`,
@@ -139,8 +140,10 @@ pas celle du thème. L'image est dessinée par Satori, qui ne lit aucune feuille
 de style : ses `style={{…}}` sont la seule exception à la règle des classes du
 kit.
 
-Le thème par défaut est la charte Solstice Lab — le garder pour les protos et
-les clients sans identité définie.
+Le thème par défaut est la charte Solstice Lab « registre », celle du site
+solstice-lab.com/new : navy, jaune, papier `#FCFCFD` pour le fond comme pour
+les surfaces, papier 2 `#E8EEF7`, filets `#E2E8F4`, angles droits (rayons
+à 0). Le garder pour les protos et les clients sans identité définie.
 
 ## Thématiser pour un client
 
@@ -157,11 +160,16 @@ Puis mapper vers les tokens :
 
 1. Couleur dominante de la marque → `--couleur-structure` (foncée : le texte
    sur structure doit rester lisible). Dériver `--couleur-structure-2`
-   (éclaircie ~15 % pour les survols).
+   (éclaircie ~15 % pour les survols) et `--texte-secondaire-sur-structure`
+   (le texte sur structure atténué, pour le sous-titre de l'en-tête).
 2. Couleur secondaire/vive → `--couleur-accent` ; en dériver
    `--couleur-accent-fond` (version très pâle, fond de badge lisible).
 3. Neutres : garder des gris proches des valeurs par défaut si la charte n'en
-   impose pas — un fond de page légèrement teinté vers la structure suffit.
+   impose pas. `--fond-page` et `--surface` peuvent être égaux (la charte
+   par défaut pose tout sur le même papier) ou distincts (des cartes blanches
+   sur un fond légèrement teinté vers la structure). `--fond-secondaire` est
+   un ton plus soutenu que la surface, teinté vers la structure : il porte le
+   survol de ligne et les jours hors du mois, il doit se voir sur `--surface`.
 4. Polices : jamais `next/font/google` (il télécharge chez Google à chaque
    build, et un refus fait échouer le build ; un test l'interdit dans `src/`).
    Récupérer les woff2 de la police du client à la source officielle (dépôt de
@@ -183,10 +191,10 @@ Puis mapper vers les tokens :
 
 ### Garde-fous (bloquants, quel que soit le thème)
 
-- Contraste AA : ≥ 4,5:1 pour `--texte` sur `--surface`, `--fond-page` et
-  `--couleur-accent-fond` (appel à l'action d'une page vitrine, champ en
-  cours de saisie), et
-  pour `--texte-sur-structure` sur `--couleur-structure`, et pour
+- Contraste AA : ≥ 4,5:1 pour `--texte` sur `--surface`, `--fond-page`,
+  `--fond-secondaire` et `--couleur-accent-fond` (appel à l'action d'une page
+  vitrine, champ en cours de saisie), pour `--texte-sur-structure` et
+  `--texte-secondaire-sur-structure` sur `--couleur-structure`, et pour
   `--texte-sur-semantique` sur `--negatif` (bouton danger) et sur `--positif`. Si l'accent du
   client est clair, il sert aux liserés et fonds, jamais au texte.
 - La sémantique des états ne se détourne jamais vers l'identité : une erreur
