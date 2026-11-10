@@ -41,3 +41,22 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   parmi les autres le jour où il faudrait la reporter. Décidé le 2026-11-03,
   à la conception de la mise à jour des applis ; commencé avant la première
   appli réelle, il n'y a pas d'historique à trier.
+
+## 2026-11-10 · Les champs de saisie sans cadre · Rupture
+
+- **Ce qui change** : `Champ` (kit `src/ui/`) suit la charte « registre » :
+  plus de cadre ni d'anneau au focus, une barre d'insertion signale le champ
+  (teinte pâle de la structure au repos, couleur d'accent sur le prochain
+  champ vide de la page, verte ou rouge selon le format). Nouvelle prop facultative `format` (`siren`, `cp`,
+  `email`, `tel`, `date`, `int`, `num`, `pct`, `split`, `url`) ; un champ
+  `type="email"`, `tel` ou `url` reçoit le format de son type. Le filtre de
+  colonne du `Tableau` prend la même saisie. Le test-verrou
+  `tests/champs-sans-cadre.test.ts` refuse tout `<input>` qui se tape écrit
+  hors de `src/ui/Champ.tsx`.
+- **Pour l'appli** : remplacer chaque `<input>` écrit à la main par un
+  `Champ` (qui rend en natif date, nombre et mot de passe), sans quoi le
+  test-verrou échoue ; seuls les inputs cachés, fichiers, cases à cocher et
+  boutons radio restent permis hors du composant.
+- **Pourquoi** : le 22/10/2026, une appli en React a été livrée avec des
+  champs nus, invisibles au repos dans une page sans cadres. Le composant de
+  la charte se porte, il ne se remplace pas par un `<input>` stylé.

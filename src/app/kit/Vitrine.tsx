@@ -199,6 +199,13 @@ export function Vitrine({ nom, navigation }: { nom: string; navigation: LienNavi
               placeholder="Ex. Refonte du portail"
               aide="Visible dans la liste des dossiers."
             />
+            <Champ
+              label="SIREN du client"
+              format="siren"
+              inputMode="numeric"
+              placeholder="Ex. 123 456 789"
+              aide="Format contrôlé : une lettre ou un SIREN incomplet passe au rouge, avec son message."
+            />
             <ChampSelect
               label="Statut"
               options={[

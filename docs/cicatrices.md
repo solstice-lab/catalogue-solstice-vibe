@@ -217,15 +217,16 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| U1 | Un tableau porte d'office le tri et les filtres, et les exports sur simple option. | Chaque tableau livré a fini par les recevoir : huit pull requests, six vagues de rattrapage. | `CLAUDE.md:25` ; `src/ui/Tableau.tsx:59` ; `tests/exports-tableau.test.ts:38` |
-| U2 | Un tableau hiérarchique ne se trie pas ; son filtre masque sans recalculer. | Un tri générique a été rejeté sur un compte de résultat, où il cassait la lecture comptable. | **En partie** : `src/ui/Tableau.tsx:93`, aucun test |
+| U1 | Un tableau porte d'office le tri et les filtres, et les exports sur simple option. | Chaque tableau livré a fini par les recevoir : huit pull requests, six vagues de rattrapage. | `CLAUDE.md:25` ; `src/ui/Tableau.tsx:60` ; `tests/exports-tableau.test.ts:38` |
+| U2 | Un tableau hiérarchique ne se trie pas ; son filtre masque sans recalculer. | Un tri générique a été rejeté sur un compte de résultat, où il cassait la lecture comptable. | **En partie** : `src/ui/Tableau.tsx:94`, aucun test |
 | U3 | La vue d'un tableau (tri, filtres, déplis) survit à la navigation, le temps de l'onglet. | Sur un projet antérieur, les déplis survivaient même à la fermeture de l'onglet. | `tests/vue-tableau.test.ts:53`, `src/ui/vueTableau.ts:7` et `CLAUDE.md:25` |
-| U4 | Volets figés et détail au clic. | Un croisement personnes × périodes de temps passés a demandé l'un puis l'autre, jusqu'au détail d'une cellule. | **En partie** : clic sur une ligne (`src/ui/Tableau.tsx:108`) ; le clic par cellule attend un tableau croisé |
+| U4 | Volets figés et détail au clic. | Un croisement personnes × périodes de temps passés a demandé l'un puis l'autre, jusqu'au détail d'une cellule. | **En partie** : clic sur une ligne (`src/ui/Tableau.tsx:109`) ; le clic par cellule attend un tableau croisé |
 | U5 | Montants, dates et pourcentages passent par un seul module de format. | Deux écrans voisins affichaient « 12 500 € » et « 12,500.00 € ». | `src/lib/format.ts:4` ; `solstice-ui` (`SKILL.md:89`) |
 | U6 | Un pas de saisie ne refuse pas un montant légitime. | Un pas de 100 € refusait un reliquat de 3 334 €. | `solstice-ui` (`SKILL.md:110`) ; aucun champ montant du catalogue n'a de pas, donc aucun test |
 | U7 | La fiche d'un enregistrement est en lecture seule et montre exactement les champs du formulaire ; un seul formulaire sert à créer et à modifier. | Règle maison héritée d'un projet antérieur ; les archives ne détaillent pas l'incident. | `CLAUDE.md:61` ; `src/app/dossiers/[slug]/page.tsx:18` |
 | U8 | Le slug d'une fiche n'est jamais purement numérique et n'entre pas en collision avec une route du module. | Règle reprise d'un projet antérieur avec son module de slugs : une fiche nommée « Nouveau » deviendrait inatteignable. | `tests/slug.test.ts:10`, `:15` |
 | U9 | Une erreur de rendu n'est jamais une page blanche : le digest reste affiché, et l'écriture a souvent eu lieu malgré l'erreur. | Des pages blanches à digest cryptique en production, après des écritures bien passées. | **En partie** : `src/app/error.tsx:3` et `solstice-ui` (`SKILL.md:96`) ; « l'écriture a eu lieu » n'est écrit nulle part |
+| U10 | Un champ qui se tape passe par le composant de la charte, qui pose la barre d'insertion : jamais un `<input>` stylé à la main. | Une appli en React livrée avec des champs nus : sans cadre et sans barre, ils étaient invisibles au repos. | `tests/champs-sans-cadre.test.ts:180` ; `solstice-ui` (`SKILL.md:36`) |
 
 ## 15. IA et tâches longues
 

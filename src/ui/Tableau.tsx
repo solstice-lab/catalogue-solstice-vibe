@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Saisie } from "./Champ";
 import { exporterPng, exporterXlsx, preparerExport } from "./exporterTableau";
 import { ecrireVue, lireVue, sAbonner, vueInitiale } from "./vueTableau";
 
@@ -316,9 +317,10 @@ export function Tableau<Ligne extends Record<string, unknown>>({
                       </span>
                     </button>
                   )}
-                  <input
+                  <Saisie
                     type="search"
-                    className="sl-tableau-filtre"
+                    classeEnveloppe="sl-tableau-filtre"
+                    horsProchain
                     placeholder="Filtrer…"
                     value={filtres[colonne.cle] ?? ""}
                     onChange={(evenement) =>
