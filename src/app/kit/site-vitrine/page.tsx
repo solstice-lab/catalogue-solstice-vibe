@@ -32,8 +32,8 @@ export default function PageKitSiteVitrine() {
       >
         <p>
           Un cabinet imaginaire présente son activité : une section principale qui porte le titre de la page, des
-          sections de contenu qui alternent leur fond, un appel à l&apos;action, puis le pied de page commun à toute
-          appli, avec la signature Solstice Lab et les liens légaux.
+          sections de contenu en alternance, un appel à l&apos;action, puis le pied de page commun à toute appli, avec
+          la signature Solstice Lab et les liens légaux.
         </p>
       </SectionVitrine>
 
