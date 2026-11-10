@@ -83,7 +83,7 @@ comparaison des empreintes attrape toute version qui ne serait pas la bonne.
 | L'appli, à son `HEAD` | Le contenu de chaque fichier tel que git l'enregistre, comme le manifeste, pas le disque. L'arbre doit être propre. |
 | Le catalogue, aux commits A et A' | L'assembleur et `modules.mjs` de chacun, rejoués dans un worktree temporaire (`git worktree add --detach`). `planifier` du commit A' valide B' (`exige`, `entraine`). |
 | Les `CHANGELOG.md` des briques de B', entre A et A' | Les entrées ajoutées en fin de fichier (règle d'entretien des briques), recopiées au rapport. Une « Rupture » vient en tête : un appelant de l'appli doit changer. |
-| L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle que le report change : le socle n'a pas de `CHANGELOG.md` (décision 6). |
+| L'historique du catalogue, de A à A' | Le sujet des commits qui touchent un fichier du socle que le report change. Le journal du socle (`docs/CHANGELOG-socle.md`, décision 6) n'est pas encore lu : il arrive dans l'appli comme tout fichier du socle, et ses entrées se lisent à la main. |
 | L'historique du catalogue, de A à `origin/main` (avec `--ajouter`, où A' = A) | Les commits, fusions exclues, qui touchent le dossier de chaque brique reçue, et le nombre total : le retard de l'appli, dit en tête du rapport. |
 
 Refus en clair, motif et geste à faire, sur le modèle de l'assembleur :
@@ -790,7 +790,7 @@ note :
 | 3 | Les PR des applis restent-elles fusionnées en squash ? | Oui : rien ne change pour qui fusionne. C'est ce qui écarte la branche fournisseur et fait rejouer l'assembleur. |
 | 4 | Manifeste au format 2, versions numérotées du catalogue ? | Format 2 dans la tranche 1 ; l'outil lit encore le format 1. Les versions numérotées viendront plus tard, pour dire où se trouve une correction : l'outil n'en a pas besoin. |
 | 5 | L'outil réécrit-il l'en-tête de `blueprint.md` ? | Oui, `commit_reference` et `briques_assemblees`, jamais le corps. |
-| 6 | Un `CHANGELOG.md` du socle ? | Oui, au moins pour les ruptures et la sécurité, dans un ticket à part de ce chantier. |
+| 6 | Un `CHANGELOG.md` du socle ? | Oui, au moins pour les ruptures et la sécurité, dans un ticket à part de ce chantier. Fait le 2026-11-10 : `docs/CHANGELOG-socle.md`, livré aux applis, aux marqueurs « Rupture » et « Sécurité » (règle d'entretien au `CLAUDE.md`, §7). L'outil ne le lit pas encore. |
 | 7 | Une liste des applis assemblées, pour prévenir d'une correction ? | Pas de liste tenue à la main (forme retenue le 2026-11-10) : elle se déduit des dépôts de l'organisation `solstice-lab` qui portent `catalogue.empreintes.json` (« Hors v1 », puce « Prévenir »). Pour une appli dont le dépôt reste chez le client, un registre hors du dépôt public, plus tard, hors de ce chantier. |
 | 8 | L'outil écrit-il par défaut ? | Oui, sur une branche neuve d'un arbre propre, sans base et sans réseau pour l'appli ; `--a-blanc` donne le rapport seul. |
 

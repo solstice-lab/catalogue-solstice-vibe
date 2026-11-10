@@ -134,7 +134,9 @@ Une brique livrée contient, dans `src/briques/<nom>/` :
   branchée sur lui au catalogue : l'outil de mise à jour l'annonce ainsi « à brancher » ou
   « à rattacher » quand elle s'ajoute à une appli ;
 - un `CHANGELOG.md` : tout changement d'interface publique y ajoute une entrée en
-  fin, dans la PR qui le fait ;
+  fin, dans la PR qui le fait, et toute correction de sécurité une entrée
+  « Sécurité », même sans changement d'interface (hors des briques, au journal du
+  socle, `docs/CHANGELOG-socle.md`) ;
 - ses tests, quand elle porte du code ; ceux des briques existantes comptent un
   test d'isolement, qui refuse tout import hors du socle et des briques
   déclarées dans `exige` ;

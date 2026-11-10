@@ -533,6 +533,9 @@ Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reç
 - `CLAUDE.md` — les règles du harnais, lues par Claude à chaque session.
 - `docs/cicatrices.md` — le registre des leçons des projets précédents : la
   règle, le cas, et ce qui la tient dans le catalogue.
+- `docs/CHANGELOG-socle.md` — le journal des changements du socle (hors des
+  briques, qui ont chacune le leur) : ruptures et corrections de sécurité à
+  reporter. Une appli assemblée le reçoit, et ses mises à jour aussi.
 
 ### Vérifier
 

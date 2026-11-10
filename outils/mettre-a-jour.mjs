@@ -1432,7 +1432,8 @@ function entreesDesJournaux(origine, cible) {
 }
 
 // Le sujet des commits de A à A' qui touchent un fichier du socle que le report
-// change : le socle n'a pas de CHANGELOG.md (décision 6 de la note).
+// change. Le journal du socle (docs/CHANGELOG-socle.md, décision 6 de la note)
+// n'est pas encore lu : ces sujets en tiennent lieu dans le rapport.
 function commitsDuSocle(catalogue, de, a, chemins) {
   const sortie = git(catalogue, "log", "--no-merges", "--reverse", "--format=%x00%h %s", "--name-only", `${de}..${a}`);
   return sortie
