@@ -131,8 +131,8 @@ navigateur : la personne qui pilote le projet vérifie elle-même le rendu.
 - **Interface d'une brique** (`src/briques/*/`) : tout changement d'interface
   publique (symbole, signature, props, option, forme d'un retour) met à jour la
   section « Interface publique » de son README et ajoute une entrée en fin de
-  son `CHANGELOG.md`, dans la même PR : date, ce qui change pour
-  l'appelant, raison. La documentation seule n'en demande pas.
+  son `CHANGELOG.md`, dans la même PR : date, ce qui change pour l'appelant, raison. La documentation seule n'en demande pas.
+- **Sécurité et ruptures** (au catalogue) : une correction de sécurité ajoute une entrée « Sécurité » en fin du `CHANGELOG.md` de la brique touchée, ou de `docs/CHANGELOG-socle.md` hors des briques, **même sans changement d'interface** ; hors des briques, ce qui oblige une appli à changer y ajoute une entrée « Rupture ».
 
 ## 8. Gardes de Claude
 

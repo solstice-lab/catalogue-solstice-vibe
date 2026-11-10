@@ -7,7 +7,8 @@ section « Interface publique » du [README](README.md) dit ce qui compte comme
 interface.
 
 **Règle d'entretien** : tout changement d'interface publique ajoute une entrée
-**en fin** de ce fichier, dans la PR qui le fait. Une entrée dit ce qui change
+**en fin** de ce fichier, dans la PR qui le fait, comme toute correction de
+sécurité (« Sécurité »), même sans changement d'interface. Une entrée dit ce qui change
 pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant doit
 être modifié. Les changements de documentation seule n'y sont pas obligatoires :
 ceux qui précèdent la règle sont listés pour mémoire.
