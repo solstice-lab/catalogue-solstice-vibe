@@ -2504,7 +2504,7 @@ function rubriqueDuSocle(resultat) {
   const lignes = [
     "## Socle",
     "",
-    "Le socle n'a pas de journal : les sujets des commits du catalogue qui touchent un de ses fichiers que ce report change.",
+    "Le journal du socle (`docs/CHANGELOG-socle.md`) n'est pas encore lu ici : les sujets des commits du catalogue qui touchent un de ses fichiers que ce report change en tiennent lieu.",
     "",
   ];
   if (resultat.commitsDuSocle.length === 0) return [...lignes, "Aucun.", ""];
