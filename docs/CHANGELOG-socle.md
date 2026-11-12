@@ -90,3 +90,33 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   propre couleur, `#B8C2D9`. La même teinte est celle de la charte pour la
   barre d'insertion au repos, que les champs sans cadre dérivaient faute de
   token.
+
+## 2026-11-12 · La forme du kit passe à la charte registre · Ajout
+
+- **Ce qui change** : les composants de `src/ui/` prennent la forme de la
+  charte « registre », sans token nouveau. Plus de liseré d'accent (en-tête,
+  modale, appel à l'action, puce des titres), d'ombre (colonne figée d'un
+  `Tableau`) ni de dégradé (`Squelette`). La page d'`AppLayout` est une
+  feuille bordée de filets de structure où les blocs (`Carte`, `.sl-grille`,
+  `.sl-note`) se touchent, au lieu de cartes espacées ; `Carte` et `TuileKPI`
+  n'ont plus de cadre propre. L'en-tête d'`AppLayout` et de `PageVitrine` est
+  une barre collante en cellules sur `--fond-secondaire`, avec l'emblème
+  hexagonal sur aplat d'accent (lien vers l'accueil) ; l'entrée du menu de la
+  page ouverte porte `aria-current="page"` et passe en accent. Le survol d'un
+  élément cliquable remplit son fond d'accent. Libellés, en-têtes et chiffres
+  passent en mono. `SectionVitrine` accepte `fond="secondaire"` et
+  `fond="structure"` ; `fond="surface"` reste lu comme `secondaire`. La
+  signature porte l'emblème et la mention « Agence-conseil Data & IA ».
+  `--couleur-structure-2` ne sert plus aux survols : elle trace les filets
+  d'une bande de structure.
+- **Pour l'appli** : rien à changer pour compiler. À relire à l'écran : un
+  bloc posé dans un `div` intermédiaire, et non directement dans la page ou
+  dans une `.sl-grille`, n'a plus de cadre ; une page vitrine qui alternait
+  `page` et `surface` prend maintenant le fond secondaire une section sur deux.
+  Une appli thématisée vérifie les deux contrastes ajoutés aux garde-fous de
+  la skill `solstice-ui` : structure sur accent, accent sur structure.
+- **Pourquoi** : au passage des tokens à la charte registre, le fond de page
+  est devenu égal à la surface et le jaune pâle presque invisible sur le
+  papier (1,02:1) : les cartes ne se distinguaient plus du fond, ni le badge
+  d'accent, les éléments du calendrier ou l'appel à l'action de leur page.
+  La charte répond par les filets, pas par les fonds.

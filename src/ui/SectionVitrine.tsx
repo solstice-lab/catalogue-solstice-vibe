@@ -20,15 +20,20 @@ export function SectionVitrine({
   /** Ancre visée par un lien de l'en-tête (« #offre »). */
   id?: string;
   principale?: boolean;
-  /** Alterner `page` et `surface` d'une section à l'autre rythme la page : par le fond quand
-   *  le thème les distingue, par les filets de `surface` quand ils sont au même papier
-   *  (thème par défaut). */
-  fond?: "page" | "surface";
+  /** Fond de la bande, à faire alterner pour que chaque partie se distingue d'un coup
+   *  d'œil (charte « registre ») : `page` (le papier), `secondaire` (`--fond-secondaire`),
+   *  `structure` (la couleur de structure, réservée aux temps forts : synthèse, chiffres
+   *  clés, appel principal ; jamais deux à la suite). `surface`, l'ancien nom de
+   *  `secondaire`, reste lu de la même façon. */
+  fond?: "page" | "secondaire" | "structure" | "surface";
   /** Texte, `Carte`s dans `.sl-grille`, `.sl-liste-simple`, `AppelAction`. */
   children?: ReactNode;
 }) {
   const Titre = principale ? "h1" : "h2";
-  const classes = ["sl-vitrine-section", `sl-vitrine-section--${fond}`, principale && "sl-vitrine-section--principale"]
+  // `surface` désignait la bande qui se détache du papier : une appli qui l'emploie
+  // garde le même rendu sans retoucher ses pages.
+  const bande = fond === "surface" ? "secondaire" : fond;
+  const classes = ["sl-vitrine-section", `sl-vitrine-section--${bande}`, principale && "sl-vitrine-section--principale"]
     .filter(Boolean)
     .join(" ");
   return (

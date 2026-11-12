@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { Embleme } from "./Embleme";
 import { MenuNavigation } from "./MenuNavigation";
 import { PiedDePage } from "./PiedDePage";
 
@@ -50,20 +52,25 @@ export function AppLayout({
 }) {
   return (
     <>
+      {/* Une barre en cellules séparées par des filets (charte « registre ») :
+          l'emblème sur aplat d'accent, qui mène à l'accueil, puis le nom, le
+          menu et le contexte. */}
       <header className="sl-entete">
-        <div className="sl-entete-marque">
-          <span className="sl-pastille" aria-hidden />
-          <div>
-            <div className="sl-entete-nom">{nom}</div>
-            {sousTitre && <div className="sl-entete-sous-titre">{sousTitre}</div>}
+        <div className="sl-entete-feuille">
+          <Link href="/" className="sl-entete-embleme" aria-label="Accueil">
+            <Embleme />
+          </Link>
+          <div className="sl-entete-titre">
+            <span className="sl-entete-nom">{nom}</span>
+            {sousTitre && <span className="sl-entete-sous-titre">{sousTitre}</span>}
           </div>
+          {navigation.some((lien) => lien.visible) ? (
+            <MenuFiltre navigation={navigation} />
+          ) : (
+            <MenuNavigation liens={navigation.map(({ libelle, href }) => ({ libelle, href }))} />
+          )}
+          {badge && <span className="sl-entete-badge">{badge}</span>}
         </div>
-        {navigation.some((lien) => lien.visible) ? (
-          <MenuFiltre navigation={navigation} />
-        ) : (
-          <MenuNavigation liens={navigation.map(({ libelle, href }) => ({ libelle, href }))} />
-        )}
-        {badge && <span className="sl-entete-badge">{badge}</span>}
       </header>
       <main className="sl-page">{children}</main>
       <PiedDePage />

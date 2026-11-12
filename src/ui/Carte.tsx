@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 
-/** Bloc de contenu standard : carte sur la surface, bordée d'un filet, titre de section à puce jaune. */
+/**
+ * Bloc de contenu standard, un panneau du registre : sans cadre propre, ce sont
+ * les filets de la page ou de la grille qui le bordent ; titre en petites
+ * capitales mono précédé d'un carré, filet dessous.
+ */
 export function Carte({
   titre,
   actions,

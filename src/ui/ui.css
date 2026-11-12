@@ -2,150 +2,262 @@
  * Kit UI Solstice — styles des composants de src/ui/.
  *
  * Tout passe par les tokens de theme/tokens.css. Une seule exception,
- * volontaire : la signature Solstice Lab (.sl-signature-logo) garde les
- * couleurs de l'agence en dur — elle identifie l'auteur du livrable et ne
- * doit pas se fondre dans le thème du client.
+ * volontaire : la signature Solstice Lab (.sl-signature) garde les couleurs
+ * de l'agence en dur — elle identifie l'auteur du livrable et ne doit pas se
+ * fondre dans le thème du client.
+ *
+ * La forme suit la charte « registre » (solstice-lab.com/new) : une feuille
+ * découpée en blocs par des filets de 1px, plate et à angles droits, sans
+ * ombre ni dégradé. Deux niveaux de filets : la couleur de structure entre
+ * les blocs (en-tête, panneaux, bandes, en-tête de tableau), --bordure à
+ * l'intérieur d'un bloc (lignes, champs). L'accent ne sert jamais de liseré :
+ * il remplit une cellule (emblème, élément actif, badge) ou le fond d'un
+ * élément cliquable survolé, et l'encre posée dessus est la structure.
  */
 
-/* ---------- En-tête d'application ---------- */
+/* Marge intérieure des blocs : une mesure de mise en page, pas un token du
+   thème (un client ne la change pas). Réduite sur téléphone, en fin de
+   fichier. */
+:root {
+  --sl-marge-bloc: 24px;
+}
+
+/* ---------- En-tête (AppLayout, PageVitrine) ----------
+   Une barre collante en cellules, sur le fond secondaire, filet de structure
+   dessous : l'emblème sur aplat d'accent, le nom et son sous-titre, le menu,
+   puis le contexte en structure. L'ancien liseré d'accent sous l'en-tête est
+   parti. La feuille reprend la largeur et les filets verticaux de la page. */
 .sl-entete {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--fond-secondaire);
+  color: var(--texte);
+  border-bottom: 1px solid var(--couleur-structure);
+}
+.sl-entete-feuille {
+  max-width: 1280px;
+  min-height: 64px;
+  margin: 0 auto;
+  display: flex;
+  align-items: stretch;
+  border-inline: 1px solid var(--couleur-structure);
+}
+.sl-entete-feuille > * + * {
+  border-left: 1px solid var(--couleur-structure);
+}
+/* Le contour du navigateur se perd sur l'aplat d'accent : une page se
+   parcourt aussi au clavier. En retrait, pour ne pas être rogné par la
+   cellule voisine. */
+.sl-entete :focus-visible {
+  outline: 2px solid var(--couleur-structure);
+  outline-offset: -4px;
+}
+.sl-entete-embleme {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  background: var(--couleur-accent);
+  color: var(--couleur-structure);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.sl-entete-embleme svg {
+  height: 26px;
+  width: auto;
+}
+a.sl-entete-embleme:hover,
+.sl-vitrine-marque:hover .sl-entete-embleme {
   background: var(--couleur-structure);
   color: var(--texte-sur-structure);
-  padding: 16px 32px;
+}
+.sl-entete-titre {
   display: flex;
   align-items: center;
-  gap: 24px;
-  border-bottom: 3px solid var(--couleur-accent);
-}
-.sl-entete-marque {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.sl-pastille {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--couleur-accent);
-  position: relative;
-  flex-shrink: 0;
-}
-.sl-pastille::after {
-  content: "";
-  position: absolute;
-  inset: 9px;
-  border-radius: 50%;
-  background: var(--couleur-structure);
+  gap: 12px;
+  min-width: 0;
+  padding: 0 20px;
+  white-space: nowrap;
 }
 .sl-entete-nom {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  line-height: 1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
 }
 .sl-entete-sous-titre {
-  font-size: 0.68rem;
-  color: var(--texte-secondaire-sur-structure);
-  font-weight: 300;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin-top: 4px;
+  font-family: var(--police-chiffres);
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sl-nav {
-  display: flex;
-  gap: 4px;
   flex: 1;
+  display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
+  min-width: 0;
 }
 /* Le bouton ne sert qu'au téléphone : voir le point de rupture en fin de fichier. */
 .sl-nav-bouton {
   display: none;
 }
 .sl-nav a {
-  color: var(--texte-sur-structure);
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  color: var(--texte);
   text-decoration: none;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 500;
-  padding: 7px 12px;
-  border-radius: var(--rayon-petit);
-  opacity: 0.82;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
-.sl-nav a:hover {
-  opacity: 1;
-  background: var(--couleur-structure-2);
+/* L'élément survolé et l'élément actif (aria-current, posé par
+   MenuNavigation) remplissent leur cellule d'accent. */
+.sl-nav a:hover,
+.sl-nav a[aria-current="page"] {
+  background: var(--couleur-accent);
+  color: var(--couleur-structure);
 }
 .sl-entete-badge {
+  display: flex;
+  align-items: center;
   margin-left: auto;
-  font-size: 0.64rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  padding: 0 24px;
+  background: var(--couleur-structure);
   color: var(--couleur-accent);
-  background: color-mix(in srgb, var(--couleur-accent) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--couleur-accent) 40%, transparent);
-  padding: 6px 12px;
-  border-radius: var(--rayon-petit);
-  font-weight: 500;
+  font-family: var(--police-chiffres);
+  font-size: 0.8rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
-/* ---------- Page ---------- */
+/* ---------- Page : une feuille du registre ----------
+   La feuille est bordée de deux filets de structure ; ses blocs (cartes,
+   grilles, notes) se touchent et partagent un filet de structure, au lieu de
+   cartes espacées sur un fond. C'est ce filet qui les distingue quand le fond
+   de page et la surface sont au même papier (thème par défaut, où le fond ne
+   les séparait plus). Un enfant qui n'est pas un bloc du kit reçoit la marge
+   d'un bloc, pour ne pas toucher les filets. */
 .sl-page {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 28px 32px 48px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  background: var(--surface);
+  border-inline: 1px solid var(--couleur-structure);
+  border-bottom: 1px solid var(--couleur-structure);
 }
-.sl-grille {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+.sl-page > * {
+  padding: var(--sl-marge-bloc);
+}
+.sl-page > .sl-grille {
+  padding: 0;
+  border: 0;
+}
+.sl-page > .sl-note {
+  padding: 14px var(--sl-marge-bloc);
+  border: 0;
+}
+.sl-page > :not(:first-child) {
+  border-top: 1px solid var(--couleur-structure);
 }
 
-/* ---------- Carte et titres de section ---------- */
+/* ---------- Grille de blocs ----------
+   Les cellules se touchent ; chacune trace son filet gauche et haut, décalée
+   d'un pixel : les filets du bord sont rognés, et c'est le cadre de la grille
+   (ou, dans une page, la feuille et ses voisins) qui les remplace. La
+   dernière cellule ferme sa rangée quand celle-ci est incomplète. */
+.sl-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  border: 1px solid var(--couleur-structure);
+  overflow: hidden;
+}
+.sl-grille > * {
+  min-width: 0;
+  margin: -1px 0 0 -1px;
+  border-top: 1px solid var(--couleur-structure);
+  border-left: 1px solid var(--couleur-structure);
+}
+.sl-grille > :last-child {
+  margin-right: -1px;
+  border-right: 1px solid var(--couleur-structure);
+}
+/* Rangée de chiffres d'un même ensemble (TuileKPI) : filets clairs entre les
+   cellules, comme à l'intérieur d'un bloc. */
+.sl-grille--serree {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.sl-grille--serree > *,
+.sl-grille--serree > :last-child {
+  border-color: var(--bordure);
+}
+
+/* ---------- Carte (panneau) et titres de section ----------
+   Sans cadre propre : la page ou la grille la borde. Son titre est un
+   en-tête de panneau, en petites capitales mono précédées d'un carré, filet
+   de structure dessous ; la puce d'accent verticale est partie avec
+   l'ancienne charte. */
 .sl-carte {
   background: var(--surface);
-  border: 1px solid var(--bordure);
-  border-radius: var(--rayon);
-  padding: 22px;
+  color: var(--texte);
+  padding: var(--sl-marge-bloc);
 }
 .sl-carte-titre {
+  margin: calc(-1 * var(--sl-marge-bloc)) calc(-1 * var(--sl-marge-bloc)) var(--sl-marge-bloc);
+  padding: 14px var(--sl-marge-bloc);
+  border-bottom: 1px solid var(--couleur-structure);
+  font-family: var(--police-chiffres);
   font-size: 0.74rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.06em;
   color: var(--texte-secondaire);
-  font-weight: 600;
-  margin-bottom: 16px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .sl-tick {
-  width: 4px;
-  height: 14px;
-  background: var(--couleur-accent);
-  border-radius: var(--rayon-petit);
+  width: 7px;
+  height: 7px;
+  background: currentColor;
   flex-shrink: 0;
 }
+/* Les boutons du titre gardent la police du texte : sans cela ils héritent
+   de la mono et des capitales de l'en-tête. */
 .sl-carte-actions {
   margin-left: auto;
   display: flex;
   gap: 8px;
+  font-family: var(--police-texte);
   text-transform: none;
   letter-spacing: normal;
 }
 
-/* ---------- Boutons ---------- */
+/* ---------- Boutons ----------
+   Angles droits, sans ombre. Au survol, le primaire et le secondaire
+   remplissent leur fond d'accent, encre de structure, en 0,15 s. Le danger
+   garde sa couleur d'état au survol : un bouton destructif ne se déguise pas
+   en action ordinaire. */
 .sl-bouton {
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--rayon-petit);
   padding: 9px 18px;
   font-family: inherit;
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   cursor: pointer;
-  letter-spacing: 0.3px;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 .sl-bouton:disabled {
   opacity: 0.5;
@@ -153,47 +265,51 @@
 }
 .sl-bouton--primaire {
   background: var(--couleur-structure);
+  border-color: var(--couleur-structure);
   color: var(--texte-sur-structure);
 }
-.sl-bouton--primaire:hover:not(:disabled) {
-  background: var(--couleur-structure-2);
-}
 .sl-bouton--secondaire {
-  background: var(--surface);
-  color: var(--texte-secondaire);
-  border: 1px solid var(--bordure);
+  background: transparent;
+  border-color: var(--couleur-structure);
+  color: var(--couleur-structure);
   font-weight: 500;
 }
+.sl-bouton--primaire:hover:not(:disabled),
 .sl-bouton--secondaire:hover:not(:disabled) {
+  background: var(--couleur-accent);
   border-color: var(--couleur-structure);
   color: var(--couleur-structure);
 }
 .sl-bouton--danger {
   background: var(--negatif);
+  border-color: var(--negatif);
   color: var(--texte-sur-semantique);
 }
 .sl-bouton--danger:hover:not(:disabled) {
   filter: brightness(0.92);
 }
 
-/* ---------- Badges ---------- */
+/* ---------- Badges ----------
+   Étiquettes mono à angles droits, plus de pilule. L'accent est un aplat
+   plein : en jaune pâle, il ne se distinguait plus du papier (1,02:1). */
 .sl-badge {
   display: inline-flex;
   align-items: center;
+  font-family: var(--police-chiffres);
   font-size: 0.7rem;
   font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  letter-spacing: 0.4px;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 7px;
+  border-radius: var(--rayon-petit);
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 .sl-badge--neutre {
-  background: var(--fond-page);
-  border: 1px solid var(--bordure);
+  background: var(--fond-secondaire);
   color: var(--texte-secondaire);
 }
 .sl-badge--accent {
-  background: var(--couleur-accent-fond);
+  background: var(--couleur-accent);
   color: var(--couleur-structure);
 }
 .sl-badge--positif {
@@ -230,12 +346,13 @@
 .sl-champ:focus-within {
   background: var(--couleur-accent-fond);
 }
+/* Libellé mono, sans capitales : une ligne de registre au-dessus de la
+   valeur (charte « registre »). */
 .sl-champ-label {
+  font-family: var(--police-chiffres);
   font-size: 0.74rem;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--texte-secondaire);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
 }
 /* Message de format ajouté au libellé : le rouge de la barre ne porte jamais
    l'information seul (rouge et vert, la paire que les daltoniens distinguent
@@ -448,20 +565,22 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 }
 
 /* ---------- Fiche (lecture seule) ---------- */
+/* Lignes de registre : libellé mono, valeur, filet clair entre deux lignes. */
 .sl-fiche {
   display: grid;
   grid-template-columns: 160px 1fr;
-  row-gap: 12px;
   column-gap: 18px;
   font-size: 0.88rem;
 }
+.sl-fiche dt,
+.sl-fiche dd {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bordure);
+}
 .sl-fiche dt {
+  font-family: var(--police-chiffres);
   font-size: 0.74rem;
-  font-weight: 600;
   color: var(--texte-secondaire);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  align-self: center;
 }
 .sl-fiche dd {
   margin: 0;
@@ -496,19 +615,19 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   gap: 8px;
 }
 .sl-tableau-export {
-  background: var(--surface);
-  color: var(--texte-secondaire);
-  border: 1px solid var(--bordure);
+  background: transparent;
+  color: var(--couleur-structure);
+  border: 1px solid var(--couleur-structure);
   border-radius: var(--rayon-petit);
   padding: 5px 12px;
-  font-family: inherit;
-  font-size: 0.76rem;
+  font-family: var(--police-chiffres);
+  font-size: 0.74rem;
   font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s;
 }
 .sl-tableau-export:hover:not(:disabled) {
-  border-color: var(--couleur-structure);
-  color: var(--couleur-structure);
+  background: var(--couleur-accent);
 }
 .sl-tableau-export:disabled {
   opacity: 0.6;
@@ -529,29 +648,35 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   border-collapse: collapse;
   font-size: 0.86rem;
 }
+/* L'en-tête sépare deux blocs (les titres et les lignes) : filet de
+   structure, quand les lignes entre elles n'ont qu'un filet clair. Fond
+   opaque, pour les volets figés. */
 .sl-tableau th {
   text-align: left;
   padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--bordure);
+  border-bottom: 1px solid var(--couleur-structure);
   vertical-align: top;
-  background: var(--fond-page);
+  background: var(--surface);
 }
 .sl-tableau-tri {
   background: none;
   border: none;
-  padding: 0;
+  padding: 2px 4px;
+  margin: -2px -4px;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 600;
+  font-family: var(--police-chiffres);
+  font-size: 0.74rem;
+  font-weight: 500;
   color: var(--texte-secondaire);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .sl-tableau-tri:hover {
+  background: var(--couleur-accent);
   color: var(--couleur-structure);
 }
 .sl-tableau-fleche {
@@ -585,11 +710,15 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 .sl-tableau tbody tr:last-child td {
   border-bottom: none;
 }
+.sl-tableau tbody tr {
+  transition: background 0.15s;
+}
 .sl-tableau tbody tr:hover {
   background: var(--fond-secondaire);
 }
 .sl-chiffres {
   font-family: var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
   text-align: right;
   font-weight: 500;
   white-space: nowrap;
@@ -601,14 +730,20 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 }
 /* En-tête sans tri (mode hiérarchique : l'ordre des lignes est structurel). */
 .sl-tableau-entete-fixe {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 600;
+  font-family: var(--police-chiffres);
+  font-size: 0.74rem;
+  font-weight: 500;
   color: var(--texte-secondaire);
 }
+/* Une ligne qui mène au détail est un élément cliquable : son survol passe à
+   l'accent, encre de structure, quand une ligne inerte n'a que le fond
+   secondaire. */
 .sl-tableau-ligne-cliquable {
   cursor: pointer;
+}
+.sl-tableau tbody tr.sl-tableau-ligne-cliquable:hover {
+  background: var(--couleur-accent);
+  color: var(--couleur-structure);
 }
 
 /* ---------- Mode hiérarchique (déplis) ---------- */
@@ -662,6 +797,9 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 .sl-tableau-defilement--volets tbody tr:hover td:first-child {
   background: var(--fond-secondaire);
 }
+.sl-tableau-defilement--volets tbody tr.sl-tableau-ligne-cliquable:hover td:first-child {
+  background: var(--couleur-accent);
+}
 .sl-tableau-defilement--volets thead th:first-child {
   z-index: 3;
 }
@@ -670,9 +808,11 @@ body:not(.is-typing) .ed.is-next.breathe .car {
    Fond opaque, sans quoi les autres colonnes défileraient en transparence
    dessous. Le survol de ligne est répété : le fond propre de la cellule
    masquerait celui de la ligne. `top: 0` garde l'en-tête figé en haut quand
-   le tableau est aussi en volets figés. L'ombre qui marque le bord ne
+   le tableau est aussi en volets figés. Le filet qui marque le bord ne
    s'affiche que sous 1024 px : au-delà le tableau tient, rien ne défile
-   dessous et le rendu reste celui d'avant. */
+   dessous. C'est un filet et non une ombre (charte « registre », plate) ;
+   tracé par un pseudo-élément, car la bordure d'une cellule d'un tableau à
+   bordures fusionnées reste en place quand la cellule défile. */
 .sl-tableau th.sl-tableau-figee-droite,
 .sl-tableau td.sl-tableau-figee-droite {
   position: sticky;
@@ -689,10 +829,19 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 .sl-tableau tbody tr:hover td.sl-tableau-figee-droite {
   background: var(--fond-secondaire);
 }
+.sl-tableau tbody tr.sl-tableau-ligne-cliquable:hover td.sl-tableau-figee-droite {
+  background: var(--couleur-accent);
+}
 @media (max-width: 1023px) {
-  .sl-tableau th.sl-tableau-figee-droite,
-  .sl-tableau td.sl-tableau-figee-droite {
-    box-shadow: -6px 0 6px -6px color-mix(in srgb, var(--couleur-structure) 25%, transparent);
+  .sl-tableau th.sl-tableau-figee-droite::before,
+  .sl-tableau td.sl-tableau-figee-droite::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: var(--couleur-structure);
   }
 }
 
@@ -703,11 +852,15 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   gap: 12px;
   flex-wrap: wrap;
   padding: 10px 14px;
+  /* Le jaune pâle se confond avec le papier (1,02:1) : c'est le filet de
+     structure dessous qui détache la barre des lignes. */
   background: var(--couleur-accent-fond);
-  border-bottom: 1px solid var(--bordure);
+  border-bottom: 1px solid var(--couleur-structure);
   font-size: 0.8rem;
 }
 .sl-tableau-lot-compte {
+  font-family: var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 .sl-tableau-lot-actions {
@@ -736,26 +889,30 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 }
 
 /* ---------- Tuile KPI ---------- */
+/* Une cellule de la rangée de chiffres : sans cadre propre, la grille la
+   borde. */
 .sl-tuile-kpi {
   background: var(--surface);
-  border: 1px solid var(--bordure);
-  border-radius: var(--rayon);
-  padding: 16px 18px;
+  color: var(--texte);
+  padding: var(--sl-marge-bloc);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .sl-tuile-kpi-libelle {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 600;
+  font-family: var(--police-chiffres);
+  font-size: 0.74rem;
   color: var(--texte-secondaire);
 }
 .sl-tuile-kpi-valeur {
   font-family: var(--police-chiffres);
-  font-size: 1.55rem;
-  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.7rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   line-height: 1.1;
 }
 .sl-tuile-kpi-pied {
@@ -771,13 +928,22 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 /* Tuile qui mène à l'écran de détail : même allure, le survol dit qu'elle
-   se clique. */
+   se clique en remplissant la cellule d'accent, encre de structure. Le
+   contour du clavier se pose en retrait : la grille rogne ce qui dépasse. */
 .sl-tuile-kpi--lien {
-  color: inherit;
   text-decoration: none;
 }
+.sl-tuile-kpi--lien:focus-visible {
+  outline: 2px solid var(--couleur-structure);
+  outline-offset: -4px;
+}
 .sl-tuile-kpi--lien:hover {
-  border-color: var(--couleur-structure);
+  background: var(--couleur-accent);
+}
+.sl-tuile-kpi--lien:hover,
+.sl-tuile-kpi--lien:hover .sl-tuile-kpi-libelle,
+.sl-tuile-kpi--lien:hover .sl-tuile-kpi-aide {
+  color: var(--couleur-structure);
 }
 
 /* ---------- Calendrier mensuel (GrilleMois, NavigationMois) ---------- */
@@ -798,6 +964,8 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 .sl-navigation-mois-titre::first-letter {
   text-transform: uppercase;
 }
+/* Comme un tableau : filet de structure sous la ligne des jours, filets
+   clairs entre les semaines et les jours. */
 .sl-grille-mois {
   border: 1px solid var(--bordure);
   border-radius: var(--rayon);
@@ -811,13 +979,14 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 .sl-grille-mois-ligne + .sl-grille-mois-ligne {
   border-top: 1px solid var(--bordure);
 }
+.sl-grille-mois-ligne:first-child + .sl-grille-mois-ligne {
+  border-top-color: var(--couleur-structure);
+}
 .sl-grille-mois-entete {
   padding: 8px 10px;
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-family: var(--police-chiffres);
+  font-size: 0.74rem;
   color: var(--texte-secondaire);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
 }
 .sl-grille-mois-jour {
   display: flex;
@@ -841,11 +1010,12 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   padding: 1px 6px;
   border-radius: var(--rayon-petit);
   font-family: var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
   font-size: 0.78rem;
   text-align: center;
 }
-/* Le jour courant en structure plutôt qu'en accent : l'accent se dose, et
-   la seule touche de l'écran est le fond doux des éléments du mois. */
+/* Le jour courant en structure plutôt qu'en accent : l'accent se dose, il
+   reste au survol des éléments du mois. */
 .sl-grille-mois-numero--aujourdhui {
   background: var(--couleur-structure);
   color: var(--texte-sur-structure);
@@ -856,12 +1026,17 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   flex-direction: column;
   gap: 4px;
 }
+/* Au repos, le fond secondaire : le jaune pâle d'avant ne se voyait plus sur
+   le papier (1,02:1). Au survol, l'accent plein d'un élément cliquable. */
 .sl-grille-mois-element {
   display: block;
   padding: 3px 6px;
   border-radius: var(--rayon-petit);
-  background: var(--couleur-accent-fond);
+  background: var(--fond-secondaire);
   color: var(--texte);
+  transition:
+    background 0.15s,
+    color 0.15s;
   font-size: 0.74rem;
   line-height: 1.3;
   text-decoration: none;
@@ -870,31 +1045,41 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   white-space: nowrap;
 }
 .sl-grille-mois-element:hover {
-  outline: 1px solid var(--couleur-structure);
+  background: var(--couleur-accent);
+  color: var(--couleur-structure);
 }
 
 /* ---------- Liste en cartes (téléphone) ---------- */
+/* Des lignes qui se touchent dans un cadre clair, plutôt que des cartes
+   espacées : c'est un seul bloc. */
 .sl-liste-cartes {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+}
+.sl-liste-cartes > li + li {
+  border-top: 1px solid var(--bordure);
 }
 .sl-liste-carte {
   display: flex;
   flex-direction: column;
   gap: 10px;
   background: var(--surface);
-  border: 1px solid var(--bordure);
-  border-radius: var(--rayon);
   padding: 14px 16px;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .sl-liste-carte--lien {
   color: inherit;
   text-decoration: none;
 }
-.sl-liste-carte--lien:hover {
-  border-color: var(--couleur-structure);
+.sl-liste-carte--lien:hover,
+.sl-liste-carte--lien:hover dt {
+  background: var(--couleur-accent);
+  color: var(--couleur-structure);
 }
 .sl-liste-carte-entete {
   display: flex;
@@ -914,11 +1099,9 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   font-size: 0.84rem;
 }
 .sl-liste-carte-champs dt {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-family: var(--police-chiffres);
+  font-size: 0.72rem;
   color: var(--texte-secondaire);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
   align-self: center;
 }
 .sl-liste-carte-champs dd {
@@ -934,7 +1117,9 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   display: none;
 }
 
-/* ---------- Squelette de chargement ---------- */
+/* ---------- Squelette de chargement ----------
+   Des barres en aplat qui pulsent : le reflet en dégradé de l'ancienne
+   charte est parti (charte « registre », plate). */
 .sl-squelette {
   display: flex;
   flex-direction: column;
@@ -944,9 +1129,8 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   display: block;
   height: 14px;
   border-radius: var(--rayon-petit);
-  background: linear-gradient(90deg, var(--bordure), var(--fond-page), var(--bordure));
-  background-size: 200% 100%;
-  animation: sl-scintillement 1.2s ease-in-out infinite;
+  background: var(--fond-secondaire);
+  animation: sl-pulsation 1.6s ease-in-out infinite;
 }
 .sl-squelette span:nth-child(2n) {
   width: 85%;
@@ -954,12 +1138,13 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 .sl-squelette span:nth-child(3n) {
   width: 60%;
 }
-@keyframes sl-scintillement {
-  from {
-    background-position: 200% 0;
+@keyframes sl-pulsation {
+  0%,
+  100% {
+    opacity: 1;
   }
-  to {
-    background-position: -200% 0;
+  50% {
+    opacity: 0.4;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -969,9 +1154,11 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 }
 
 /* ---------- Pages d'erreur (error.tsx, not-found.tsx) ---------- */
+/* Une feuille courte, fermée par ses quatre filets, posée sous l'en-tête. */
 .sl-page-erreur {
   max-width: 640px;
-  padding-top: 60px;
+  margin-top: 60px;
+  border-top: 1px solid var(--couleur-structure);
 }
 .sl-page-erreur p {
   font-size: 0.9rem;
@@ -982,8 +1169,7 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 }
 .sl-erreur-digest {
   font-family: var(--police-chiffres);
-  background: var(--fond-page);
-  border: 1px solid var(--bordure);
+  background: var(--fond-secondaire);
   border-radius: var(--rayon-petit);
   padding: 2px 6px;
 }
@@ -1016,10 +1202,13 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   padding: 24px;
   z-index: 100;
 }
+/* Un bloc fermé par un filet de structure ; l'ancien liseré d'accent en haut
+   est parti. */
 .sl-modale {
   background: var(--surface);
+  color: var(--texte);
+  border: 1px solid var(--couleur-structure);
   border-radius: var(--rayon);
-  border-top: 3px solid var(--couleur-accent);
   max-width: 560px;
   width: 100%;
   max-height: 85vh;
@@ -1031,11 +1220,13 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 22px 0;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--couleur-structure);
 }
 .sl-modale-entete h2 {
   font-size: 1.05rem;
   font-weight: 600;
+  letter-spacing: -0.015em;
 }
 .sl-modale-fermer {
   background: none;
@@ -1045,12 +1236,16 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   color: var(--texte-secondaire);
   cursor: pointer;
   padding: 2px 6px;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .sl-modale-fermer:hover {
-  color: var(--texte);
+  background: var(--couleur-accent);
+  color: var(--couleur-structure);
 }
 .sl-modale-corps {
-  padding: 16px 22px 20px;
+  padding: 18px 22px 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -1065,32 +1260,20 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 }
 
 /* ---------- Site vitrine (PageVitrine, SectionVitrine, AppelAction) ---------- */
-/* Le même en-tête à la charte que les outils (structure, liseré d'accent) :
-   ses contrastes sont ceux que le thème garantit déjà. Son contenu s'aligne
-   sur la largeur des sections. */
-.sl-vitrine-entete {
-  background: var(--couleur-structure);
-  color: var(--texte-sur-structure);
-  border-bottom: 3px solid var(--couleur-accent);
-}
-.sl-vitrine-entete-contenu {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 16px 32px;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
+/* Les cellules de l'en-tête des outils (.sl-entete, plus haut) ; ici
+   l'emblème et le nom forment un seul lien vers l'accueil. */
 .sl-vitrine-marque {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  color: var(--texte-sur-structure);
+  align-items: stretch;
+  min-width: 0;
+  color: var(--texte);
   text-decoration: none;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  line-height: 1.2;
+}
+.sl-vitrine-marque .sl-entete-nom {
+  display: flex;
+  align-items: center;
+  padding: 8px 20px;
+  border-left: 1px solid var(--couleur-structure);
   /* Un nom long sans espace débordait de l'écran d'un téléphone. */
   min-width: 0;
   overflow-wrap: anywhere;
@@ -1098,14 +1281,11 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 .sl-vitrine-entete .sl-nav {
   justify-content: flex-end;
 }
-/* Le contour par défaut du navigateur se perd sur le fond de structure : une
-   page publique se parcourt aussi au clavier. */
-.sl-vitrine-entete :focus-visible {
-  outline: 2px solid var(--texte-sur-structure);
-  outline-offset: 2px;
-}
 /* Sans liens, l'action se range quand même à droite. */
 .sl-vitrine-entete-action {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -1117,28 +1297,40 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   justify-content: center;
   text-decoration: none;
 }
+/* Une section est une bande pleine largeur, fermée par un filet de
+   structure, qui porte une feuille centrée bordée de deux filets : d'une
+   bande à l'autre, les filets verticaux de l'en-tête descendent jusqu'au
+   pied. Les bandes alternent papier, fond secondaire et structure, pour que
+   chaque partie se distingue d'un coup d'œil ; la structure est réservée aux
+   temps forts. */
 .sl-vitrine-section {
-  padding: 56px 32px;
+  border-bottom: 1px solid var(--couleur-structure);
 }
 .sl-vitrine-section--page {
   background: var(--fond-page);
 }
-.sl-vitrine-section--surface {
-  background: var(--surface);
-  border-top: 1px solid var(--bordure);
-  border-bottom: 1px solid var(--bordure);
+.sl-vitrine-section--secondaire {
+  background: var(--fond-secondaire);
+}
+.sl-vitrine-section--structure {
+  background: var(--couleur-structure);
+  color: var(--texte-sur-structure);
 }
 .sl-vitrine-section-contenu {
-  max-width: 1120px;
+  max-width: 1280px;
   margin: 0 auto;
+  padding: 56px 40px;
+  border-inline: 1px solid var(--couleur-structure);
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 .sl-vitrine-section-titre {
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1.25;
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  text-wrap: balance;
   color: var(--texte);
 }
 /* Au-delà de 70 signes, l'œil perd la ligne suivante : le texte courant ne
@@ -1152,17 +1344,35 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   font-size: 1.05rem;
   color: var(--texte-secondaire);
 }
-.sl-vitrine-section--principale {
-  padding: 72px 32px 64px;
+.sl-vitrine-section--principale .sl-vitrine-section-contenu {
+  padding: 72px 40px 64px;
 }
 .sl-vitrine-section--principale .sl-vitrine-section-titre {
-  font-size: 2.3rem;
+  font-size: 2.5rem;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
   max-width: 24ch;
 }
 .sl-vitrine-section--principale .sl-vitrine-section-intro {
   font-size: 1.15rem;
   color: var(--texte);
 }
+/* Bande de structure : filets verticaux en nuance de structure (le filet de
+   structure s'y perdrait), titre et chapô aux couleurs posées sur la
+   structure. Cartes, tuiles et appel à l'action y restent des cellules
+   claires, qui reprennent leur propre encre. */
+.sl-vitrine-section--structure .sl-vitrine-section-contenu {
+  border-inline-color: var(--couleur-structure-2);
+}
+.sl-vitrine-section--structure .sl-vitrine-section-titre {
+  color: var(--texte-sur-structure);
+}
+.sl-vitrine-section--structure .sl-vitrine-section-intro {
+  color: var(--texte-secondaire-sur-structure);
+}
+/* Un bloc fermé par un filet de structure : le jaune pâle seul se
+   confondait avec le papier (1,02:1). L'ancien liseré d'accent à gauche est
+   parti. */
 .sl-appel-action {
   display: flex;
   align-items: center;
@@ -1170,7 +1380,7 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   gap: 20px 32px;
   padding: 28px 32px;
   background: var(--couleur-accent-fond);
-  border-left: 4px solid var(--couleur-accent);
+  border: 1px solid var(--couleur-structure);
   border-radius: var(--rayon);
   color: var(--texte);
 }
@@ -1183,7 +1393,8 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 }
 .sl-appel-action-titre {
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 .sl-appel-action-actions {
   display: flex;
@@ -1195,56 +1406,59 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   font-size: 0.9rem;
 }
 
-/* ---------- Note de bas de contenu ---------- */
+/* ---------- Note de bas de contenu ----------
+   Une note de lecture sur le jaune pâle, bordée d'un filet clair : sans lui,
+   le fond seul se confondait avec le papier (1,02:1). Posée directement dans
+   une page, c'est un bloc de la feuille (voir .sl-page). */
 .sl-note {
-  font-size: 0.72rem;
-  color: var(--texte-secondaire);
+  font-size: 0.78rem;
+  color: var(--texte);
   line-height: 1.5;
-  padding: 14px 16px;
-  background: var(--fond-page);
-  border-radius: var(--rayon-petit);
+  padding: 12px 16px;
+  background: var(--couleur-accent-fond);
   border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
 }
 .sl-note b {
   color: var(--texte);
 }
 
 /* ---------- Signature Solstice Lab (gardée dans les livraisons Solstice Lab)---------- */
+/* Pied mono discret, dans le prolongement des filets verticaux de la page. */
 .sl-signature {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 20px 32px 40px;
+  padding: 20px var(--sl-marge-bloc) 28px;
   display: flex;
   align-items: center;
   gap: 10px;
+  border-inline: 1px solid var(--couleur-structure);
   color: var(--texte-secondaire);
+  font-family: var(--police-chiffres);
   font-size: 0.74rem;
-  border-top: 1px solid var(--bordure);
 }
 /* Couleurs Solstice en dur, hors contrat de thème : la signature identifie
-   l'agence, elle ne se fond pas dans la charte du client. */
+   l'agence, elle ne se fond pas dans la charte du client. L'emblème
+   (Embleme.tsx) prend la couleur du texte : ici le navy de l'agence. */
 .sl-signature-logo {
-  width: 18px;
   height: 18px;
-  border-radius: 50%;
-  background: #ffc72c;
-  position: relative;
+  width: auto;
   flex-shrink: 0;
-}
-.sl-signature-logo::after {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  border-radius: 50%;
-  background: #162447;
+  color: #162447;
 }
 .sl-signature a {
   color: var(--texte);
   font-weight: 600;
   text-decoration: none;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .sl-signature a:hover {
-  text-decoration: underline;
+  background: #ffc72c;
+  color: #162447;
 }
 /* Les liens des mentions légales et de la confidentialité sont le contenu du
    client, pas celui de l'agence : ils suivent le thème et restent en retrait
@@ -1259,19 +1473,41 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   color: var(--texte-secondaire);
   font-weight: 400;
 }
+.sl-signature .sl-signature-liens a:hover {
+  background: var(--couleur-accent);
+  color: var(--couleur-structure);
+}
 
 /* ---------- Point de rupture minimal ---------- */
 @media (max-width: 720px) {
-  .sl-entete {
-    padding: 14px 18px;
-    flex-wrap: wrap;
-    gap: 12px;
+  :root {
+    --sl-marge-bloc: 18px;
   }
-  .sl-page {
-    padding: 20px 18px 40px;
+  /* En-tête : emblème, nom et « Menu » sur la première ligne ; le menu
+     ouvert, puis le contexte (ou l'action d'une page vitrine), chacun sur
+     toute la largeur dessous, séparés par un filet. */
+  .sl-entete-feuille {
+    flex-wrap: wrap;
+    min-height: 56px;
+  }
+  .sl-entete-embleme {
+    width: 56px;
+    min-height: 56px;
+  }
+  .sl-entete-titre {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 14px;
+    white-space: normal;
+  }
+  .sl-entete-sous-titre {
+    max-width: 100%;
+    white-space: nowrap;
   }
   .sl-signature {
-    padding: 16px 18px 32px;
     /* Signature et liens du pied ne tiennent pas sur une ligne d'un petit
        téléphone : les liens passent dessous, toujours à droite. */
     flex-wrap: wrap;
@@ -1285,54 +1521,71 @@ body:not(.is-typing) .ed.is-next.breathe .car {
     flex-wrap: wrap;
   }
   /* La colonne de libellés de 160 px laissait une centaine de pixels à la
-     valeur (objet d'un contrat sur cinq lignes) : libellé au-dessus. */
+     valeur (objet d'un contrat sur cinq lignes) : libellé au-dessus, collé à
+     sa valeur, le filet sous la paire. */
   .sl-fiche {
     grid-template-columns: 1fr;
-    row-gap: 4px;
+  }
+  .sl-fiche dt {
+    padding-bottom: 0;
+    border-bottom: 0;
   }
   .sl-fiche dd {
-    margin-bottom: 10px;
+    padding-top: 2px;
   }
   /* Menu replié derrière un bouton : quinze liens empilés occupaient presque
      tout le premier écran (relevé en recette). Le bouton reste sur la
      ligne de la marque ; les liens, une fois ouverts, prennent la largeur
      entière sous l'en-tête. 44 px de haut : la cible tactile minimale. */
   .sl-nav-bouton {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    margin-left: auto;
     min-height: 44px;
-    padding: 0 16px;
+    padding: 0 18px;
     background: transparent;
-    color: var(--texte-sur-structure);
-    border: 1px solid color-mix(in srgb, var(--texte-sur-structure) 40%, transparent);
-    border-radius: var(--rayon-petit);
-    font-family: inherit;
+    color: var(--texte);
+    border: 0;
+    border-left: 1px solid var(--couleur-structure);
+    font-family: var(--police-chiffres);
     font-size: 0.86rem;
     font-weight: 500;
     cursor: pointer;
+    transition:
+      background 0.15s,
+      color 0.15s;
+  }
+  .sl-nav-bouton:hover {
+    background: var(--couleur-accent);
+    color: var(--couleur-structure);
   }
   .sl-nav-bouton[aria-expanded="true"] {
-    background: var(--couleur-structure-2);
+    background: var(--couleur-structure);
+    color: var(--couleur-accent);
   }
   .sl-nav {
     display: none;
     order: 1;
     flex: 1 1 100%;
     flex-direction: column;
-    gap: 2px;
+    border-left: 0;
+    border-top: 1px solid var(--couleur-structure);
   }
   .sl-nav[data-ouvert] {
     display: flex;
   }
-  /* Le bouton prend déjà l'espace libre de la ligne : sans cela, le badge
-     s'en partage la moitié et, passé à la ligne, se retrouve seul à droite. */
-  .sl-entete-badge {
-    margin-left: 0;
-  }
   .sl-nav a {
-    padding: 12px;
+    min-height: 44px;
+    padding: 12px 18px;
     font-size: 0.92rem;
+  }
+  .sl-entete-badge {
+    order: 2;
+    flex: 1 1 100%;
+    margin-left: 0;
+    padding: 8px 18px;
+    border-left: 0;
+    border-top: 1px solid var(--couleur-structure);
+    white-space: normal;
   }
   .sl-seulement-ordinateur {
     display: none;
@@ -1343,10 +1596,11 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   /* Site vitrine : marges réduites, titres ramenés à la largeur d'un
      téléphone, actions de l'appel empilées sur toute la largeur et hautes de
      44 px (cible tactile minimale). */
-  .sl-vitrine-entete-contenu {
-    padding: 14px 18px;
-    flex-wrap: wrap;
-    gap: 12px;
+  .sl-vitrine-marque {
+    flex: 1 1 0;
+  }
+  .sl-vitrine-marque .sl-entete-nom {
+    padding: 8px 14px;
   }
   /* Nom et « Menu » sur la première ligne, l'action sur toute la largeur en
      dernier : à côté du bouton, elle passait à la ligne dès 360 px et le menu
@@ -1355,21 +1609,24 @@ body:not(.is-typing) .ed.is-next.breathe .car {
     order: 2;
     flex: 1 1 100%;
     margin-left: 0;
+    padding: 10px 18px;
+    border-left: 0;
+    border-top: 1px solid var(--couleur-structure);
   }
   .sl-vitrine-entete-action .sl-bouton {
     width: 100%;
   }
-  .sl-vitrine-section {
+  .sl-vitrine-section-contenu {
     padding: 40px 18px;
   }
-  .sl-vitrine-section--principale {
+  .sl-vitrine-section--principale .sl-vitrine-section-contenu {
     padding: 48px 18px 40px;
   }
   .sl-vitrine-section-titre {
-    font-size: 1.35rem;
+    font-size: 1.4rem;
   }
   .sl-vitrine-section--principale .sl-vitrine-section-titre {
-    font-size: 1.75rem;
+    font-size: 1.85rem;
   }
   .sl-appel-action {
     padding: 22px 18px;

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Embleme } from "./Embleme";
 import { MenuNavigation } from "./MenuNavigation";
 import { PiedDePage } from "./PiedDePage";
 
@@ -24,18 +25,22 @@ export function PageVitrine({
 }: {
   nom: string;
   liens?: { libelle: string; href: string }[];
-  /** Un `LienBouton variante="secondaire"` (« Nous contacter ») : le primaire se fondrait dans l'en-tête. */
+  /** Un `LienBouton variante="secondaire"` (« Nous contacter ») : le primaire revient à l'appel à l'action de la page, un seul par écran. */
   action?: ReactNode;
   /** Des `SectionVitrine`, la première `principale`. */
   children: ReactNode;
 }) {
   return (
     <>
-      <header className="sl-vitrine-entete">
-        <div className="sl-vitrine-entete-contenu">
+      {/* Les cellules de l'en-tête d'AppLayout ; l'emblème et le nom forment
+          ici un seul lien vers l'accueil. */}
+      <header className="sl-entete sl-vitrine-entete">
+        <div className="sl-entete-feuille">
           <Link href="/" className="sl-vitrine-marque">
-            <span className="sl-pastille" aria-hidden />
-            {nom}
+            <span className="sl-entete-embleme">
+              <Embleme />
+            </span>
+            <span className="sl-entete-nom">{nom}</span>
           </Link>
           <MenuNavigation liens={liens} />
           {action && <div className="sl-vitrine-entete-action">{action}</div>}

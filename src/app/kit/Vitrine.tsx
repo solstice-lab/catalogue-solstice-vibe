@@ -264,7 +264,9 @@ export function Vitrine({ nom, navigation }: { nom: string; navigation: LienNavi
           </>
         }
       >
-        <p>Fermeture par la touche Échap, le voile ou la croix. Le liseré d&apos;accent en haut vient du thème.</p>
+        <p>
+          Fermeture par la touche Échap, le voile ou la croix. Un bloc fermé par un filet de structure, sans liseré.
+        </p>
       </Modale>
     </AppLayout>
   );

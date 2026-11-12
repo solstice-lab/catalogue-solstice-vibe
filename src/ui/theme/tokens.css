@@ -13,23 +13,23 @@
  */
 :root {
   /* ---- Identité (varie selon le client) ---- */
-  --couleur-structure: #162447; /* header, texte fort, traits structurants */
-  --couleur-structure-2: #3b4a75; /* survols sur fond structure : doit s'y distinguer */
-  --couleur-accent: #ffc72c; /* accent unique, à doser : liserés, puces */
-  --couleur-accent-fond: #fffbea; /* fonds doux, badges, encadrés d'aide */
+  --couleur-structure: #162447; /* filets entre les blocs, bouton primaire, texte fort, bande de temps fort */
+  --couleur-structure-2: #3b4a75; /* nuance sur fond structure : les filets s'y dessinent, doit s'y distinguer */
+  --couleur-accent: #ffc72c; /* accent unique, en aplat : emblème, élément actif, survol ; jamais en liseré */
+  --couleur-accent-fond: #fffbea; /* fonds doux : note, appel à l'action, champ en saisie ; toujours bordé d'un filet */
 
   --texte: #162447;
-  --texte-secondaire: #5a6478; /* légendes, labels, titres de section */
+  --texte-secondaire: #5a6478; /* légendes, libellés, en-têtes de panneau */
   --texte-sur-structure: #ffffff; /* texte posé sur --couleur-structure */
-  --texte-secondaire-sur-structure: #b8c2d9; /* sous-titre posé sur --couleur-structure */
+  --texte-secondaire-sur-structure: #b8c2d9; /* chapô d'une bande de structure */
 
   /* Fond et surfaces au même papier : la charte registre ne pose pas de
-     cartes sur un fond gris. Les deux tokens restent distincts pour un client
-     qui, lui, en a. */
+     cartes sur un fond gris, ce sont les filets qui séparent les blocs. Les
+     deux tokens restent distincts pour un client qui, lui, en a. */
   --fond-page: #fcfcfd;
-  --surface: #fcfcfd; /* cartes, modales ; les champs n'ont pas de fond propre */
-  --fond-secondaire: #e8eef7; /* fond neutre qui se détache du papier : survol de ligne, jour hors du mois */
-  --bordure: #e2e8f4;
+  --surface: #fcfcfd; /* la feuille et ses blocs, modales ; les champs n'ont pas de fond propre */
+  --fond-secondaire: #e8eef7; /* fond qui se détache du papier : en-tête, bande alternée, survol de ligne, badge neutre */
+  --bordure: #e2e8f4; /* filet clair, à l'intérieur d'un bloc */
   /* Barre d'insertion d'un champ au repos : seul signe qu'on peut y écrire,
      presque muette mais visible sur --surface. */
   --curseur-repos: #b8c2d9;
