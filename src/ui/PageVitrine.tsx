@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Embleme } from "./Embleme";
 import { MenuNavigation } from "./MenuNavigation";
 import { PiedDePage } from "./PiedDePage";
+import { MARQUE } from "./theme/Marque";
 
 /**
  * Squelette d'une page publique de site vitrine : en-tête horizontal (nom du
@@ -32,14 +32,13 @@ export function PageVitrine({
 }) {
   return (
     <>
-      {/* Les cellules de l'en-tête d'AppLayout ; l'emblème et le nom forment
-          ici un seul lien vers l'accueil. */}
+      {/* Les cellules de l'en-tête d'AppLayout ; la marque du thème et le nom
+          forment ici un seul lien vers l'accueil. Sans marque
+          (theme/Marque.tsx), le nom seul. */}
       <header className="sl-entete sl-vitrine-entete">
         <div className="sl-entete-feuille">
           <Link href="/" className="sl-vitrine-marque">
-            <span className="sl-entete-embleme">
-              <Embleme />
-            </span>
+            {MARQUE && <span className="sl-entete-marque">{MARQUE}</span>}
             <span className="sl-entete-nom">{nom}</span>
           </Link>
           <MenuNavigation liens={liens} />

@@ -10,17 +10,17 @@ Deux couches, à ne jamais mélanger :
 1. **Les invariants Solstice** — la construction et le comportement, en dur
    dans les composants de `src/ui/`. Identiques chez tous les clients : c'est
    la signature de qualité de l'agence.
-2. **Le thème client** — l'identité visuelle, entièrement dans
-   `src/ui/theme/tokens.css` (+ les polices : `src/app/layout.tsx` et les
-   fichiers de `src/ui/theme/polices/`).
+2. **Le thème client** — l'identité visuelle, dans `src/ui/theme/` (`tokens.css`,
+   la marque de l'en-tête `Marque.tsx`, les polices de `polices/`) et les
+   appels `localFont` de `src/app/layout.tsx`.
    C'est la seule chose qui change d'un client à l'autre.
 
 ## Le kit (`src/ui/`)
 
 | Composant | Usage |
 | --- | --- |
-| `AppLayout` | Squelette de tout écran d'outil : en-tête collant en cellules (emblème sur aplat d'accent qui mène à l'accueil, nom, sous-titre mono, nav dont l'entrée de la page ouverte est en accent, badge de contexte en structure), contenu dans une feuille bordée de filets où les blocs se touchent, **signature Solstice Lab** (gardée dans toute livraison Solstice Lab, couleurs hors thème). À côté d'elle, les liens « Mentions légales » vers `/mentions-legales` et « Confidentialité » vers `/confidentialite`, pages du socle ouvertes sans connexion : leurs valeurs se remplissent dans `src/lib/mentions-legales.ts` et `src/lib/confidentialite.ts` avant toute mise en ligne, chaque page signale chaque champ requis resté vide. Une entrée de `navigation` peut porter `visible` (fonction, éventuellement asynchrone) : le menu ne propose que celles qui répondent vrai. Le kit ne connaît aucune règle, c'est `lib/navigation.ts` qui branche chaque entrée sur `visiblePour(action)` de `briques/comptes/roles.ts` (avec la brique comptes), la même action que celle que la page exige (droits dans `src/config/acces.ts`). Le menu se replie derrière un bouton « Menu » sous 720 px (composant client `MenuNavigation`, interne au kit) : seuls libellé et adresse lui sont passés. |
-| `PageVitrine` | Squelette d'une page publique de site vitrine : en-tête horizontal (`nom` vers l'accueil, `liens` à droite, repliés derrière « Menu » sous 720 px, `action` facultative : un `LienBouton variante="secondaire"`, le primaire revient à l'appel à l'action de la page), contenu, puis le même pied qu'`AppLayout` (signature, mentions légales, confidentialité). Liens publics, sans garde `visible`. |
+| `AppLayout` | Squelette de tout écran d'outil : en-tête collant en cellules (marque du thème, `src/ui/theme/Marque.tsx`, sur aplat d'accent qui mène à l'accueil, cellule absente sans marque ; nom, sous-titre mono, nav dont l'entrée de la page ouverte est en accent, badge de contexte en structure), contenu dans une feuille bordée de filets où les blocs se touchent, **signature Solstice Lab** (gardée dans toute livraison Solstice Lab, couleurs hors thème). À côté d'elle, les liens « Mentions légales » vers `/mentions-legales` et « Confidentialité » vers `/confidentialite`, pages du socle ouvertes sans connexion : leurs valeurs se remplissent dans `src/lib/mentions-legales.ts` et `src/lib/confidentialite.ts` avant toute mise en ligne, chaque page signale chaque champ requis resté vide. Une entrée de `navigation` peut porter `visible` (fonction, éventuellement asynchrone) : le menu ne propose que celles qui répondent vrai. Le kit ne connaît aucune règle, c'est `lib/navigation.ts` qui branche chaque entrée sur `visiblePour(action)` de `briques/comptes/roles.ts` (avec la brique comptes), la même action que celle que la page exige (droits dans `src/config/acces.ts`). Le menu se replie derrière un bouton « Menu » sous 720 px (composant client `MenuNavigation`, interne au kit) : seuls libellé et adresse lui sont passés. |
+| `PageVitrine` | Squelette d'une page publique de site vitrine : en-tête horizontal (marque du thème et `nom` vers l'accueil, le nom seul sans marque, `liens` à droite, repliés derrière « Menu » sous 720 px, `action` facultative : un `LienBouton variante="secondaire"`, le primaire revient à l'appel à l'action de la page), contenu, puis le même pied qu'`AppLayout` (signature, mentions légales, confidentialité). Liens publics, sans garde `visible`. |
 | `SectionVitrine` | Une section de `PageVitrine`, bande pleine largeur fermée par un filet, contenu dans une feuille centrée : `titre`, `intro` (chapô), `id` (ancre visée par un lien de l'en-tête), `fond` (`page`, `secondaire` ou `structure`, à alterner pour que chaque partie se distingue ; `structure` réservé aux temps forts, jamais deux à la suite ; `surface`, ancien nom de `secondaire`, reste accepté). `principale` : le titre de la page (h1), une seule, la première ; les autres sont des h2. Dedans : texte, `Carte`s dans `.sl-grille`, `.sl-liste-simple`, `AppelAction`. |
 | `AppelAction` | Bloc d'appel à l'action d'une page vitrine : `titre`, `texte`, `actions` (`LienBouton`, le primaire d'abord). Un seul par écran. Actions empilées sur téléphone. |
 | `Tableau` | Tout affichage tabulaire. Tri au clic sur l'en-tête (asc → desc → aucun) et filtre par colonne **intégrés d'office**, et la **vue (tri, filtres, déplis) survit à la navigation dans l'onglet** — `id` (obligatoire) la rattache au tableau : stable, unique dans l'app, jamais dérivé des données ; sessionStorage, donc fermer l'onglet remet à zéro. `chiffres: true` pour les colonnes numériques (chasse fixe, alignées à droite), `rendu` pour les cellules riches — le tri et le filtre restent sur la valeur brute. `actionsLot` ajoute la sélection de lignes et une barre d'actions en lot (c'est aux LISTES que reviennent les gestes de masse, pas aux fiches). `enfants` passe en **mode hiérarchique** : sous-lignes dépliables, PAS de tri (ordre structurel), le filtre MASQUE sans recalculer les agrégats — fournir `cleLigne`, c'est elle qui rend les déplis stables. `voletsFiges` fige en-tête et première colonne (croisées, tableaux longs). `figee: "droite"` sur une colonne la garde visible à droite quand le tableau défile (la colonne d'actions d'une file de décision : sur téléphone, Accepter/Refuser restent atteignables) ; une seule, la dernière. `auClicLigne` rend la ligne cliquable (détail). `exports={{ nomFichier, titre? }}` ajoute les boutons .xlsx et PNG — l'export dit ce que l'écran montre, et suit le thème client (couleurs lues dans les tokens au clic). Dans l'.xlsx, une colonne dont l'écran formate une date (`date()`) se déclare `format: "date"` (vraie date au format de l'écran, sinon du texte) et `exporter` donne la valeur écrite quand elle diffère de la valeur brute (le libellé d'un statut, pas sa clé) ; une cellule sans valeur reste vide. Le PNG écarte filtres, barre d'actions en lot et colonne de sélection. |
@@ -117,7 +117,7 @@ Deux couches, à ne jamais mélanger :
   la plus petite unité admise (le centime) ; la règle métier se contrôle côté
   serveur.
 - Registre sobre : pas de superlatifs, pas d'emojis, une à deux touches
-  d'accent par écran, en plus de l'en-tête (emblème, entrée active).
+  d'accent par écran, en plus de l'en-tête (marque, entrée active).
 - Flux secondaires (confirmation, saisie courte, détail rapide) : préférer
   une `Modale` ou un overlay à une navigation plein écran — indispensable si
   l'app est utilisée en PWA mobile, où une navigation piège l'utilisateur.
@@ -125,7 +125,7 @@ Deux couches, à ne jamais mélanger :
   pagination (`parPage`), onglets, tableau croisé (avec le détail au clic par
   cellule).
 
-## Contrat de thème (`src/ui/theme/tokens.css`)
+## Contrat de thème (`src/ui/theme/`)
 
 Identité : `--couleur-structure(-2)`, `--couleur-accent`,
 `--couleur-accent-fond`, `--texte`, `--texte-secondaire`,
@@ -135,6 +135,8 @@ Sémantique (ne se thématise PAS) : `--positif`, `--negatif`, et
 `--texte-sur-semantique` pour le texte posé sur eux (bouton danger).
 Forme : `--rayon`, `--rayon-petit`. Typo : `--police-texte`,
 `--police-chiffres` (alimentées par next/font/local dans `layout.tsx`).
+Ces tokens sont dans `tokens.css`. Marque de l'en-tête : `MARQUE`, dans
+`Marque.tsx` (l'emblème de l'agence par défaut, `null` pour aucune).
 
 L'image de l'aperçu au partage (`src/app/opengraph-image.tsx`) lit au build
 `--couleur-structure`, `--couleur-accent`, `--texte-sur-structure` et
@@ -148,8 +150,8 @@ kit.
 Le thème par défaut est la charte Solstice Lab « registre », celle du site
 solstice-lab.com/new : navy, jaune, papier `#FCFCFD` pour le fond comme pour
 les surfaces, papier 2 `#E8EEF7`, filets navy entre les blocs et `#E2E8F4`
-à l'intérieur, angles droits (rayons
-à 0). Le garder pour les protos et les clients sans identité définie.
+à l'intérieur, angles droits (rayons à 0), l'emblème de l'agence pour
+marque. Le garder pour les protos et les clients sans identité définie.
 
 ## Thématiser pour un client
 
@@ -162,7 +164,7 @@ La charte arrive en **PDF** ou via un **site existant** :
   bordures) et relever les mêmes éléments. Se méfier des couleurs d'images :
   ne prendre que ce qui est du CSS assumé.
 
-Puis mapper vers les tokens :
+Puis mapper vers le thème :
 
 1. Couleur dominante de la marque → `--couleur-structure` (foncée : le texte
    sur structure doit rester lisible). Elle trace aussi les filets entre les
@@ -170,7 +172,7 @@ Puis mapper vers les tokens :
    bande de structure, qui doivent s'y voir) et
    `--texte-secondaire-sur-structure` (le texte sur structure atténué, pour le
    chapô d'une bande de structure).
-2. Couleur secondaire/vive → `--couleur-accent`, posée en aplat (emblème,
+2. Couleur secondaire/vive → `--couleur-accent`, posée en aplat (marque,
    élément de menu actif, survol, badge d'accent), jamais en liseré ; en
    dériver `--couleur-accent-fond` (version très pâle : note, appel à
    l'action, champ en saisie). Sur le papier, ce fond pâle ne tient que par le
@@ -201,7 +203,15 @@ Puis mapper vers les tokens :
    Dans une appli assemblée, la partie polices du `NOTICE` à la racine suit :
    l'avis IBM Plex part avec la dernière police Plex (il reste si Plex Mono
    reste), l'avis de la police du client et le chemin de sa licence s'ajoutent.
-5. **Ne PAS toucher** `--positif` / `--negatif` / `--texte-sur-semantique`,
+5. Logo du client → `src/ui/theme/Marque.tsx` : remplacer `MARQUE` par son
+   `<svg>` (avec `fill="currentColor"` pour suivre les couleurs du thème), ou
+   par une image déposée dans `public/` (`<Image>` de `next/image`, exemple
+   dans le fichier), ou par `null`
+   pour aucune marque. Aucun composant ne se retouche. Le logo tient sur
+   26 px de haut, sur l'aplat `--couleur-accent`. La signature du pied de page
+   n'en dépend pas : elle garde l'emblème de l'agence, et son retrait suit sa
+   propre procédure (skill `creer-appli`).
+6. **Ne PAS toucher** `--positif` / `--negatif` / `--texte-sur-semantique`,
    sauf conflit direct (marque rouge → choisir un rouge d'erreur nettement
    distinct, puis revérifier le contraste de `--texte-sur-semantique` dessus).
 
@@ -213,7 +223,7 @@ Puis mapper vers les tokens :
   `--texte-secondaire-sur-structure` sur `--couleur-structure`, pour
   `--texte-secondaire` sur `--fond-secondaire` (sous-titre de l'en-tête, badge
   neutre, jours hors du mois), pour `--couleur-structure` sur `--couleur-accent`
-  (l'encre de tout aplat d'accent : survol, élément actif, emblème) et
+  (l'encre de tout aplat d'accent : survol, élément actif, marque) et
   `--couleur-accent` sur `--couleur-structure` (cellule de contexte de
   l'en-tête), et pour
   `--texte-sur-semantique` sur `--negatif` (bouton danger) et sur `--positif`. Si l'accent du

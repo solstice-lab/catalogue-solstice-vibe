@@ -2,22 +2,24 @@
  * Contrat de thème — LA source unique des couleurs, polices et formes de l'app.
  *
  * Aucun composant du kit ne porte de valeur en dur : thématiser un projet
- * client, c'est remplir ce fichier (procédure : skill solstice-ui), rien
- * d'autre. Les valeurs par défaut sont la charte Solstice Lab « registre »,
- * celle du site solstice-lab.com/new : papier, filets, navy et jaune, angles
- * droits. Thème de repli pour les protos et les clients sans identité
- * graphique définie.
+ * client, c'est remplir ce fichier et, dans le même dossier, la marque de
+ * l'en-tête (Marque.tsx) et les polices (polices/, avec les appels
+ * localFont de src/app/layout.tsx), rien d'autre (procédure : skill
+ * solstice-ui). Les
+ * valeurs par défaut sont la charte Solstice Lab « registre », celle du site
+ * solstice-lab.com/new : papier, filets, navy et jaune, angles droits, et
+ * l'emblème de l'agence pour marque. Thème de repli pour les protos et les
+ * clients sans identité graphique définie.
  *
  * Seule exception au contrat : la signature Solstice Lab en pied de page
- * garde les couleurs de l'agence quel que soit le thème (voir ui.css).
- * L'emblème de l'agence en tête de l'en-tête suit, lui, les couleurs du
- * thème ; sa forme reste celle de l'agence (src/ui/Embleme.tsx).
+ * garde l'emblème et les couleurs de l'agence quel que soit le thème (voir
+ * ui.css).
  */
 :root {
   /* ---- Identité (varie selon le client) ---- */
   --couleur-structure: #162447; /* filets entre les blocs, bouton primaire, texte fort, bande de temps fort */
   --couleur-structure-2: #3b4a75; /* nuance sur fond structure : les filets s'y dessinent, doit s'y distinguer */
-  --couleur-accent: #ffc72c; /* accent unique, en aplat : emblème, élément actif, survol ; jamais en liseré */
+  --couleur-accent: #ffc72c; /* accent unique, en aplat : marque, élément actif, survol ; jamais en liseré */
   --couleur-accent-fond: #fffbea; /* fonds doux : note, appel à l'action, champ en saisie ; bordé d'un filet, sauf la saisie */
 
   --texte: #162447;

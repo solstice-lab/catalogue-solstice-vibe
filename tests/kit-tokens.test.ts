@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 /*
  * Test-verrou : le kit tient sa propre règle (CLAUDE.md §1). Aucune couleur,
  * police ni rayon en dur dans les feuilles de style de src/ui/ : tout passe
- * par les tokens de src/ui/theme/tokens.css, seule façon de thématiser un
- * client. L'audit avant publication avait trouvé cinq rayons en px et un
+ * par les tokens de src/ui/theme/tokens.css, seule façon de thématiser les
+ * couleurs, polices et formes d'un client. L'audit avant publication avait
+ * trouvé cinq rayons en px et un
  * `#fff` dans le kit même qui interdit aux pages d'en écrire.
  *
  * Seule exception : les COULEURS de la signature Solstice Lab, volontairement

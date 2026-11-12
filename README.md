@@ -26,7 +26,7 @@ Ce que le client obtient :
 - bâtie sur des éléments déjà utilisés ailleurs : une brique naît dans une
   appli (réelle ou d'essai) et n'entre au catalogue que quand une deuxième en
   a besoin ;
-- au thème de son entreprise : tout le visuel se règle dans un seul fichier.
+- au thème de son entreprise : tout le visuel (couleurs, logo, polices) se règle dans un seul dossier.
 
 Le dépôt est entretenu par l'équipe Solstice Lab et n'accepte pas de pull
 request extérieure : un problème se signale par un ticket, une faille par

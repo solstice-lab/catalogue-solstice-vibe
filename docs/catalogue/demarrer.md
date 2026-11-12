@@ -38,7 +38,8 @@ ouverte à la racine du catalogue.
    local » plus bas) : `DATABASE_URL` est requise par les tests et l'appli, pas par le
    build.
 5. **Thématiser** : suivre la procédure de la skill `solstice-ui` pour remplir
-   `src/ui/theme/tokens.css` depuis la charte du client (PDF ou site). Sans
+   `src/ui/theme/tokens.css` depuis la charte du client (PDF ou site), et
+   `src/ui/theme/Marque.tsx` pour son logo. Sans
    charte client, garder le thème de repli, la charte Solstice Lab.
 6. Remplacer l'accueil (`/`) par les premiers écrans réels, en copiant le patron
    `dossiers` pour chaque module métier. L'appli assemblée n'a ni la vitrine du kit
