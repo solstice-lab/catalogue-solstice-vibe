@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 /*
  * Test-verrou : la brique échéances ne connaît que le socle. Elle naît dans
  * l'appli contrats mais doit pouvoir s'extraire vers le catalogue et se
- * brancher sur un véhicule ou une demande d'achat (README, « Briques ») :
+ * brancher sur un véhicule ou une demande d'achat (docs/catalogue/briques.md) :
  * un seul import de src/app/contrats/ la soudait à son premier client. Une
  * liste blanche plutôt qu'une liste noire, pour qu'un module né demain ne
  * passe pas entre les mailles.
