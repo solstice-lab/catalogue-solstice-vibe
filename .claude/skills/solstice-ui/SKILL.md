@@ -33,8 +33,8 @@ Deux couches, à ne jamais mélanger :
 | `LienBouton` | Un lien à l'allure d'un bouton (« Nouveau contrat », « Annuler » d'un formulaire, « Modifier » d'une fiche), mêmes variantes que `Bouton`, qui reste pour les gestes. Un `Link` de Next ; un `<a>` simple avec `download` (fichier à télécharger) ou `natif` (route qui redirige ailleurs, comme la connexion Google) : rien ne se précharge. Jamais les classes `sl-bouton` recopiées sur un lien. |
 | `BoutonSupprimer` | Suppression depuis une fiche, confirmée dans une `Modale` : `titre` (la question), `action` (la server action liée à l'id ; si la suppression est refusée, elle renvoie `{ erreur }`, affiché dans la `Modale`), `explication` facultative (texte de la `Modale` à la place de « Cette action est définitive. », à n'employer que si la suppression a des effets à dire, et qui redit alors que l'action est définitive). Ne pas recopier la confirmation dans chaque module. |
 | `Badge` | Statuts et variations. `positif`/`negatif` portent la sémantique des données, `accent` un simple relief. |
-| `Champ`, `ChampSelect`, `ChampTexteLong` | Champs de formulaire avec label et aide. |
-| `ChampCase` | Case à cocher, son libellé sur la même ligne, aide dessous (« Prévenir par e-mail »). Pas de `Champ type="checkbox"`, qui met la case dans un cadre de saisie. |
+| `Champ`, `ChampSelect`, `ChampTexteLong` | Champs de formulaire avec label et aide, sans cadre (charte « registre »). Un `Champ` qui se tape (`text`, `email`, `tel`, `search`, `url`) porte une barre d'insertion : teinte pâle de la structure au repos, couleur d'accent et qui respire sur le seul prochain champ vide de la page, verte ou rouge selon le format ; la cellule prend `--couleur-accent-fond` pendant la saisie. Les autres types (date, nombre, mot de passe, fichier) restent natifs, sans cadre. `format` (`siren`, `cp`, `email`, `tel`, `date` jj/mm/aaaa, `int`, `num`, `pct`, `split`, `url`) contrôle la saisie, par défaut celui du type : neutre pendant une frappe plausible, rouge à la sortie avec soulignement, message au libellé et `aria-invalid`. Un champ vide n'est jamais rouge : l'obligatoire se contrôle à l'envoi. En lecture seule ou désactivé, pas de barre. **Aucun `<input>` hors de `src/ui/Champ.tsx`**, sauf caché, fichier, case à cocher et bouton radio (`tests/champs-sans-cadre.test.ts`) : sans la barre, un champ est invisible au repos. |
+| `ChampCase` | Case à cocher, son libellé sur la même ligne, aide dessous (« Prévenir par e-mail »). Pas de `Champ type="checkbox"`, qui met le libellé au-dessus, en petites capitales. |
 | `ChampPiege` | Champ piège anti-robot d'un formulaire public (`name` seul) : hors de l'écran, masqué aux lecteurs d'écran, sauté à la tabulation. Le serveur traite tout envoi où il n'est pas vide comme un robot (brique contact). |
 | `EtatVide` | Toute liste ou zone potentiellement vide : titre, description, action de démarrage. Un blanc silencieux ressemble à un bug. |
 | `Modale` | Confirmation ou saisie courte. Fermeture par Échap, voile et croix. |
@@ -184,7 +184,8 @@ Puis mapper vers les tokens :
 ### Garde-fous (bloquants, quel que soit le thème)
 
 - Contraste AA : ≥ 4,5:1 pour `--texte` sur `--surface`, `--fond-page` et
-  `--couleur-accent-fond` (appel à l'action d'une page vitrine), et
+  `--couleur-accent-fond` (appel à l'action d'une page vitrine, champ en
+  cours de saisie), et
   pour `--texte-sur-structure` sur `--couleur-structure`, et pour
   `--texte-sur-semantique` sur `--negatif` (bouton danger) et sur `--positif`. Si l'accent du
   client est clair, il sert aux liserés et fonds, jamais au texte.
