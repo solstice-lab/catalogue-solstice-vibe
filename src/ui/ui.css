@@ -271,7 +271,9 @@
 /* La saisie : un miroir invisible de la valeur donne sa largeur, donc la
    position de la barre ; le vrai input le recouvre, transparent. */
 .ed {
-  --sl-curseur-repos: color-mix(in srgb, var(--couleur-structure) 30%, var(--surface));
+  /* Repli sur une teinte dérivée : un thème client sans ce token garderait
+     sinon une barre invisible au repos, le défaut que le composant corrige. */
+  --sl-curseur-repos: var(--curseur-repos, color-mix(in srgb, var(--couleur-structure) 30%, var(--surface)));
   position: relative;
   display: flex;
   align-items: center;

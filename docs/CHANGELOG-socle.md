@@ -61,21 +61,24 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   champs nus, invisibles au repos dans une page sans cadres. Le composant de
   la charte se porte, il ne se remplace pas par un `<input>` stylé.
 
-## 2026-11-10 · Thème par défaut à la charte registre, deux tokens ajoutés au contrat · Rupture
+## 2026-11-12 · Thème par défaut à la charte registre, trois tokens ajoutés au contrat · Rupture
 
 - **Ce qui change** : le thème par défaut (`src/ui/theme/tokens.css`) passe à
   la charte Solstice Lab « registre » : papier `#FCFCFD` pour le fond et les
   surfaces, jaune pâle `#FFFBEA` pour `--couleur-accent-fond`, `#3B4A75` pour
   `--couleur-structure-2`, positif `#1F7A4D`, négatif `#B23A3A`, rayons à 0.
-  Le contrat gagne deux tokens, que `src/ui/ui.css` lit désormais :
+  Le contrat gagne trois tokens, que `src/ui/ui.css` lit désormais :
   `--fond-secondaire` (survol de ligne d'un `Tableau`, jours hors du mois de
-  `GrilleMois`) et `--texte-secondaire-sur-structure` (sous-titre de l'en-tête
-  d'`AppLayout`, qui lisait jusque-là `--couleur-accent-fond`).
+  `GrilleMois`), `--texte-secondaire-sur-structure` (sous-titre de l'en-tête
+  d'`AppLayout`, qui lisait jusque-là `--couleur-accent-fond`) et
+  `--curseur-repos` (barre d'insertion d'un `Champ` au repos, `#B8C2D9` par
+  défaut, jusque-là dérivée de la structure).
 - **Pour l'appli** : une appli thématisée, dont `tokens.css` porte les valeurs
-  du client, ajoute ces deux tokens avec une valeur à la charte du client
+  du client, ajoute ces trois tokens avec une valeur à la charte du client
   (procédure de la skill `solstice-ui`, « Thématiser pour un client ») : sans
-  eux, le survol de ligne et les jours hors du mois n'ont plus de fond, et le
-  sous-titre de l'en-tête prend la couleur du texte sur structure. Une appli
+  les deux premiers, le survol de ligne et les jours hors du mois n'ont plus de
+  fond, et le sous-titre de l'en-tête prend la couleur du texte sur structure ;
+  sans `--curseur-repos`, la barre garde la teinte dérivée d'avant. Une appli
   restée au thème par défaut reçoit le nouveau `tokens.css` et n'a rien à
   faire.
 - **Pourquoi** : l'agence est passée à la charte du site solstice-lab.com/new,
@@ -84,4 +87,6 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   le survol de ligne qui lisait `--fond-page` ne se voyait plus : il lui
   fallait un fond à part. Le sous-titre de l'en-tête lisait une couleur de
   fond, devenue jaune pâle : la charte donne au texte secondaire sur navy sa
-  propre couleur, `#B8C2D9`.
+  propre couleur, `#B8C2D9`. La même teinte est celle de la charte pour la
+  barre d'insertion au repos, que les champs sans cadre dérivaient faute de
+  token.

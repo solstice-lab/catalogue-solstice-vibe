@@ -33,7 +33,7 @@ Deux couches, à ne jamais mélanger :
 | `LienBouton` | Un lien à l'allure d'un bouton (« Nouveau contrat », « Annuler » d'un formulaire, « Modifier » d'une fiche), mêmes variantes que `Bouton`, qui reste pour les gestes. Un `Link` de Next ; un `<a>` simple avec `download` (fichier à télécharger) ou `natif` (route qui redirige ailleurs, comme la connexion Google) : rien ne se précharge. Jamais les classes `sl-bouton` recopiées sur un lien. |
 | `BoutonSupprimer` | Suppression depuis une fiche, confirmée dans une `Modale` : `titre` (la question), `action` (la server action liée à l'id ; si la suppression est refusée, elle renvoie `{ erreur }`, affiché dans la `Modale`), `explication` facultative (texte de la `Modale` à la place de « Cette action est définitive. », à n'employer que si la suppression a des effets à dire, et qui redit alors que l'action est définitive). Ne pas recopier la confirmation dans chaque module. |
 | `Badge` | Statuts et variations. `positif`/`negatif` portent la sémantique des données, `accent` un simple relief. |
-| `Champ`, `ChampSelect`, `ChampTexteLong` | Champs de formulaire avec label et aide, sans cadre (charte « registre »). Un `Champ` qui se tape (`text`, `email`, `tel`, `search`, `url`) porte une barre d'insertion : teinte pâle de la structure au repos, couleur d'accent et qui respire sur le seul prochain champ vide de la page, verte ou rouge selon le format ; la cellule prend `--couleur-accent-fond` pendant la saisie. Les autres types (date, nombre, mot de passe, fichier) restent natifs, sans cadre. `format` (`siren`, `cp`, `email`, `tel`, `date` jj/mm/aaaa, `int`, `num`, `pct`, `split`, `url`) contrôle la saisie, par défaut celui du type : neutre pendant une frappe plausible, rouge à la sortie avec soulignement, message au libellé et `aria-invalid`. Un champ vide n'est jamais rouge : l'obligatoire se contrôle à l'envoi. En lecture seule ou désactivé, pas de barre. **Aucun `<input>` hors de `src/ui/Champ.tsx`**, sauf caché, fichier, case à cocher et bouton radio (`tests/champs-sans-cadre.test.ts`) : sans la barre, un champ est invisible au repos. |
+| `Champ`, `ChampSelect`, `ChampTexteLong` | Champs de formulaire avec label et aide, sans cadre (charte « registre »). Un `Champ` qui se tape (`text`, `email`, `tel`, `search`, `url`) porte une barre d'insertion : teinte pâle de la structure au repos (`--curseur-repos`), couleur d'accent et qui respire sur le seul prochain champ vide de la page, verte ou rouge selon le format ; la cellule prend `--couleur-accent-fond` pendant la saisie. Les autres types (date, nombre, mot de passe, fichier) restent natifs, sans cadre. `format` (`siren`, `cp`, `email`, `tel`, `date` jj/mm/aaaa, `int`, `num`, `pct`, `split`, `url`) contrôle la saisie, par défaut celui du type : neutre pendant une frappe plausible, rouge à la sortie avec soulignement, message au libellé et `aria-invalid`. Un champ vide n'est jamais rouge : l'obligatoire se contrôle à l'envoi. En lecture seule ou désactivé, pas de barre. **Aucun `<input>` hors de `src/ui/Champ.tsx`**, sauf caché, fichier, case à cocher et bouton radio (`tests/champs-sans-cadre.test.ts`) : sans la barre, un champ est invisible au repos. |
 | `ChampCase` | Case à cocher, son libellé sur la même ligne, aide dessous (« Prévenir par e-mail »). Pas de `Champ type="checkbox"`, qui met le libellé au-dessus, en petites capitales. |
 | `ChampPiege` | Champ piège anti-robot d'un formulaire public (`name` seul) : hors de l'écran, masqué aux lecteurs d'écran, sauté à la tabulation. Le serveur traite tout envoi où il n'est pas vide comme un robot (brique contact). |
 | `EtatVide` | Toute liste ou zone potentiellement vide : titre, description, action de démarrage. Un blanc silencieux ressemble à un bug. |
@@ -125,7 +125,7 @@ Deux couches, à ne jamais mélanger :
 Identité : `--couleur-structure(-2)`, `--couleur-accent`,
 `--couleur-accent-fond`, `--texte`, `--texte-secondaire`,
 `--texte-sur-structure`, `--texte-secondaire-sur-structure`, `--fond-page`,
-`--surface`, `--fond-secondaire`, `--bordure`.
+`--surface`, `--fond-secondaire`, `--bordure`, `--curseur-repos`.
 Sémantique (ne se thématise PAS) : `--positif`, `--negatif`, et
 `--texte-sur-semantique` pour le texte posé sur eux (bouton danger).
 Forme : `--rayon`, `--rayon-petit`. Typo : `--police-texte`,
@@ -170,6 +170,9 @@ Puis mapper vers les tokens :
    sur un fond légèrement teinté vers la structure). `--fond-secondaire` est
    un ton plus soutenu que la surface, teinté vers la structure : il porte le
    survol de ligne et les jours hors du mois, il doit se voir sur `--surface`.
+   `--curseur-repos` est la barre d'insertion d'un champ au repos, seul signe
+   qu'on peut y écrire : une teinte pâle de la structure, presque muette mais
+   visible sur `--surface` (par défaut `#B8C2D9`).
 4. Polices : jamais `next/font/google` (il télécharge chez Google à chaque
    build, et un refus fait échouer le build ; un test l'interdit dans `src/`).
    Récupérer les woff2 de la police du client à la source officielle (dépôt de

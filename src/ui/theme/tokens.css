@@ -27,9 +27,12 @@
      cartes sur un fond gris. Les deux tokens restent distincts pour un client
      qui, lui, en a. */
   --fond-page: #fcfcfd;
-  --surface: #fcfcfd; /* cartes, champs, modales */
+  --surface: #fcfcfd; /* cartes, modales ; les champs n'ont pas de fond propre */
   --fond-secondaire: #e8eef7; /* fond neutre qui se détache du papier : survol de ligne, jour hors du mois */
   --bordure: #e2e8f4;
+  /* Barre d'insertion d'un champ au repos : seul signe qu'on peut y écrire,
+     presque muette mais visible sur --surface. */
+  --curseur-repos: #b8c2d9;
 
   /* ---- Sémantique — ne JAMAIS détourner vers l'identité client :
           une erreur reste rouge même si la marque du client est rouge ---- */
