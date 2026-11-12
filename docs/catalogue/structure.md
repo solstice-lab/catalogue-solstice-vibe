@@ -20,8 +20,10 @@ Trois volets :
 
 - **Visuel** — kit `src/ui/` (tableaux avec tri, filtres, exports et
   conservation de vue intégrés, états vides explicites, signature de l'agence)
-  et contrat de thème en tokens : l'identité du client se règle dans un seul
-  fichier, les invariants ne se négocient pas.
+  et contrat de thème : l'identité du client (tokens, marque de l'en-tête,
+  polices) se règle dans le dossier du thème (`src/ui/theme/`), plus les
+  appels de police de `src/app/layout.tsx`, les invariants ne se
+  négocient pas.
 - **Données** — la brique données (`src/lib/db/`), qu'une appli reçoit avec une
   brique qui lit la base et qu'un site sans en a pas : client Postgres à migrations idempotentes, module métier
   canonique à copier (`dossiers`, au catalogue seulement : ni ses écrans ni sa couche données ne sont livrés), squelette des scripts de données en dry-run (`scripts/lib/cli.ts`, l'import d'exemple au catalogue)
@@ -47,8 +49,9 @@ les options écartées sont dans `.claude/skills/solstice-nouvelle-appli/socle.m
   (tri, filtres, hiérarchie, exports, vue conservée), `ListeCartes`, `GrilleMois` et
   `NavigationMois` (calendrier mensuel), `TuileKPI`, `Carte`,
   `Bouton`, `BoutonSupprimer`, `Badge`, champs de formulaire, `EtatVide`, `Modale`, `Squelette` ;
-  `src/ui/theme/tokens.css` — le contrat de thème, seule source de couleurs,
-  polices et formes ; `src/ui/theme/polices/` — les woff2 du thème et leur
+  `src/ui/theme/` — le contrat de thème : `tokens.css`, seule source de couleurs,
+  polices et formes, `Marque.tsx`, la marque de l'en-tête (emblème de l'agence
+  par défaut, logo client ou `null`), et `polices/`, les woff2 du thème et leur
   licence.
 - `src/lib/db/` — brique données : client Postgres (`client.ts`, seul point d'accès),
   `schema.sql` (état initial) et `migrations.ts` (étapes idempotentes,
