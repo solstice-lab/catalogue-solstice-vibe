@@ -32,12 +32,13 @@ export default function PageKitSiteVitrine() {
       >
         <p>
           Un cabinet imaginaire présente son activité : une section principale qui porte le titre de la page, des
-          sections de contenu en alternance, un appel à l&apos;action, puis le pied de page commun à toute appli, avec
-          la signature Solstice Lab et les liens légaux.
+          sections en bandes alternées (papier, fond secondaire), un appel à l&apos;action dans la bande de structure
+          réservée au temps fort, puis le pied de page commun à toute appli, avec la signature Solstice Lab et les liens
+          légaux.
         </p>
       </SectionVitrine>
 
-      <SectionVitrine id="offre" titre="Offre" intro="Trois façons de travailler ensemble." fond="surface">
+      <SectionVitrine id="offre" titre="Offre" intro="Trois façons de travailler ensemble." fond="secondaire">
         <div className="sl-grille">
           <Carte titre="Diagnostic">
             <p>Deux jours sur site pour relever les flux, les attentes et les points de blocage.</p>
@@ -59,7 +60,7 @@ export default function PageKitSiteVitrine() {
         </ul>
       </SectionVitrine>
 
-      <SectionVitrine id="contact" titre="Contact" fond="surface">
+      <SectionVitrine id="contact" titre="Contact" fond="structure">
         <AppelAction
           titre="Un projet à cadrer ?"
           texte="Un premier échange de trente minutes, pour voir si nous pouvons vous aider."

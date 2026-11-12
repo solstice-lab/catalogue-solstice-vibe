@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Embleme } from "./Embleme";
 
 /**
  * Le pied de toute page : signature Solstice Lab, liens des mentions légales
@@ -10,13 +11,15 @@ import Link from "next/link";
 export function PiedDePage() {
   return (
     <footer className="sl-signature">
-      <span className="sl-signature-logo" aria-hidden />
+      {/* L'emblème et la mention de la charte « registre », pas l'ancienne
+          pastille à anneau. */}
+      <Embleme className="sl-signature-logo" />
       <span>
         Conçu par{" "}
         <a href="https://solstice-lab.com" target="_blank" rel="noopener">
           Solstice Lab
         </a>{" "}
-        · Data &amp; AI · {new Date().getFullYear()}
+        · Agence-conseil Data &amp; IA · {new Date().getFullYear()}
       </span>
       {/* Ici et non dans chaque page, comme la signature : une page qui
           les oublierait laisserait le site sans mentions légales (LCEN)

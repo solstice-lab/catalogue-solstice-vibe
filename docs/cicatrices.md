@@ -117,7 +117,7 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 | V5 | Deux décisions simultanées n'appliquent qu'une fois. | Une demande d'autorisation de nouvelle version ne devait produire qu'un dépôt. | `tests/validation.test.ts:280` |
 | V6 | Une décision exige un décideur identifié, jamais un lien à jeton ; qu'il vienne d'une session est l'engagement du garde de l'appli. | Le même circuit n'acceptait de décision qu'avec une session, jamais depuis un lien à jeton. | `tests/validation.test.ts:314` |
 | V7 | Une décision vide bloque, jamais prise par défaut. | Même cas que I11. | `tests/validation.test.ts:328` |
-| V8 | Un statut inconnu s'affiche comme tel, avec sa valeur, jamais comme un état sain. | Sur l'écran de règlement des factures d'un projet antérieur, un statut que l'écran ne savait pas lire ne devait jamais passer pour « tout va bien ». | `solstice-ui` (`SKILL.md:106`) ; `tests/validation-cycle.test.ts:38` |
+| V8 | Un statut inconnu s'affiche comme tel, avec sa valeur, jamais comme un état sain. | Sur l'écran de règlement des factures d'un projet antérieur, un statut que l'écran ne savait pas lire ne devait jamais passer pour « tout va bien ». | `solstice-ui` (`SKILL.md:111`) ; `tests/validation-cycle.test.ts:38` |
 | V9 | Un état « en cours » expire, après un délai plus long que celui du traitement. | Une demande restée « en cours » a verrouillé son auteur pour toujours ; la péremption a été fixée à 30 minutes pour un traitement abandonné à 25. | **Non tenue** |
 | V10 | La vérification d'arrêt se place dans l'étape irréversible ; une réponse illisible ne vaut pas annulation. | Pour un agent qui publiait du code, l'arrêt demandé se vérifiait avant l'étape de publication, pas dans celle-ci. | **Non tenue** |
 | V11 | Un agent n'annonce jamais lui-même son succès : la conclusion s'écrit après les vérifications. | Règle d'un agent autonome de développement : sa conclusion s'écrit après les vérifications, pas par lui. | **Non tenue** |
@@ -185,7 +185,7 @@ Avant de cadrer une brique ou un module, relire les domaines qu'il touche.
 
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
-| H1 | La date du jour se calcule dans le fuseau du client et s'injecte ; jamais celle du serveur. | Le serveur tournait en UTC : vers minuit, sa date du jour divergeait de celle de Paris. | `tests/format.test.ts:49` ; `solstice-ui` (`SKILL.md:92`) |
+| H1 | La date du jour se calcule dans le fuseau du client et s'injecte ; jamais celle du serveur. | Le serveur tournait en UTC : vers minuit, sa date du jour divergeait de celle de Paris. | `tests/format.test.ts:49` ; `solstice-ui` (`SKILL.md:97`) |
 | H2 | Deux instants se comparent avec une seule horloge, celle de la base. | Un décalage d'horloge entre un conteneur et le poste faussait « l'envoi précède la modification ». | **Non tenue** |
 
 Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
@@ -210,7 +210,7 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | N° | Règle | Cas | Tenue par |
 | --- | --- | --- | --- |
 | FI1 | Un fichier s'envoie par un Route Handler, pas par une action serveur. | Un fichier joint envoyé par une action serveur échouait sur « Unexpected end of form ». | **En partie** : la brique import-lot reçoit le fichier par un Route Handler que l'appli pose (`src/briques/import-lot/envoi.ts`, README « La brancher ») ; aucune règle de skill |
-| FI2 | La limite de taille annoncée est la limite réelle. | Une limite annoncée de 10 Mo, au-dessus du plafond réel de 3 Mo, produisait une erreur générique avant l'action. | **En partie** : `solstice-ui` (`SKILL.md:102`) ; brique import-lot, qui refuse au-delà de sa limite annoncée (`OCTETS_MAX` dans `src/briques/import-lot/lecture.ts`) ; la limite d'un proxy d'hébergeur reste à relever (README d'import-lot, « Questions ouvertes ») |
+| FI2 | La limite de taille annoncée est la limite réelle. | Une limite annoncée de 10 Mo, au-dessus du plafond réel de 3 Mo, produisait une erreur générique avant l'action. | **En partie** : `solstice-ui` (`SKILL.md:107`) ; brique import-lot, qui refuse au-delà de sa limite annoncée (`OCTETS_MAX` dans `src/briques/import-lot/lecture.ts`) ; la limite d'un proxy d'hébergeur reste à relever (README d'import-lot, « Questions ouvertes ») |
 | FI3 | Le nom d'un fichier téléchargé supporte tout caractère, apostrophe typographique comprise. | Une apostrophe typographique dans un nom de fichier faisait répondre une erreur 500 au téléchargement. | **Non tenue** |
 
 ## 14. Interface et kit
@@ -221,11 +221,11 @@ Les autres règles de date sont rangées avec leur calcul : F5, F6, F7, C4, C5.
 | U2 | Un tableau hiérarchique ne se trie pas ; son filtre masque sans recalculer. | Un tri générique a été rejeté sur un compte de résultat, où il cassait la lecture comptable. | **En partie** : `src/ui/Tableau.tsx:94`, aucun test |
 | U3 | La vue d'un tableau (tri, filtres, déplis) survit à la navigation, le temps de l'onglet. | Sur un projet antérieur, les déplis survivaient même à la fermeture de l'onglet. | `tests/vue-tableau.test.ts:53`, `src/ui/vueTableau.ts:7` et `CLAUDE.md:25` |
 | U4 | Volets figés et détail au clic. | Un croisement personnes × périodes de temps passés a demandé l'un puis l'autre, jusqu'au détail d'une cellule. | **En partie** : clic sur une ligne (`src/ui/Tableau.tsx:109`) ; le clic par cellule attend un tableau croisé |
-| U5 | Montants, dates et pourcentages passent par un seul module de format. | Deux écrans voisins affichaient « 12 500 € » et « 12,500.00 € ». | `src/lib/format.ts:4` ; `solstice-ui` (`SKILL.md:89`) |
-| U6 | Un pas de saisie ne refuse pas un montant légitime. | Un pas de 100 € refusait un reliquat de 3 334 €. | `solstice-ui` (`SKILL.md:110`) ; aucun champ montant du catalogue n'a de pas, donc aucun test |
+| U5 | Montants, dates et pourcentages passent par un seul module de format. | Deux écrans voisins affichaient « 12 500 € » et « 12,500.00 € ». | `src/lib/format.ts:4` ; `solstice-ui` (`SKILL.md:94`) |
+| U6 | Un pas de saisie ne refuse pas un montant légitime. | Un pas de 100 € refusait un reliquat de 3 334 €. | `solstice-ui` (`SKILL.md:115`) ; aucun champ montant du catalogue n'a de pas, donc aucun test |
 | U7 | La fiche d'un enregistrement est en lecture seule et montre exactement les champs du formulaire ; un seul formulaire sert à créer et à modifier. | Règle maison héritée d'un projet antérieur ; les archives ne détaillent pas l'incident. | `CLAUDE.md:61` ; `src/app/dossiers/[slug]/page.tsx:18` |
 | U8 | Le slug d'une fiche n'est jamais purement numérique et n'entre pas en collision avec une route du module. | Règle reprise d'un projet antérieur avec son module de slugs : une fiche nommée « Nouveau » deviendrait inatteignable. | `tests/slug.test.ts:10`, `:15` |
-| U9 | Une erreur de rendu n'est jamais une page blanche : le digest reste affiché, et l'écriture a souvent eu lieu malgré l'erreur. | Des pages blanches à digest cryptique en production, après des écritures bien passées. | **En partie** : `src/app/error.tsx:3` et `solstice-ui` (`SKILL.md:96`) ; « l'écriture a eu lieu » n'est écrit nulle part |
+| U9 | Une erreur de rendu n'est jamais une page blanche : le digest reste affiché, et l'écriture a souvent eu lieu malgré l'erreur. | Des pages blanches à digest cryptique en production, après des écritures bien passées. | **En partie** : `src/app/error.tsx:3` et `solstice-ui` (`SKILL.md:101`) ; « l'écriture a eu lieu » n'est écrit nulle part |
 | U10 | Un champ qui se tape passe par le composant de la charte, qui pose la barre d'insertion : jamais un `<input>` stylé à la main. | Une appli en React livrée avec des champs nus : sans cadre et sans barre, ils étaient invisibles au repos. | `tests/champs-sans-cadre.test.ts:180` ; `solstice-ui` (`SKILL.md:36`) |
 
 ## 15. IA et tâches longues
