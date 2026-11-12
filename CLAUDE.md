@@ -20,8 +20,8 @@ formulaire ou un style, **charger la skill `solstice-ui`**
 (`.claude/skills/solstice-ui/`) : elle décrit le kit et ses règles d'usage.
 
 - **Aucune couleur, police ou rayon en dur** dans un composant ou un style :
-  tout passe par les tokens de `src/ui/theme/tokens.css`. Ce fichier est le
-  contrat de thème — le remplir est la SEULE façon de thématiser un client.
+  tout passe par les tokens de `src/ui/theme/tokens.css`. Contrat de thème : `src/ui/theme/`
+  (`tokens.css`, `Marque.tsx`, `polices/`) et les `localFont` de `src/app/layout.tsx` — le remplir est la SEULE façon de thématiser un client.
 - **Un tableau se fait avec `Tableau`** : tri, filtre par colonne et vue gardée
   à la navigation (sessionStorage) intégrés d'office ; pas de `<table>` à la
   main. Hiérarchie, volets figés, clic-détail et exports : skill `solstice-ui`.
@@ -36,8 +36,8 @@ formulaire ou un style, **charger la skill `solstice-ui`**
 
 - Le thème par défaut est la charte Solstice Lab (thème de repli).
 - La thématisation client (depuis une charte PDF ou un site existant) suit la
-  procédure de la skill `solstice-ui`. Livrable : `tokens.css` rempli et,
-  si besoin, les polices remplacées dans `src/app/layout.tsx`.
+  procédure de la skill `solstice-ui`. Livrable : `tokens.css` rempli, si besoin la marque
+  (`Marque.tsx`) et les polices (`src/ui/theme/polices/`, `src/app/layout.tsx`) remplacées.
 - Garde-fous quel que soit le thème : contrastes AA sur le texte, sémantique
   des couleurs d'état préservée (`--positif` reste un vert, `--negatif` un
   rouge, même si la marque du client est rouge), l'accent se dose (une à deux
