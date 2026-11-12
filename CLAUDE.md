@@ -41,7 +41,7 @@ formulaire ou un style, **charger la skill `solstice-ui`**
 - Garde-fous quel que soit le thème : contrastes AA sur le texte, sémantique
   des couleurs d'état préservée (`--positif` reste un vert, `--negatif` un
   rouge, même si la marque du client est rouge), l'accent se dose (une à deux
-  touches par écran).
+  touches par écran, en plus de l'en-tête).
 
 ## 3. Données
 

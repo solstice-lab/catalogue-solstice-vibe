@@ -111,7 +111,9 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
     la décrivent, comme une règle des livraisons Solstice Lab (`CLAUDE.md` §1, la skill
     `solstice-ui`, les commentaires de `PiedDePage.tsx` et de `ui.css`) ou par son exception
     de couleurs (`tokens.css`, `tests/kit-tokens.test.ts`). Le retrait est donc un
-    ticket de la section 9 de la blueprint, qui retire le pied de page et ses styles et
+    ticket de la section 9 de la blueprint, qui retire le pied de page et ses styles,
+    l'emblème de l'agence en tête de l'en-tête (`Embleme.tsx`, posé par `AppLayout.tsx`
+    et `PageVitrine.tsx`) et
     retouche ces textes.
   - La réponse se note dans la section 5 de la blueprint (« Accès et thème »).
   - Quel que soit le livreur, l'appli assemblée n'est pas sous MIT : l'assembleur ne copie

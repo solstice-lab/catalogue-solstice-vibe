@@ -19,7 +19,7 @@ Deux couches, à ne jamais mélanger :
 
 | Composant | Usage |
 | --- | --- |
-| `AppLayout` | Squelette de tout écran d'outil : en-tête collant en cellules (emblème sur aplat d'accent qui mène à l'accueil, nom et sous-titre mono, nav dont l'entrée de la page ouverte est en accent, badge de contexte en structure), contenu dans une feuille bordée de filets où les blocs se touchent, **signature Solstice Lab** (gardée dans toute livraison Solstice Lab, couleurs hors thème). À côté d'elle, les liens « Mentions légales » vers `/mentions-legales` et « Confidentialité » vers `/confidentialite`, pages du socle ouvertes sans connexion : leurs valeurs se remplissent dans `src/lib/mentions-legales.ts` et `src/lib/confidentialite.ts` avant toute mise en ligne, chaque page signale chaque champ requis resté vide. Une entrée de `navigation` peut porter `visible` (fonction, éventuellement asynchrone) : le menu ne propose que celles qui répondent vrai. Le kit ne connaît aucune règle, c'est `lib/navigation.ts` qui branche chaque entrée sur `visiblePour(action)` de `briques/comptes/roles.ts` (avec la brique comptes), la même action que celle que la page exige (droits dans `src/config/acces.ts`). Le menu se replie derrière un bouton « Menu » sous 720 px (composant client `MenuNavigation`, interne au kit) : seuls libellé et adresse lui sont passés. |
+| `AppLayout` | Squelette de tout écran d'outil : en-tête collant en cellules (emblème sur aplat d'accent qui mène à l'accueil, nom, sous-titre mono, nav dont l'entrée de la page ouverte est en accent, badge de contexte en structure), contenu dans une feuille bordée de filets où les blocs se touchent, **signature Solstice Lab** (gardée dans toute livraison Solstice Lab, couleurs hors thème). À côté d'elle, les liens « Mentions légales » vers `/mentions-legales` et « Confidentialité » vers `/confidentialite`, pages du socle ouvertes sans connexion : leurs valeurs se remplissent dans `src/lib/mentions-legales.ts` et `src/lib/confidentialite.ts` avant toute mise en ligne, chaque page signale chaque champ requis resté vide. Une entrée de `navigation` peut porter `visible` (fonction, éventuellement asynchrone) : le menu ne propose que celles qui répondent vrai. Le kit ne connaît aucune règle, c'est `lib/navigation.ts` qui branche chaque entrée sur `visiblePour(action)` de `briques/comptes/roles.ts` (avec la brique comptes), la même action que celle que la page exige (droits dans `src/config/acces.ts`). Le menu se replie derrière un bouton « Menu » sous 720 px (composant client `MenuNavigation`, interne au kit) : seuls libellé et adresse lui sont passés. |
 | `PageVitrine` | Squelette d'une page publique de site vitrine : en-tête horizontal (`nom` vers l'accueil, `liens` à droite, repliés derrière « Menu » sous 720 px, `action` facultative : un `LienBouton variante="secondaire"`, le primaire revient à l'appel à l'action de la page), contenu, puis le même pied qu'`AppLayout` (signature, mentions légales, confidentialité). Liens publics, sans garde `visible`. |
 | `SectionVitrine` | Une section de `PageVitrine`, bande pleine largeur fermée par un filet, contenu dans une feuille centrée : `titre`, `intro` (chapô), `id` (ancre visée par un lien de l'en-tête), `fond` (`page`, `secondaire` ou `structure`, à alterner pour que chaque partie se distingue ; `structure` réservé aux temps forts, jamais deux à la suite ; `surface`, ancien nom de `secondaire`, reste accepté). `principale` : le titre de la page (h1), une seule, la première ; les autres sont des h2. Dedans : texte, `Carte`s dans `.sl-grille`, `.sl-liste-simple`, `AppelAction`. |
 | `AppelAction` | Bloc d'appel à l'action d'une page vitrine : `titre`, `texte`, `actions` (`LienBouton`, le primaire d'abord). Un seul par écran. Actions empilées sur téléphone. |
@@ -83,10 +83,11 @@ Deux couches, à ne jamais mélanger :
   retirer. C'est la règle d'origine du kit. Deux tableaux qui partagent un
   `id` mélangent leurs vues ; avec `actionsLot`, fournir `cleLigne`, sinon
   une ligne recréée à chaque rendu perd sa case cochée.
-- **Les blocs n'ont pas de cadre propre** (charte « registre ») : `Carte`,
-  `TuileKPI` et `.sl-note` se bordent des filets de la feuille d'`AppLayout`
-  ou d'une `.sl-grille`. Les poser directement dans la page ou dans la
-  grille ; un `div` intermédiaire les prive de ces filets.
+- **Les blocs n'ont pas de cadre propre** (charte « registre ») : `Carte` et
+  `TuileKPI` se bordent des filets de la feuille d'`AppLayout` ou d'une
+  `.sl-grille` (`.sl-note` garde un filet clair, sauf posée dans la page).
+  Les poser directement dans la page ou dans la grille ; un `div`
+  intermédiaire les prive de ces filets.
 - Composant manquant : le construire dans `src/ui/` sur les tokens, l'exporter
   dans `index.ts`. Dans une appli assemblée, signaler en plus qu'il est
   candidat à remonter dans le catalogue.
@@ -116,7 +117,7 @@ Deux couches, à ne jamais mélanger :
   la plus petite unité admise (le centime) ; la règle métier se contrôle côté
   serveur.
 - Registre sobre : pas de superlatifs, pas d'emojis, une à deux touches
-  d'accent par écran.
+  d'accent par écran, en plus de l'en-tête (emblème, entrée active).
 - Flux secondaires (confirmation, saisie courte, détail rapide) : préférer
   une `Modale` ou un overlay à une navigation plein écran — indispensable si
   l'app est utilisée en PWA mobile, où une navigation piège l'utilisateur.
@@ -146,7 +147,8 @@ kit.
 
 Le thème par défaut est la charte Solstice Lab « registre », celle du site
 solstice-lab.com/new : navy, jaune, papier `#FCFCFD` pour le fond comme pour
-les surfaces, papier 2 `#E8EEF7`, filets `#E2E8F4`, angles droits (rayons
+les surfaces, papier 2 `#E8EEF7`, filets navy entre les blocs et `#E2E8F4`
+à l'intérieur, angles droits (rayons
 à 0). Le garder pour les protos et les clients sans identité définie.
 
 ## Thématiser pour un client
@@ -172,7 +174,7 @@ Puis mapper vers les tokens :
    élément de menu actif, survol, badge d'accent), jamais en liseré ; en
    dériver `--couleur-accent-fond` (version très pâle : note, appel à
    l'action, champ en saisie). Sur le papier, ce fond pâle ne tient que par le
-   filet qui le borde.
+   filet qui le borde (la saisie, passagère, s'en passe).
 3. Neutres : garder des gris proches des valeurs par défaut si la charte n'en
    impose pas. `--fond-page` et `--surface` peuvent être égaux (la charte
    par défaut pose tout sur le même papier) ou distincts (des cartes blanches
@@ -206,8 +208,8 @@ Puis mapper vers les tokens :
 ### Garde-fous (bloquants, quel que soit le thème)
 
 - Contraste AA : ≥ 4,5:1 pour `--texte` sur `--surface`, `--fond-page`,
-  `--fond-secondaire` et `--couleur-accent-fond` (appel à l'action d'une page
-  vitrine, champ en cours de saisie), pour `--texte-sur-structure` et
+  `--fond-secondaire` et `--couleur-accent-fond` (note, appel à l'action d'une
+  page vitrine, champ en cours de saisie), pour `--texte-sur-structure` et
   `--texte-secondaire-sur-structure` sur `--couleur-structure`, pour
   `--texte-secondaire` sur `--fond-secondaire` (sous-titre de l'en-tête, badge
   neutre, jours hors du mois), pour `--couleur-structure` sur `--couleur-accent`

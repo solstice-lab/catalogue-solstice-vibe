@@ -146,7 +146,7 @@ export function Saisie({
 }
 
 /**
- * Champ de formulaire : libellé en petites capitales, saisie sans cadre et
+ * Champ de formulaire : libellé mono, saisie sans cadre et
  * texte d'aide optionnel. `format` contrôle la saisie (SIREN, code postal,
  * date jj/mm/aaaa…) ; un refus ajoute son message au libellé, jamais le rouge
  * seul.
@@ -228,8 +228,8 @@ export function ChampTexteLong({
 
 /**
  * Case à cocher, son libellé sur la même ligne (« Prévenir par e-mail »).
- * `Champ type="checkbox"` mettait le libellé au-dessus, en petites capitales,
- * et la case dans le cadre d'un champ de saisie.
+ * `Champ type="checkbox"` mettait le libellé au-dessus, et la case dans le
+ * cadre d'un champ de saisie.
  */
 export function ChampCase({
   label,

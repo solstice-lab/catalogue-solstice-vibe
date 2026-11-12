@@ -10,13 +10,15 @@
  *
  * Seule exception au contrat : la signature Solstice Lab en pied de page
  * garde les couleurs de l'agence quel que soit le thème (voir ui.css).
+ * L'emblème de l'agence en tête de l'en-tête suit, lui, les couleurs du
+ * thème ; sa forme reste celle de l'agence (src/ui/Embleme.tsx).
  */
 :root {
   /* ---- Identité (varie selon le client) ---- */
   --couleur-structure: #162447; /* filets entre les blocs, bouton primaire, texte fort, bande de temps fort */
   --couleur-structure-2: #3b4a75; /* nuance sur fond structure : les filets s'y dessinent, doit s'y distinguer */
   --couleur-accent: #ffc72c; /* accent unique, en aplat : emblème, élément actif, survol ; jamais en liseré */
-  --couleur-accent-fond: #fffbea; /* fonds doux : note, appel à l'action, champ en saisie ; toujours bordé d'un filet */
+  --couleur-accent-fond: #fffbea; /* fonds doux : note, appel à l'action, champ en saisie ; bordé d'un filet, sauf la saisie */
 
   --texte: #162447;
   --texte-secondaire: #5a6478; /* légendes, libellés, en-têtes de panneau */

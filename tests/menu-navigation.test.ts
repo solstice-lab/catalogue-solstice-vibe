@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 /*
- * La charte « registre » met l'élément de menu actif en jaune : le menu doit
+ * La charte « registre » met l'élément de menu actif en accent : le menu doit
  * donc savoir quelle entrée mène à la page ouverte, et le dire aussi aux
  * lecteurs d'écran (aria-current). Le chemin vient du routeur de Next, seule
  * frontière simulée ici.

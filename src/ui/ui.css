@@ -156,48 +156,63 @@ a.sl-entete-embleme:hover,
 }
 .sl-page > * {
   padding: var(--sl-marge-bloc);
-}
-.sl-page > .sl-grille {
-  padding: 0;
-  border: 0;
+  /* Une ancre visée (#section) ne passe pas sous l'en-tête collant. */
+  scroll-margin-top: 72px;
 }
 .sl-page > .sl-note {
   padding: 14px var(--sl-marge-bloc);
   border: 0;
 }
-.sl-page > :not(:first-child) {
+/* Le voile d'une Modale ouverte est un enfant de la page, mais pas un bloc :
+   sans cette exception, son filet barrait le haut de l'écran. */
+.sl-page > :not(:first-child, .sl-modale-voile) {
+  border-top: 1px solid var(--couleur-structure);
+}
+/* La grille trace elle-même tous ses filets : décalée d'un pixel sur chaque
+   bord, ses filets extérieurs se posent sur ceux de la feuille et des blocs
+   voisins au lieu de les doubler. */
+.sl-page > .sl-grille {
+  margin: -1px;
+  border-top: 0;
+}
+.sl-page > .sl-grille--serree {
+  margin: 0;
+  border: 0;
+}
+.sl-page > .sl-grille--serree:not(:first-child) {
   border-top: 1px solid var(--couleur-structure);
 }
 
 /* ---------- Grille de blocs ----------
-   Les cellules se touchent ; chacune trace son filet gauche et haut, décalée
-   d'un pixel : les filets du bord sont rognés, et c'est le cadre de la grille
-   (ou, dans une page, la feuille et ses voisins) qui les remplace. La
-   dernière cellule ferme sa rangée quand celle-ci est incomplète. */
+   Les cellules se touchent et chacune porte ses quatre filets, débordant
+   d'un pixel à droite et en bas sur sa voisine : deux filets voisins se
+   superposent en un seul. Le cadre suit donc les cellules, et une rangée
+   incomplète reste fermée (la case vide est hors du cadre, pas une cellule
+   ouverte). */
 .sl-grille {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  border: 1px solid var(--couleur-structure);
-  overflow: hidden;
+  padding: 0 1px 1px 0;
 }
 .sl-grille > * {
   min-width: 0;
-  margin: -1px 0 0 -1px;
-  border-top: 1px solid var(--couleur-structure);
-  border-left: 1px solid var(--couleur-structure);
-}
-.sl-grille > :last-child {
-  margin-right: -1px;
-  border-right: 1px solid var(--couleur-structure);
+  margin: 0 -1px -1px 0;
+  border: 1px solid var(--couleur-structure);
 }
 /* Rangée de chiffres d'un même ensemble (TuileKPI) : filets clairs entre les
-   cellules, comme à l'intérieur d'un bloc. */
+   cellules, comme à l'intérieur d'un bloc, tracés par l'écart d'un pixel
+   sur le fond de la grille ; le cadre est de structure. Une rangée
+   incomplète laisse voir ce fond clair à la place de la case vide. */
 .sl-grille--serree {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1px;
+  padding: 0;
+  background: var(--bordure);
+  border: 1px solid var(--couleur-structure);
 }
-.sl-grille--serree > *,
-.sl-grille--serree > :last-child {
-  border-color: var(--bordure);
+.sl-grille--serree > * {
+  margin: 0;
+  border: 0;
 }
 
 /* ---------- Carte (panneau) et titres de section ----------
@@ -921,11 +936,9 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   gap: 8px;
 }
 .sl-tuile-kpi-aide {
+  font-family: var(--police-chiffres);
   font-size: 0.72rem;
   color: var(--texte-secondaire);
-}
-.sl-grille--serree {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 /* Tuile qui mène à l'écran de détail : même allure, le survol dit qu'elle
    se clique en remplissant la cellule d'accent, encre de structure. Le
@@ -1305,6 +1318,8 @@ body:not(.is-typing) .ed.is-next.breathe .car {
    temps forts. */
 .sl-vitrine-section {
   border-bottom: 1px solid var(--couleur-structure);
+  /* Un lien de l'en-tête (#offre) ne pose pas le titre sous l'en-tête collant. */
+  scroll-margin-top: 72px;
 }
 .sl-vitrine-section--page {
   background: var(--fond-page);

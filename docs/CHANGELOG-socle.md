@@ -91,7 +91,7 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   barre d'insertion au repos, que les champs sans cadre dérivaient faute de
   token.
 
-## 2026-11-12 · La forme du kit passe à la charte registre · Ajout
+## 2026-11-12 · La forme du kit passe à la charte registre · Rupture
 
 - **Ce qui change** : les composants de `src/ui/` prennent la forme de la
   charte « registre », sans token nouveau. Plus de liseré d'accent (en-tête,
@@ -107,14 +107,25 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   passent en mono. `SectionVitrine` accepte `fond="secondaire"` et
   `fond="structure"` ; `fond="surface"` reste lu comme `secondaire`. La
   signature porte l'emblème et la mention « Agence-conseil Data & IA ».
-  `--couleur-structure-2` ne sert plus aux survols : elle trace les filets
-  d'une bande de structure.
-- **Pour l'appli** : rien à changer pour compiler. À relire à l'écran : un
-  bloc posé dans un `div` intermédiaire, et non directement dans la page ou
-  dans une `.sl-grille`, n'a plus de cadre ; une page vitrine qui alternait
-  `page` et `surface` prend maintenant le fond secondaire une section sur deux.
-  Une appli thématisée vérifie les deux contrastes ajoutés aux garde-fous de
-  la skill `solstice-ui` : structure sur accent, accent sur structure.
+  Quatre tokens changent de rôle, sans changer de nom :
+  `--couleur-structure-2` ne sert plus aux survols, elle trace les filets
+  d'une bande de structure ; `--fond-secondaire` colore aussi tout l'en-tête,
+  le badge neutre et les éléments du calendrier ; `--couleur-accent-fond` ne
+  porte plus le badge d'accent ni les éléments du calendrier, mais la note
+  (`.sl-note`) ; le sous-titre de l'en-tête, posé désormais sur
+  `--fond-secondaire`, lit `--texte-secondaire` et non plus
+  `--texte-secondaire-sur-structure`, qui colore le chapô d'une bande de
+  structure.
+- **Pour l'appli** : rien à changer pour compiler, mais chaque écran se
+  relit. Un bloc posé dans un `div` intermédiaire, et non directement dans la
+  page ou dans une `.sl-grille`, n'a plus de cadre : le sortir du `div`. Une
+  page vitrine qui alternait `page` et `surface` prend maintenant le fond
+  secondaire une section sur deux. Une appli thématisée revoit
+  `--fond-secondaire`, réglé pour le seul survol de ligne et qui colore
+  maintenant l'en-tête, et vérifie les deux contrastes ajoutés aux garde-fous
+  de la skill `solstice-ui` : structure sur accent, accent sur structure.
+  Hors livraison Solstice Lab, retirer la signature retire aussi l'emblème de
+  l'en-tête (skill `creer-appli`).
 - **Pourquoi** : au passage des tokens à la charte registre, le fond de page
   est devenu égal à la surface et le jaune pâle presque invisible sur le
   papier (1,02:1) : les cartes ne se distinguaient plus du fond, ni le badge

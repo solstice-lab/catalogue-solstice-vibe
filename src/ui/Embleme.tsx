@@ -1,9 +1,12 @@
 /**
  * L'emblème Solstice Lab : un hexagone évidé fait de six polygones, repris tel
  * quel du site (charte « registre »). Il prend la couleur du texte qui
- * l'entoure (`currentColor`) : l'en-tête le passe en blanc au survol, la
- * signature le garde aux couleurs de l'agence. Interne au kit, jamais exporté :
- * on ne redessine pas le logo, et l'ancienne pastille à anneau ne revient pas.
+ * l'entoure (`currentColor`) : dans l'en-tête, la structure sur l'aplat
+ * d'accent, puis le texte sur structure au survol ; dans la signature, le
+ * navy de l'agence. Interne au kit, jamais exporté : on ne redessine pas le
+ * logo, et l'ancienne pastille à anneau ne revient pas. C'est la marque de
+ * l'agence : la retirer de la signature hors livraison Solstice Lab, c'est
+ * aussi la retirer de l'en-tête (skill creer-appli).
  */
 export function Embleme({ className }: { className?: string }) {
   return (

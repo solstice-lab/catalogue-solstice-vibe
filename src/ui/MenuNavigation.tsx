@@ -26,7 +26,7 @@ export function MenuNavigation({ liens }: { liens: { libelle: string; href: stri
   const [ouvert, setOuvert] = useState(false);
   const idListe = useId();
   const bouton = useRef<HTMLButtonElement>(null);
-  // L'entrée active passe en jaune (charte « registre ») : aria-current la
+  // L'entrée active passe en accent (charte « registre ») : aria-current la
   // donne au CSS et aux lecteurs d'écran à la fois.
   const chemin = usePathname();
   if (liens.length === 0) return null;
