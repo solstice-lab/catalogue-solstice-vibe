@@ -24,9 +24,10 @@
 
 /* ---------- En-tête (AppLayout, PageVitrine) ----------
    Une barre collante en cellules, sur le fond secondaire, filet de structure
-   dessous : l'emblème sur aplat d'accent, le nom et son sous-titre, le menu,
-   puis le contexte en structure. L'ancien liseré d'accent sous l'en-tête est
-   parti. La feuille reprend la largeur et les filets verticaux de la page. */
+   dessous : la marque du thème (theme/Marque.tsx) sur aplat d'accent, le nom
+   et son sous-titre, le menu, puis le contexte en structure. L'ancien liseré
+   d'accent sous l'en-tête est parti. La feuille reprend la largeur et les
+   filets verticaux de la page. */
 .sl-entete {
   position: sticky;
   top: 0;
@@ -53,24 +54,29 @@
   outline: 2px solid var(--couleur-structure);
   outline-offset: -4px;
 }
-.sl-entete-embleme {
+/* Un carré pour l'emblème par défaut ; un logo plus large que haut élargit
+   la cellule au lieu de déborder. */
+.sl-entete-marque {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
+  min-width: 64px;
+  padding: 0 19px;
   background: var(--couleur-accent);
   color: var(--couleur-structure);
   transition:
     background 0.15s,
     color 0.15s;
 }
-.sl-entete-embleme svg {
+.sl-entete-marque svg,
+.sl-entete-marque img {
+  display: block;
   height: 26px;
   width: auto;
 }
-a.sl-entete-embleme:hover,
-.sl-vitrine-marque:hover .sl-entete-embleme {
+a.sl-entete-marque:hover,
+.sl-vitrine-marque:hover .sl-entete-marque {
   background: var(--couleur-structure);
   color: var(--texte-sur-structure);
 }
@@ -1286,10 +1292,14 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   display: flex;
   align-items: center;
   padding: 8px 20px;
-  border-left: 1px solid var(--couleur-structure);
   /* Un nom long sans espace débordait de l'écran d'un téléphone. */
   min-width: 0;
   overflow-wrap: anywhere;
+}
+/* Le filet ne sépare le nom que d'une marque : sans elle, le nom ouvre
+   l'en-tête contre le filet de la feuille. */
+.sl-vitrine-marque .sl-entete-marque + .sl-entete-nom {
+  border-left: 1px solid var(--couleur-structure);
 }
 .sl-vitrine-entete .sl-nav {
   justify-content: flex-end;
@@ -1505,9 +1515,10 @@ body:not(.is-typing) .ed.is-next.breathe .car {
     flex-wrap: wrap;
     min-height: 56px;
   }
-  .sl-entete-embleme {
-    width: 56px;
+  .sl-entete-marque {
+    min-width: 56px;
     min-height: 56px;
+    padding: 0 15px;
   }
   .sl-entete-titre {
     flex: 1 1 0;

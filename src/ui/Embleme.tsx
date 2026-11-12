@@ -4,9 +4,10 @@
  * l'entoure (`currentColor`) : dans l'en-tête, la structure sur l'aplat
  * d'accent, puis le texte sur structure au survol ; dans la signature, le
  * navy de l'agence. Interne au kit, jamais exporté : on ne redessine pas le
- * logo, et l'ancienne pastille à anneau ne revient pas. C'est la marque de
- * l'agence : la retirer de la signature hors livraison Solstice Lab, c'est
- * aussi la retirer de l'en-tête (skill creer-appli).
+ * logo, et l'ancienne pastille à anneau ne revient pas. Seuls deux fichiers
+ * l'importent (tests/marque-du-theme.test.ts) : la marque du thème
+ * (theme/Marque.tsx), qu'un client remplace par son logo, et la signature
+ * (PiedDePage.tsx), qui la garde.
  */
 export function Embleme({ className }: { className?: string }) {
   return (

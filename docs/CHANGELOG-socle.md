@@ -124,10 +124,28 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   `--fond-secondaire`, réglé pour le seul survol de ligne et qui colore
   maintenant l'en-tête, et vérifie les deux contrastes ajoutés aux garde-fous
   de la skill `solstice-ui` : structure sur accent, accent sur structure.
-  Hors livraison Solstice Lab, retirer la signature retire aussi l'emblème de
-  l'en-tête (skill `creer-appli`).
 - **Pourquoi** : au passage des tokens à la charte registre, le fond de page
   est devenu égal à la surface et le jaune pâle presque invisible sur le
   papier (1,02:1) : les cartes ne se distinguaient plus du fond, ni le badge
   d'accent, les éléments du calendrier ou l'appel à l'action de leur page.
   La charte répond par les filets, pas par les fonds.
+
+## 2026-11-12 · La marque de l'en-tête rejoint le contrat de thème · Ajout
+
+- **Ce qui change** : la marque en tête de l'en-tête d'`AppLayout` et de
+  `PageVitrine` se lit dans `src/ui/theme/Marque.tsx` (`MARQUE`), à côté de
+  `tokens.css` et des polices. Par défaut, l'emblème de l'agence, aux couleurs
+  des tokens. Un logo client (SVG ou image) ou `null` la remplace ; sans
+  marque, la cellule de l'en-tête disparaît. La signature du pied de page n'en
+  dépend pas : elle garde l'emblème de l'agence. Le test
+  `tests/marque-du-theme.test.ts` refuse qu'un autre fichier que le thème et
+  la signature importe l'emblème.
+- **Pour l'appli** : rien à changer. Une appli qui veut le logo de son client,
+  ou aucun, remplit `Marque.tsx` (procédure de la skill `solstice-ui`,
+  « Thématiser pour un client ») ; comme `tokens.css`, c'est une retouche du
+  thème, à noter dans `ADAPTATIONS.md`.
+- **Pourquoi** : les couleurs, rayons et polices se changeaient dans le seul
+  thème, mais l'emblème était écrit dans les deux squelettes : mettre le logo
+  du client obligeait à retoucher le kit. La charte de l'agence vaut pour ses
+  propres applis et pour les clients sans charte ; pour les autres, elle doit
+  se remplacer simplement.

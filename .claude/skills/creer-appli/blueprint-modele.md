@@ -231,11 +231,11 @@ la description, puis :
    l'accueil, construire chaque entité de la section 2 en copiant le patron `dossiers`,
    brancher les briques « à brancher », écrire les
    scripts de données de la section 6. S'il y a lieu : retirer
-   la signature Solstice Lab (hors livraison Solstice Lab, si la fiche le dit, avec
-   l'emblème de l'agence en tête de l'en-tête, `Embleme.tsx` posé par `AppLayout.tsx` et
-   `PageVitrine.tsx`, et les textes qui la décrivent : `CLAUDE.md` §1, skill `solstice-ui`,
+   la signature Solstice Lab (hors livraison Solstice Lab, si la fiche le dit, avec les
+   textes qui la décrivent : `CLAUDE.md` §1, skill `solstice-ui`,
    commentaires de `PiedDePage.tsx`, `ui.css` et `tokens.css`, exception de
-   `tests/kit-tokens.test.ts`) ; écrire l'adaptateur de déploiement d'un hébergeur autre que
+   `tests/kit-tokens.test.ts` ; la marque de l'en-tête se change à part, avec le thème,
+   dans `src/ui/theme/Marque.tsx`) ; écrire l'adaptateur de déploiement d'un hébergeur autre que
    Render (avec la brique `deploiement`). Avec la brique `comptes` : retirer `"demo"` de
    `METHODES` (`src/config/comptes.ts`). L'assembleur la garde même quand `methodes` ne la
    liste pas, et elle refuse la production : ce retrait est la **première PR fusionnée**,

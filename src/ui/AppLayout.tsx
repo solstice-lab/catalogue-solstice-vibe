@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Embleme } from "./Embleme";
 import { MenuNavigation } from "./MenuNavigation";
 import { PiedDePage } from "./PiedDePage";
+import { MARQUE } from "./theme/Marque";
 
 export type LienNavigation = {
   libelle: string;
@@ -53,13 +53,16 @@ export function AppLayout({
   return (
     <>
       {/* Une barre en cellules séparées par des filets (charte « registre ») :
-          l'emblème sur aplat d'accent, qui mène à l'accueil, puis le nom, le
-          menu et le contexte. */}
+          la marque du thème sur aplat d'accent, qui mène à l'accueil, puis le
+          nom, le menu et le contexte. Sans marque (theme/Marque.tsx), pas de
+          cellule. */}
       <header className="sl-entete">
         <div className="sl-entete-feuille">
-          <Link href="/" className="sl-entete-embleme" aria-label="Accueil">
-            <Embleme />
-          </Link>
+          {MARQUE && (
+            <Link href="/" className="sl-entete-marque" aria-label="Accueil">
+              {MARQUE}
+            </Link>
+          )}
           <div className="sl-entete-titre">
             <span className="sl-entete-nom">{nom}</span>
             {sousTitre && <span className="sl-entete-sous-titre">{sousTitre}</span>}
