@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Bloc de contenu standard : carte blanche, titre de section à puce jaune. */
+/** Bloc de contenu standard : carte sur la surface, bordée d'un filet, titre de section à puce jaune. */
 export function Carte({
   titre,
   actions,

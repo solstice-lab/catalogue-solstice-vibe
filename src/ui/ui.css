@@ -45,7 +45,7 @@
 }
 .sl-entete-sous-titre {
   font-size: 0.68rem;
-  color: var(--couleur-accent-fond);
+  color: var(--texte-secondaire-sur-structure);
   font-weight: 300;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -271,7 +271,9 @@
 /* La saisie : un miroir invisible de la valeur donne sa largeur, donc la
    position de la barre ; le vrai input le recouvre, transparent. */
 .ed {
-  --sl-curseur-repos: color-mix(in srgb, var(--couleur-structure) 30%, var(--surface));
+  /* Repli sur une teinte dérivée : un thème client sans ce token garderait
+     sinon une barre invisible au repos, le défaut que le composant corrige. */
+  --sl-curseur-repos: var(--curseur-repos, color-mix(in srgb, var(--couleur-structure) 30%, var(--surface)));
   position: relative;
   display: flex;
   align-items: center;
@@ -584,7 +586,7 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   border-bottom: none;
 }
 .sl-tableau tbody tr:hover {
-  background: var(--fond-page);
+  background: var(--fond-secondaire);
 }
 .sl-chiffres {
   font-family: var(--police-chiffres);
@@ -658,7 +660,7 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   background: var(--surface);
 }
 .sl-tableau-defilement--volets tbody tr:hover td:first-child {
-  background: var(--fond-page);
+  background: var(--fond-secondaire);
 }
 .sl-tableau-defilement--volets thead th:first-child {
   z-index: 3;
@@ -685,7 +687,7 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   background: var(--surface);
 }
 .sl-tableau tbody tr:hover td.sl-tableau-figee-droite {
-  background: var(--fond-page);
+  background: var(--fond-secondaire);
 }
 @media (max-width: 1023px) {
   .sl-tableau th.sl-tableau-figee-droite,
@@ -830,7 +832,7 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 /* Un jour d'un mois voisin complète la semaine sans rien porter : il se lit
    comme un fond, pas comme une case vide du mois. */
 .sl-grille-mois-jour--hors-mois {
-  background: var(--fond-page);
+  background: var(--fond-secondaire);
   color: var(--texte-secondaire);
 }
 .sl-grille-mois-numero {

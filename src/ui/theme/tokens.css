@@ -3,8 +3,10 @@
  *
  * Aucun composant du kit ne porte de valeur en dur : thématiser un projet
  * client, c'est remplir ce fichier (procédure : skill solstice-ui), rien
- * d'autre. Les valeurs par défaut sont la charte Solstice Lab — thème de
- * repli pour les protos et les clients sans identité graphique définie.
+ * d'autre. Les valeurs par défaut sont la charte Solstice Lab « registre »,
+ * celle du site solstice-lab.com/new : papier, filets, navy et jaune, angles
+ * droits. Thème de repli pour les protos et les clients sans identité
+ * graphique définie.
  *
  * Seule exception au contrat : la signature Solstice Lab en pied de page
  * garde les couleurs de l'agence quel que soit le thème (voir ui.css).
@@ -12,27 +14,35 @@
 :root {
   /* ---- Identité (varie selon le client) ---- */
   --couleur-structure: #162447; /* header, texte fort, traits structurants */
-  --couleur-structure-2: #243a63; /* survols et dégradés sur fond structure */
+  --couleur-structure-2: #3b4a75; /* survols sur fond structure : doit s'y distinguer */
   --couleur-accent: #ffc72c; /* accent unique, à doser : liserés, puces */
-  --couleur-accent-fond: #dfebfd; /* fonds doux, badges, encadrés d'aide */
+  --couleur-accent-fond: #fffbea; /* fonds doux, badges, encadrés d'aide */
 
   --texte: #162447;
   --texte-secondaire: #5a6478; /* légendes, labels, titres de section */
   --texte-sur-structure: #ffffff; /* texte posé sur --couleur-structure */
+  --texte-secondaire-sur-structure: #b8c2d9; /* sous-titre posé sur --couleur-structure */
 
-  --fond-page: #f6f8fc;
-  --surface: #ffffff; /* cartes, champs, modales */
+  /* Fond et surfaces au même papier : la charte registre ne pose pas de
+     cartes sur un fond gris. Les deux tokens restent distincts pour un client
+     qui, lui, en a. */
+  --fond-page: #fcfcfd;
+  --surface: #fcfcfd; /* cartes, modales ; les champs n'ont pas de fond propre */
+  --fond-secondaire: #e8eef7; /* fond neutre qui se détache du papier : survol de ligne, jour hors du mois */
   --bordure: #e2e8f4;
+  /* Barre d'insertion d'un champ au repos : seul signe qu'on peut y écrire,
+     presque muette mais visible sur --surface. */
+  --curseur-repos: #b8c2d9;
 
   /* ---- Sémantique — ne JAMAIS détourner vers l'identité client :
           une erreur reste rouge même si la marque du client est rouge ---- */
-  --positif: #1e8a5a;
-  --negatif: #c8553d;
+  --positif: #1f7a4d;
+  --negatif: #b23a3a;
   --texte-sur-semantique: #ffffff; /* texte posé sur --positif ou --negatif */
 
   /* ---- Forme ---- */
-  --rayon: 8px;
-  --rayon-petit: 5px;
+  --rayon: 0;
+  --rayon-petit: 0;
 
   /* ---- Typographie — les polices se chargent dans src/app/layout.tsx
           (next/font/local, fichiers dans src/ui/theme/polices/), qui alimente

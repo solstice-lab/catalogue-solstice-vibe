@@ -20,7 +20,9 @@ export function SectionVitrine({
   /** Ancre visée par un lien de l'en-tête (« #offre »). */
   id?: string;
   principale?: boolean;
-  /** Alterner `page` et `surface` d'une section à l'autre rythme la page sans trait. */
+  /** Alterner `page` et `surface` d'une section à l'autre rythme la page : par le fond quand
+   *  le thème les distingue, par les filets de `surface` quand ils sont au même papier
+   *  (thème par défaut). */
   fond?: "page" | "surface";
   /** Texte, `Carte`s dans `.sl-grille`, `.sl-liste-simple`, `AppelAction`. */
   children?: ReactNode;

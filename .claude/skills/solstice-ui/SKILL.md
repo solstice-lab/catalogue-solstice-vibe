@@ -21,19 +21,19 @@ Deux couches, à ne jamais mélanger :
 | --- | --- |
 | `AppLayout` | Squelette de tout écran d'outil : en-tête (nom, sous-titre, nav, badge de contexte), contenu, **signature Solstice Lab** (gardée dans toute livraison Solstice Lab, couleurs hors thème). À côté d'elle, les liens « Mentions légales » vers `/mentions-legales` et « Confidentialité » vers `/confidentialite`, pages du socle ouvertes sans connexion : leurs valeurs se remplissent dans `src/lib/mentions-legales.ts` et `src/lib/confidentialite.ts` avant toute mise en ligne, chaque page signale chaque champ requis resté vide. Une entrée de `navigation` peut porter `visible` (fonction, éventuellement asynchrone) : le menu ne propose que celles qui répondent vrai. Le kit ne connaît aucune règle, c'est `lib/navigation.ts` qui branche chaque entrée sur `visiblePour(action)` de `briques/comptes/roles.ts` (avec la brique comptes), la même action que celle que la page exige (droits dans `src/config/acces.ts`). Le menu se replie derrière un bouton « Menu » sous 720 px (composant client `MenuNavigation`, interne au kit) : seuls libellé et adresse lui sont passés. |
 | `PageVitrine` | Squelette d'une page publique de site vitrine : en-tête horizontal (`nom` vers l'accueil, `liens` à droite, repliés derrière « Menu » sous 720 px, `action` facultative : un `LienBouton variante="secondaire"`, le primaire se fondrait dans l'en-tête), contenu, puis le même pied qu'`AppLayout` (signature, mentions légales, confidentialité). Liens publics, sans garde `visible`. |
-| `SectionVitrine` | Une section de `PageVitrine`, pleine largeur, contenu centré : `titre`, `intro` (chapô), `id` (ancre visée par un lien de l'en-tête), `fond` (`page` ou `surface`, à alterner). `principale` : le titre de la page (h1), une seule, la première ; les autres sont des h2. Dedans : texte, `Carte`s dans `.sl-grille`, `.sl-liste-simple`, `AppelAction`. |
+| `SectionVitrine` | Une section de `PageVitrine`, pleine largeur, contenu centré : `titre`, `intro` (chapô), `id` (ancre visée par un lien de l'en-tête), `fond` (`page` ou `surface`, à alterner : par le fond si le thème les distingue, par les filets sinon). `principale` : le titre de la page (h1), une seule, la première ; les autres sont des h2. Dedans : texte, `Carte`s dans `.sl-grille`, `.sl-liste-simple`, `AppelAction`. |
 | `AppelAction` | Bloc d'appel à l'action d'une page vitrine : `titre`, `texte`, `actions` (`LienBouton`, le primaire d'abord). Un seul par écran. Actions empilées sur téléphone. |
 | `Tableau` | Tout affichage tabulaire. Tri au clic sur l'en-tête (asc → desc → aucun) et filtre par colonne **intégrés d'office**, et la **vue (tri, filtres, déplis) survit à la navigation dans l'onglet** — `id` (obligatoire) la rattache au tableau : stable, unique dans l'app, jamais dérivé des données ; sessionStorage, donc fermer l'onglet remet à zéro. `chiffres: true` pour les colonnes numériques (chasse fixe, alignées à droite), `rendu` pour les cellules riches — le tri et le filtre restent sur la valeur brute. `actionsLot` ajoute la sélection de lignes et une barre d'actions en lot (c'est aux LISTES que reviennent les gestes de masse, pas aux fiches). `enfants` passe en **mode hiérarchique** : sous-lignes dépliables, PAS de tri (ordre structurel), le filtre MASQUE sans recalculer les agrégats — fournir `cleLigne`, c'est elle qui rend les déplis stables. `voletsFiges` fige en-tête et première colonne (croisées, tableaux longs). `figee: "droite"` sur une colonne la garde visible à droite quand le tableau défile (la colonne d'actions d'une file de décision : sur téléphone, Accepter/Refuser restent atteignables) ; une seule, la dernière. `auClicLigne` rend la ligne cliquable (détail). `exports={{ nomFichier, titre? }}` ajoute les boutons .xlsx et PNG — l'export dit ce que l'écran montre, et suit le thème client (couleurs lues dans les tokens au clic). Dans l'.xlsx, une colonne dont l'écran formate une date (`date()`) se déclare `format: "date"` (vraie date au format de l'écran, sinon du texte) et `exporter` donne la valeur écrite quand elle diffère de la valeur brute (le libellé d'un statut, pas sa clé) ; une cellule sans valeur reste vide. Le PNG écarte filtres, barre d'actions en lot et colonne de sélection. |
 | `ListeCartes` | Liste courte et déjà ordonnée, en cartes empilées pour le téléphone : `cle` (obligatoire, stable), `titre`, `badge`, `champs`, `lien` (la carte entière mène à la fiche). Pas de tri ni de filtre : une liste à explorer reste un `Tableau`. Pour une même vue en tableau sur ordinateur et en cartes sur téléphone, rendre les deux dans `.sl-seulement-ordinateur` et `.sl-seulement-telephone` (bascule en CSS à 720 px, juste dès le rendu serveur). |
 | `GrilleMois`, `NavigationMois` | Un mois en calendrier, pour l'ordinateur. `GrilleMois` reçoit les semaines déjà construites (`semaines`, du lundi au dimanche : elle ne calcule aucune date) et rend chaque élément en lien vers sa fiche ; `NavigationMois` porte le titre du mois et les liens précédent, suivant, aujourd'hui (adresses `?mois=…`, visibles aussi sur téléphone). Sur téléphone, une `ListeCartes` prend le relais (`.sl-seulement-ordinateur` / `.sl-seulement-telephone`). |
 | `TuileKPI` | Indicateur de tête d'écran : libellé, valeur en chasse fixe, variation en badge. En rangée dans `.sl-grille--serree`. `href` rend la tuile entière cliquable vers l'écran qui détaille le chiffre. |
 | `Squelette` | Zone en chargement (barres scintillantes). Utilisé par les `loading.tsx`. |
-| `Carte` | Bloc de contenu : carte blanche, titre de section en petites capitales à puce d'accent. |
+| `Carte` | Bloc de contenu : carte sur la surface, bordée d'un filet, titre de section en petites capitales à puce d'accent. |
 | `Bouton` | `primaire` (une action principale par écran), `secondaire`, `danger` (destructif uniquement). |
 | `LienBouton` | Un lien à l'allure d'un bouton (« Nouveau contrat », « Annuler » d'un formulaire, « Modifier » d'une fiche), mêmes variantes que `Bouton`, qui reste pour les gestes. Un `Link` de Next ; un `<a>` simple avec `download` (fichier à télécharger) ou `natif` (route qui redirige ailleurs, comme la connexion Google) : rien ne se précharge. Jamais les classes `sl-bouton` recopiées sur un lien. |
 | `BoutonSupprimer` | Suppression depuis une fiche, confirmée dans une `Modale` : `titre` (la question), `action` (la server action liée à l'id ; si la suppression est refusée, elle renvoie `{ erreur }`, affiché dans la `Modale`), `explication` facultative (texte de la `Modale` à la place de « Cette action est définitive. », à n'employer que si la suppression a des effets à dire, et qui redit alors que l'action est définitive). Ne pas recopier la confirmation dans chaque module. |
 | `Badge` | Statuts et variations. `positif`/`negatif` portent la sémantique des données, `accent` un simple relief. |
-| `Champ`, `ChampSelect`, `ChampTexteLong` | Champs de formulaire avec label et aide, sans cadre (charte « registre »). Un `Champ` qui se tape (`text`, `email`, `tel`, `search`, `url`) porte une barre d'insertion : teinte pâle de la structure au repos, couleur d'accent et qui respire sur le seul prochain champ vide de la page, verte ou rouge selon le format ; la cellule prend `--couleur-accent-fond` pendant la saisie. Les autres types (date, nombre, mot de passe, fichier) restent natifs, sans cadre. `format` (`siren`, `cp`, `email`, `tel`, `date` jj/mm/aaaa, `int`, `num`, `pct`, `split`, `url`) contrôle la saisie, par défaut celui du type : neutre pendant une frappe plausible, rouge à la sortie avec soulignement, message au libellé et `aria-invalid`. Un champ vide n'est jamais rouge : l'obligatoire se contrôle à l'envoi. En lecture seule ou désactivé, pas de barre. **Aucun `<input>` hors de `src/ui/Champ.tsx`**, sauf caché, fichier, case à cocher et bouton radio (`tests/champs-sans-cadre.test.ts`) : sans la barre, un champ est invisible au repos. |
+| `Champ`, `ChampSelect`, `ChampTexteLong` | Champs de formulaire avec label et aide, sans cadre (charte « registre »). Un `Champ` qui se tape (`text`, `email`, `tel`, `search`, `url`) porte une barre d'insertion : teinte pâle de la structure au repos (`--curseur-repos`), couleur d'accent et qui respire sur le seul prochain champ vide de la page, verte ou rouge selon le format ; la cellule prend `--couleur-accent-fond` pendant la saisie. Les autres types (date, nombre, mot de passe, fichier) restent natifs, sans cadre. `format` (`siren`, `cp`, `email`, `tel`, `date` jj/mm/aaaa, `int`, `num`, `pct`, `split`, `url`) contrôle la saisie, par défaut celui du type : neutre pendant une frappe plausible, rouge à la sortie avec soulignement, message au libellé et `aria-invalid`. Un champ vide n'est jamais rouge : l'obligatoire se contrôle à l'envoi. En lecture seule ou désactivé, pas de barre. **Aucun `<input>` hors de `src/ui/Champ.tsx`**, sauf caché, fichier, case à cocher et bouton radio (`tests/champs-sans-cadre.test.ts`) : sans la barre, un champ est invisible au repos. |
 | `ChampCase` | Case à cocher, son libellé sur la même ligne, aide dessous (« Prévenir par e-mail »). Pas de `Champ type="checkbox"`, qui met le libellé au-dessus, en petites capitales. |
 | `ChampPiege` | Champ piège anti-robot d'un formulaire public (`name` seul) : hors de l'écran, masqué aux lecteurs d'écran, sauté à la tabulation. Le serveur traite tout envoi où il n'est pas vide comme un robot (brique contact). |
 | `EtatVide` | Toute liste ou zone potentiellement vide : titre, description, action de démarrage. Un blanc silencieux ressemble à un bug. |
@@ -124,7 +124,8 @@ Deux couches, à ne jamais mélanger :
 
 Identité : `--couleur-structure(-2)`, `--couleur-accent`,
 `--couleur-accent-fond`, `--texte`, `--texte-secondaire`,
-`--texte-sur-structure`, `--fond-page`, `--surface`, `--bordure`.
+`--texte-sur-structure`, `--texte-secondaire-sur-structure`, `--fond-page`,
+`--surface`, `--fond-secondaire`, `--bordure`, `--curseur-repos`.
 Sémantique (ne se thématise PAS) : `--positif`, `--negatif`, et
 `--texte-sur-semantique` pour le texte posé sur eux (bouton danger).
 Forme : `--rayon`, `--rayon-petit`. Typo : `--police-texte`,
@@ -139,8 +140,10 @@ pas celle du thème. L'image est dessinée par Satori, qui ne lit aucune feuille
 de style : ses `style={{…}}` sont la seule exception à la règle des classes du
 kit.
 
-Le thème par défaut est la charte Solstice Lab — le garder pour les protos et
-les clients sans identité définie.
+Le thème par défaut est la charte Solstice Lab « registre », celle du site
+solstice-lab.com/new : navy, jaune, papier `#FCFCFD` pour le fond comme pour
+les surfaces, papier 2 `#E8EEF7`, filets `#E2E8F4`, angles droits (rayons
+à 0). Le garder pour les protos et les clients sans identité définie.
 
 ## Thématiser pour un client
 
@@ -157,11 +160,19 @@ Puis mapper vers les tokens :
 
 1. Couleur dominante de la marque → `--couleur-structure` (foncée : le texte
    sur structure doit rester lisible). Dériver `--couleur-structure-2`
-   (éclaircie ~15 % pour les survols).
+   (éclaircie ~15 % pour les survols) et `--texte-secondaire-sur-structure`
+   (le texte sur structure atténué, pour le sous-titre de l'en-tête).
 2. Couleur secondaire/vive → `--couleur-accent` ; en dériver
    `--couleur-accent-fond` (version très pâle, fond de badge lisible).
 3. Neutres : garder des gris proches des valeurs par défaut si la charte n'en
-   impose pas — un fond de page légèrement teinté vers la structure suffit.
+   impose pas. `--fond-page` et `--surface` peuvent être égaux (la charte
+   par défaut pose tout sur le même papier) ou distincts (des cartes blanches
+   sur un fond légèrement teinté vers la structure). `--fond-secondaire` est
+   un ton plus soutenu que la surface, teinté vers la structure : il porte le
+   survol de ligne et les jours hors du mois, il doit se voir sur `--surface`.
+   `--curseur-repos` est la barre d'insertion d'un champ au repos, seul signe
+   qu'on peut y écrire : une teinte pâle de la structure, presque muette mais
+   visible sur `--surface` (par défaut `#B8C2D9`).
 4. Polices : jamais `next/font/google` (il télécharge chez Google à chaque
    build, et un refus fait échouer le build ; un test l'interdit dans `src/`).
    Récupérer les woff2 de la police du client à la source officielle (dépôt de
@@ -183,10 +194,11 @@ Puis mapper vers les tokens :
 
 ### Garde-fous (bloquants, quel que soit le thème)
 
-- Contraste AA : ≥ 4,5:1 pour `--texte` sur `--surface`, `--fond-page` et
-  `--couleur-accent-fond` (appel à l'action d'une page vitrine, champ en
-  cours de saisie), et
-  pour `--texte-sur-structure` sur `--couleur-structure`, et pour
+- Contraste AA : ≥ 4,5:1 pour `--texte` sur `--surface`, `--fond-page`,
+  `--fond-secondaire` et `--couleur-accent-fond` (appel à l'action d'une page
+  vitrine, champ en cours de saisie), pour `--texte-sur-structure` et
+  `--texte-secondaire-sur-structure` sur `--couleur-structure`, pour
+  `--texte-secondaire` sur `--fond-secondaire` (jours hors du mois), et pour
   `--texte-sur-semantique` sur `--negatif` (bouton danger) et sur `--positif`. Si l'accent du
   client est clair, il sert aux liserés et fonds, jamais au texte.
 - La sémantique des états ne se détourne jamais vers l'identité : une erreur
