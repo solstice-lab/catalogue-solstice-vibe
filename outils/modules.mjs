@@ -94,6 +94,10 @@ export const EXCLUS_DU_CATALOGUE = [
   "CODE_OF_CONDUCT.md",
   ".github/ISSUE_TEMPLATE/",
   ".github/pull_request_template.md",
+  // La référence longue du README (démarrage, assembleur, briques, structure) :
+  // elle décrit le catalogue, cite outils/, la skill creer-appli et des briques
+  // que l'appli n'a pas toujours gardées, comme le README dont elle vient.
+  "docs/catalogue/",
   // Réservé aux captures d'écran du README du catalogue (absent de l'appli :
   // copiées, elles y seraient orphelines). Le dossier n'existe pas encore.
   "docs/captures/",

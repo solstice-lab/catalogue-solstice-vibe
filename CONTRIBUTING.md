@@ -87,7 +87,9 @@ passe) et `--no-verify`, y compris confiés à un interpréteur. Il arrête l'in
 pas qui veut passer : `SECURITY.md` dit où est la barrière réelle. Pour s'en passer sur son poste :
 `{ "disableAllHooks": true }` dans `.claude/settings.local.json`, ignoré par
 git. Ce réglage coupe tous les hooks, pas seulement celui-ci ; le README
-(« Claude Code : un hook s'applique d'office ») donne le détail.
+(« Claude Code : un hook s'applique d'office ») le résume et
+`docs/catalogue/structure.md` (« Le hook des gardes, en détail ») donne le
+détail.
 
 ## Les vérifications à lancer
 

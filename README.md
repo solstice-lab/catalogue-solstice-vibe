@@ -1,14 +1,32 @@
-# catalogue-solstice-vibe
+# Catalogue Solstice Lab
 
 [![Vérification du code](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/ci.yml/badge.svg)](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/ci.yml)
 [![Assemblage](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/assemblage.yml/badge.svg)](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/assemblage.yml)
 
-Le catalogue de Solstice Lab : de quoi assembler, avec Claude, de petites
-applis web pour les outils internes d'une entreprise. Il contient le socle
-commun (Next.js, kit d'interface) et sa méthode de travail pour Claude, des briques
-réutilisables, et l'assembleur (`outils/assembler.mjs`) qui copie ce qu'un
-client a choisi vers un dossier neuf : l'appli assemblée, livrée dans son propre
-dépôt, où s'écrit ensuite son module métier.
+Des applications web sur mesure pour remplacer un tableur devenu critique, une
+base Airtable bricolée ou des allers-retours de mails, assemblées à partir
+d'éléments déjà éprouvés plutôt que construites de zéro.
+
+## Ce que c'est, pour qui
+
+Ce dépôt est l'atelier de Solstice Lab. Il contient ce dont l'agence se sert
+pour livrer à une entreprise une application propre à son métier : un socle
+commun, des briques réutilisables (connexion, échéances, e-mails, import
+Excel…) et l'outil qui assemble ce que le client a choisi.
+
+Les applications visées servent de 5 à 50 personnes, ne sont soumises à aucune
+contrainte réglementaire particulière et supportent une heure de panne sans
+conséquence grave.
+
+Ce que le client obtient :
+
+- une application propre à son métier, pas un outil générique à contourner ;
+- livrée **dans son propre dépôt**, sans plateforme à louer : il reçoit le code,
+  et ce qui lui revient exactement est fixé par le contrat de livraison ;
+- bâtie sur des éléments déjà utilisés ailleurs : une brique naît dans une
+  appli (réelle ou d'essai) et n'entre au catalogue que quand une deuxième en
+  a besoin ;
+- au thème de son entreprise : tout le visuel se règle dans un seul fichier.
 
 Le dépôt est entretenu par l'équipe Solstice Lab et n'accepte pas de pull
 request extérieure : un problème se signale par un ticket, une faille par
@@ -16,13 +34,82 @@ request extérieure : un problème se signale par un ticket, une faille par
 mode d'emploi de l'équipe. Les échanges suivent le
 [code de conduite](CODE_OF_CONDUCT.md).
 
+## Les trois niveaux d'une appli
+
+Une appli assemblée se lit en trois niveaux. La métaphore de la maison aide à
+les distinguer : on ne refait pas les fondations à chaque chantier, on pose des
+éléments qui ont déjà tenu, et c'est l'aménagement qui rend la maison propre à
+ses occupants.
+
+| Niveau        | Ce que c'est                                                                                                                | Dans la maison | Dans une appli assemblée                                                         |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------- |
+| Socle         | Le code commun (kit d'interface et thème, mentions légales et confidentialité, sonde `/sante`, CI) et sa méthode de travail | Les fondations | Toujours présent                                                                 |
+| Briques       | Un comportement réutilisable : échéances, calendrier, validation, import par lot, e-mails, comptes…                         | Les éléments   | Choisies d'une appli à l'autre                                                   |
+| Module métier | Les entités du client (contrats, équipements, demandes…) et leurs écrans, écrits sur le patron `dossiers`                   | L'aménagement  | Propre à chaque appli, écrit après l'assemblage ; le catalogue n'en livre aucun |
+
+Le socle ne livre pas seulement du code de départ, il livre la **méthode** :
+des composants qui portent les règles de construction, des règles courtes dans
+[`CLAUDE.md`](CLAUDE.md), des skills de Claude qui documentent chaque domaine
+et des garde-fous en code. Socle et méthode forment le _harnais_. Chaque règle
+vient d'une leçon payée sur un projet précédent ; [`docs/cicatrices.md`](docs/cicatrices.md)
+en tient le registre.
+
+## Les briques
+
+Ce sont exactement celles que l'assembleur sait livrer. Chacune a son dossier
+dans `src/briques/<nom>/`, avec un `README.md` qui dit comment l'utiliser. Le
+tableau qui dit ce que chacune exige et où elle se branche est dans
+[`docs/catalogue/briques.md`](docs/catalogue/briques.md).
+
+| Brique                                                    | Ce qu'elle apporte                                                                                       |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [`comptes`](src/briques/comptes/README.md)                | La connexion des personnes (code reçu par e-mail, Google, Microsoft), tout protégé par défaut, des droits par rôle |
+| [`gestion-comptes`](src/briques/gestion-comptes/README.md) | Un écran où un administrateur invite, change le rôle, désactive ou réactive un compte                   |
+| [`espaces`](src/briques/espaces/README.md)                | Des groupes de personnes (une coloc, une association) qui ne voient que leurs propres fiches             |
+| [`rgpd`](src/briques/rgpd/README.md)                      | L'export et l'effacement des données d'une personne, la purge au terme de la durée de conservation      |
+| [`journal`](src/briques/journal/README.md)                | Le journal d'audit : qui a créé, modifié ou supprimé quoi, et quand                                      |
+| [`mails`](src/briques/mails/README.md)                    | L'envoi d'e-mails automatiques ; rien ne part sans réglage explicite                                     |
+| [`notifications`](src/briques/notifications/README.md)    | Un récapitulatif envoyé par e-mail à jour fixe                                                           |
+| [`contact`](src/briques/contact/README.md)                | Le formulaire de contact public, protégé contre le courrier indésirable sans captcha                     |
+| [`echeances`](src/briques/echeances/README.md)            | Le suivi de dates limites (à venir, en retard) sur ce que l'appli gère, avec une vue « À venir »         |
+| [`calendrier`](src/briques/calendrier/README.md)          | Les événements d'un mois : grille sur ordinateur, cartes sur téléphone                                   |
+| [`validation`](src/briques/validation/README.md)          | Une file de propositions à accepter ou refuser, la décision étant tracée                                 |
+| [`import-lot`](src/briques/import-lot/README.md)          | L'import d'un fichier Excel ou CSV, contrôlé avant d'être confirmé tout ou rien                          |
+| [`deploiement`](src/briques/deploiement/README.md)        | La mise en ligne automatique après les vérifications de la CI (adaptateur Render)                        |
+
+Une brique qui en exige une autre ne se garde pas sans elle : l'assembleur
+refuse l'appel et nomme la brique à ajouter. Pour partir d'un jeu de briques
+cohérent, trois profils existent : `vitrine` (un site sans connexion),
+`outil-interne` (des comptes) et `portail` (des comptes qu'un administrateur
+gère à l'écran).
+
+## Claude Code : un hook s'applique d'office
+
+`.claude/settings.json` est suivi dans le dépôt et branche un hook
+`PreToolUse` : quiconque ouvre le dépôt dans Claude Code le reçoit. Avant
+chaque commande et chaque écriture de fichier de Claude, il lance
+`node .claude/hooks/gardes.mjs`, sans dépendance ni réseau, qui refuse
+notamment d'écrire un `.env*` ou un `.npmrc`, de verser un mot de passe de base
+distante dans une commande ou un fichier, de forcer un push, de sauter les
+hooks git ou de fusionner une pull request. La liste complète est dans
+[`CLAUDE.md`](CLAUDE.md), section 8.
+
+Il arrête l'inadvertance d'une session, pas qui veut passer : la barrière réelle
+est la protection de `main` et l'absence de secrets de production sur le poste.
+Il ne touche pas aux commandes que vous tapez vous-même. En session
+interactive, Claude Code ne lance les hooks d'un dossier qu'une fois sa demande
+de confiance acceptée.
+
+Pour s'en passer sur son poste, mettre `{ "disableAllHooks": true }` dans
+`.claude/settings.local.json` (ignoré par git). Ce réglage coupe tous les
+hooks, les vôtres compris : Claude Code ne permet pas d'en retirer un seul.
+
 ## Démarrage rapide
 
-Il faut git, avec une identité configurée (`user.name`, `user.email` :
-l'assembleur commite l'appli), Node 24 ou plus, npm 11.16 ou plus (raisons dans
-« Démarrer en local ») et, pour une appli avec base, Docker lancé (Docker
-Desktop sous Windows et macOS). Les commandes sont les mêmes sous PowerShell et
-sous bash, sauf la copie de `.env.example`, donnée sous les deux formes.
+Il faut git avec une identité configurée (`user.name`, `user.email` : l'assembleur
+commite l'appli), Node 24 ou plus, npm 11.16 ou plus et, pour une appli avec
+base, Docker lancé. Les commandes sont les mêmes sous PowerShell et sous bash,
+sauf la copie de `.env.example`.
 
 Cloner le catalogue et assembler une appli à côté, ici avec la connexion
 (`comptes`, qui exige `mails`) et les échéances :
@@ -45,8 +132,7 @@ npx tsx scripts/bases-locales.ts
 
 Copier le modèle des variables en `.env.local`, y remplacer `DATABASE_URL` par la
 ligne qu'affiche `bases-locales.ts` (et, avec `comptes`, remplir `AUTH_SECRET` :
-la commande est dans `.env.example`), puis lancer l'appli. Cette copie
-diffère d'un shell à l'autre. PowerShell :
+la commande est dans `.env.example`), puis lancer l'appli. PowerShell :
 
 ```powershell
 Copy-Item .env.example .env.local
@@ -60,508 +146,53 @@ cp .env.example .env.local
 npm run dev
 ```
 
-L'accueil est sur http://localhost:3000 ; le détail est dans « Démarrer en local ».
-Sans brique, `node outils/assembler.mjs ../mon-site` donne un site sans
-base : ni Docker ni `.env.local`, `npm ci` puis `npm run dev` dans `../mon-site`.
-Pour choisir les briques, voir « Briques » ; pour mener un projet client du
-cadrage à la livraison, « Démarrer un projet client ».
+L'accueil est sur http://localhost:3000. Sans brique,
+`node outils/assembler.mjs ../mon-site` donne un site sans base : ni Docker ni
+`.env.local`, `npm ci` puis `npm run dev` suffisent.
+
+Une appli client ne se copie pas depuis GitHub : elle s'assemble depuis ce
+dépôt, avec la skill `creer-appli`, lancée dans une session Claude Code ouverte
+à la racine du catalogue. Elle mène le cadrage, écrit la blueprint de l'appli
+(le document qui décrit ses entités et ses briques), lance l'assembleur, crée le
+dépôt distant après accord, puis les tickets de la première étape. Le
+déroulement complet est dans [`docs/catalogue/demarrer.md`](docs/catalogue/demarrer.md).
 
 ## Statut du projet
 
-- **Expérimental.** Le catalogue sert aux livraisons de Solstice Lab et
-  change avec elles. Des combinaisons de briques s'assemblent dans les tests
-  (fichiers, imports, mise en forme, typecheck, migrations), mais lint, tests et build ne
-  sont rejoués que sur l'appli sans base. La brique `deploiement` a été
-  éprouvée le 2026-11-05 sur Render avec une appli de test : quatre mises en
-  ligne par la CI, un échec contrôlé au certificat de la base, un
-  déclencheur faux.
+- **Expérimental.** Le catalogue sert aux livraisons de Solstice Lab et change
+  avec elles. Des combinaisons de briques s'assemblent dans les tests (fichiers,
+  imports, typecheck, migrations) ; la brique `deploiement` a été éprouvée sur
+  une appli d'essai.
 - **Pas de version publiée** : ni tag, ni release, ni paquet npm. Seule la
-  branche `main` est entretenue. `package.json` porte `"private": true` pour
-  que npm refuse de publier le paquet : c'est le dépôt qui est sous licence
-  MIT (`LICENSE`), pas un paquet distribué.
-- **Interfaces des briques non stabilisées.** La version d'une brique est le
-  commit du catalogue noté dans la blueprint de l'appli et dans son manifeste
-  d'empreintes (`catalogue.empreintes.json`) ; chaque changement
-  d'interface publique est inscrit au `CHANGELOG.md` de la brique, sans
-  promesse de compatibilité d'un commit à l'autre.
+  branche `main` est entretenue. `package.json` porte `"private": true` : c'est
+  le dépôt qui est sous licence MIT, pas un paquet distribué.
+- **Interfaces des briques non stabilisées.** Chaque changement d'interface
+  publique est inscrit au `CHANGELOG.md` de la brique, sans promesse de
+  compatibilité d'un commit à l'autre.
 
-## Claude Code : un hook s'applique d'office
+## Aller plus loin
 
-`.claude/settings.json` est suivi dans le dépôt et branche un hook
-`PreToolUse` : quiconque ouvre le dépôt dans Claude Code le reçoit. Avant
-chaque commande (Bash, PowerShell, terminal de l'appli de bureau) et chaque écriture de fichier (Write, Edit,
-MultiEdit, NotebookEdit) de Claude, Claude Code lance
-`node .claude/hooks/gardes.mjs`, qui lit la commande ou le fichier visé, sans
-dépendance ni réseau, et refuse : écrire un `.env*` (hors `.env.example`), `.envrc` ou `.npmrc`, un
-mot de passe de base distante dans une commande, une URL de base distante avec mot de passe dans un fichier,
-`git add -f`, `--confirmer`, la fusion d'une PR (`gh pr merge` ou l'API), `git push --force`
-(`--force-with-lease` passe) et `--no-verify`, y compris confiés à un interpréteur (`sh -c`,
-`pwsh -Command`, heredoc exécuté). Il arrête l'inadvertance d'une session, pas qui veut passer :
-la barrière réelle est la protection de `main` et l'absence de secrets de production sur le poste.
-Il ne touche pas aux commandes que vous tapez vous-même. En session interactive, Claude Code ne lance les hooks
-d'un dossier qu'une fois sa demande de confiance acceptée ; en `claude -p`, ils
-tournent d'office.
-
-Pour s'en passer sur son poste, mettre `{ "disableAllHooks": true }` dans
-`.claude/settings.local.json` (réglages personnels, appliqués par-dessus
-`.claude/settings.json`, ignorés par git). Ce réglage coupe tous les hooks, les
-vôtres compris : Claude Code ne permet pas d'en retirer un seul, et des `hooks`
-déclarés dans le fichier local s'ajoutent à ceux du dépôt sans les remplacer.
-Pour une seule session : `claude --settings <fichier>`, avec un fichier JSON
-qui contient `{ "disableAllHooks": true }` (le JSON en ligne de commande perd
-ses guillemets sous Windows PowerShell 5.1).
-
-## Ce que le catalogue assemble
-
-Les applis visées remplacent un Excel critique, un Airtable bricolé ou des
-allers-retours de mails. Elles sont propres au métier de l'entreprise, servent
-5 à 50 personnes, ne sont soumises à aucune contrainte réglementaire et
-supportent une heure de panne sans conséquence grave.
-
-Une appli assemblée se lit en trois niveaux :
-
-| Niveau | Ce que c'est | Dans une appli assemblée |
-| --- | --- | --- |
-| Socle | Le code commun (kit d'interface et thème, mentions légales et confidentialité, sonde `/sante`, CI) et sa méthode (règles, skills, gardes de Claude) : ensemble, le harnais | Toujours présent |
-| Module métier | Les entités du client et leurs écrans, construits sur le patron `dossiers` | Propre à chaque appli, écrit après l'assemblage ; le catalogue n'en livre aucun |
-| Briques | Un comportement réutilisable, branché sur une entité ou sur le socle : échéances, calendrier, validation, import par lot, e-mails, comptes… | Choisies d'une appli à l'autre |
-
-Chaque brique vit dans `src/briques/<brique>/` avec son code, un `README.md`
-dont la section « Interface publique » dit ce qu'une appli peut importer, et
-un `CHANGELOG.md` ; ses tests sont dans `tests/`, sur leurs propres tables. Une
-brique ne se conçoit pas dans le vide : elle naît dans une vraie appli, puis
-s'extrait vers le catalogue quand une deuxième en a besoin (les échéances sont
-nées dans une appli de suivi de contrats, puis ont servi à une maintenance
-préventive et à des demandes d'achat ; ces trois applis de test (contrats, GMAO,
-demandes d'achat) ont été le banc d'essai des briques, hors du catalogue depuis ;
-une quatrième, `tours-de-coloc`, a servi d'essai à `espaces` et à `gestion-comptes`).
-
-Un seul dépôt catalogue, un dépôt par appli assemblée : chaque brique
-n'existe qu'une fois, et le client ne reçoit que ce qu'il a choisi. La skill
-`creer-appli` mène le cadrage, écrit la blueprint de l'appli, un `.md` à
-en-tête YAML (commit de référence du catalogue, entités, briques et leurs
-branchements), lance l'assembleur, crée le dépôt distant et les issues de la
-section 9 de la blueprint ; à la fin de ces tickets, elle liste les adaptations de
-l'appli et en tire les brouillons de tickets du catalogue.
-
-## Briques
-
-Ce sont exactement celles que l'assembleur sait livrer (`BRIQUES` de
-`outils/modules.mjs`, que `node outils/assembler.mjs --aide` énumère).
-
-| Brique | Ce qu'elle fait | Exige | Se branche sur |
-| --- | --- | --- | --- |
-| `echeances` | Statuts des échéances d'une entité datée, vue « À venir » et tuile d'accueil | la base | une entité de l'appli, à brancher |
-| `calendrier` | Les événements d'une entité datée sur un mois : grille sur ordinateur, cartes sur téléphone | la base | une entité de l'appli, à brancher |
-| `validation` | Une file de propositions acceptées ou refusées, décision tracée et en lot | la base | une entité de l'appli, à brancher |
-| `import-lot` | Un Excel ou un CSV devient un lot à valider, confirmé tout ou rien ou ignoré ; fournit ses écrans, l'appli garde son branchement, ses droits et les pages qui les appellent | la base | une entité de l'appli, à brancher |
-| `mails` | L'envoi d'e-mails transactionnels par Resend, sans base ni session ; console en local, capture en test, rien ne part sans réglage explicite | — | le socle |
-| `deploiement` | La mise en ligne après la CI : job `deployer` qui déclenche le commit vérifié et l'attend sur `/sante` ; adaptateur Render (`render.yaml`) remplaçable seul | — | la CI |
-| `notifications` | Prévenir par e-mail à jour fixe : un récapitulatif fabriqué par l'appli, envoyé par `mails` depuis une route qu'une tâche planifiée appelle chaque jour, protégée par un secret ; modes à blanc et essai, journal des envois purgé au-delà de 12 mois. Ne connaît pas `echeances` : l'appli fait le lien | la base, `mails` | une entité de l'appli, à brancher |
-| `contact` | Le formulaire de contact public (`/contact`) : envoi par `mails`, champ piège, délai minimal et limite par adresse IP en base, sans captcha | la base, `mails` | le socle |
-| `comptes` | Session en base, tout protégé par défaut, page `/connexion`, droits (`exiger`, `peut`, `visiblePour`) ; connexion par code à 6 chiffres envoyé par e-mail (par défaut), par lien envoyé par e-mail (applis grand public), avec Google ou avec Microsoft (Entra ID) ; la démo est une méthode, refusée en production | la base, `mails` | le socle |
-| `rgpd` | L'export des données d'une personne en JSON, par elle-même (`/mes-donnees`) ou par l'admin (`/donnees-personnelles`), et leur effacement ou anonymisation, par l'admin seul (`/donnees-personnelles`) ; chaque table se déclare dans `src/config/donnees-personnelles.ts` ; la purge des données au terme de la durée que chaque brique déclare (`scripts/purger-donnees.ts`, et au passage), la trace de l'export de l'admin au journal, et les gabarits hors code (registre des traitements, sous-traitance, hébergement dans l'UE) | la base, `comptes` | le socle |
-| `journal` | Le journal d'audit : qui a créé, modifié ou supprimé quoi, et quand, dans la transaction de l'écriture, sans valeur de champ ; écran `/journal` et historique de fiche pour l'admin ; branché, avec `gestion-comptes`, sur les gestes de `/comptes`, et au catalogue sur le patron `dossiers` | la base, `comptes` | le module métier de l'appli, sur le modèle du patron `dossiers` |
-| `gestion-comptes` | L'écran `/comptes`, où un admin invite, change un rôle, désactive ou réactive un compte et ouvre un domaine ; le dernier admin actif y est protégé | la base, `comptes` | le socle |
-| `espaces` | Des groupes de personnes (une coloc, une association) qu'on crée ou rejoint par un code, un lien ou une invitation par e-mail plafonnée ; rôles d'espace, dernier gestionnaire protégé, écrans « Créer ou rejoindre » et « Mon espace ». L'accès unique `exigerMonEspace()` isole les fiches de chaque espace, et un test-verrou refuse un module qui lirait sans lui | la base, `comptes`, `mails` | le socle, puis le module métier |
-
-La base (brique données, `src/lib/db/`) ne se choisit pas : l'assembleur la
-garde dès qu'une brique gardée l'exige. Une brique qui en exige
-une autre ne se garde pas sans elle : l'assembleur refuse l'appel en nommant
-la brique à ajouter, sans jamais l'ajouter en silence. Seule exception, déclarée
-dans `outils/modules.mjs` (`entraine`) : `rgpd` est gardée d'office avec
-`comptes`, car une appli à comptes doit pouvoir répondre à une demande d'accès
-ou d'effacement ; l'assembleur le dit dans sa sortie et dans le premier commit
-de l'appli. Une brique n'importe une autre brique que si elle l'exige :
-`tests/assembleur.test.ts` le verrouille. « À brancher » : la brique arrive
-installée, sans branchement ; l'appli la branche sur l'entité de son module
-métier en suivant la section « La brancher » de son README, qui porte un
-exemple complet.
-
-### Le module métier
-
-Le catalogue ne livre aucun module métier : les entités du client (ses
-contrats, ses équipements, ses demandes…) s'écrivent dans l'appli assemblée, en
-copiant le patron `dossiers` (`src/app/dossiers/`, règles dans `CLAUDE.md` §3),
-puis les briques à brancher s'y branchent. Trois modules de test ont vécu dans
-le catalogue le temps d'éprouver les briques ; ils l'ont quitté avant sa
-publication, et ne manquent à aucune brique, dont les tests tiennent sur leurs
-propres tables.
-
-## Le socle
-
-Le socle est le code commun à toute appli assemblée (Next.js 16, React 19, TypeScript ;
-Postgres avec la brique données). Il ne livre pas seulement du code de départ, il livre la
-**méthode** : des composants qui portent les invariants de construction en
-dur, des règles courtes dans `CLAUDE.md`, des skills qui documentent chaque
-domaine, et des garde-fous en code plutôt qu'en consigne : socle et méthode forment le
-*harnais*. Chaque règle vient
-d'une leçon payée sur un projet précédent ; `docs/cicatrices.md` en tient le
-registre.
-
-Trois volets :
-
-- **Visuel** — kit `src/ui/` (tableaux avec tri, filtres, exports et
-  conservation de vue intégrés, états vides explicites, signature de l'agence)
-  et contrat de thème en tokens : l'identité du client se règle dans un seul
-  fichier, les invariants ne se négocient pas.
-- **Données** — la brique données (`src/lib/db/`), qu'une appli reçoit avec une
-  brique qui lit la base et qu'un site sans en a pas : client Postgres à migrations idempotentes, module métier
-  canonique à copier (`dossiers`, au catalogue seulement : ni ses écrans ni sa couche données ne sont livrés), squelette des scripts de données en dry-run (`scripts/lib/cli.ts`, l'import d'exemple au catalogue)
-  par défaut, tests avec garde anti-prod : impossible de les lancer contre
-  autre chose qu'une base locale.
-- **Méthode** — skills de cadrage (`solstice-nouvelle-appli`) et de livraison
-  (`solstice-livrer`), agents relecteurs avant PR, et gardes qui refusent à
-  Claude les gestes qui versent un secret, touchent la prod ou écrasent le travail
-  d'une autre session.
-
-Assemblé sans brique qui lit la base (au plus `mails` et `deploiement`), le socle suffit à un
-**site vitrine** : ni base, ni connexion, `src/proxy.ts` ne pose que la
-Content-Security-Policy. Un formulaire de contact (`--briques mails,contact`) y ajoute la
-base, pas la connexion. Son nonce impose
-un rendu à chaque requête : pas de page statique ni de cache CDN du HTML. Le compromis et
-les options écartées sont dans `.claude/skills/solstice-nouvelle-appli/socle.md`.
-
-### Démarrer un projet client
-
-Une appli client ne se copie pas depuis GitHub : elle s'assemble depuis ce
-dépôt, avec la skill `creer-appli`, lancée dans une session Claude Code
-ouverte à la racine du catalogue.
-
-1. **Cadrer**, sans code : la skill s'appuie sur `solstice-nouvelle-appli`
-   pour mener aux réponses du client, à la fiche projet validée et à la forme
-   retenue.
-2. **Assembler** : elle choisit les briques, écrit la
-   blueprint, la fait relire par l'agent `relecteur-blueprint`, puis lance
-   `outils/assembler.mjs` vers un dossier vide hors du catalogue (voir
-   « Assembler une appli »). Elle crée ensuite le dépôt distant, privé par
-   défaut, après un accord explicite (en disant d'abord si la protection de `main`
-   y sera possible), puis les issues de la section 9 de la blueprint par
-   `outils/creer-issues.mjs` (voir « Les issues de la section 9 »), et dit quoi
-   taper.
-3. **Régler l'appli assemblée**, ce que l'assembleur ne fait pas :
-   `LOCALE`, `DEVISE` et `FUSEAU` en tête de `src/lib/format.ts` (le fuseau
-   décide du jour qui compte pour les échéances). L'assembleur a écrit ce que
-   l'en-tête de la blueprint déclare : le nom affiché (`NOM_APP` de
-   `src/lib/navigation.ts`, repris par le titre de chaque page), la description
-   et le choix site public ou fermé de `src/lib/referencement.ts`, le nom du
-   service et de la base de `render.yaml` et le nom de l'hébergeur des mentions
-   légales ; un champ absent laisse sa valeur de remplacement. Avant toute mise
-   en ligne, remplir `src/lib/mentions-legales.ts` (statut de l'éditeur ; pour un
-   professionnel, éditeur et directeur de la publication ; coordonnées de l'hébergeur) et `src/lib/confidentialite.ts`
-   (contact, base légale, durée et destinataires de chaque traitement, validés
-   par le client), et ajouter les pages publiques à
-   `src/lib/referencement.ts`.
-4. `npm ci` et, si l'appli a la base, les bases locales (voir « Démarrer en
-   local ») : `DATABASE_URL` est requise par les tests et l'appli, pas par le
-   build.
-5. **Thématiser** : suivre la procédure de la skill `solstice-ui` pour remplir
-   `src/ui/theme/tokens.css` depuis la charte du client (PDF ou site). Sans
-   charte client, garder le thème de repli, la charte Solstice Lab.
-6. Remplacer l'accueil (`/`) par les premiers écrans réels, en copiant le patron
-   `dossiers` pour chaque module métier. L'appli assemblée n'a ni la vitrine du kit
-   (`/kit`) ni les écrans de ce patron : ils restent au catalogue, où se lisent
-   `src/app/kit/`, `src/app/dossiers/` et la couche données du patron
-   (`src/lib/db/dossiers.ts`, sa table, son droit), qu'elle ne reçoit pas non plus.
-
-### Démarrer en local
-
-Il faut Docker, Node 24 ou plus (`.nvmrc`, comme la CI) et npm 11.16 ou plus :
-c'est la première version de npm qui lit `allowScripts` de `package.json` ;
-une version antérieure ignore le champ et lance les scripts d'installation
-qu'il refuse (esbuild, unrs-resolver). Le `.npmrc` de la racine pose
-`engine-strict=true` : sur un npm plus ancien, `npm ci` refuse au lieu de
-avertir (`engines` seul n'est qu'un avertissement), et la CI échoue de même
-avant tout `npm ci`. Docker doit tourner (Docker Desktop lancé sous Windows
-et macOS) : tant que `docker info` échoue, `docker compose up` échoue aussi. `docker-compose.yml` monte un Postgres 18 sur
-`127.0.0.1:5433`, sans mot de passe (`trust`, publié sur le poste seulement),
-partagé par toutes les applis du poste ; ses données vivent dans le volume
-`solstice-postgres-donnees`. `scripts/bases-locales.ts` crée `<appli>_dev` et
-`<appli>_test` (nom de `package.json`) s'ils manquent, puis affiche la ligne
-`DATABASE_URL` à mettre dans `.env.local` et la commande des tests : il ne
-l'écrit pas, c'est à coller. `npm test` fait tourner les fichiers de tests en
-parallèle, chaque worker sur sa propre base, `<base de test>_w1` à
-`<base de test>_w4` au plus, qu'il crée à côté de la base de test et supprime à
-la fin (`tests/bases-des-workers.ts`).
-
-PowerShell :
-
-```powershell
-npm ci
-docker compose up -d --wait
-npx tsx scripts/bases-locales.ts
-Copy-Item .env.example .env.local   # y remplacer DATABASE_URL par la ligne affichée, et remplir AUTH_SECRET (commande dans .env.example)
-npm run dev                         # accueil sur http://localhost:3000
-```
-
-bash :
-
-```bash
-npm ci
-docker compose up -d --wait
-npx tsx scripts/bases-locales.ts
-cp .env.example .env.local          # y remplacer DATABASE_URL par la ligne affichée, et remplir AUTH_SECRET (commande dans .env.example)
-npm run dev                         # accueil sur http://localhost:3000
-```
-
-Un autre Postgres déjà publié sur le 5433 fait échouer `docker compose up` :
-l'arrêter d'abord.
-
-### Assembler une appli
-
-`outils/assembler.mjs` lit le dépôt tel quel et copie le socle et les briques
-choisies vers un dossier vide hors du catalogue, et rien de ce qui
-fait vivre le catalogue lui-même : ni ce `README.md`, `PROJET.md` (s'il existe),
-`outils/`, ni la skill `creer-appli` et l'agent
-`relecteur-blueprint`, ni les tests de l'assembleur, de l'outil des issues, de l'outil de mise à jour et de
-l'outil des adaptations, ni le test des renvois de `docs/cicatrices.md`, ni
-le workflow `assemblage.yml`, ni `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
-`CODE_OF_CONDUCT.md`
-et les modèles de ticket et de PR (liste `EXCLUS_DU_CATALOGUE` de
-`outils/modules.mjs`).
-Il écrit `blueprint.md` à la racine, avec le commit de référence du catalogue (celui du dépôt au
-moment de la commande) ; `--blueprint` en donne une existante, dont seul le
-commit est mis à jour ; `--nom` fixe le nom du paquet de l'appli, d'où celui
-de ses bases locales ; `--fiche` copie une fiche projet en `PROJET.md` (les deux ne prennent qu'un fichier `.md`, sans clé
-privée ni URL de base distante avec mot de passe : une faute de chemin n'envoie pas un secret dans
-le premier commit) ;
-il écrit aussi `NOTICE`, l'avis de licence (voir « Licence »), et `ADAPTATIONS.md`, vide
-avec son en-tête, où l'appli note chaque retouche d'un fichier venu du catalogue, et remet en forme
-par Prettier les fichiers qu'il a retouchés (il faut donc `npm ci` dans le catalogue) ;
-il écrit aussi `catalogue.empreintes.json`, le manifeste d'empreintes : le commit du
-catalogue, court et complet, et le champ `version` de son `package.json` (fixe tant qu'aucune version n'est
-publiée), les réglages de l'assemblage (briques choisies, celles du profil comprises, et
-ajoutées d'office, nom du paquet et nom donné, Dependabot, champs lus de l'en-tête de la
-blueprint hors `profil`), puis, pour
-chaque fichier venu du catalogue, son unité (brique, partagée ou
-`socle`) et l'empreinte sha256 du fichier tel que l'appli le reçoit, après la mise en
-forme et tel que git l'enregistre. `node outils/mettre-a-jour.mjs <appli>` le
-lit : il rejoue l'assemblage d'origine au commit du manifeste, vérifie qu'il en redonne les
-empreintes, rejoue l'assemblage au commit visé du catalogue, puis reporte l'écart dans
-l'appli, sur une branche neuve et sans commit, en fusionnant à trois les fichiers qu'elle a
-retouchés ; `--vers <commit>` vise un autre commit de `origin/main` que le HEAD du catalogue,
-`--branche <nom>` nomme la branche neuve (sinon `feature/reporter-catalogue-<commit visé>`),
-`--a-blanc` donne le rapport sans rien écrire ; `--aide` les détaille tous. Les étapes de migration neuves
-s'ajoutent en fin de la liste de l'appli, après les siennes ; il s'arrête si une étape
-reçue change au catalogue ou manque à l'appli, si le nom d'une étape à ajouter y existe
-déjà, ou si `schema.sql` change entre les deux commits (note `outils/mise-a-jour.md`).
-Avec `--ajouter <briques>`, il ajoute de même des briques à l'appli, au commit qu'elle a,
-y compris une brique qui apporte la base, et `comptes`, que le rapport annonce en tête
-avec ce qu'elles coûtent. Une brique arrive telle qu'elle était au commit de l'appli : le
-rapport avertit en tête du retard de l'appli sur `origin/main` et des commits de la brique
-depuis, des briques que son `PROJET.md` écarte, et, dans une appli avec `espaces`, des
-tables arrivées sans `espace_id`, sans refuser. Côté assembleur, `--dependabot` garde `.github/dependabot.yml`, retiré par défaut parce qu'une appli que
-personne n'entretient en recevait une PR de mise à jour par semaine, jamais fusionnée
-(le catalogue garde le sien). Il fait
-ensuite du dossier un dépôt git local d'un seul commit, sur la branche `main`
-(il faut une identité git configurée), sans remote : rien n'est poussé. Il ne
-déploie rien, ne touche à aucune base et ne lit aucun secret.
-
-```
-node outils/assembler.mjs ../mon-appli --briques comptes,mails,echeances
-node outils/assembler.mjs ../mon-site
-node outils/assembler.mjs --aide
-```
-
-Le commit de référence noté est celui du dépôt : l'assembleur refuse un
-catalogue qui a des modifications non commitées, sauf avec
-`--tolerer-arbre-modifie` (le commit noté porte alors « +arbre-modifie »).
-
-- Briques : aucune, une ou plusieurs, parmi celles de « Briques ».
-  L'assembleur refuse un appel auquel manque une brique exigée.
-- Profils de départ (`PROFILS` d'`outils/modules.mjs`) : le champ `profil:` de
-  l'en-tête de la blueprint en donne les briques, auxquelles `--briques` ajoute.
-  `vitrine` : le socle seul, `mails`, `contact` et `deploiement` au plus (une autre
-  brique est refusée) ; `outil-interne` : `comptes` et `mails`, donc la base, et
-  `rgpd` d'office ; `portail`, où un admin ajoute et retire les personnes à l'écran : le même, avec
-  `gestion-comptes`. Le manifeste note les briques, pas le profil.
-
-  ```
-  node outils/assembler.mjs ../mon-portail --blueprint ../mon-portail-blueprint.md --briques espaces
-  ```
-- `comptes` (avec `mails`) donne la base
-  et les droits, avec un accueil de départ (nom, description, lien d'entrée) ; `contact` (avec `mails`) donne
-  la base pour la limite d'envois, sans connexion ; aucune brique ne livre le
-  patron `dossiers`, ni ses écrans ni sa couche données ; `rgpd` vient
-  d'office avec `comptes`, `journal`, `gestion-comptes` et `espaces` s'y ajoutent. Une
-  brique à brancher (`echeances`, `calendrier`, `validation`, `import-lot`,
-  `notifications`) donne la base et attend son branchement dans l'appli.
-- Le retrait est une liste déclarative, `outils/modules.mjs` : pour
-  chaque brique et pour la base, les fichiers à supprimer et, dans chaque fichier partagé, le
-  texte à retirer ou à remplacer. Aucun marqueur dans le code de l'appli :
-  l'assembleur n'y lit que les extraits de cette liste. Seuls sont permis les
-  commentaires qui bornent un bloc (« Brique X … », « Fin de la brique X. »)
-  et disent pourquoi il est là : ils ne font que servir de début et de fin à
-  un `bloc` de la liste, qui reste seule à dire quoi retirer. Quand la brique
-  est prise, ils restent dans le code de l'appli, où ils disent d'où vient le
-  bloc. Aucune autre balise de début ou de fin de brique. Un extrait de cette liste qui n'existe plus, ou
-  qui existe deux fois, fait échouer l'assemblage : à corriger dans la liste
-  en même temps que le code qu'elle désigne.
-- Une unité y déclare aussi ses paquets npm (`dependances` : `pg` et
-  `@types/pg` pour la base). Retirée, elle les emporte de `package.json` et
-  du verrou, élagué de ce que plus rien n'atteint, sans réseau : le verrou
-  reste celui qu'écrirait npm, et `npm ci` l'accepte.
-- `tests/assembleur.test.ts` se lance par `npm run test:assembleur`, pas par
-  `npm test`, qui l'écarte : il dure plus de 10 minutes. `tests/mettre-a-jour.test.ts`,
-  celui de l'outil de mise à jour, l'accompagne : il rejoue des assemblages, lance un
-  vrai `npm ci` et rejoue sur Postgres les étapes de migration qu'il reporte ; ses cas
-  sans base ni assemblage (`tests/mettre-a-jour-migrations.test.ts`) tournent avec
-  `npm test`. Le job `assembleur` de
-  `.github/workflows/assemblage.yml` lance le test de l'assembleur sur chaque pull request prête à
-  relire, réduit à un échantillon de combinaisons (`ECHANTILLON`), et en entier
-  chaque nuit si main a changé, ou à la main ; celui de l'outil de mise à jour y passe en
-  entier à chaque fois. En entier, il assemble des combinaisons de briques, la vide
-  comprise, dans un dossier temporaire et vérifie les fichiers présents et
-  absents, les imports, les références aux unités retirées, la présence de
-  chaque extrait de la liste dans le catalogue, la mise en forme que vérifie sa CI, le typecheck de l'appli assemblée et,
-  avec la base, le rejeu de ses migrations sur une base vide. Sans la brique
-  données, il lance aussi lint et tests sans `DATABASE_URL` ; le build de ce cas est fait
-  par le job `socle-seul` de `.github/workflows/assemblage.yml`, après un vrai `npm ci`. Pour les
-  autres combinaisons, lint, tests et build se lancent dans le dossier assemblé
-  (`npm ci` puis les vérifications ci-dessous, sauf `npm run test:assembleur`,
-  que l'appli n'a pas).
-- Ce que l'assembleur ne fait pas : mettre à jour une brique déjà installée, ou
-  en ajouter une à une appli assemblée (c'est `outils/mettre-a-jour.mjs`), déployer, lire la
-  blueprint pour choisir ce qui s'assemble.
-
-### Les issues de la section 9
-
-`outils/creer-issues.mjs` lit la section 9 d'une blueprint (une étape par `### 9.n Titre`,
-avec son contenu, `Vérifiable à l'écran :` et `Bloqué par :` : format dans
-`.claude/skills/creer-appli/blueprint-modele.md`) et crée une issue GitHub par étape, par
-`gh`, sans dépendance. Il tourne à blanc : il affiche chaque issue (titre, corps, dépendances)
-et ne crée rien. Le dépôt se nomme toujours (`--depot`), aucun n'est pris par défaut.
-`--confirmer`, tapé à la main, crée les issues et vérifie que chacune prend le numéro
-qu'annoncent les lignes « Bloqué par #n » ; au premier écart, il s'arrête et dit quoi faire.
-
-```
-node outils/creer-issues.mjs --blueprint ../mon-appli/blueprint.md --depot moi/mon-appli
-node outils/creer-issues.mjs --blueprint ../mon-appli/blueprint.md --depot moi/mon-appli --confirmer
-```
-
-Il est propre au catalogue, comme l'assembleur : une appli assemblée ne le reçoit pas.
-
-### Structure
-
-- `src/ui/` — le kit visuel : `AppLayout` (en-tête, nav, signature, liens des
-  mentions légales et de la confidentialité), `PageVitrine`, `SectionVitrine` et
-  `AppelAction` (pages d'un site vitrine, même pied de page), `Tableau`
-  (tri, filtres, hiérarchie, exports, vue conservée), `ListeCartes`, `GrilleMois` et
-  `NavigationMois` (calendrier mensuel), `TuileKPI`, `Carte`,
-  `Bouton`, `BoutonSupprimer`, `Badge`, champs de formulaire, `EtatVide`, `Modale`, `Squelette` ;
-  `src/ui/theme/tokens.css` — le contrat de thème, seule source de couleurs,
-  polices et formes ; `src/ui/theme/polices/` — les woff2 du thème et leur
-  licence.
-- `src/lib/db/` — brique données : client Postgres (`client.ts`, seul point d'accès),
-  `schema.sql` (état initial) et `migrations.ts` (étapes idempotentes,
-  rejouées à chaque démarrage).
-- `src/app/dossiers/` — le patron `dossiers`, module métier canonique à copier (au catalogue seulement, avec sa couche données `src/lib/db/dossiers.ts` : l'assembleur n'en livre rien) : liste à actions en lot,
-  fiche en lecture seule, `/nouveau`, `/modifier`, garde d'accès
-  (`exiger` de `src/briques/comptes/roles.ts`, droits dans `src/config/acces.ts`), slugs
-  (`src/lib/slug.ts`).
-- `src/app/sante/` — la sonde `/sante`, ouverte sans session : commit en ligne et,
-  avec la brique données, état de la base (`src/lib/db/sante.ts`), 503 si elle
-  ne répond pas.
-- `src/app/kit/` — la vitrine du kit, hors navigation, pour vérifier une
-  thématisation. Au catalogue seulement : l'assembleur ne la livre à aucune appli,
-  et le catalogue ne la sert pas en production (`next start`, en ligne comme en
-  local : 404 depuis le proxy, `ROUTES_HORS_PRODUCTION` de
-  `src/briques/comptes/protection.ts`) ; elle se regarde sous `npm run dev`.
-- `src/app/mentions-legales/` — les mentions légales (LCEN), ouvertes sans
-  connexion, remplies depuis `src/lib/mentions-legales.ts`.
-- `src/app/confidentialite/` — la politique de confidentialité (RGPD,
-  art. 13), ouverte sans connexion. Les faits viennent des briques gardées
-  (`src/briques/*/confidentialite.ts`), les choix du responsable de
-  `src/lib/confidentialite.ts`.
-- `src/app/robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `twitter-image.tsx`
-  — référencement et aperçu au partage, remplis depuis
-  `src/lib/referencement.ts`. Fermés aux moteurs (`noindex`, `robots.txt` qui
-  interdit tout) hors production, sans `URL_PUBLIQUE`, pour un site qui n'est
-  pas public ou tant qu'une valeur reste « À compléter ». L'image lit ses
-  couleurs dans `tokens.css` (`src/lib/image-partage.ts`). En production sans
-  `URL_PUBLIQUE` (une recette), aucune image d'aperçu n'est annoncée : Next
-  la ferait pointer sur `localhost` et le port interne de l'hébergeur.
-- `src/lib/adresse-ip.ts` — l'adresse IP du visiteur pour les limites par
-  adresse (formulaire de contact, connexion par code), lue dans le seul
-  en-tête que nomme `IP_EN_TETE_CLIENT`, réglée avec l'hébergeur. Une appli
-  assemblée ne la garde qu'avec la brique `contact` ou `comptes`.
-- `src/briques/<brique>/` — une brique par dossier (voir « Briques ») : son
-  code, son `README.md` (comment la brancher, section « Interface
-  publique ») et son `CHANGELOG.md` ; ses tests sont dans `tests/`. La
-  brique `deploiement` vit surtout hors de son dossier : le job `deployer` de
-  `ci.yml` et `render.yaml` (racine, adaptateur Render). Les droits
-  de la brique `comptes` se déclarent dans `src/config/comptes.ts` (qui
-  entre) et `src/config/acces.ts` (qui a droit à quoi).
-- `outils/` — l'assembleur (`assembler.mjs`), la liste de retrait des
-  briques et de la base qu'il applique (`modules.mjs`), l'outil des issues de la
-  section 9 d'une blueprint (`creer-issues.mjs`), l'outil de mise à jour d'une appli
-  assemblée (`mettre-a-jour.mjs`, qui reporte un catalogue plus récent ou ajoute une
-  brique) et sa note de
-  conception
-  (`mise-a-jour.md`), l'outil des adaptations (`adaptations.mjs`, en lecture seule : les
-  fichiers venus du catalogue qu'une appli a retouchés, avec leur diff et leur note ; `--json`
-  pour les outils suivants, `--rejouer` pour un diff exact, voir son `--aide`) et la
-  lecture du manifeste que `mettre-a-jour.mjs` et `adaptations.mjs` partagent (`manifeste.mjs`), propres au catalogue : une appli
-  assemblée ne les reçoit pas.
-- `scripts/` — squelette des imports et correctifs de données : dry-run par
-  défaut, `--confirmer` à la main ; `bases-locales.ts`, qui crée les bases locales (voir
-  « Démarrer en local ») ; et `verifier-audit.mjs`, lancé par la
-  CI, qui échoue sur toute vulnérabilité haute ou critique absente de
-  `exceptions-audit.json` (racine).
-- `docker-compose.yml` — le Postgres local du poste.
-- `tests/` + `vitest.config.ts` — règles verrouillées, et le garde qui refuse
-  toute base non locale.
-- `.claude/skills/` — `solstice-ui` (kit et thématisation),
-  `solstice-donnees` (base, modules, imports et leurs pièges),
-  `solstice-nouvelle-appli` (cadrage, fiche projet, socle prêt pour la prod,
-  découpage), `solstice-livrer` (du ticket à la mise en ligne) et
-  `creer-appli` (le dialogue de cadrage, la blueprint, l'appel de l'assembleur, puis
-  le dépôt distant privé créé après accord, puis les issues de la section 9, puis,
-  ces tickets faits, les brouillons de tickets du catalogue tirés des adaptations de
-  l'appli ; propre au catalogue, une appli assemblée ne la reçoit pas).
-- `.claude/agents/` — `relecteur-migrations` et `relecteur-docs`, lancés
-  avant une PR selon ce que touche le diff ; `relecteur-blueprint`, lancé par
-  la skill `creer-appli` sur la blueprint, avant l'assembleur (propre au
-  catalogue, une appli assemblée ne le reçoit pas).
-- `.claude/settings.json` + `.claude/hooks/gardes.mjs` — refusent à Claude
-  (voir « Claude Code : un hook s'applique d'office ») :
-  écrire un `.env*` (hors `.env.example`), `.envrc` ou `.npmrc`, un secret de base distante,
-  `git add -f`, `--confirmer`, la fusion d'une PR, `git push --force`
-  (`--force-with-lease` passe), les hooks git sautés. Testés par
-  `node .claude/hooks/gardes.test.mjs` (lancé par la CI). Le hook demande
-  Node sur le poste.
-- `CLAUDE.md` — les règles du harnais, lues par Claude à chaque session.
-- `docs/cicatrices.md` — le registre des leçons des projets précédents : la
-  règle, le cas, et ce qui la tient dans le catalogue.
-- `docs/CHANGELOG-socle.md` — le journal des changements du socle (hors des
-  briques, qui ont chacune le leur) : ruptures et corrections de sécurité à
-  reporter. Une appli assemblée le reçoit, et ses mises à jour aussi.
-
-### Vérifier
-
-```
-node .claude/hooks/gardes.test.mjs
-npm run format:check   # npm run format met en forme
-npm run lint
-npm run typecheck
-DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm test
-DATABASE_URL=postgresql://postgres@localhost:5433/catalogue_solstice_vibe_test PGSSLMODE=disable npm run test:assembleur   # long (plus de 10 min) ; la CI ne lance qu'un échantillon des combinaisons de l'assembleur sur chaque pull request, le complet la nuit
-npm run build
-```
-
-La signature « Conçu par Solstice Lab » en pied de page fait partie de toute
-livraison Solstice Lab et ne s'y retire pas ; hors de ce cadre, voir
-`CONTRIBUTING.md`, « La signature Solstice Lab ».
+| Pour                                         | Lire                                                                                                                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Démarrer une appli en local, mener un projet client du cadrage à la livraison | [`docs/catalogue/demarrer.md`](docs/catalogue/demarrer.md)                                                                          |
+| Tout savoir de l'assembleur : options, profils, mise à jour d'une appli, création des tickets d'une blueprint | [`docs/catalogue/assembler.md`](docs/catalogue/assembler.md)                                                       |
+| Connaître ce que chaque brique exige et où elle se branche | [`docs/catalogue/briques.md`](docs/catalogue/briques.md)                                                                              |
+| Se repérer dans le dépôt, connaître les vérifications à lancer avant une pull request | [`docs/catalogue/structure.md`](docs/catalogue/structure.md)                                                          |
+| Les règles de travail de Claude sur le dépôt | [`CLAUDE.md`](CLAUDE.md)                                                                                                                                           |
+| Travailler sur le dépôt (équipe)             | [`CONTRIBUTING.md`](CONTRIBUTING.md)                                                                                                                               |
+| Les leçons des projets précédents            | [`docs/cicatrices.md`](docs/cicatrices.md), et [`docs/CHANGELOG-socle.md`](docs/CHANGELOG-socle.md) pour les changements du socle                                  |
 
 ## Licence
 
-Le catalogue est publié sous licence MIT (`LICENSE`). Les polices IBM Plex de
-`src/ui/theme/polices/` sont sous SIL Open Font License 1.1, dont le texte est
-dans `src/ui/theme/polices/LICENCE-OFL.txt`.
+Le catalogue est publié sous licence MIT ([`LICENSE`](LICENSE)). Les polices
+IBM Plex de `src/ui/theme/polices/` sont sous SIL Open Font License 1.1
+(`src/ui/theme/polices/LICENCE-OFL.txt`).
 
 Une appli assemblée n'est pas sous MIT : livrée sous le contrat du client, elle
 est marquée `UNLICENSED` et ne reçoit pas `LICENSE`. L'assembleur y écrit un
 fichier `NOTICE` qui porte l'avis de droit d'auteur et le texte MIT du
-catalogue, puis l'avis OFL des polices : la licence MIT exige que son avis
-accompagne toute copie du code repris. Ce fichier ne donne aucune licence à
-l'appli.
+catalogue, puis l'avis OFL des polices, parce que la licence MIT exige que son
+avis accompagne toute copie du code repris. Ce fichier ne donne aucune licence à
+l'appli. La signature « Conçu par Solstice Lab » en pied de page fait partie de
+toute livraison Solstice Lab ; hors de ce cadre, voir `CONTRIBUTING.md`,
+« La signature Solstice Lab ».
