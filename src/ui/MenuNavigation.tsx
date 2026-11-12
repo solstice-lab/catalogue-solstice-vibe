@@ -6,7 +6,7 @@ import { useId, useRef, useState, type KeyboardEvent } from "react";
 
 /**
  * L'entrée qui mène à la page ouverte, ou à la rubrique qui la contient (la
- * fiche d'un dossier reste dans « Dossiers »). L'accueil ne l'est que sur
+ * fiche d'un client reste dans « Clients »). L'accueil ne l'est que sur
  * lui-même : sinon il préfixerait toutes les pages.
  */
 function estActif(href: string, chemin: string | null): boolean {
