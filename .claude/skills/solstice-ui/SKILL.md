@@ -10,9 +10,9 @@ Deux couches, à ne jamais mélanger :
 1. **Les invariants Solstice** — la construction et le comportement, en dur
    dans les composants de `src/ui/`. Identiques chez tous les clients : c'est
    la signature de qualité de l'agence.
-2. **Le thème client** — l'identité visuelle, entièrement dans `src/ui/theme/` :
-   `tokens.css`, la marque de l'en-tête (`Marque.tsx`) et les polices
-   (fichiers de `polices/`, chargés par `src/app/layout.tsx`).
+2. **Le thème client** — l'identité visuelle, dans `src/ui/theme/` (`tokens.css`,
+   la marque de l'en-tête `Marque.tsx`, les polices de `polices/`) et les
+   appels `localFont` de `src/app/layout.tsx`.
    C'est la seule chose qui change d'un client à l'autre.
 
 ## Le kit (`src/ui/`)
@@ -20,7 +20,7 @@ Deux couches, à ne jamais mélanger :
 | Composant | Usage |
 | --- | --- |
 | `AppLayout` | Squelette de tout écran d'outil : en-tête collant en cellules (marque du thème, `src/ui/theme/Marque.tsx`, sur aplat d'accent qui mène à l'accueil, cellule absente sans marque ; nom, sous-titre mono, nav dont l'entrée de la page ouverte est en accent, badge de contexte en structure), contenu dans une feuille bordée de filets où les blocs se touchent, **signature Solstice Lab** (gardée dans toute livraison Solstice Lab, couleurs hors thème). À côté d'elle, les liens « Mentions légales » vers `/mentions-legales` et « Confidentialité » vers `/confidentialite`, pages du socle ouvertes sans connexion : leurs valeurs se remplissent dans `src/lib/mentions-legales.ts` et `src/lib/confidentialite.ts` avant toute mise en ligne, chaque page signale chaque champ requis resté vide. Une entrée de `navigation` peut porter `visible` (fonction, éventuellement asynchrone) : le menu ne propose que celles qui répondent vrai. Le kit ne connaît aucune règle, c'est `lib/navigation.ts` qui branche chaque entrée sur `visiblePour(action)` de `briques/comptes/roles.ts` (avec la brique comptes), la même action que celle que la page exige (droits dans `src/config/acces.ts`). Le menu se replie derrière un bouton « Menu » sous 720 px (composant client `MenuNavigation`, interne au kit) : seuls libellé et adresse lui sont passés. |
-| `PageVitrine` | Squelette d'une page publique de site vitrine : en-tête horizontal (`nom` vers l'accueil, `liens` à droite, repliés derrière « Menu » sous 720 px, `action` facultative : un `LienBouton variante="secondaire"`, le primaire revient à l'appel à l'action de la page), contenu, puis le même pied qu'`AppLayout` (signature, mentions légales, confidentialité). Liens publics, sans garde `visible`. |
+| `PageVitrine` | Squelette d'une page publique de site vitrine : en-tête horizontal (marque du thème et `nom` vers l'accueil, le nom seul sans marque, `liens` à droite, repliés derrière « Menu » sous 720 px, `action` facultative : un `LienBouton variante="secondaire"`, le primaire revient à l'appel à l'action de la page), contenu, puis le même pied qu'`AppLayout` (signature, mentions légales, confidentialité). Liens publics, sans garde `visible`. |
 | `SectionVitrine` | Une section de `PageVitrine`, bande pleine largeur fermée par un filet, contenu dans une feuille centrée : `titre`, `intro` (chapô), `id` (ancre visée par un lien de l'en-tête), `fond` (`page`, `secondaire` ou `structure`, à alterner pour que chaque partie se distingue ; `structure` réservé aux temps forts, jamais deux à la suite ; `surface`, ancien nom de `secondaire`, reste accepté). `principale` : le titre de la page (h1), une seule, la première ; les autres sont des h2. Dedans : texte, `Carte`s dans `.sl-grille`, `.sl-liste-simple`, `AppelAction`. |
 | `AppelAction` | Bloc d'appel à l'action d'une page vitrine : `titre`, `texte`, `actions` (`LienBouton`, le primaire d'abord). Un seul par écran. Actions empilées sur téléphone. |
 | `Tableau` | Tout affichage tabulaire. Tri au clic sur l'en-tête (asc → desc → aucun) et filtre par colonne **intégrés d'office**, et la **vue (tri, filtres, déplis) survit à la navigation dans l'onglet** — `id` (obligatoire) la rattache au tableau : stable, unique dans l'app, jamais dérivé des données ; sessionStorage, donc fermer l'onglet remet à zéro. `chiffres: true` pour les colonnes numériques (chasse fixe, alignées à droite), `rendu` pour les cellules riches — le tri et le filtre restent sur la valeur brute. `actionsLot` ajoute la sélection de lignes et une barre d'actions en lot (c'est aux LISTES que reviennent les gestes de masse, pas aux fiches). `enfants` passe en **mode hiérarchique** : sous-lignes dépliables, PAS de tri (ordre structurel), le filtre MASQUE sans recalculer les agrégats — fournir `cleLigne`, c'est elle qui rend les déplis stables. `voletsFiges` fige en-tête et première colonne (croisées, tableaux longs). `figee: "droite"` sur une colonne la garde visible à droite quand le tableau défile (la colonne d'actions d'une file de décision : sur téléphone, Accepter/Refuser restent atteignables) ; une seule, la dernière. `auClicLigne` rend la ligne cliquable (détail). `exports={{ nomFichier, titre? }}` ajoute les boutons .xlsx et PNG — l'export dit ce que l'écran montre, et suit le thème client (couleurs lues dans les tokens au clic). Dans l'.xlsx, une colonne dont l'écran formate une date (`date()`) se déclare `format: "date"` (vraie date au format de l'écran, sinon du texte) et `exporter` donne la valeur écrite quand elle diffère de la valeur brute (le libellé d'un statut, pas sa clé) ; une cellule sans valeur reste vide. Le PNG écarte filtres, barre d'actions en lot et colonne de sélection. |
@@ -205,7 +205,8 @@ Puis mapper vers le thème :
    reste), l'avis de la police du client et le chemin de sa licence s'ajoutent.
 5. Logo du client → `src/ui/theme/Marque.tsx` : remplacer `MARQUE` par son
    `<svg>` (avec `fill="currentColor"` pour suivre les couleurs du thème), ou
-   par `<img src="/logo.svg" alt="" />` déposé dans `public/`, ou par `null`
+   par une image déposée dans `public/` (`<Image>` de `next/image`, exemple
+   dans le fichier), ou par `null`
    pour aucune marque. Aucun composant ne se retouche. Le logo tient sur
    26 px de haut, sur l'aplat `--couleur-accent`. La signature du pied de page
    n'en dépend pas : elle garde l'emblème de l'agence, et son retrait suit sa

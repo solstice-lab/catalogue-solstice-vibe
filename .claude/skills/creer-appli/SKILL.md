@@ -109,8 +109,9 @@ questions ici.** Y ajouter ce que seul l'assemblage demande :
     livraisons de Solstice Lab, pas de la licence MIT (`CONTRIBUTING.md`, « La signature
     Solstice Lab »). L'assembleur ne la retire pas, et des textes copiés dans l'appli
     la décrivent, comme une règle des livraisons Solstice Lab (`CLAUDE.md` §1, la skill
-    `solstice-ui`, les commentaires de `PiedDePage.tsx` et de `ui.css`) ou par son exception
-    de couleurs (`tokens.css`, `tests/kit-tokens.test.ts`). Le retrait est donc un
+    `solstice-ui`, les commentaires de `PiedDePage.tsx`, `ui.css`, `Embleme.tsx` et
+    `theme/Marque.tsx`) ou par ses exceptions (`tokens.css`, `tests/kit-tokens.test.ts`
+    pour les couleurs, `tests/marque-du-theme.test.ts` pour l'emblème). Le retrait est donc un
     ticket de la section 9 de la blueprint, qui retire le pied de page et ses styles et
     retouche ces textes. La marque de l'en-tête (l'emblème de l'agence par défaut) n'en
     fait pas partie : elle se change avec le thème, dans `src/ui/theme/Marque.tsx`.

@@ -15,10 +15,12 @@ import { Embleme } from "../Embleme";
  * - Un logo client en SVG : coller son <svg> à la place, avec
  *   fill="currentColor" pour qu'il suive les couleurs du thème (au survol
  *   compris), ou ses propres couleurs.
- * - Un logo client en image : le déposer dans public/ et écrire
- *   <img src="/logo.svg" alt="" /> (alt vide : le lien qui l'entoure porte
- *   déjà son nom). Une image garde ses couleurs, même sur la cellule
- *   survolée.
+ * - Un logo client en image : le déposer dans public/, importer Image de
+ *   "next/image" et écrire <Image src="/logo.png" alt="" width={120}
+ *   height={26} /> (width : la largeur du logo à 26 px de haut ; alt vide :
+ *   le lien qui l'entoure porte déjà son nom ; un <img> simple marche aussi,
+ *   mais le lint de Next en avertit). Une image garde ses couleurs, même sur
+ *   la cellule survolée.
  * - Aucune marque : écrire `null`. La cellule disparaît, le nom de l'appli
  *   ouvre l'en-tête.
  *

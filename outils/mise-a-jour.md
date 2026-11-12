@@ -457,7 +457,7 @@ Restent à un humain :
 - **valider le rendu** d'un écran changé : Claude ne lance ni serveur ni navigateur
   (`CLAUDE.md` §6) ;
 - **choisir la valeur du client** pour un token de thème que le catalogue ajoute :
-  `tokens.css` est le contrat de thème, retouché dans toute appli thématisée ;
+  `tokens.css`, partie du contrat de thème, est retouché dans toute appli thématisée ;
 - **trancher** ce que l'outil signale sans écrire : fichier supprimé par l'appli et changé
   au catalogue, fichier retouché que le catalogue retire, binaire retouché. Un fichier de
   l'appli au chemin d'un fichier neuf du catalogue arrête l'outil avant toute écriture :

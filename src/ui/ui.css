@@ -11,7 +11,7 @@
  * ombre ni dégradé. Deux niveaux de filets : la couleur de structure entre
  * les blocs (en-tête, panneaux, bandes, en-tête de tableau), --bordure à
  * l'intérieur d'un bloc (lignes, champs). L'accent ne sert jamais de liseré :
- * il remplit une cellule (emblème, élément actif, badge) ou le fond d'un
+ * il remplit une cellule (marque, élément actif, badge) ou le fond d'un
  * élément cliquable survolé, et l'encre posée dessus est la structure.
  */
 
@@ -1280,7 +1280,8 @@ body:not(.is-typing) .ed.is-next.breathe .car {
 
 /* ---------- Site vitrine (PageVitrine, SectionVitrine, AppelAction) ---------- */
 /* Les cellules de l'en-tête des outils (.sl-entete, plus haut) ; ici
-   l'emblème et le nom forment un seul lien vers l'accueil. */
+   la marque du thème, s'il y en a une, et le nom forment un seul lien vers
+   l'accueil. */
 .sl-vitrine-marque {
   display: flex;
   align-items: stretch;
@@ -1508,7 +1509,8 @@ body:not(.is-typing) .ed.is-next.breathe .car {
   :root {
     --sl-marge-bloc: 18px;
   }
-  /* En-tête : emblème, nom et « Menu » sur la première ligne ; le menu
+  /* En-tête : marque (si le thème en a une), nom et « Menu » sur la
+     première ligne ; le menu
      ouvert, puis le contexte (ou l'action d'une page vitrine), chacun sur
      toute la largeur dessous, séparés par un filet. */
   .sl-entete-feuille {

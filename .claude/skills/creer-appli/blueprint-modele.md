@@ -233,8 +233,9 @@ la description, puis :
    scripts de données de la section 6. S'il y a lieu : retirer
    la signature Solstice Lab (hors livraison Solstice Lab, si la fiche le dit, avec les
    textes qui la décrivent : `CLAUDE.md` §1, skill `solstice-ui`,
-   commentaires de `PiedDePage.tsx`, `ui.css` et `tokens.css`, exception de
-   `tests/kit-tokens.test.ts` ; la marque de l'en-tête se change à part, avec le thème,
+   commentaires de `PiedDePage.tsx`, `ui.css`, `tokens.css`, `Embleme.tsx` et
+   `theme/Marque.tsx`, exceptions de `tests/kit-tokens.test.ts` et
+   `tests/marque-du-theme.test.ts` ; la marque de l'en-tête se change à part, avec le thème,
    dans `src/ui/theme/Marque.tsx`) ; écrire l'adaptateur de déploiement d'un hébergeur autre que
    Render (avec la brique `deploiement`). Avec la brique `comptes` : retirer `"demo"` de
    `METHODES` (`src/config/comptes.ts`). L'assembleur la garde même quand `methodes` ne la
