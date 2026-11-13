@@ -55,7 +55,7 @@ updates:
       # Les types de Node décrivent la version qui exécute le code, celle de
       # node-version dans ci.yml (24), pas la dernière publiée : @types/node 26
       # aurait laissé typer des API absentes de Node 24. Ils changent
-      # de majeure avec node-version, .nvmrc et engines.node, à la main,
-      # dans la même PR.
+      # de majeure avec node-version, .nvmrc, engines.node et l'image de
+      # .devcontainer/devcontainer.json, à la main, dans la même PR.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]

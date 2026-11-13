@@ -5,8 +5,9 @@ accompagne `.devcontainer/` et sert à un essai réel avant toute promesse sur l
 présentation ou dans le README. Après l'essai, elle se réduit à ce qui reste vrai (ou
 disparaît si la piste est abandonnée).
 
-Le problème : le démarrage rapide du README exige git configuré, Node 24, npm 11.16 et
-Docker. Une personne non développeuse s'arrête avant la première commande. La piste : un
+Le problème : le démarrage rapide du README exige git configuré, Node 24, npm 11.16 et,
+pour une appli avec base, Docker. Une personne non développeuse s'arrête avant la première
+commande. La piste : un
 environnement prêt à l'emploi dans GitHub Codespaces, décrit par `.devcontainer/`, ouvert
 depuis le navigateur, sans rien installer sur le poste.
 
@@ -15,7 +16,7 @@ depuis le navigateur, sans rien installer sur le poste.
 - **Image** : Node 24 sur Debian (celle de `.nvmrc` et de la CI), avec git.
 - **`creation.sh`**, une fois à la création : met npm à jour (11.16 ou plus, exigé par
   `engine-strict` du `.npmrc`), refait le contrôle de version de la CI, puis `npm ci`.
-  L'éditeur n'ouvre qu'une fois `npm ci` fini.
+  L'éditeur n'ouvre qu'une fois `npm ci` fini et Postgres démarré.
 - **`demarrage.sh`**, à chaque démarrage et à chaque réveil : si le projet a un
   `docker-compose.yml`, attend le démon Docker, lance `docker compose up -d --wait`
   (conteneur `catalogue-postgres`, `127.0.0.1:5433`), puis `scripts/bases-locales.ts`, qui
@@ -29,8 +30,10 @@ depuis le navigateur, sans rien installer sur le poste.
   jamais redirigé (Postgres sans mot de passe, pour le seul conteneur).
 - **Gardes** : `.claude/settings.json` les lance avec `node`, présent dans l'image.
 
-Image et features sont épinglées par digest, comme les actions de la CI et l'image
-Postgres ; l'étiquette suivie est en commentaire dans `devcontainer.json`.
+Image et features sont épinglées par digest, comme l'image Postgres (les actions de la CI
+le sont par SHA) ; l'étiquette suivie est en commentaire dans `devcontainer.json`. L'image
+porte la majeure de Node : elle change avec `.nvmrc`, comme le disent `ci.yml` et
+`dependabot.yml`.
 
 ## Liste d'essai
 
@@ -47,7 +50,8 @@ Noter pour chaque étape : la durée, ce qui s'affiche, ce qui bloque.
    **New with options**.
 2. Choisir la branche de la pull request, la région **Europe West**, la machine
    **2-core**. Le compte qui paie est affiché sous « Billed to » : le noter.
-3. **Create codespace**. Attendre l'éditeur (la création lance `npm ci`) : noter la durée.
+3. **Create codespace**. Attendre l'éditeur (la création lance `npm ci` puis démarre
+   Postgres) : noter la durée.
 4. Vérifier, dans le terminal (menu **Terminal**, **New Terminal**) :
 
    ```bash
@@ -60,7 +64,8 @@ Noter pour chaque étape : la durée, ce qui s'affiche, ce qui bloque.
    npm --version
    ```
 
-   Doit afficher `11.16.0` ou plus.
+   Doit afficher `11.16.0` ou plus. Si la création a échoué sur la version de npm, le
+   journal (voir plus bas) liste les npm trouvés : le copier.
 
    ```bash
    docker compose ps --format "{{.Name}} {{.Status}}"
@@ -136,14 +141,46 @@ Noter pour chaque étape : la durée, ce qui s'affiche, ce qui bloque.
 4. Arrêter le serveur (**Ctrl+C**) et revenir au catalogue : `cd ../catalogue-solstice-vibe`
    (le dossier porte le nom du dépôt).
 
-### 4. Assembler une appli avec base, par la skill `creer-appli`
+### 4. Assembler une appli avec base
 
-C'est le parcours réel : la conversation de cadrage, la blueprint, l'assemblage.
+**4a. Directement**, pour éprouver la base sans dépendre de la skill :
+
+```bash
+node outils/assembler.mjs ../essai-base --briques echeances
+```
+
+```bash
+cd ../essai-base && npm ci
+```
+
+```bash
+npx tsx scripts/bases-locales.ts
+```
+
+Doit afficher `essai_base_dev` et `essai_base_test` « créée » (Postgres tourne déjà :
+c'est celui du catalogue, partagé), puis la ligne `DATABASE_URL`. Copier `.env.example` en
+`.env.local` et y remplacer la ligne `DATABASE_URL` par celle affichée (dans l'éditeur :
+clic droit sur `.env.example`, **Copy**, **Paste**, renommer), puis :
+
+```bash
+npm run dev
+```
+
+Ouvrir le port 3000 : l'accueil doit s'afficher. Dans un second terminal,
+`curl -s localhost:3000/sante` doit répondre avec une base `ok`. Arrêter le serveur
+(**Ctrl+C**) et revenir au catalogue.
+
+**4b. Par la skill `creer-appli`**, le parcours réel : la conversation de cadrage, la
+blueprint, l'assemblage.
 
 1. Lancer `claude` depuis le catalogue et demander une petite appli d'essai avec connexion
-   et échéances (briques `comptes`, `mails`, `echeances`). Quand la skill demande le
-   système, répondre : « Linux, terminal bash de GitHub Codespaces ». Elle doit alors
-   donner les commandes bash (sa section 5.4) et des chemins en `/workspaces/…`.
+   et échéances (briques `comptes`, `mails`, `echeances`). Écart attendu, propre à l'essai
+   sur une branche : la skill vérifie d'abord que le catalogue est au niveau de `main`
+   (sa section 0) et le signalera. Lui répondre que c'est un essai de la branche et de
+   continuer ; l'appli d'essai notera le commit de la branche. Après la fusion, cette
+   étape se refait sans écart. Quand la skill demande le système, répondre : « Linux,
+   terminal bash de GitHub Codespaces ». Elle doit alors donner les commandes bash (sa
+   section 5.4) et des chemins en `/workspaces/…`.
 2. **Dépôt distant** : accepter la création d'un dépôt privé de test sous son propre
    compte. Point attendu, non vérifié : le jeton GitHub du Codespace ne vaut que pour le
    dépôt du catalogue, et `gh repo create` peut échouer (« Resource not accessible by
@@ -213,7 +250,8 @@ Ce qui plaide pour le socle :
   tombe sur l'image générique de Codespaces : npm probablement plus ancien que 11.16
   (`npm ci` refusé par `engine-strict`), pas de Claude Code, pas de Postgres prêt ;
 - `demarrage.sh` ne démarre rien sans `docker-compose.yml`, que l'assembleur retire avec la
-  base : une appli sans base n'a rien à retoucher ;
+  base, et les commentaires de `.devcontainer/` sont écrits pour les deux cas (« un projet
+  avec base… ») : une appli sans base n'a rien à retoucher ;
 - le fichier est suivi comme le reste du socle : `catalogue.empreintes.json` le liste, une
   retouche se note dans `ADAPTATIONS.md`, l'outil de mise à jour reporte un digest
   renouvelé.

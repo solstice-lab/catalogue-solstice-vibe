@@ -135,7 +135,8 @@ les options écartées sont dans `.claude/skills/solstice-nouvelle-appli/socle.m
   Node sur le poste.
 - `CLAUDE.md` — les règles du harnais, lues par Claude à chaque session.
 - `docs/catalogue/` — la référence longue du catalogue (démarrage, assembleur,
-  briques, structure), propre au catalogue : l'assembleur ne la livre pas.
+  briques, structure) et la note d'essai de Codespaces, propres au catalogue :
+  l'assembleur ne les livre pas.
 - `docs/cicatrices.md` — le registre des leçons des projets précédents : la
   règle, le cas, et ce qui la tient dans le catalogue.
 - `docs/CHANGELOG-socle.md` — le journal des changements du socle (hors des

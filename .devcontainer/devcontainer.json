@@ -1,24 +1,24 @@
 // Environnement prêt à l'emploi pour GitHub Codespaces (et tout éditeur qui lit
 // les dev containers) : rien à installer sur le poste, ni git, ni Node, ni npm,
-// ni Docker. Né d'un constat : le démarrage rapide du README arrêtait une
-// personne non développeuse avant la première commande.
+// ni Docker. Né d'un constat : exiger ces installations arrêtait une personne
+// non développeuse avant la première commande.
 //
 // Les versions suivent celles de la CI (.github/workflows/ci.yml) : Node 24
-// comme .nvmrc, npm 11.16 ou plus (creation.sh), Postgres du docker-compose.yml.
-// Image et features épinglées par digest, comme les actions et l'image
-// Postgres : une étiquette se déplace sans PR. Pour renouveler un digest, lire
-// l'en-tête Docker-Content-Digest du manifeste de l'étiquette en commentaire.
+// comme .nvmrc, npm 11.16 ou plus (creation.sh). Image et features épinglées
+// par digest, comme l'image Postgres (les actions de la CI le sont par SHA) :
+// une étiquette se déplace sans PR. Pour renouveler un digest, lire l'en-tête
+// Docker-Content-Digest du manifeste de l'étiquette en commentaire.
 {
   "name": "Solstice-vibe",
   // Node 24 sur Debian bookworm, avec git et l'utilisateur « node ».
   "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm@sha256:72c2f2a9a837cf27a8cad29a6031e48d852a31d1acd716379ee0b4fa543dcfc8",
   "features": {
-    // Un démon Docker DANS le conteneur, pas celui de l'hôte : le Postgres du
-    // docker-compose.yml y publie 127.0.0.1:5433 sur la boucle locale du
-    // conteneur, là où DATABASE_URL et les tests le cherchent, et
-    // `docker exec catalogue-postgres` marche comme sur un poste. Étiquette 4.
+    // Un démon Docker DANS le conteneur, pas celui de l'hôte : un projet avec
+    // base y lance son Postgres local, publié sur la boucle locale du
+    // conteneur, là où les tests et l'appli le cherchent, comme sur un poste.
+    // Étiquette 4.
     "ghcr.io/devcontainers/features/docker-in-docker@sha256:fae40f3c8be5a7c3b0db344c1d30341bc2c91ba38d1d5b14cd2ad72e6d65d084": {},
-    // gh crée le dépôt distant et les issues d'une appli assemblée. Étiquette 1.
+    // gh : dépôts, issues et pull requests depuis le terminal. Étiquette 1.
     "ghcr.io/devcontainers/features/github-cli@sha256:bd7ab48a832228f633239277552c30b353867fef2e5b037e064b4e64f0b843f2": {},
     // Claude Code (commande `claude`) et son extension VS Code. Il installe la
     // dernière version publiée de Claude Code. Étiquette 1.
@@ -26,20 +26,20 @@
   },
   // Une fois, à la création : npm à jour, puis npm ci.
   "postCreateCommand": "bash .devcontainer/creation.sh",
-  // À chaque démarrage, réveil après la mise en veille compris : Postgres et
-  // les bases locales, si le projet a la base.
+  // À chaque démarrage, réveil après la mise en veille compris : le Postgres
+  // local, si le projet a la base.
   "postStartCommand": "bash .devcontainer/demarrage.sh",
-  // L'éditeur ne s'ouvre qu'une fois npm ci fini : un terminal ouvert plus tôt
-  // trouvait node_modules à moitié installé.
-  "waitFor": "postCreateCommand",
+  // L'éditeur ne s'ouvre qu'une fois npm ci fini et Postgres démarré : un
+  // terminal ouvert plus tôt trouvait node_modules à moitié installé.
+  "waitFor": "postStartCommand",
   // L'appli de `npm run dev`. Une redirection Codespaces reste privée tant
   // qu'on ne la rend pas publique : seul le compte GitHub qui a créé
   // l'environnement l'ouvre.
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": { "label": "Appli (npm run dev)", "onAutoForward": "openBrowser" },
-    // Postgres, sans mot de passe (trust du docker-compose.yml), ne sert qu'au
-    // conteneur : jamais redirigé, même quand l'éditeur détecte le port ouvert.
+    // Le Postgres local d'un projet avec base, sans mot de passe : il ne sert
+    // qu'au conteneur, jamais redirigé, même quand l'éditeur détecte le port.
     "5433": { "label": "Postgres local", "onAutoForward": "ignore" }
   }
 }

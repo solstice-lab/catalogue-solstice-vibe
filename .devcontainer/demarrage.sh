@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Démarrage de l'environnement (postStartCommand de devcontainer.json), à
-# chaque démarrage et à chaque réveil : le Postgres local et les bases du
-# projet, comme sur un poste (`docker compose up -d --wait`, puis
-# scripts/bases-locales.ts).
+# chaque démarrage et à chaque réveil. Un projet avec base y retrouve son
+# Postgres local et ses bases, comme sur un poste ; un projet sans base n'a
+# rien à démarrer.
 set -euo pipefail
 
-# Un projet sans base n'a pas de docker-compose.yml : rien à démarrer.
 if [ ! -f docker-compose.yml ]; then
   exit 0
 fi
@@ -19,7 +18,7 @@ done
 
 docker compose up -d --wait
 
-# Crée <projet>_dev et <projet>_test s'ils manquent, et affiche la ligne
-# DATABASE_URL à mettre dans .env.local : il ne l'écrit pas, c'est à la
+# Crée les bases _dev et _test du projet si elles manquent, et affiche la
+# ligne DATABASE_URL à mettre dans .env.local : il ne l'écrit pas, c'est à la
 # personne de la coller.
 npx tsx scripts/bases-locales.ts

@@ -94,8 +94,8 @@ CI, gardes de Claude, mise en ligne avec la brique déploiement) ; le reste est
   il ouvrait une PR par semaine qui restait sans réponse. Sans lui, un SHA épinglé ne bouge
   jamais, failles comprises : la mise à jour des actions et des dépendances est alors une
   tâche à la main, à décider avec la personne responsable. Quand il est gardé, les majeures
-  de `@types/node` y sont ignorées : elles suivent `node-version`, `.nvmrc` et
-  `engines.node`, à la main.
+  de `@types/node` y sont ignorées : elles suivent `node-version`, `.nvmrc`,
+  `engines.node` et l'image de `.devcontainer/devcontainer.json`, à la main.
 - `node scripts/verifier-audit.mjs` avant `npm ci` : échoue sur toute vulnérabilité haute ou
   critique absente de `exceptions-audit.json`. Une exception se décide par la personne
   responsable du projet et se trace dans ce fichier (raison, portée `dev` ou `production`,

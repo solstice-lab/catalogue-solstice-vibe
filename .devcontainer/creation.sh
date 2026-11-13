@@ -14,6 +14,9 @@ npm install --global npm@11
 version="$(npm --version)"
 if [ "$(printf '%s\n' 11.16.0 "$version" | sort -V | head -n 1)" != "11.16.0" ]; then
   echo "npm $version est trop ancien : 11.16 ou plus est exigé (allowScripts de package.json n'est lu qu'à partir de là)." >&2
+  # Le npm mis à jour peut être installé ailleurs que celui que trouve le PATH.
+  echo "npm trouvés dans le PATH :" >&2
+  which -a npm >&2
   exit 1
 fi
 
