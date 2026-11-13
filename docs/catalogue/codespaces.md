@@ -91,6 +91,10 @@ Noter pour chaque étape : la durée, ce qui s'affiche, ce qui bloque.
 
 ### 2. Lancer Claude Code
 
+Deux autorisations sont demandées au premier usage, à annoncer d'avance (constaté à
+l'essai du 2026-11-13) : le compte Claude, au lancement de Claude Code ; puis la connexion
+de `gh` au compte GitHub, au moment de créer le dépôt de l'appli (étape 4b).
+
 1. Dans le terminal :
 
    ```bash
@@ -98,8 +102,9 @@ Noter pour chaque étape : la durée, ce qui s'affiche, ce qui bloque.
    ```
 
    Se connecter avec le compte Claude (un lien s'ouvre dans le navigateur, puis un code
-   à recoller). Noter si la connexion passe sans difficulté. L'extension Claude Code
-   (icône dans la barre de gauche) est l'autre porte d'entrée : noter laquelle est la plus
+   à recoller). Noter si la connexion passe sans difficulté. L'extension Claude Code est
+   l'autre porte d'entrée : elle s'ouvre **en bas à droite de l'éditeur**, dans la barre
+   d'état, et non dans la barre de gauche (constaté à l'essai). Noter laquelle est la plus
    simple pour une personne non développeuse.
 2. Vérifier que les gardes tournent : demander à Claude d'écrire un fichier `.env.local`.
    Il doit être refusé par le garde, avec son message.
@@ -182,9 +187,10 @@ blueprint, l'assemblage.
    terminal bash de GitHub Codespaces ». Elle doit alors donner les commandes bash (sa
    section 5.4) et des chemins en `/workspaces/…`.
 2. **Dépôt distant** : accepter la création d'un dépôt privé de test sous son propre
-   compte. Point attendu, non vérifié : le jeton GitHub du Codespace ne vaut que pour le
-   dépôt du catalogue, et `gh repo create` peut échouer (« Resource not accessible by
-   integration », 403). Dans ce cas, quitter Claude puis, dans le terminal :
+   compte. Constaté à l'essai : il faut d'abord connecter `gh` au compte GitHub, seconde
+   autorisation du premier usage. Le jeton GitHub du Codespace ne vaut que pour le dépôt
+   du catalogue : si `gh repo create` échoue (« Resource not accessible by integration »,
+   403), quitter Claude puis, dans le terminal :
 
    ```bash
    unset GITHUB_TOKEN
@@ -204,13 +210,18 @@ blueprint, l'assemblage.
    commande `docker compose up` doit répondre tout de suite), `.env.local`, `npm run dev`.
    Ouvrir l'appli par le port 3000.
 4. Se connecter : le code de connexion s'affiche dans le terminal du serveur
-   (`MAILS_FOURNISSEUR=console`). Point attendu, non vérifié : l'envoi d'un formulaire
-   (Server Action) passe par le proxy de Codespaces, et Next.js peut le refuser si l'adresse
-   d'origine (`….app.github.dev`) ne correspond pas à l'hôte transmis. Symptôme : rien ne se
-   passe au clic, et le terminal du serveur affiche un message contenant
-   `` does not match `origin` header `` ou `Blocked cross-origin request`. Le noter
-   tel quel : la correction (autoriser la seule adresse de ce Codespace dans
-   `next.config.ts`) touche le socle de toutes les applis et reste à décider.
+   (`MAILS_FOURNISSEUR=console`). La connexion doit réussir.
+
+   Constaté à l'essai du 2026-11-13, avant correction : aucun formulaire ne passait. Le
+   proxy du Codespace transmet l'en-tête Origin `localhost:3000` et, en
+   `x-forwarded-host`, l'adresse `<codespace>-3000.app.github.dev` ; Next refusait la
+   Server Action (`` does not match `origin` header `` dans le terminal du serveur). Le
+   socle l'admet maintenant (`src/lib/codespaces.ts`, lu par `next.config.ts`), et les
+   briques `rgpd` et `import-lot`, qui font le même contrôle à la main, aussi. Seulement
+   dans un Codespace (variables `CODESPACE_NAME` et
+   `GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`) et hors production : partout ailleurs, la
+   protection reste entière (`tests/codespaces.test.ts`). À revérifier sur cette branche :
+   la connexion, l'export de l'admin (`rgpd`) et l'envoi d'un fichier (`import-lot`).
 5. Ouvrir un Codespace **sur le dépôt de l'appli d'essai** (bouton **Code** de ce dépôt) :
    il doit se créer avec le même environnement, Postgres compris. Puis le supprimer.
 
@@ -312,9 +323,9 @@ Pages de GitHub lues le 2026-11-13 ; à revérifier avant toute promesse.
   La sortie est possible, mais elle redemande des installations sur le poste.
 - **Jeton GitHub du Codespace** : il ne vaut que pour le dépôt d'où le Codespace est
   créé. Créer le dépôt d'une appli assemblée demande une connexion `gh` de plus (étape
-  4.2), à confirmer par l'essai.
-- **Formulaires derrière le proxy** : voir l'étape 4.4. Les briques `rgpd` et `import-lot`
-  comparent elles aussi l'origine d'une requête à l'hôte : même risque.
+  4b.2), constatée à l'essai.
+- **Formulaires derrière le proxy** : constaté puis corrigé (étape 4b.4). La correction
+  admet l'origine du proxy dans un Codespace hors production seulement.
 - **Lien de connexion par e-mail** : en développement, le lien se construit sur l'hôte
   reçu, qui peut être `localhost:3000`, injoignable depuis le navigateur. La connexion
   par code, méthode par défaut, n'est pas concernée.
@@ -324,8 +335,6 @@ Pages de GitHub lues le 2026-11-13 ; à revérifier avant toute promesse.
 - Dire dans la skill `creer-appli` que Codespaces est un Linux en bash (variable
   `CODESPACES`), pour qu'elle ne demande pas le système et donne les commandes de sa
   section 5.4.
-- Selon l'étape 4.4, autoriser dans `next.config.ts` la seule adresse du Codespace en
-  cours (décision : touche le socle de toutes les applis).
 - Ajouter l'écosystème `devcontainers` à `.github/dependabot.yml` pour renouveler les
   digests.
 - Réécrire le démarrage rapide du README et la page de présentation, si l'essai est

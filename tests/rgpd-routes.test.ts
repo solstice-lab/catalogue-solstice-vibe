@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jouer, jouerLaConnexion } from "./aide-session";
 import { query } from "../src/lib/db/client";
 import { UTILISATEURS_DEMO } from "../src/briques/comptes/demo";
@@ -87,6 +87,25 @@ describe("export par l'admin pour une adresse donnée", () => {
       (await postAdmin("quelquun@exemple.test", { origin: "https://autre.exemple.test", host: "appli.exemple.test" }))
         .status
     ).toBe(403);
+  });
+
+  // Essai du 2026-11-13 : dans GitHub Codespaces, le proxy transmet l'origine
+  // localhost:3000 et l'hôte redirigé en x-forwarded-host ; l'export était
+  // refusé. L'exception ne vaut que là, hors production.
+  it("accepte, dans un Codespace hors production, l'origine localhost:3000 que transmet son proxy, et la refuse ailleurs", async () => {
+    jouer("admin");
+    const enTetes = { origin: "http://localhost:3000", "x-forwarded-host": "essai-abc123-3000.app.github.dev" };
+    try {
+      vi.stubEnv("CODESPACE_NAME", "essai-abc123");
+      vi.stubEnv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev");
+      vi.stubEnv("NODE_ENV", "development");
+      expect((await postAdmin("quelquun@exemple.test", enTetes)).status).toBe(200);
+      vi.stubEnv("NODE_ENV", "production");
+      expect((await postAdmin("quelquun@exemple.test", enTetes)).status).toBe(403);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect((await postAdmin("quelquun@exemple.test", enTetes)).status).toBe(403);
   });
 
   it("refuse une adresse vide ou illisible", async () => {

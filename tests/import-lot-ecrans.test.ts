@@ -404,6 +404,24 @@ describe("écrans de la brique import-lot : l'envoi du fichier (Route Handler, d
     expect(memeSite.status).toBe(201);
   });
 
+  // Essai du 2026-11-13 : dans GitHub Codespaces, le proxy transmet l'origine
+  // localhost:3000 et l'hôte redirigé en x-forwarded-host ; l'envoi était
+  // refusé. L'exception ne vaut que là, hors production.
+  it("accepte, dans un Codespace hors production, l'origine localhost:3000 que transmet son proxy, et la refuse ailleurs", async () => {
+    const enTetes = { origin: "http://localhost:3000", "x-forwarded-host": "essai-abc123-3000.app.github.dev" };
+    try {
+      vi.stubEnv("CODESPACE_NAME", "essai-abc123");
+      vi.stubEnv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev");
+      vi.stubEnv("NODE_ENV", "production");
+      expect((await actionEnvoyer(AVEC_ECRAN, envoi(csv([["E-1", "1", ""]]), "essai.csv", enTetes))).status).toBe(403);
+      vi.stubEnv("NODE_ENV", "development");
+      expect((await actionEnvoyer(AVEC_ECRAN, envoi(csv([["E-1", "1", ""]]), "essai.csv", enTetes))).status).toBe(201);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect((await actionEnvoyer(AVEC_ECRAN, envoi(csv([["E-1", "1", ""]]), "essai.csv", enTetes))).status).toBe(403);
+  });
+
   it("refuse une requête sans fichier, par un message et non une erreur du serveur", async () => {
     const reponse = await actionEnvoyer(
       AVEC_ECRAN,
