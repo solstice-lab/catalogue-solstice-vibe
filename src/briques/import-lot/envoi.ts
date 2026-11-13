@@ -1,3 +1,4 @@
+import { origineDuCodespace } from "@/lib/codespaces";
 import { verifierEcran, type Branchement } from "./branchement";
 import { ErreurFichier, OCTETS_MAX } from "./lecture";
 import { creerLot } from "./lot";
@@ -32,11 +33,13 @@ const TROP_GROS = `Ce fichier dépasse ${OCTETS_MAX / 1024 / 1024} Mo : le déco
 // (SameSite=lax), et le garde de l'appli ne serait plus qu'une seule
 // défense (sans cookie, personne n'a de droit dans le catalogue).
 // Pas d'en-tête Origin : un appel hors navigateur, qui n'a pas de
-// session à voler.
+// session à voler. Seule exception, l'appli de développement dans GitHub
+// Codespaces, dont le proxy change l'origine (src/lib/codespaces.ts).
 function vientDUnAutreSite(request: Request): boolean {
   const origine = request.headers.get("origin");
   if (origine === null) return false;
   const hote = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? new URL(request.url).host;
+  if (origineDuCodespace(origine, hote)) return false;
   try {
     return new URL(origine).host !== hote;
   } catch {

@@ -84,8 +84,9 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          # Aligné sur .nvmrc, engines.node (package.json) et la majeure de
-          # @types/node : les changer dans la même PR ;
+          # Aligné sur .nvmrc, engines.node (package.json), la majeure de
+          # @types/node et l'image de .devcontainer/devcontainer.json : les
+          # changer dans la même PR ;
           # .github/dependabot.yml, quand il existe, ne propose pas les
           # majeures des types.
           node-version: "24"

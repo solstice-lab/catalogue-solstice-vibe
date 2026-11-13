@@ -15,7 +15,8 @@ import { describe, expect, it } from "vitest";
  *
  * La brique fournit ses écrans : React, Next (navigation et
  * revalidation), le kit `@/ui` et `@/lib/format` rejoignent les imports permis,
- * comme pour la brique échéances. `@/briques/comptes/roles` n'y entre jamais : la brique
+ * comme pour la brique échéances. `@/lib/codespaces` aussi, pour le contrôle
+ * d'origine de l'envoi dans un Codespace. `@/briques/comptes/roles` n'y entre jamais : la brique
  * ne connaît pas les droits, le garde reste en première ligne de l'appli.
  */
 
@@ -31,6 +32,9 @@ const IMPORTS_PERMIS = [
   /^@\/lib\/db\/bornes$/,
   /^@\/lib\/cle-rapprochement$/,
   /^@\/lib\/import-fusion$/,
+  // L'origine admise dans un Codespace, pour le contrôle d'origine de
+  // l'envoi : un fichier du socle, toujours présent, sans table ni module.
+  /^@\/lib\/codespaces$/,
 ];
 
 const IMPORTS_PAR_FICHIER: Record<string, RegExp[]> = {
@@ -56,7 +60,7 @@ function fichiersDe(dossier: string): string[] {
 }
 
 describe("isolement de la brique import-lot", () => {
-  it("n'importe que la brique données (client de base, plus grand INTEGER, clé de rapprochement, règle de fusion), le kit, les formats, React et Next, et exceljs et jszip dans lecture.ts : rien de src/app/ ni d'aucun module, ni des droits", () => {
+  it("n'importe que la brique données (client de base, plus grand INTEGER, clé de rapprochement, règle de fusion), le kit, les formats, l'origine admise dans un Codespace, React et Next, et exceljs et jszip dans lecture.ts : rien de src/app/ ni d'aucun module, ni des droits", () => {
     const fichiers = fichiersDe(DOSSIER_BRIQUE);
     // Sans fichier, le verrou passerait sans rien vérifier.
     expect(fichiers.length).toBeGreaterThan(0);

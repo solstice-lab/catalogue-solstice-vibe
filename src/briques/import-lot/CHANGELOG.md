@@ -139,3 +139,16 @@ la brique a servi aux commandes telle que livrée
   `exceljs` décompresse tout avant de compter les lignes : quelques Mo de XML
   répétitif suffisaient à faire tomber le process partagé par toute l'appli,
   pour toute personne qui a le droit d'importer.
+
+## 2026-11-13 · L'envoi admet le proxy d'un Codespace, hors production · Comportement
+
+- **Ce qui change** : le contrôle d'origine d'`actionEnvoyer` admet, dans un
+  GitHub Codespace hors production, l'origine `http://localhost:3000` que son
+  proxy transmet vers l'hôte redirigé du même Codespace. La brique importe
+  pour cela `@/lib/codespaces`, fichier du socle. Hors Codespace et en
+  production, rien ne change.
+- **Appelant** : rien à changer. Une copie de la brique hors de l'assembleur
+  prend aussi `src/lib/codespaces.ts`.
+- **Pourquoi** : essai du 2026-11-13 dans GitHub Codespaces : le proxy change
+  l'origine, et l'envoi d'un fichier aurait été refusé comme la connexion l'a
+  été.

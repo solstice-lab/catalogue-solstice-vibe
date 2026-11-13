@@ -153,3 +153,17 @@ sont pas repris : aucune appli réelle n'avait encore été assemblée.
   du client obligeait à retoucher le kit. La charte de l'agence vaut pour ses
   propres applis et pour les clients sans charte ; pour les autres, elle doit
   se remplacer simplement.
+
+## 2026-11-13 · Les formulaires passent dans un GitHub Codespace · Ajout
+
+- **Ce qui change** : `next.config.ts` règle
+  `experimental.serverActions.allowedOrigins` par `src/lib/codespaces.ts` :
+  `localhost:3000` dans un GitHub Codespace hors production (variables
+  `CODESPACE_NAME` et `GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN` posées),
+  liste vide partout ailleurs. `tests/codespaces.test.ts` verrouille la liste
+  vide hors Codespace et en production.
+- **Pour l'appli** : rien à changer. Une appli qui a retouché
+  `next.config.ts` y reprend le bloc `experimental` et l'import.
+- **Pourquoi** : essai du 2026-11-13 : le proxy du Codespace transmet
+  l'origine `localhost:3000` et l'hôte redirigé en `x-forwarded-host` ; Next
+  refusait toute Server Action, la connexion comprise.

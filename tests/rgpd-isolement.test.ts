@@ -9,7 +9,8 @@ import { describe, expect, it } from "vitest";
  * rassemble les actions. De même, chaque brique déclare la durée de ses
  * données dans son confidentialite.ts, et src/lib/confidentialite.ts les
  * rassemble pour la purge. La brique n'importe donc que ces deux registres, le
- * format des dates et ses propres fichiers. Liste blanche, comme
+ * format des dates, l'origine admise dans un Codespace (src/lib/codespaces.ts)
+ * et ses propres fichiers. Liste blanche, comme
  * tests/contact-isolement.test.ts.
  */
 
@@ -20,6 +21,9 @@ const IMPORTS_PERMIS = [
   /^@\/config\/donnees-personnelles$/,
   /^@\/lib\/confidentialite$/,
   /^@\/lib\/format$/,
+  // L'origine admise dans un Codespace, pour le contrôle d'origine de
+  // l'export : un fichier du socle, toujours présent, sans table ni module.
+  /^@\/lib\/codespaces$/,
 ];
 
 function importsHorsSocle(source: string): string[] {
@@ -40,7 +44,7 @@ function fichiersDe(dossier: string): string[] {
 }
 
 describe("isolement de la brique rgpd", () => {
-  it("n'importe que ses fichiers, le registre des données personnelles, celui des durées de conservation et le format : ni table, ni module, ni paquet", () => {
+  it("n'importe que ses fichiers, le registre des données personnelles, celui des durées de conservation, le format et l'origine admise dans un Codespace : ni table, ni module, ni paquet", () => {
     const fichiers = fichiersDe(DOSSIER_BRIQUE);
     // Sans fichier, le verrou passerait sans rien vérifier.
     expect(fichiers.length).toBeGreaterThan(0);

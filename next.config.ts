@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { originesDuCodespace } from "./src/lib/codespaces";
 
 /*
  * En-têtes de sécurité de toutes les routes. La
@@ -9,6 +10,13 @@ const config: NextConfig = {
   // X-Powered-By n'apprend rien à l'utilisateur, seulement à qui cherche une
   // faille connue d'une version de Next.js.
   poweredByHeader: false,
+
+  // Vide partout, sauf dans un Codespace hors production : son proxy transmet
+  // une origine que Next refusait, et aucun formulaire ne passait (essai du
+  // 2026-11-13, src/lib/codespaces.ts).
+  experimental: {
+    serverActions: { allowedOrigins: originesDuCodespace() },
+  },
 
   async headers() {
     const enTetes = [
