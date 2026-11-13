@@ -42,7 +42,9 @@ Ce sur quoi vous vous appuyez :
 
 Ce projet est **expérimental** (voir « Statut du projet ») : ce parcours n'a
 pas encore été fait de bout en bout par une équipe sans développeur. Prévoyez de
-pouvoir vous faire aider.
+pouvoir vous faire aider. Solstice Lab, qui écrit et entretient le catalogue,
+peut accompagner une entreprise qui ne veut pas le faire seule : voir
+[solstice-lab.com](https://solstice-lab.com).
 
 ### À qui est le code
 
