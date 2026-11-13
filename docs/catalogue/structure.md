@@ -111,7 +111,10 @@ les options écartées sont dans `.claude/skills/solstice-nouvelle-appli/socle.m
   `exceptions-audit.json` (racine).
 - `docker-compose.yml` — le Postgres local du poste.
 - `.devcontainer/` — l'environnement prêt à l'emploi de GitHub Codespaces (Node, npm,
-  Postgres, Claude Code), à l'essai : voir [codespaces.md](codespaces.md).
+  Postgres, Claude Code), à l'essai : voir [codespaces.md](codespaces.md). Dans un
+  Codespace hors production, `src/lib/codespaces.ts` admet l'origine que transmet son
+  proxy (Server Actions par `next.config.ts`, contrôles d'origine des briques `rgpd` et
+  `import-lot`).
 - `tests/` + `vitest.config.ts` — règles verrouillées, et le garde qui refuse
   toute base non locale.
 - `.claude/skills/` — `solstice-ui` (kit et thématisation),

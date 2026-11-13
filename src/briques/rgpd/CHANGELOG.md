@@ -110,3 +110,15 @@ pour l'appelant et pourquoi ; « Rupture » veut dire qu'un appelant existant do
 - **Pourquoi** : audit du 2026-11-09 : un cookie volé suffisait à effacer les
   données de n'importe qui, et une personne n'avait aucun moyen de fermer une
   session restée sur un autre appareil.
+
+## 2026-11-13 · Le contrôle d'origine admet le proxy d'un Codespace, hors production · Comportement
+
+- **Ce qui change** : `vientDUnAutreSite(request)` rend aussi faux, dans un
+  GitHub Codespace hors production, pour l'origine `http://localhost:3000` que
+  son proxy transmet vers l'hôte redirigé du même Codespace. La brique importe
+  pour cela `@/lib/codespaces`, fichier du socle. Hors Codespace et en
+  production, rien ne change.
+- **Appelant** : rien à changer. Une copie de la brique hors de l'assembleur
+  prend aussi `src/lib/codespaces.ts`.
+- **Pourquoi** : essai du 2026-11-13 dans GitHub Codespaces : le proxy change
+  l'origine, et l'export de l'admin était refusé.
