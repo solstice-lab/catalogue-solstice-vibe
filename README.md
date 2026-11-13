@@ -3,36 +3,75 @@
 [![Vérification du code](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/ci.yml/badge.svg)](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/ci.yml)
 [![Assemblage](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/assemblage.yml/badge.svg)](https://github.com/solstice-lab/catalogue-solstice-vibe/actions/workflows/assemblage.yml)
 
-Des applications web sur mesure pour remplacer un tableur devenu critique, une
-base Airtable bricolée ou des allers-retours de mails, assemblées à partir
-d'éléments déjà éprouvés plutôt que construites de zéro.
+Du code ouvert, éprouvé et testé pour qu'une petite ou moyenne entreprise
+construise elle-même, avec Claude, l'application web dont elle a besoin :
+remplacer un tableur devenu critique, une base Airtable bricolée ou des
+allers-retours de mails.
 
 ## Ce que c'est, pour qui
 
-Ce dépôt est l'atelier de Solstice Lab. Il contient ce dont l'agence se sert
-pour livrer à une entreprise une application propre à son métier : un socle
-commun, des briques réutilisables (connexion, échéances, e-mails, import
-Excel…) et l'outil qui assemble ce que le client a choisi.
+Ce catalogue est écrit et entretenu par Solstice Lab, une agence qui en tire ses
+propres livraisons. Il est publié en code ouvert (licence MIT : chacun peut
+l'utiliser, le copier et le modifier) pour qu'une entreprise de 5 à 50 personnes
+puisse construire elle-même une application propre à son métier, sans repartir
+de zéro. Il contient :
+
+- un **socle** commun (le code que toute appli reprend) et la méthode de travail
+  qui va avec, lue par Claude ;
+- des **briques** réutilisables (connexion, échéances, e-mails, import
+  Excel…) ;
+- un **assembleur**, un programme qui copie ce que vous avez choisi dans un
+  dossier neuf, qui devient un _dépôt_ (l'espace où vit le code de votre appli,
+  sur GitHub) ; Claude y écrit ensuite ce qui est propre à votre métier.
 
 Les applications visées servent de 5 à 50 personnes, ne sont soumises à aucune
 contrainte réglementaire particulière et supportent une heure de panne sans
 conséquence grave.
 
-Ce que le client obtient :
+Ce sur quoi vous vous appuyez :
 
-- une application propre à son métier, pas un outil générique à contourner ;
-- livrée **dans son propre dépôt**, sans plateforme à louer : il reçoit le code,
-  et ce qui lui revient exactement est fixé par le contrat de livraison ;
-- bâtie sur des éléments déjà utilisés ailleurs : une brique naît dans une
-  appli (réelle ou d'essai) et n'entre au catalogue que quand une deuxième en
-  a besoin ;
-- au thème de son entreprise : tout le visuel (couleurs, logo, polices) se règle dans un seul dossier.
+- du code lisible, que vous gardez : l'appli est à vous, dans votre dépôt, sans
+  plateforme à louer ;
+- des briques utilisées dans une appli avant d'entrer au catalogue : une
+  brique naît dans une appli (réelle ou d'essai) et n'y entre que quand une
+  deuxième en a besoin ;
+- des tests lancés à chaque changement, et des règles de construction qui
+  viennent de leçons payées sur des projets précédents ;
+- un thème à vos couleurs : tout le visuel (couleurs, logo, polices) se règle
+  dans un seul dossier.
+
+Ce projet est **expérimental** (voir « Statut du projet ») : ce parcours n'a
+pas encore été fait de bout en bout par une équipe sans développeur. Prévoyez de
+pouvoir vous faire aider. Solstice Lab, qui écrit et entretient le catalogue,
+peut accompagner une entreprise qui ne veut pas le faire seule : voir
+[solstice-lab.com](https://solstice-lab.com).
+
+### À qui est le code
+
+- **Le catalogue** est sous licence MIT ([`LICENSE`](LICENSE)) : vous pouvez
+  l'utiliser, le copier et le modifier, à condition de garder l'avis de droit
+  d'auteur et le texte de la
+  licence.
+- **L'appli que vous assemblez** est marquée `UNLICENSED` dans son
+  `package.json` : elle n'est pas publiée sous licence libre, et ses droits relèvent de son propriétaire et, le cas échéant, d'un contrat, non de la licence du catalogue.
+  Elle ne reçoit
+  pas `LICENSE` mais un fichier `NOTICE`, écrit par l'assembleur, qui porte
+  l'avis de droit d'auteur et le texte MIT du catalogue, puis l'avis des
+  polices IBM Plex (licence OFL). La licence MIT exige que cet avis suive toute
+  copie du code repris : gardez `NOTICE` si vous transmettez ou publiez
+  l'appli. Il ne donne aucune licence à l'appli.
+- **La signature** « Conçu par Solstice Lab », en pied de page, est une règle
+  des livraisons de l'agence, pas une obligation de la licence : pour une appli
+  que vous construisez pour vous, vous pouvez la retirer (voir
+  [`CONTRIBUTING.md`](CONTRIBUTING.md), « La signature Solstice Lab »).
+
+Ceci décrit ce que fait le code ; ce n'est pas un conseil juridique.
 
 Le dépôt est entretenu par l'équipe Solstice Lab et n'accepte pas de pull
-request extérieure : un problème se signale par un ticket, une faille par
-[`SECURITY.md`](SECURITY.md), et [`CONTRIBUTING.md`](CONTRIBUTING.md) est le
-mode d'emploi de l'équipe. Les échanges suivent le
-[code de conduite](CODE_OF_CONDUCT.md).
+request extérieure (une proposition de modification de code) : un problème se
+signale par un ticket, une faille par [`SECURITY.md`](SECURITY.md), et
+[`CONTRIBUTING.md`](CONTRIBUTING.md) est le mode d'emploi de l'équipe. Les
+échanges suivent le [code de conduite](CODE_OF_CONDUCT.md).
 
 ## Les trois niveaux d'une appli
 
@@ -45,7 +84,7 @@ ses occupants.
 | ------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------- |
 | Socle         | Le code commun (kit d'interface et thème, mentions légales et confidentialité, sonde `/sante`, CI) et sa méthode de travail | Les fondations | Toujours présent                                                                 |
 | Briques       | Un comportement réutilisable : échéances, calendrier, validation, import par lot, e-mails, comptes…                         | Les éléments   | Choisies d'une appli à l'autre                                                   |
-| Module métier | Les entités du client (contrats, équipements, demandes…) et leurs écrans, écrits sur le patron `dossiers`                   | L'aménagement  | Propre à chaque appli, écrit après l'assemblage ; le catalogue n'en livre aucun |
+| Module métier | Vos entités (contrats, équipements, demandes…) et leurs écrans, écrits sur le patron `dossiers`| L'aménagement  | Propre à chaque appli, écrit après l'assemblage ; le catalogue n'en livre aucun |
 
 Le socle ne livre pas seulement du code de départ, il livre la **méthode** :
 des composants qui portent les règles de construction, des règles courtes dans
@@ -56,7 +95,7 @@ en tient le registre.
 
 ## Les briques
 
-Ce sont exactement celles que l'assembleur sait livrer. Chacune a son dossier
+Ce sont exactement celles que l'assembleur sait assembler. Chacune a son dossier
 dans `src/briques/<nom>/`, avec un `README.md` qui dit comment l'utiliser. Le
 tableau qui dit ce que chacune exige et où elle se branche est dans
 [`docs/catalogue/briques.md`](docs/catalogue/briques.md).
@@ -104,12 +143,34 @@ Pour s'en passer sur son poste, mettre `{ "disableAllHooks": true }` dans
 `.claude/settings.local.json` (ignoré par git). Ce réglage coupe tous les
 hooks, les vôtres compris : Claude Code ne permet pas d'en retirer un seul.
 
+## Ce qu'il vous faut
+
+Le catalogue lui-même ne se paie pas ; ce sur quoi il s'appuie, pas toujours.
+Aucun prix n'est donné ici : ils changent, à lire chez chaque fournisseur.
+
+- **Un ordinateur** avec git (et une identité configurée), Node 24 ou plus et
+  npm 11.16 ou plus ; pour une appli qui garde des données, Docker, qui fait
+  tourner la base sur votre poste.
+- **Un compte GitHub**, pour héberger le dépôt de l'appli. Sur un dépôt privé,
+  exiger qu'une personne relise avant la mise en ligne demande un plan GitHub
+  payant (d'après sa documentation).
+- **Un compte Claude**, pour Claude Code : le catalogue est fait pour être
+  utilisé avec lui (ses règles sont dans `CLAUDE.md` et `.claude/`). L'offre et
+  ses conditions sont celles d'Anthropic.
+- **Un hébergeur**, pour mettre l'appli en ligne. La brique `deploiement`
+  prévoit Render : le service web et la base sont facturés chaque mois, et la
+  base gratuite de Render, supprimée au bout de 30 jours, est refusée par la
+  brique.
+- **Un service d'envoi d'e-mails**, si l'appli a des comptes ou envoie des
+  messages : la brique `mails` utilise Resend, avec un compte et une adresse
+  d'expéditeur vérifiée.
+
 ## Démarrage rapide
 
-Il faut git avec une identité configurée (`user.name`, `user.email` : l'assembleur
-commite l'appli), Node 24 ou plus, npm 11.16 ou plus et, pour une appli avec
-base, Docker lancé. Les commandes sont les mêmes sous PowerShell et sous bash,
-sauf la copie de `.env.example`.
+Les prérequis sont ceux de « Ce qu'il vous faut » ; l'assembleur commite
+l'appli, d'où l'identité git. Dans la suite, « assembler » veut dire copier le
+socle et les briques choisies dans un dossier neuf. Les commandes sont les mêmes
+sous PowerShell et sous bash, sauf la copie de `.env.example`.
 
 Cloner le catalogue et assembler une appli à côté, ici avec la connexion
 (`comptes`, qui exige `mails`) et les échéances :
@@ -150,7 +211,7 @@ L'accueil est sur http://localhost:3000. Sans brique,
 `node outils/assembler.mjs ../mon-site` donne un site sans base : ni Docker ni
 `.env.local`, `npm ci` puis `npm run dev` suffisent.
 
-Une appli client ne se copie pas depuis GitHub : elle s'assemble depuis ce
+Une appli ne se copie pas depuis GitHub : elle s'assemble depuis ce
 dépôt, avec la skill `creer-appli`, lancée dans une session Claude Code ouverte
 à la racine du catalogue. Elle mène le cadrage, écrit la blueprint de l'appli
 (le document qui décrit ses entités et ses briques), lance l'assembleur, crée le
@@ -159,8 +220,8 @@ déroulement complet est dans [`docs/catalogue/demarrer.md`](docs/catalogue/dema
 
 ## Statut du projet
 
-- **Expérimental.** Le catalogue sert aux livraisons de Solstice Lab et change
-  avec elles. Des combinaisons de briques s'assemblent dans les tests (fichiers,
+- **Expérimental.** Le catalogue est celui de Solstice Lab et change
+  avec ses propres projets. Des combinaisons de briques s'assemblent dans les tests (fichiers,
   imports, typecheck, migrations) ; la brique `deploiement` a été éprouvée sur
   une appli d'essai.
 - **Pas de version publiée** : ni tag, ni release, ni paquet npm. Seule la
@@ -174,7 +235,7 @@ déroulement complet est dans [`docs/catalogue/demarrer.md`](docs/catalogue/dema
 
 | Pour                                         | Lire                                                                                                                                                               |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Démarrer une appli en local, mener un projet client du cadrage à la livraison | [`docs/catalogue/demarrer.md`](docs/catalogue/demarrer.md)                                                                          |
+| Démarrer une appli en local, mener un projet du cadrage à la mise en ligne | [`docs/catalogue/demarrer.md`](docs/catalogue/demarrer.md)                                                                          |
 | Tout savoir de l'assembleur : options, profils, mise à jour d'une appli, création des tickets d'une blueprint | [`docs/catalogue/assembler.md`](docs/catalogue/assembler.md)                                                       |
 | Connaître ce que chaque brique exige et où elle se branche | [`docs/catalogue/briques.md`](docs/catalogue/briques.md)                                                                              |
 | Se repérer dans le dépôt, connaître les vérifications à lancer avant une pull request | [`docs/catalogue/structure.md`](docs/catalogue/structure.md)                                                          |
@@ -186,13 +247,5 @@ déroulement complet est dans [`docs/catalogue/demarrer.md`](docs/catalogue/dema
 
 Le catalogue est publié sous licence MIT ([`LICENSE`](LICENSE)). Les polices
 IBM Plex de `src/ui/theme/polices/` sont sous SIL Open Font License 1.1
-(`src/ui/theme/polices/LICENCE-OFL.txt`).
-
-Une appli assemblée n'est pas sous MIT : livrée sous le contrat du client, elle
-est marquée `UNLICENSED` et ne reçoit pas `LICENSE`. L'assembleur y écrit un
-fichier `NOTICE` qui porte l'avis de droit d'auteur et le texte MIT du
-catalogue, puis l'avis OFL des polices, parce que la licence MIT exige que son
-avis accompagne toute copie du code repris. Ce fichier ne donne aucune licence à
-l'appli. La signature « Conçu par Solstice Lab » en pied de page fait partie de
-toute livraison Solstice Lab ; hors de ce cadre, voir `CONTRIBUTING.md`,
-« La signature Solstice Lab ».
+(`src/ui/theme/polices/LICENCE-OFL.txt`). Ce que cela veut dire pour l'appli que
+vous assemblez est dans « À qui est le code ».
