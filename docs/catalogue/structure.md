@@ -110,6 +110,8 @@ les options écartées sont dans `.claude/skills/solstice-nouvelle-appli/socle.m
   CI, qui échoue sur toute vulnérabilité haute ou critique absente de
   `exceptions-audit.json` (racine).
 - `docker-compose.yml` — le Postgres local du poste.
+- `.devcontainer/` — l'environnement prêt à l'emploi de GitHub Codespaces (Node, npm,
+  Postgres, Claude Code), à l'essai : voir [codespaces.md](codespaces.md).
 - `tests/` + `vitest.config.ts` — règles verrouillées, et le garde qui refuse
   toute base non locale.
 - `.claude/skills/` — `solstice-ui` (kit et thématisation),
